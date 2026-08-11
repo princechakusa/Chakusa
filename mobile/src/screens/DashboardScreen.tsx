@@ -1,0 +1,71 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader } from '../components/ui';
+import { useAppState } from '../state/AppContext';
+import { useAuth } from '../state/AuthContext';
+import { usePreferences } from '../state/PreferencesContext';
+import { colors, radius, spacing, typography } from '../theme';
+import { RootStackParamList } from '../types';
+import { formatDateTime, formatMoney, titleCase } from '../utils/format';
+
+export function DashboardScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user, business } = useAuth();
+  const { attention } = usePreferences();
+  const { dashboard, leads, reviews, reminders, state, loadDashboard, loadLeads, loadReviews, loadReminders } = useAppState();
+  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()]); }, [loadDashboard, loadLeads, loadReminders, loadReviews]);
+
+  const initialLoading = !state.dashboard.loaded && state.dashboard.loading;
+  const error = state.dashboard.error ?? state.leads.error ?? state.reviews.error ?? state.reminders.error;
+  if (initialLoading) return <Screen><LoadingState label="Loading your dashboard..." /></Screen>;
+  if (error && !dashboard) return <Screen><ErrorState message={error} onRetry={() => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()])} /></Screen>;
+  if (!dashboard) return <Screen><EmptyState title="No dashboard data" message="Your business activity will appear here." /></Screen>;
+
+  const newLeads = attention.missedCalls ? leads.filter(item => item.status === 'new') : [];
+  const pendingReviews = attention.reviews ? reviews.filter(item => item.status === 'pending') : [];
+  const dueReminders = attention.comebacks ? reminders.filter(item => item.status === 'due' && new Date(item.dueDate) <= new Date()) : [];
+  const attentionCount = newLeads.length + pendingReviews.length + dueReminders.length;
+  const firstName = user?.fullName.split(' ')[0] ?? 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
+  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()]);
+
+  return <Screen>
+    <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'Your customer recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open Attention Center" onPress={() => navigation.navigate('AttentionCenter')} style={styles.attentionButton}><Ionicons name="notifications-outline" size={23} color={colors.text} />{attentionCount ? <View style={styles.count}><Text style={styles.countText}>{attentionCount > 9 ? '9+' : attentionCount}</Text></View> : null}</Pressable>} />
+
+    <View>
+      <SectionHeader title="Needs action" action="See all" onAction={() => navigation.navigate('AttentionCenter')} />
+      {attentionCount ? <View style={styles.actionList}>
+        {newLeads[0] ? <ActionRow icon="call-outline" color={colors.primary} title={newLeads[0].customer?.name ?? 'Missed-call lead'} detail={`Needs a response · ${formatDateTime(newLeads[0].missedCallTime)}`} action="Follow up" onPress={() => navigation.navigate('LeadDetail', { leadId: newLeads[0].id })} /> : null}
+        {dueReminders[0] ? <ActionRow icon="refresh-outline" color={colors.attention} title={dueReminders[0].customer?.name ?? 'Customer due back'} detail={`Reminder due · ${formatDateTime(dueReminders[0].dueDate)}`} action="Bring back" onPress={() => navigation.navigate('Comeback')} /> : null}
+        {pendingReviews[0] ? <ActionRow icon="star-outline" color={colors.success} title={pendingReviews[0].customer?.name ?? 'Review request'} detail={pendingReviews[0].message ? 'Message prepared' : 'Message needs preparation'} action="Request review" onPress={() => navigation.navigate('ReviewDetail', { reviewId: pendingReviews[0].id })} /> : null}
+      </View> : <EmptyState title="Nothing needs attention" message="You're caught up for today." />}
+    </View>
+
+    <View style={styles.revenue}><View><Text style={styles.revenueLabel}>RECOVERED REVENUE</Text><Text style={styles.revenueValue}>{formatMoney(dashboard.recoveredRevenue.total)}</Text><Text style={styles.revenueDetail}>Calculated from won leads</Text></View><View style={styles.revenueIcon}><Ionicons name="trending-up" size={23} color={colors.surface} /></View></View>
+    <View><SectionHeader title="Lead funnel" /><View style={styles.metricGrid}>{([['Missed calls', dashboard.leads.missedCalls], ['New', dashboard.leads.new], ['Contacted', dashboard.leads.contacted], ['Booked', dashboard.leads.booked], ['Won', dashboard.leads.won], ['Lost', dashboard.leads.lost]] as const).map(([label, value]) => <MetricCard key={label} label={label} value={String(value)} />)}</View></View>
+    <View><SectionHeader title="Recovery summary" /><View style={styles.breakdown}><Row label="Missed-call revenue" value={formatMoney(dashboard.recoveredRevenue.missedCall)} /><Row label="Completed comebacks" value={String(dashboard.recoveredRevenue.comebackCompletedCount)} /><Row label="Customers due" value={String(dashboard.customersDue)} /><Row label="Average response" value={dashboard.responseTime.averageSeconds == null ? 'No responses yet' : `${Math.round(dashboard.responseTime.averageSeconds / 60)} min`} last /></View></View>
+    <View><SectionHeader title="Reviews" /><View style={styles.metricGrid}><MetricCard label="Requests sent" value={String(dashboard.reviews.requestsSent)} /><MetricCard label="Reviews received" value={String(dashboard.reviews.reviewsReceived)} /><MetricCard label="Private feedback" value={String(dashboard.reviews.feedbackReceived)} /></View></View>
+    <View><SectionHeader title="Recent activity" action={refreshing ? 'Refreshing...' : 'Refresh'} onAction={refresh} />{dashboard.recentActivity.length ? <View>{dashboard.recentActivity.map(item => <View key={item.id} style={styles.activity}><View style={styles.activityIcon}><Ionicons name="checkmark" size={17} color={colors.success} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{titleCase(item.eventType)}</Text><Text style={styles.activityDetail}>{titleCase(item.entityType)} · {formatDateTime(item.createdAt)}</Text></View></View>)}</View> : <Text style={styles.muted}>Activity will appear as work is completed.</Text>}</View>
+  </Screen>;
+}
+
+function ActionRow({ icon, color, title, detail, action, onPress }: { icon: keyof typeof Ionicons.glyphMap; color: string; title: string; detail: string; action: string; onPress: () => void }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.actionRow, { borderLeftColor: color }, pressed && styles.pressed]}><View style={styles.activityIcon}><Ionicons name={icon} size={19} color={color} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{title}</Text><Text style={styles.activityDetail}>{detail}</Text></View><Text style={[styles.actionText, { color }]}>{action}</Text><Ionicons name="chevron-forward" size={17} color={colors.tabInactive} /></Pressable>;
+}
+function Row({ label, value, last }: { label: string; value: string; last?: boolean }) { return <View style={[styles.breakdownRow, last && styles.lastRow]}><Text style={styles.breakdownLabel}>{label}</Text><Text style={styles.breakdownValue}>{value}</Text></View>; }
+const styles = StyleSheet.create({
+  attentionButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  count: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 4, backgroundColor: colors.negative, borderWidth: 2, borderColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  countText: { fontSize: 10, lineHeight: 12, fontWeight: '700', color: colors.surface },
+  actionList: { gap: spacing.xs, marginTop: spacing.sm },
+  actionRow: { minHeight: 76, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderLeftWidth: 4, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  actionText: { ...typography.caption, fontWeight: '700' }, pressed: { opacity: .72 },
+  revenue: { minHeight: 160, borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.xl, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }, revenueLabel: { ...typography.micro, color: colors.surface }, revenueValue: { fontSize: 42, lineHeight: 50, fontWeight: '700', color: colors.surface, marginTop: spacing.sm }, revenueDetail: { ...typography.caption, color: colors.surface, marginTop: spacing.xs }, revenueIcon: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }, breakdown: { marginTop: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md }, breakdownRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.divider }, lastRow: { borderBottomWidth: 0 }, breakdownLabel: { ...typography.body, color: colors.textSecondary }, breakdownValue: { ...typography.bodyStrong, color: colors.text },
+  activity: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }, activityIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }, activityCopy: { flex: 1, minWidth: 0 }, activityTitle: { ...typography.bodyStrong, color: colors.text }, activityDetail: { ...typography.caption, color: colors.textSecondary }, muted: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm }
+});

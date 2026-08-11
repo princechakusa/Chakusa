@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "CHAKUSA",
+    "slug": "chakusa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "chakusa",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chakusa.mobile"
+    },
+    "android": {
+      "package": "com.chakusa.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#FF5C5C",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/chakusa-app-icon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.CONFIGURE_ME"
+        }
+      ]
+    ]
+  }
+}

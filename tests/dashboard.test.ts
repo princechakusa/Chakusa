@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
+import { LEAD_SOURCE_MISSED_CALL } from "../src/lib/leadSources.js";
 
 describe("dashboard summary", () => {
   let app: FastifyInstance;
@@ -26,7 +27,7 @@ describe("dashboard summary", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call", estimatedValue: 100 },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 100 },
     });
     await app.inject({
       method: "POST",
@@ -38,7 +39,7 @@ describe("dashboard summary", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
     });
     await app.inject({
       method: "POST",
@@ -50,7 +51,7 @@ describe("dashboard summary", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
     });
 
     const summary = await app.inject({
@@ -74,7 +75,7 @@ describe("dashboard summary", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call", estimatedValue: 120.5 },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 120.5 },
     });
     await app.inject({
       method: "POST",
@@ -134,5 +135,34 @@ describe("dashboard summary", () => {
 
     expect(summary.json().customersDue).toBe(1);
     expect(summary.json().todayAttentionItems).toHaveLength(1);
+  });
+
+  it("does not count a lead toward recoveredRevenue unless it went through mark-won", async () => {
+    const { token } = await registerAccount(app);
+
+    const lead = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 999 },
+    });
+
+    // PATCH can no longer set status directly (see leads.test.ts), so this
+    // lead stays "new" and must not contribute to recovered revenue.
+    await app.inject({
+      method: "PATCH",
+      url: `/leads/${lead.json().id}`,
+      headers: authHeader(token),
+      payload: { notes: "still new" },
+    });
+
+    const summary = await app.inject({
+      method: "GET",
+      url: "/dashboard/summary",
+      headers: authHeader(token),
+    });
+
+    expect(summary.json().recoveredRevenue.total).toBe(0);
+    expect(summary.json().leads.won).toBe(0);
   });
 });

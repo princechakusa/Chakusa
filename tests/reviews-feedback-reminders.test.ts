@@ -71,6 +71,48 @@ describe("review requests", () => {
 
     expect(generated.json().message).toContain("https://g.page/r/example/review");
   });
+
+  it("supports mark-opened as an explicit transition and records activity", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+
+    const opened = await app.inject({
+      method: "POST",
+      url: `/review-requests/${created.json().id}/mark-opened`,
+      headers: authHeader(token),
+    });
+
+    expect(opened.json().status).toBe("opened");
+  });
+
+  it("ignores a status field sent in the PATCH body instead of applying it", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/review-requests/${created.json().id}`,
+      headers: authHeader(token),
+      payload: { status: "reviewed", serviceName: "manicure" },
+    });
+
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().status).toBe("pending");
+    expect(patched.json().sentAt).toBeNull();
+    expect(patched.json().serviceName).toBe("manicure");
+  });
 });
 
 describe("feedback", () => {
@@ -132,6 +174,47 @@ describe("feedback", () => {
     });
 
     expect(fetched.json().status).toBe("feedback_received");
+  });
+
+  it("transitions feedback status via PATCH and records activity", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(token),
+      payload: { rating: 3, comment: "meh" },
+    });
+    expect(created.json().status).toBe("new");
+
+    const acknowledged = await app.inject({
+      method: "PATCH",
+      url: `/feedback/${created.json().id}`,
+      headers: authHeader(token),
+      payload: { status: "acknowledged" },
+    });
+    expect(acknowledged.json().status).toBe("acknowledged");
+
+    const resolved = await app.inject({
+      method: "PATCH",
+      url: `/feedback/${created.json().id}`,
+      headers: authHeader(token),
+      payload: { status: "resolved" },
+    });
+    expect(resolved.json().status).toBe("resolved");
+  });
+
+  it("returns 404 when updating feedback status for a nonexistent feedback row", async () => {
+    const { token } = await registerAccount(app);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/feedback/00000000-0000-0000-0000-000000000000",
+      headers: authHeader(token),
+      payload: { status: "resolved" },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -232,5 +315,27 @@ describe("reminders", () => {
     });
 
     expect(dismissed.json().status).toBe("dismissed");
+  });
+
+  it("ignores a status field sent in the PATCH body instead of applying it", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/reminders",
+      headers: authHeader(token),
+      payload: { dueDate: new Date().toISOString() },
+    });
+
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/reminders/${created.json().id}`,
+      headers: authHeader(token),
+      payload: { status: "completed", serviceName: "oil change" },
+    });
+
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().status).toBe("due");
+    expect(patched.json().serviceName).toBe("oil change");
   });
 });

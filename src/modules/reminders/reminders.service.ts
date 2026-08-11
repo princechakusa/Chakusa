@@ -13,11 +13,22 @@ export async function listReminders(businessId: string) {
   });
 }
 
+async function assertCustomerInBusiness(businessId: string, customerId: string) {
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, businessId } });
+  if (!customer) {
+    throw ApiError.badRequest("customerId does not belong to this business");
+  }
+}
+
 export async function createReminder(
   businessId: string,
   actorId: string,
   input: CreateReminderInput,
 ) {
+  if (input.customerId) {
+    await assertCustomerInBusiness(businessId, input.customerId);
+  }
+
   const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
 
   let dueDate = input.dueDate;

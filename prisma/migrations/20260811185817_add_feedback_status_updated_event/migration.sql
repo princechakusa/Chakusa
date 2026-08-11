@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ActivityEventType" ADD VALUE 'FEEDBACK_STATUS_UPDATED';

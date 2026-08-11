@@ -7,3 +7,8 @@ export const createFeedbackSchema = z.object({
   comment: z.string().optional(),
 });
 export type CreateFeedbackInput = z.infer<typeof createFeedbackSchema>;
+
+export const updateFeedbackStatusSchema = z.object({
+  status: z.enum(["new", "acknowledged", "resolved"]),
+});
+export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;

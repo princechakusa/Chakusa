@@ -12,6 +12,5 @@ export const updateReminderSchema = z.object({
   serviceName: z.string().optional(),
   lastVisitDate: z.coerce.date().optional(),
   dueDate: z.coerce.date().optional(),
-  status: z.enum(["due", "sent", "completed", "dismissed"]).optional(),
 });
 export type UpdateReminderInput = z.infer<typeof updateReminderSchema>;

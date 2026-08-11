@@ -47,6 +47,13 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
       return;
     }
 
+    if ("statusCode" in error && error.statusCode === 429) {
+      reply.status(429).send({
+        error: { code: "RATE_LIMITED", message: "Too many requests. Please try again later." },
+      });
+      return;
+    }
+
     request.log.error(error);
     reply.status(500).send({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },

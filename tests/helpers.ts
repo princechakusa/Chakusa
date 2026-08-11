@@ -19,6 +19,9 @@ export async function resetDatabase() {
     prisma.messageTemplate.deleteMany(),
     prisma.customer.deleteMany(),
     prisma.businessMember.deleteMany(),
+    prisma.passwordResetToken.deleteMany(),
+    prisma.authSession.deleteMany(),
+    prisma.authIdentity.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),
   ]);
@@ -26,6 +29,8 @@ export async function resetDatabase() {
 
 interface RegisteredAccount {
   token: string;
+  accessToken: string;
+  refreshToken: string;
   userId: string;
   businessId: string;
 }
@@ -52,7 +57,13 @@ export async function registerAccount(
   }
 
   const body = response.json();
-  return { token: body.token, userId: body.user.id, businessId: body.business.id };
+  return {
+    token: body.token,
+    accessToken: body.accessToken,
+    refreshToken: body.refreshToken,
+    userId: body.user.id,
+    businessId: body.business.id,
+  };
 }
 
 export function authHeader(token: string) {

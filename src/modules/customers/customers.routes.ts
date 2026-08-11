@@ -34,7 +34,12 @@ export default async function customerRoutes(fastify: FastifyInstance) {
 
   fastify.patch<{ Params: { id: string } }>("/:id", async (request, reply) => {
     const input = updateCustomerSchema.parse(request.body);
-    const customer = await updateCustomer(request.businessId!, request.params.id, input);
+    const customer = await updateCustomer(
+      request.businessId!,
+      request.user.userId,
+      request.params.id,
+      input,
+    );
     reply.send(customer);
   });
 }

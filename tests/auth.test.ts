@@ -90,7 +90,7 @@ describe("auth", () => {
       payload: { email: "login@example.com", password: "wrong-password" },
     });
     expect(bad.statusCode).toBe(401);
-    expect(bad.json().error.code).toBe("UNAUTHORIZED");
+    expect(bad.json().error.code).toBe("AUTH_INVALID_CREDENTIALS");
   });
 
   it("returns the authenticated user context from /auth/me", async () => {
@@ -112,7 +112,7 @@ describe("auth", () => {
   it("rejects requests without a token", async () => {
     const response = await app.inject({ method: "GET", url: "/auth/me" });
     expect(response.statusCode).toBe(401);
-    expect(response.json().error.code).toBe("UNAUTHORIZED");
+    expect(response.json().error.code).toBe("AUTH_TOKEN_INVALID");
   });
 
   it("rejects requests with a malformed token", async () => {

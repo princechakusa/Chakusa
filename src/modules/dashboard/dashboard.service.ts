@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -24,7 +25,7 @@ export async function getDashboardSummary(businessId: string) {
     dueReminders,
     respondedLeads,
   ] = await Promise.all([
-    prisma.lead.count({ where: { businessId, source: "missed_call" } }),
+    prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL } }),
     prisma.lead.count({ where: { businessId, status: "new" } }),
     prisma.lead.count({ where: { businessId, status: "contacted" } }),
     prisma.lead.count({ where: { businessId, status: "booked" } }),
@@ -69,7 +70,7 @@ export async function getDashboardSummary(businessId: string) {
   });
 
   const missedCallRecoveredRevenue = wonLeadRecords
-    .filter((lead) => lead.source === "missed_call")
+    .filter((lead) => lead.source === LEAD_SOURCE_MISSED_CALL)
     .reduce((sum, lead) => sum + Number(lead.estimatedValue), 0);
 
   const totalRecoveredRevenue = wonLeadRecords.reduce(

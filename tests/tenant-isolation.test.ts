@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
+import { LEAD_SOURCE_MISSED_CALL } from "../src/lib/leadSources.js";
 
 describe("tenant isolation", () => {
   let app: FastifyInstance;
@@ -114,7 +115,7 @@ describe("tenant isolation", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(userB.token),
-      payload: { source: "missed_call", serviceRequested: "haircut" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, serviceRequested: "haircut" },
     });
     const leadId = created.json().id;
 
@@ -148,7 +149,7 @@ describe("tenant isolation", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(userA.token),
-      payload: { customerId: bCustomer.json().id, source: "missed_call" },
+      payload: { customerId: bCustomer.json().id, source: LEAD_SOURCE_MISSED_CALL },
     });
 
     expect(response.statusCode).toBe(400);
@@ -163,7 +164,7 @@ describe("tenant isolation", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(userB.token),
-      payload: { source: "missed_call", estimatedValue: 500 },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 500 },
     });
 
     const dashboardA = await app.inject({
@@ -173,5 +174,107 @@ describe("tenant isolation", () => {
     });
 
     expect(dashboardA.json().leads.total).toBe(0);
+  });
+
+  it("rejects creating a review request against another business's customer", async () => {
+    const userA = await registerAccount(app, { email: "rr-a@example.com" });
+    const userB = await registerAccount(app, { email: "rr-b@example.com" });
+
+    const bCustomer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(userB.token),
+      payload: { name: "B's Customer" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(userA.token),
+      payload: { customerId: bCustomer.json().id },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects creating a reminder against another business's customer", async () => {
+    const userA = await registerAccount(app, { email: "rem-a@example.com" });
+    const userB = await registerAccount(app, { email: "rem-b@example.com" });
+
+    const bCustomer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(userB.token),
+      payload: { name: "B's Customer" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/reminders",
+      headers: authHeader(userA.token),
+      payload: { customerId: bCustomer.json().id, dueDate: new Date().toISOString() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects creating feedback against another business's customer", async () => {
+    const userA = await registerAccount(app, { email: "fb-a@example.com" });
+    const userB = await registerAccount(app, { email: "fb-b@example.com" });
+
+    const bCustomer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(userB.token),
+      payload: { name: "B's Customer" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(userA.token),
+      payload: { customerId: bCustomer.json().id, rating: 5 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("prevents feedback from mutating another business's review request via reviewRequestId", async () => {
+    const userA = await registerAccount(app, { email: "fbrr-a@example.com" });
+    const userB = await registerAccount(app, { email: "fbrr-b@example.com" });
+
+    const bReviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(userB.token),
+      payload: {},
+    });
+    const reviewRequestId = bReviewRequest.json().id;
+    expect(bReviewRequest.json().status).toBe("pending");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(userA.token),
+      payload: { reviewRequestId, rating: 1, comment: "hijack attempt" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("VALIDATION_ERROR");
+
+    // B's review request must be untouched by A's attempt.
+    const stillPending = await prisma.reviewRequest.findUnique({ where: { id: reviewRequestId } });
+    expect(stillPending?.status).toBe("pending");
+
+    // No feedback row should exist at all for A's business.
+    const feedbackAsA = await app.inject({
+      method: "GET",
+      url: "/feedback",
+      headers: authHeader(userA.token),
+    });
+    expect(feedbackAsA.json()).toHaveLength(0);
   });
 });

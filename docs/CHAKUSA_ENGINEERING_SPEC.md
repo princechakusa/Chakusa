@@ -57,17 +57,23 @@ npx prisma generate        # regenerate the client
 
 ## 3. Authentication
 
-JWT bearer tokens signed with `JWT_SECRET`, 30-day expiry. Passwords hashed with Argon2id (`src/lib/password.ts`).
+Access JWTs are signed with `JWT_SECRET` and expire after 15 minutes by default. Opaque refresh tokens rotate on every use and expire after 30 days. PostgreSQL stores only SHA-256 refresh-token hashes. Passwords are normalized by email identity and hashed with Argon2id (`src/lib/password.ts`).
 
 | Endpoint | Method | Auth | Body | Response |
 |---|---|---|---|---|
-| `/auth/register` | POST | none | `{ email, password, fullName, businessName, industry? }` | `201 { token, user, business }` |
-| `/auth/login` | POST | none | `{ email, password }` | `200 { token, user, business, role }` |
+| `/auth/register` | POST | none | `{ email, password, fullName, businessName, industry? }` | `201 { accessToken, refreshToken, expiresIn, tokenType, token, user, business }` |
+| `/auth/login` | POST | none | `{ email, password }` | `200 { accessToken, refreshToken, expiresIn, tokenType, token, user, business, role }` |
+| `/auth/refresh` | POST | none | `{ refreshToken }` | `200 { accessToken, refreshToken, expiresIn, tokenType, token }` |
+| `/auth/logout` | POST | none | `{ refreshToken }` | `204` |
+| `/auth/logout-all` | POST | Bearer | `{}` | `204` |
+| `/auth/forgot-password` | POST | none | `{ email }` | `202 { message }` |
+| `/auth/reset-password` | POST | none | `{ token, password }` | `200 { message }` |
+| `/auth/delete-account` | POST | Bearer | `{ password }` | `204` |
 | `/auth/me` | GET | Bearer | — | `200 { user, business, role }` |
 
-Registration creates the user, hashes the password, creates the business, creates the `OWNER` business membership, and returns a token — all in one transaction.
+Registration creates the user, hashes the password, creates the business, creates the `OWNER` business membership, and creates the initial session in one transaction. `token` is a temporary compatibility alias for `accessToken`.
 
-Send the token as `Authorization: Bearer <token>` on all subsequent requests.
+Send `accessToken` as `Authorization: Bearer <token>` on authenticated requests. Refresh tokens are accepted only in the JSON bodies of `/auth/refresh` and `/auth/logout`. A replayed rotated token revokes its entire token family.
 
 ## 4. Authorization & Multi-Tenancy
 
@@ -218,7 +224,11 @@ Rendering (`src/lib/templateEngine.ts`) is pure string substitution — `{{var}}
 
 ## 9. Security
 
-- Passwords: Argon2id, never logged, never returned in API responses.
+- Passwords: Argon2id, never logged, never returned in API responses. Provider-only users may have a null password hash.
+- Emails: trimmed and lowercased into a unique `normalized_email`; all email/password lookups use this canonical value.
+- Sessions: access JWTs are short-lived and tied to a server session; refresh/reset tokens are random opaque values and only their SHA-256 hashes are stored.
+- Password resets: one-hour expiry by default, single-use, five requests/hour per client, and successful reset revokes every user session.
+- Provider identities: uniqueness is `(provider, provider_subject)` with an additional one-identity-per-provider-per-user constraint. No provider identity is accepted from a mobile client in Phase 1.
 - JWT secret and database credentials live only in `.env` (gitignored), read via `src/lib/config.ts` (Zod-validated at boot — the process refuses to start with a missing/weak secret).
 - All Prisma queries are parameterized by the client library (no raw SQL string concatenation anywhere in the codebase).
 - `business_id` is always server-resolved (§4) — the single most important tenant-isolation guarantee.
@@ -238,6 +248,9 @@ Rendering (`src/lib/templateEngine.ts`) is pure string substitution — `{{var}}
 | 403 | `FORBIDDEN` |
 | 404 | `NOT_FOUND` |
 | 409 | `CONFLICT` |
+| 429 | `RATE_LIMITED` |
+
+Authentication failures use explicit codes: `AUTH_INVALID_CREDENTIALS`, `AUTH_TOKEN_INVALID`, `AUTH_SESSION_EXPIRED`, `AUTH_REFRESH_REUSED`, `AUTH_RESET_TOKEN_INVALID`, `AUTH_RESET_TOKEN_EXPIRED`, `AUTH_RESET_TOKEN_USED`, `AUTH_REAUTHENTICATION_REQUIRED`, and `AUTH_PASSWORD_UNAVAILABLE`.
 | 500 | `INTERNAL_ERROR` |
 
 ## 11. Testing

@@ -10,6 +10,5 @@ export type CreateReviewRequestInput = z.infer<typeof createReviewRequestSchema>
 export const updateReviewRequestSchema = z.object({
   serviceName: z.string().optional(),
   message: z.string().optional(),
-  status: z.enum(["pending", "sent", "opened", "reviewed", "feedback_received"]).optional(),
 });
 export type UpdateReviewRequestInput = z.infer<typeof updateReviewRequestSchema>;

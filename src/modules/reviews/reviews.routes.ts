@@ -6,6 +6,7 @@ import {
   getReviewRequest,
   updateReviewRequest,
   generateReviewMessage,
+  markReviewRequestOpened,
   markReviewRequestSent,
   markReviewRequestReviewed,
   markReviewRequestFeedbackReceived,
@@ -36,6 +37,12 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { id: string } }>("/:id/generate-message", async (request, reply) => {
     reply.send(await generateReviewMessage(request.businessId!, request.params.id));
+  });
+
+  fastify.post<{ Params: { id: string } }>("/:id/mark-opened", async (request, reply) => {
+    reply.send(
+      await markReviewRequestOpened(request.businessId!, request.user.userId, request.params.id),
+    );
   });
 
   fastify.post<{ Params: { id: string } }>("/:id/mark-sent", async (request, reply) => {

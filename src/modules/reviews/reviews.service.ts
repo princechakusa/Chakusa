@@ -13,11 +13,22 @@ export async function listReviewRequests(businessId: string) {
   });
 }
 
+async function assertCustomerInBusiness(businessId: string, customerId: string) {
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, businessId } });
+  if (!customer) {
+    throw ApiError.badRequest("customerId does not belong to this business");
+  }
+}
+
 export async function createReviewRequest(
   businessId: string,
   actorId: string,
   input: CreateReviewRequestInput,
 ) {
+  if (input.customerId) {
+    await assertCustomerInBusiness(businessId, input.customerId);
+  }
+
   const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
 
   const reviewRequest = await prisma.reviewRequest.create({
@@ -97,6 +108,25 @@ export async function generateReviewMessage(businessId: string, id: string) {
   await prisma.reviewRequest.update({ where: { id }, data: { message: rendered } });
 
   return { message: rendered };
+}
+
+export async function markReviewRequestOpened(businessId: string, actorId: string, id: string) {
+  await getOwnedReviewRequest(businessId, id);
+
+  const reviewRequest = await prisma.reviewRequest.update({
+    where: { id },
+    data: { status: "opened" },
+  });
+
+  await recordActivity({
+    businessId,
+    actorId,
+    eventType: "REVIEW_OPENED",
+    entityType: "review_request",
+    entityId: id,
+  });
+
+  return reviewRequest;
 }
 
 export async function markReviewRequestSent(businessId: string, actorId: string, id: string) {

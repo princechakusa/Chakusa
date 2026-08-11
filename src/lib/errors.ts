@@ -4,7 +4,17 @@ export type ApiErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
-  | "INTERNAL_ERROR";
+  | "RATE_LIMITED"
+  | "INTERNAL_ERROR"
+  | "AUTH_INVALID_CREDENTIALS"
+  | "AUTH_TOKEN_INVALID"
+  | "AUTH_SESSION_EXPIRED"
+  | "AUTH_REFRESH_REUSED"
+  | "AUTH_RESET_TOKEN_INVALID"
+  | "AUTH_RESET_TOKEN_EXPIRED"
+  | "AUTH_RESET_TOKEN_USED"
+  | "AUTH_REAUTHENTICATION_REQUIRED"
+  | "AUTH_PASSWORD_UNAVAILABLE";
 
 export class ApiError extends Error {
   statusCode: number;
@@ -24,6 +34,17 @@ export class ApiError extends Error {
 
   static unauthorized(message = "Unauthorized") {
     return new ApiError(401, "UNAUTHORIZED", message);
+  }
+
+  static auth(
+    statusCode: number,
+    code: Exclude<
+      ApiErrorCode,
+      "VALIDATION_ERROR" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "INTERNAL_ERROR"
+    >,
+    message: string,
+  ) {
+    return new ApiError(statusCode, code, message);
   }
 
   static forbidden(message = "Forbidden") {

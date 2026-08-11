@@ -3,6 +3,7 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
+import { toApiLead } from "./leads.serialization.js";
 import type { CreateLeadInput, UpdateLeadInput } from "./leads.schemas.js";
 import type { Lead } from "@prisma/client";
 
@@ -31,7 +32,7 @@ function withResponseTime<T extends Lead>(lead: T) {
     lead.missedCallTime && lead.contactedAt
       ? Math.max(0, Math.floor((lead.contactedAt.getTime() - lead.missedCallTime.getTime()) / 1000))
       : null;
-  return { ...lead, responseTimeSeconds };
+  return { ...toApiLead(lead), responseTimeSeconds };
 }
 
 export async function createLead(businessId: string, actorId: string, input: CreateLeadInput) {
@@ -60,7 +61,7 @@ export async function createLead(businessId: string, actorId: string, input: Cre
     entityId: lead.id,
   });
 
-  return lead;
+  return withResponseTime(lead);
 }
 
 async function assertCustomerInBusiness(businessId: string, customerId: string) {
@@ -108,7 +109,6 @@ export async function updateLead(
       urgency: input.urgency,
       estimatedValue: input.estimatedValue,
       notes: input.notes,
-      status: input.status,
     },
   });
 

@@ -18,7 +18,6 @@ export const updateLeadSchema = z.object({
   urgency: z.enum(["low", "medium", "high"]).optional(),
   estimatedValue: z.coerce.number().nonnegative().optional(),
   notes: z.string().optional(),
-  status: z.enum(["new", "contacted", "booked", "won", "lost"]).optional(),
 });
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 

@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
+import { LEAD_SOURCE_MISSED_CALL } from "../src/lib/leadSources.js";
 
 describe("leads", () => {
   let app: FastifyInstance;
@@ -26,7 +27,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call", serviceRequested: "haircut", estimatedValue: 40 },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, serviceRequested: "haircut", estimatedValue: 40 },
     });
 
     expect(response.statusCode).toBe(201);
@@ -40,7 +41,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
     });
     const leadId = created.json().id;
 
@@ -78,7 +79,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call", missedCallTime: missedCallTime.toISOString() },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, missedCallTime: missedCallTime.toISOString() },
     });
     const leadId = created.json().id;
 
@@ -106,7 +107,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call", missedCallTime: new Date().toISOString() },
+      payload: { source: LEAD_SOURCE_MISSED_CALL, missedCallTime: new Date().toISOString() },
     });
 
     const fetched = await app.inject({
@@ -154,7 +155,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
     });
     await app.inject({
       method: "POST",
@@ -165,7 +166,7 @@ describe("leads", () => {
       method: "POST",
       url: "/leads",
       headers: authHeader(token),
-      payload: { source: "missed_call" },
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
     });
 
     const wonOnly = await app.inject({
@@ -176,5 +177,121 @@ describe("leads", () => {
 
     expect(wonOnly.json().total).toBe(1);
     expect(wonOnly.json().items[0].status).toBe("won");
+  });
+
+  it("rejects status in the PATCH body instead of silently applying it without timestamps", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 500 },
+    });
+    const leadId = created.json().id;
+
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/leads/${leadId}`,
+      headers: authHeader(token),
+      payload: { status: "won", notes: "trying to sneak status through" },
+    });
+
+    // Zod strips unknown keys by default rather than erroring, so the PATCH
+    // succeeds but must NOT move the lead to won or touch wonAt.
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().status).toBe("new");
+    expect(patched.json().wonAt).toBeNull();
+    expect(patched.json().notes).toBe("trying to sneak status through");
+  });
+
+  it("only mark-won stamps wonAt and only mark-lost stamps lostAt", async () => {
+    const { token } = await registerAccount(app);
+
+    const lead = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL },
+    });
+    const leadId = lead.json().id;
+
+    const lost = await app.inject({
+      method: "POST",
+      url: `/leads/${leadId}/mark-lost`,
+      headers: authHeader(token),
+    });
+    expect(lost.json().status).toBe("lost");
+    expect(lost.json().lostAt).not.toBeNull();
+    expect(lost.json().wonAt).toBeNull();
+    expect(lost.json().contactedAt).toBeNull();
+    expect(lost.json().bookedAt).toBeNull();
+  });
+
+  it("returns estimatedValue as a JSON number, not a Decimal string, on every lead endpoint", async () => {
+    const { token } = await registerAccount(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 120.5 },
+    });
+    expect(created.json().estimatedValue).toBe(120.5);
+    expect(typeof created.json().estimatedValue).toBe("number");
+
+    const leadId = created.json().id;
+
+    const fetched = await app.inject({
+      method: "GET",
+      url: `/leads/${leadId}`,
+      headers: authHeader(token),
+    });
+    expect(typeof fetched.json().estimatedValue).toBe("number");
+
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/leads/${leadId}`,
+      headers: authHeader(token),
+      payload: { estimatedValue: 200 },
+    });
+    expect(patched.json().estimatedValue).toBe(200);
+    expect(typeof patched.json().estimatedValue).toBe("number");
+
+    const listed = await app.inject({
+      method: "GET",
+      url: "/leads",
+      headers: authHeader(token),
+    });
+    expect(typeof listed.json().items[0].estimatedValue).toBe("number");
+
+    const won = await app.inject({
+      method: "POST",
+      url: `/leads/${leadId}/mark-won`,
+      headers: authHeader(token),
+    });
+    expect(typeof won.json().estimatedValue).toBe("number");
+  });
+
+  it("rejects creating a lead against another business's customer", async () => {
+    const { token: tokenA } = await registerAccount(app, { email: "lead-fk-a@example.com" });
+    const { token: tokenB } = await registerAccount(app, { email: "lead-fk-b@example.com" });
+
+    const otherCustomer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(tokenB),
+      payload: { name: "Business B's Customer" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(tokenA),
+      payload: { customerId: otherCustomer.json().id, source: LEAD_SOURCE_MISSED_CALL },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("VALIDATION_ERROR");
   });
 });

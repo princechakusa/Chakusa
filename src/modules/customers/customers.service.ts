@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
+import { toApiLead } from "../leads/leads.serialization.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customers.schemas.js";
 
 export async function listCustomers(
@@ -86,7 +87,7 @@ export async function getCustomerProfile(businessId: string, customerId: string)
 
   return {
     customer,
-    leads,
+    leads: leads.map(toApiLead),
     reviewRequests,
     feedback,
     reminders,
@@ -97,13 +98,24 @@ export async function getCustomerProfile(businessId: string, customerId: string)
 
 export async function updateCustomer(
   businessId: string,
+  actorId: string,
   customerId: string,
   input: UpdateCustomerInput,
 ) {
   await assertCustomerInBusiness(businessId, customerId);
 
-  return prisma.customer.update({
+  const customer = await prisma.customer.update({
     where: { id: customerId },
     data: input,
   });
+
+  await recordActivity({
+    businessId,
+    actorId,
+    eventType: "CUSTOMER_UPDATED",
+    entityType: "customer",
+    entityId: customer.id,
+  });
+
+  return customer;
 }

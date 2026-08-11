@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum BusinessRole {
+  OWNER
+  STAFF
+}
+
+enum LeadStatus {
+  new
+  contacted
+  booked
+  won
+  lost
+}
+
+enum LeadUrgency {
+  low
+  medium
+  high
+}
+
+enum MessageType {
+  missed_call
+  booking_confirmation
+  review_request
+  private_feedback
+  comeback_reminder
+  custom
+}
+
+enum MessageChannel {
+  sms
+  whatsapp
+  call
+  email
+  other
+}
+
+enum MessageStatus {
+  draft
+  copied
+  sent
+  failed
+}
+
+enum ReviewRequestStatus {
+  pending
+  sent
+  opened
+  reviewed
+  feedback_received
+}
+
+enum FeedbackSentiment {
+  positive
+  neutral
+  negative
+}
+
+enum FeedbackStatus {
+  new
+  acknowledged
+  resolved
+}
+
+enum ReminderStatus {
+  due
+  sent
+  completed
+  dismissed
+}
+
+enum MessageTone {
+  friendly
+  professional
+  casual
+}
+
+enum ActivityEventType {
+  LEAD_CREATED
+  LEAD_CONTACTED
+  LEAD_BOOKED
+  LEAD_WON
+  LEAD_LOST
+  MESSAGE_COPIED
+  MESSAGE_MARKED_SENT
+  REVIEW_REQUEST_CREATED
+  REVIEW_REQUEST_SENT
+  REVIEW_OPENED
+  REVIEW_RECEIVED
+  FEEDBACK_RECEIVED
+  REMINDER_CREATED
+  REMINDER_SENT
+  REMINDER_COMPLETED
+  REMINDER_DISMISSED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+}
+
+// ---------------------------------------------------------------------------
+// Core models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  ownedBusinesses  Business[]        @relation("BusinessOwner")
+  memberships      BusinessMember[]
+  activityEvents   ActivityEvent[]   @relation("ActivityActor")
+
+  @@map("users")
+}
+
+model Business {
+  id                 String   @id @default(uuid())
+  ownerId            String   @map("owner_id")
+  name               String
+  industry           String?
+  phone              String?
+  googleReviewLink   String?  @map("google_review_link")
+  workingHours       Json?    @map("working_hours")
+  defaultServices    Json?    @map("default_services")
+  reminderDays       Int      @default(42) @map("reminder_days")
+  preferredTone      MessageTone @default(friendly) @map("preferred_tone")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  owner              User               @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members            BusinessMember[]
+  customers          Customer[]
+  leads              Lead[]
+  messages           Message[]
+  reviewRequests     ReviewRequest[]
+  feedback           Feedback[]
+  reminders          Reminder[]
+  messageTemplates   MessageTemplate[]
+  activityEvents     ActivityEvent[]
+
+  @@index([ownerId])
+  @@map("businesses")
+}
+
+model BusinessMember {
+  id         String       @id @default(uuid())
+  businessId String       @map("business_id")
+  userId     String       @map("user_id")
+  role       BusinessRole @default(OWNER)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@index([businessId])
+  @@map("business_members")
+}
+
+model Customer {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  name       String
+  phone      String?
+  email      String?
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  leads          Lead[]
+  messages       Message[]
+  reviewRequests ReviewRequest[]
+  feedback       Feedback[]
+  reminders      Reminder[]
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@map("customers")
+}
+
+model Lead {
+  id                String      @id @default(uuid())
+  businessId        String      @map("business_id")
+  customerId        String?     @map("customer_id")
+  source            String?
+  missedCallTime    DateTime?   @map("missed_call_time")
+  serviceRequested  String?     @map("service_requested")
+  urgency           LeadUrgency @default(medium)
+  status            LeadStatus  @default(new)
+  estimatedValue    Decimal?    @map("estimated_value") @db.Decimal(10, 2)
+  notes             String?
+  generatedReply    String?     @map("generated_reply")
+  contactedAt       DateTime?   @map("contacted_at")
+  bookedAt          DateTime?   @map("booked_at")
+  wonAt             DateTime?   @map("won_at")
+  lostAt            DateTime?   @map("lost_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  business  Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@map("leads")
+}
+
+model Message {
+  id          String         @id @default(uuid())
+  businessId  String         @map("business_id")
+  customerId  String?        @map("customer_id")
+  leadId      String?        @map("lead_id")
+  messageType MessageType    @map("message_type")
+  channel     MessageChannel @default(sms)
+  body        String
+  status      MessageStatus  @default(draft)
+  sentAt      DateTime?      @map("sent_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@index([leadId])
+  @@map("messages")
+}
+
+model ReviewRequest {
+  id                  String               @id @default(uuid())
+  businessId          String               @map("business_id")
+  customerId          String?              @map("customer_id")
+  serviceName         String?              @map("service_name")
+  message             String?
+  status              ReviewRequestStatus  @default(pending)
+  googleReviewLink    String?              @map("google_review_link")
+  privateFeedbackUrl  String?              @map("private_feedback_url")
+  sentAt              DateTime?            @map("sent_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  feedback Feedback[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([customerId])
+  @@map("review_requests")
+}
+
+model Feedback {
+  id              String            @id @default(uuid())
+  businessId      String            @map("business_id")
+  customerId      String?           @map("customer_id")
+  reviewRequestId String?           @map("review_request_id")
+  rating          Int
+  comment         String?
+  sentiment       FeedbackSentiment?
+  status          FeedbackStatus    @default(new)
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  reviewRequest ReviewRequest? @relation(fields: [reviewRequestId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([customerId])
+  @@map("feedback")
+}
+
+model Reminder {
+  id           String         @id @default(uuid())
+  businessId   String         @map("business_id")
+  customerId   String?        @map("customer_id")
+  serviceName  String?        @map("service_name")
+  lastVisitDate DateTime?     @map("last_visit_date")
+  dueDate      DateTime       @map("due_date")
+  message      String?
+  status       ReminderStatus @default(due)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([businessId, dueDate])
+  @@index([customerId])
+  @@map("reminders")
+}
+
+model MessageTemplate {
+  id           String      @id @default(uuid())
+  businessId   String      @map("business_id")
+  templateType MessageType @map("template_type")
+  name         String
+  body         String
+  tone         MessageTone @default(friendly)
+  isDefault    Boolean     @default(false) @map("is_default")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, templateType])
+  @@map("message_templates")
+}
+
+model ActivityEvent {
+  id         String            @id @default(uuid())
+  businessId String            @map("business_id")
+  actorId    String?           @map("actor_id")
+  eventType  ActivityEventType @map("event_type")
+  entityType String            @map("entity_type")
+  entityId   String            @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_events")
+}

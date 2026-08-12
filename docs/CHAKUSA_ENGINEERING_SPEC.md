@@ -63,17 +63,26 @@ Access JWTs are signed with `JWT_SECRET` and expire after 15 minutes by default.
 |---|---|---|---|---|
 | `/auth/register` | POST | none | `{ email, password, fullName, businessName, industry? }` | `201 { accessToken, refreshToken, expiresIn, tokenType, token, user, business }` |
 | `/auth/login` | POST | none | `{ email, password }` | `200 { accessToken, refreshToken, expiresIn, tokenType, token, user, business, role }` |
+| `/auth/google` | POST | none | `{ idToken }` | `200 { accessToken, refreshToken, expiresIn, tokenType, token, user, business, role, isNewUser }` |
+| `/auth/google/link` | POST | Bearer | `{ idToken }` | `200 { provider, providerEmail, linkedAt }` |
+| `/auth/apple/challenge` | POST | none | `{}` | `200 { challengeId, nonce, state, expiresAt }` |
+| `/auth/apple` | POST | none | Apple credential payload | `200 { accessToken, refreshToken, expiresIn, tokenType, token, user, business, role, isNewUser }` |
+| `/auth/apple/link/challenge` | POST | Bearer | `{}` | `200 { challengeId, nonce, state, expiresAt }` |
+| `/auth/apple/link` | POST | Bearer | Apple credential payload | `200 { provider, providerEmail, linkedAt }` |
+| `/auth/apple/delete/challenge` | POST | Bearer | `{}` | `200 { challengeId, nonce, state, expiresAt }` |
 | `/auth/refresh` | POST | none | `{ refreshToken }` | `200 { accessToken, refreshToken, expiresIn, tokenType, token }` |
 | `/auth/logout` | POST | none | `{ refreshToken }` | `204` |
 | `/auth/logout-all` | POST | Bearer | `{}` | `204` |
 | `/auth/forgot-password` | POST | none | `{ email }` | `202 { message }` |
 | `/auth/reset-password` | POST | none | `{ token, password }` | `200 { message }` |
-| `/auth/delete-account` | POST | Bearer | `{ password }` | `204` |
+| `/auth/delete-account` | POST | Bearer | `{ password }`, `{ googleIdToken }`, or `{ apple: AppleCredentialPayload }` | `204` |
 | `/auth/me` | GET | Bearer | — | `200 { user, business, role }` |
 
 Registration creates the user, hashes the password, creates the business, creates the `OWNER` business membership, and creates the initial session in one transaction. `token` is a temporary compatibility alias for `accessToken`.
 
 Send `accessToken` as `Authorization: Bearer <token>` on authenticated requests. Refresh tokens are accepted only in the JSON bodies of `/auth/refresh` and `/auth/logout`. A replayed rotated token revokes its entire token family.
+
+`AppleCredentialPayload` is `{ challengeId, nonce, state, identityToken, authorizationCode, givenName?, familyName? }`. The identity token and authorization code are the identity evidence. The optional name is display metadata returned only on Apple's first authorization and is never used to resolve or link an identity.
 
 ## 4. Authorization & Multi-Tenancy
 
@@ -111,7 +120,7 @@ All responses are JSON. All list endpoints are scoped to the caller's business a
 | GET | `/?status=&page=&pageSize=` | Includes `responseTimeSeconds` (derived, `contactedAt - missedCallTime`) |
 | POST | `/` | `{ customerId?, source?, missedCallTime?, serviceRequested?, urgency?, estimatedValue?, notes? }` |
 | GET | `/:id` | Includes customer + messages |
-| PATCH | `/:id` | Any lead field including direct `status` set |
+| PATCH | `/:id` | `{ customerId?, source?, serviceRequested?, urgency?, estimatedValue?, notes? }`. **Does not accept `status`** — a `status` field in the body is silently stripped and has no effect. |
 | POST | `/:id/generate-message` | Renders the `missed_call` template for this lead, saves to `generatedReply` |
 | POST | `/:id/mark-contacted` | Sets `status=contacted`, `contactedAt=now`, records `LEAD_CONTACTED` |
 | POST | `/:id/mark-booked` | Sets `status=booked`, `bookedAt=now`, records `LEAD_BOOKED` |
@@ -119,6 +128,8 @@ All responses are JSON. All list endpoints are scoped to the caller's business a
 | POST | `/:id/mark-lost` | Sets `status=lost`, `lostAt=now`, records `LEAD_LOST` |
 
 Lead statuses: `new → contacted → booked → won | lost` (transitions are not strictly enforced in sequence — any explicit mark-* endpoint can be called at any time, matching the manual nature of the MVP).
+
+**The `mark-*` endpoints are the only way to change a lead's status.** This is intentional: each one atomically sets `status` together with its corresponding timestamp (`contactedAt`/`bookedAt`/`wonAt`/`lostAt`) and records the matching activity event. A generic PATCH cannot be used to set `status` directly, because doing so would let a client move a lead to e.g. `won` without ever stamping `wonAt` — silently breaking response-time analytics and revenue calculations that depend on that timestamp being present whenever `status` says it should be.
 
 ### Message Templates — `/message-templates`
 
@@ -141,13 +152,14 @@ If a business has no template of a given type, `generate-message` endpoints fall
 | GET | `/` | All for the business |
 | POST | `/` | `{ customerId?, serviceName?, message? }`. Copies `googleReviewLink` from business settings. |
 | GET | `/:id` | Includes customer + feedback |
-| PATCH | `/:id` | `{ serviceName?, message?, status? }` |
+| PATCH | `/:id` | `{ serviceName?, message? }`. **Does not accept `status`** — a `status` field in the body is silently stripped and has no effect. |
 | POST | `/:id/generate-message` | Renders `review_request` template |
-| POST | `/:id/mark-sent` | `status=sent`, `sentAt=now` |
-| POST | `/:id/mark-reviewed` | `status=reviewed` |
-| POST | `/:id/mark-feedback-received` | `status=feedback_received` |
+| POST | `/:id/mark-opened` | Sets `status=opened`, records `REVIEW_OPENED` |
+| POST | `/:id/mark-sent` | `status=sent`, `sentAt=now`, records `REVIEW_REQUEST_SENT` |
+| POST | `/:id/mark-reviewed` | `status=reviewed`, records `REVIEW_RECEIVED` |
+| POST | `/:id/mark-feedback-received` | `status=feedback_received`, records `FEEDBACK_RECEIVED` (also triggered automatically by `POST /feedback` when `reviewRequestId` is set — see §Feedback) |
 
-Statuses: `pending → sent → opened → reviewed | feedback_received`. `opened` is set via PATCH (no dedicated webhook/tracking in MVP).
+Statuses: `pending → sent → opened → reviewed | feedback_received`. Like leads, every status transition goes through a dedicated `mark-*` endpoint, which is the only mechanism that changes `status` — this keeps each transition's status change, any related timestamp (`sentAt`), and its activity event atomic and consistent. PATCH is for metadata edits only.
 
 Policy: the private feedback path exists to let a business resolve a concern, not to suppress public reviews — there is no endpoint that blocks or gates the public review link based on rating.
 
@@ -156,7 +168,10 @@ Policy: the private feedback path exists to let a business resolve a concern, no
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/` | All for the business |
-| POST | `/` | `{ customerId?, reviewRequestId?, rating (1-5), comment? }`. `sentiment` is derived server-side from `rating` (`>=4` positive, `3` neutral, `<=2` negative) — no external AI call. If `reviewRequestId` is set, that review request's status becomes `feedback_received`. |
+| POST | `/` | `{ customerId?, reviewRequestId?, rating (1-5), comment? }`. `sentiment` is derived server-side from `rating` (`>=4` positive, `3` neutral, `<=2` negative) — no external AI call. If `reviewRequestId` is set, that review request transitions to `feedback_received` (same transition as `POST /review-requests/:id/mark-feedback-received`, including its activity event — not logged twice if the review request is already in that status). |
+| PATCH | `/:id` | `{ status }` where `status` is one of `new`, `acknowledged`, `resolved`. This is the only field PATCH accepts for feedback — unlike leads/review-requests/reminders, feedback's status is not a lifecycle tied to other timestamps, so a direct status PATCH is safe here. Records `FEEDBACK_STATUS_UPDATED`. |
+
+Feedback statuses: `new → acknowledged → resolved`. Set by the business to track whether a piece of feedback has been looked at, independent of the review request's own status.
 
 ### Reminders — `/reminders`
 
@@ -165,13 +180,13 @@ Policy: the private feedback path exists to let a business resolve a concern, no
 | GET | `/` | All for the business, ordered by `dueDate` |
 | POST | `/` | `{ customerId?, serviceName?, lastVisitDate?, dueDate? }`. If `dueDate` omitted, computed as `lastVisitDate + business.reminderDays`. |
 | GET | `/:id` | — |
-| PATCH | `/:id` | `{ serviceName?, lastVisitDate?, dueDate?, status? }` |
+| PATCH | `/:id` | `{ serviceName?, lastVisitDate?, dueDate? }`. **Does not accept `status`** — a `status` field in the body is silently stripped and has no effect. |
 | POST | `/:id/generate-message` | Renders `comeback_reminder` template |
-| POST | `/:id/mark-sent` | `status=sent` |
-| POST | `/:id/mark-completed` | `status=completed` |
-| POST | `/:id/dismiss` | `status=dismissed` |
+| POST | `/:id/mark-sent` | `status=sent`, records `REMINDER_SENT` |
+| POST | `/:id/mark-completed` | `status=completed`, records `REMINDER_COMPLETED` |
+| POST | `/:id/dismiss` | `status=dismissed`, records `REMINDER_DISMISSED` |
 
-Statuses: `due → sent → completed | dismissed`.
+Statuses: `due → sent → completed | dismissed`. As with leads and review requests, status changes only happen through the dedicated `mark-*`/`dismiss` endpoints, which pair the status change with its activity event; PATCH is for metadata edits only.
 
 ### Dashboard — `/dashboard/summary`
 
@@ -182,7 +197,7 @@ Statuses: `due → sent → completed | dismissed`.
   "recoveredRevenue": { "total": number, "missedCall": number, "comebackCompletedCount": number },
   "leads": { "missedCalls", "new", "contacted", "booked", "won", "lost", "total", "conversionRate", "contactRate" },
   "reviews": { "requestsSent", "reviewsReceived", "feedbackReceived" },
-  "customersDue": number,
+  "customersDue": number, // count of due REMINDER ROWS, not distinct customers — see below
   "responseTime": { "averageSeconds": number|null, "sampleSize": number },
   "recentActivity": ActivityEvent[],
   "todayAttentionItems": [{ "type": "reminder_due", "id", "customerName", "dueDate" }],
@@ -192,6 +207,8 @@ Statuses: `due → sent → completed | dismissed`.
 ```
 
 All figures are computed live from actual records — no fabricated benchmarks or placeholder numbers.
+
+**`customersDue` semantics**: this field is a count of `Reminder` rows with `status=due` and `dueDate <= now`, **not** a count of distinct customers. If one customer has two overdue reminders, both are counted, so `customersDue` can exceed the number of customers who actually need attention. Treat it as "how many reminders are overdue," not "how many customers are overdue." If the product later needs a true distinct-customer count, that requires changing the query (e.g. `groupBy`/`distinct` on `customerId`), not just renaming the field.
 
 ## 6. Business Rules
 
@@ -228,11 +245,17 @@ Rendering (`src/lib/templateEngine.ts`) is pure string substitution — `{{var}}
 - Emails: trimmed and lowercased into a unique `normalized_email`; all email/password lookups use this canonical value.
 - Sessions: access JWTs are short-lived and tied to a server session; refresh/reset tokens are random opaque values and only their SHA-256 hashes are stored.
 - Password resets: one-hour expiry by default, single-use, five requests/hour per client, and successful reset revokes every user session.
-- Provider identities: uniqueness is `(provider, provider_subject)` with an additional one-identity-per-provider-per-user constraint. No provider identity is accepted from a mobile client in Phase 1.
+- Provider identities: uniqueness is `(provider, provider_subject)` with an additional one-identity-per-provider-per-user constraint. Provider claims are accepted only after server-side token verification.
+- Google identity tokens are verified server-side for signature, issuer, audience, expiry, verified email, and token structure. Identity resolution uses the stable Google `sub`, never a client-supplied ID or email.
+- A matching email without an existing Google identity returns `ACCOUNT_LINK_REQUIRED`; linking requires an authenticated Chakusa session plus a freshly issued verified Google token.
+- Apple identity tokens are verified against Apple's JWKS for signature, issuer, App ID audience, expiry, verified email, stable `sub`, and the server-issued nonce. State and nonce challenges are hashed, expire after five minutes by default, and are transactionally single use.
+- Apple authorization codes are exchanged server-side. Apple refresh credentials are encrypted with AES-256-GCM before storage and are revoked before account deletion. Identity resolution uses `APPLE + sub`; email is never sufficient to merge accounts or memberships.
+- Apple's native name fields are accepted only after the token, challenge, and authorization code are verified. They populate a new user's display name once and are not identity claims.
 - JWT secret and database credentials live only in `.env` (gitignored), read via `src/lib/config.ts` (Zod-validated at boot — the process refuses to start with a missing/weak secret).
 - All Prisma queries are parameterized by the client library (no raw SQL string concatenation anywhere in the codebase).
 - `business_id` is always server-resolved (§4) — the single most important tenant-isolation guarantee.
-- Rate limiting: 200 requests/minute per client via `@fastify/rate-limit`.
+- Rate limiting: 200 requests/minute per client globally via `@fastify/rate-limit`, with stricter per-route limits on authentication endpoints — `/auth/login` (10/15min), `/auth/register` (20/15min), `/auth/refresh` (30/15min), `/auth/google` (20/15min), `/auth/google/link` (10/15min), `/auth/apple*` (5–30/15min depending on sensitivity), and `/auth/forgot-password` (5/hour). All rate-limit rejections return `429 RATE_LIMITED` in the standard error format.
+- Login timing: `POST /auth/login` runs the same-cost Argon2id verification whether or not the email is registered (a fixed dummy hash is used for nonexistent accounts), so response time cannot be used to enumerate which emails have accounts.
 - Errors never leak stack traces to the client; unexpected errors are logged server-side and returned as a generic `500 INTERNAL_ERROR`.
 
 ## 10. Error Format
@@ -249,9 +272,13 @@ Rendering (`src/lib/templateEngine.ts`) is pure string substitution — `{{var}}
 | 404 | `NOT_FOUND` |
 | 409 | `CONFLICT` |
 | 429 | `RATE_LIMITED` |
+| 500 | `INTERNAL_ERROR` |
 
 Authentication failures use explicit codes: `AUTH_INVALID_CREDENTIALS`, `AUTH_TOKEN_INVALID`, `AUTH_SESSION_EXPIRED`, `AUTH_REFRESH_REUSED`, `AUTH_RESET_TOKEN_INVALID`, `AUTH_RESET_TOKEN_EXPIRED`, `AUTH_RESET_TOKEN_USED`, `AUTH_REAUTHENTICATION_REQUIRED`, and `AUTH_PASSWORD_UNAVAILABLE`.
-| 500 | `INTERNAL_ERROR` |
+
+Google authentication additionally uses `GOOGLE_AUTH_NOT_CONFIGURED`, `GOOGLE_TOKEN_INVALID`, `ACCOUNT_LINK_REQUIRED`, `AUTH_IDENTITY_CONFLICT`, and `AUTH_PROVIDER_ALREADY_LINKED`.
+
+Apple authentication additionally uses `APPLE_AUTH_NOT_CONFIGURED`, `APPLE_TOKEN_INVALID`, `APPLE_CODE_INVALID`, `APPLE_CHALLENGE_INVALID`, `APPLE_CHALLENGE_EXPIRED`, `APPLE_CHALLENGE_USED`, and `APPLE_REVOCATION_FAILED`.
 
 ## 11. Testing
 
@@ -265,3 +292,5 @@ See `.env.example`:
 - `JWT_SECRET` — signing secret, min 16 chars (use a long random value in production)
 - `PORT` — HTTP port (default 4000)
 - `NODE_ENV` — `development | test | production`
+- `GOOGLE_AUTH_ENABLED` — `true`/`false` (default `false`). In production, setting this to `true` makes `GOOGLE_OAUTH_CLIENT_IDS` mandatory at boot (the process refuses to start without it). In development/test, Google credentials may remain unset regardless of this flag; unconfigured Google endpoints fail per-request with `503 GOOGLE_AUTH_NOT_CONFIGURED` rather than at boot.
+- `APPLE_AUTH_ENABLED` — `true`/`false` (default `false`). In production, setting this to `true` makes `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_BASE64`, and `PROVIDER_TOKEN_ENCRYPTION_KEY` all mandatory at boot. Same fail-safe behavior as Google when unset in development/test.

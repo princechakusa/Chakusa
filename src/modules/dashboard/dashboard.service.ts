@@ -34,6 +34,10 @@ export async function getDashboardSummary(businessId: string) {
     prisma.reviewRequest.count({ where: { businessId, status: { in: ["sent", "opened", "reviewed", "feedback_received"] } } }),
     prisma.reviewRequest.count({ where: { businessId, status: "reviewed" } }),
     prisma.feedback.count({ where: { businessId } }),
+    // customersDue counts DUE REMINDER ROWS, not distinct customers. A
+    // customer with two overdue reminders is counted twice. Do not treat
+    // this as "number of customers who need attention" without changing
+    // the query to a distinct customerId count.
     prisma.reminder.count({ where: { businessId, status: "due", dueDate: { lte: new Date() } } }),
     prisma.activityEvent.findMany({
       where: { businessId },
@@ -113,6 +117,7 @@ export async function getDashboardSummary(businessId: string) {
       reviewsReceived,
       feedbackReceived,
     },
+    // Count of due reminder rows (not distinct customers) — see comment above.
     customersDue,
     responseTime: {
       averageSeconds: averageResponseTimeSeconds,

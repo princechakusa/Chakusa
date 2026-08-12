@@ -98,7 +98,7 @@ export async function generateReminderMessage(businessId: string, id: string) {
 
   const template = await prisma.messageTemplate.findFirst({
     where: { businessId, templateType: "comeback_reminder" },
-    orderBy: { isDefault: "desc" },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   });
 
   const body = template?.body ?? getDefaultTemplateBody("comeback_reminder", business.industry);

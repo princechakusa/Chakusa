@@ -21,6 +21,22 @@ enum AuthProvider {
   APPLE
 }
 
+enum AuthChallengePurpose {
+  APPLE_SIGN_IN
+  APPLE_LINK
+  APPLE_DELETE
+}
+
+enum DevicePlatform {
+  ios
+  android
+  web
+}
+
+enum PushProvider {
+  expo
+}
+
 enum LeadStatus {
   new
   contacted
@@ -133,7 +149,9 @@ model User {
   activityEvents  ActivityEvent[]      @relation("ActivityActor")
   authIdentities  AuthIdentity[]
   authSessions    AuthSession[]
+  authChallenges  AuthChallenge[]
   passwordResets  PasswordResetToken[]
+  deviceTokens    DeviceToken[]
 
   @@map("users")
 }
@@ -145,6 +163,8 @@ model AuthIdentity {
   providerSubject       String       @map("provider_subject")
   providerEmail         String?      @map("provider_email")
   providerEmailVerified Boolean      @default(false) @map("provider_email_verified")
+  encryptedRefreshToken String?      @map("encrypted_refresh_token")
+  credentialUpdatedAt   DateTime?    @map("credential_updated_at")
   createdAt             DateTime     @default(now()) @map("created_at")
   updatedAt             DateTime     @updatedAt @map("updated_at")
 
@@ -154,6 +174,23 @@ model AuthIdentity {
   @@unique([userId, provider])
   @@index([userId])
   @@map("auth_identities")
+}
+
+model AuthChallenge {
+  id        String               @id @default(uuid())
+  userId    String?              @map("user_id")
+  purpose   AuthChallengePurpose
+  nonceHash String               @unique @map("nonce_hash")
+  stateHash String               @unique @map("state_hash")
+  expiresAt DateTime             @map("expires_at")
+  usedAt    DateTime?            @map("used_at")
+  createdAt DateTime             @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_challenges")
 }
 
 model AuthSession {
@@ -193,6 +230,35 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model DeviceToken {
+  id            String         @id @default(uuid())
+  userId        String         @map("user_id")
+  token         String
+  platform      DevicePlatform
+  provider      PushProvider   @default(expo)
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  lastUsedAt    DateTime       @default(now()) @map("last_used_at")
+  revokedAt     DateTime?      @map("revoked_at")
+  revokedReason String?        @map("revoked_reason")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A physical device token must never be active for more than one user at
+  // once (e.g. re-installed app, token reassigned after a different user
+  // signs in). This is additionally enforced at the database level by a
+  // partial unique index on (token) WHERE is_active — see the
+  // add_device_token_active_uniqueness migration; Prisma's schema DSL
+  // cannot express a filtered unique index without the extendedIndexes
+  // preview feature, so it is not declared here, but it exists in the
+  // database and is the true source of the ownership guarantee.
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([userId, isActive])
+  @@map("device_tokens")
 }
 
 model Business {

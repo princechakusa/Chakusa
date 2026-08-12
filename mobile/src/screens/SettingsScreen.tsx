@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AppHeader, Screen } from '../components/ui';
 import { useAuth } from '../state/AuthContext';
 import { AttentionPreferences, usePreferences } from '../state/PreferencesContext';
@@ -11,7 +11,7 @@ import { titleCase } from '../utils/format';
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { business, user, logout, logoutAll, linkGoogle } = useAuth();
+  const { business, user, logout, logoutAll, linkGoogle, linkApple } = useAuth();
   const preferences = usePreferences();
   const setPreference = (key: keyof AttentionPreferences, value: boolean) => preferences.setAttention({ ...preferences.attention, [key]: value });
   return <Screen>
@@ -21,7 +21,7 @@ export function SettingsScreen() {
     <Group title="Messaging"><Row icon="chatbubble-ellipses-outline" label="Message tone" value={titleCase(business?.preferredTone ?? 'friendly')} onPress={() => navigation.navigate('BusinessSettings')} /><Row icon="document-text-outline" label="Message templates" onPress={() => navigation.navigate('Templates')} last /></Group>
     <Group title="Follow-up"><Row icon="time-outline" label="Comeback timing" value={`${business?.reminderDays ?? 42} days`} onPress={() => navigation.navigate('BusinessSettings')} last /></Group>
     <Group title="Attention preferences"><ToggleRow icon="call-outline" label="Missed calls" value={preferences.attention.missedCalls} onChange={value => setPreference('missedCalls', value)} /><ToggleRow icon="star-outline" label="Review requests" value={preferences.attention.reviews} onChange={value => setPreference('reviews', value)} /><ToggleRow icon="refresh-outline" label="Comeback reminders" value={preferences.attention.comebacks} onChange={value => setPreference('comebacks', value)} /><ToggleRow icon="pulse-outline" label="Business activity" value={preferences.attention.businessActivity} onChange={value => setPreference('businessActivity', value)} last /></Group>
-    <Group title="Security"><Row icon="shield-checkmark-outline" label="Authenticated account" value={user?.email ?? ''} /><Row icon="logo-google" label={user?.authProviders?.includes('GOOGLE') ? 'Google account linked' : 'Link Google account'} onPress={() => { void linkGoogle().then(linked => { if (linked) Alert.alert('Google account linked', 'You can now sign in to Chakusa with Google.'); }).catch(error => Alert.alert('Could not link Google', error instanceof Error ? error.message : 'Please try again.')); }} /><Row icon="log-out-outline" label="Sign out all devices" onPress={() => Alert.alert('Sign out all devices?', 'Every Chakusa session will need to sign in again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out all', style: 'destructive', onPress: () => { void logoutAll().catch(error => Alert.alert('Could not sign out', error instanceof Error ? error.message : 'Please try again.')); } }])} /><Row icon="trash-outline" label="Delete account" onPress={() => navigation.navigate('DeleteAccount')} last /></Group>
+    <Group title="Security"><Row icon="shield-checkmark-outline" label="Authenticated account" value={user?.email ?? ''} /><Row icon="logo-google" label={user?.authProviders?.includes('GOOGLE') ? 'Google account linked' : 'Link Google account'} onPress={() => { void linkGoogle().then(linked => { if (linked) Alert.alert('Google account linked', 'You can now sign in to Chakusa with Google.'); }).catch(error => Alert.alert('Could not link Google', error instanceof Error ? error.message : 'Please try again.')); }} />{Platform.OS === 'ios' ? <Row icon="logo-apple" label={user?.authProviders?.includes('APPLE') ? 'Apple account linked' : 'Link Apple account'} onPress={() => { void linkApple().then(linked => { if (linked) Alert.alert('Apple account linked', 'You can now sign in to Chakusa with Apple.'); }).catch(error => Alert.alert('Could not link Apple', error instanceof Error ? error.message : 'Please try again.')); }} /> : null}<Row icon="log-out-outline" label="Sign out all devices" onPress={() => Alert.alert('Sign out all devices?', 'Every Chakusa session will need to sign in again.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out all', style: 'destructive', onPress: () => { void logoutAll().catch(error => Alert.alert('Could not sign out', error instanceof Error ? error.message : 'Please try again.')); } }])} /><Row icon="trash-outline" label="Delete account" onPress={() => navigation.navigate('DeleteAccount')} last /></Group>
     <Pressable accessibilityRole="button" onPress={() => { void logout().catch(error => Alert.alert('Could not log out', error instanceof Error ? error.message : 'Please try again.')); }} style={styles.logout}><Ionicons name="log-out-outline" size={20} color={colors.negative} /><Text style={styles.logoutText}>Log out</Text></Pressable>
   </Screen>;
 }

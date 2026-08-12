@@ -9,7 +9,8 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chakusa.mobile"
+      "bundleIdentifier": "com.chakusa.mobile",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.chakusa.mobile",
@@ -25,6 +26,14 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF5C5C",
+          "defaultChannel": "default"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {

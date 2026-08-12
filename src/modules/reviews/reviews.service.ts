@@ -4,6 +4,9 @@ import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
 import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./reviews.schemas.js";
+import type { Prisma } from "@prisma/client";
+
+type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
 export async function listReviewRequests(businessId: string) {
   return prisma.reviewRequest.findMany({
@@ -93,7 +96,7 @@ export async function generateReviewMessage(businessId: string, id: string) {
 
   const template = await prisma.messageTemplate.findFirst({
     where: { businessId, templateType: "review_request" },
-    orderBy: { isDefault: "desc" },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   });
 
   const body = template?.body ?? getDefaultTemplateBody("review_request", business.industry);
@@ -167,25 +170,51 @@ export async function markReviewRequestReviewed(businessId: string, actorId: str
   return reviewRequest;
 }
 
+/**
+ * Atomically transitions a review request to feedback_received and logs the
+ * FEEDBACK_RECEIVED activity event exactly once, even if two requests race
+ * to make the same transition concurrently.
+ *
+ * The atomicity comes from the updateMany's WHERE clause, not from
+ * transaction isolation level: `status: { not: "feedback_received" }` acts
+ * as a claim guard, so Postgres row-level locking on the UPDATE guarantees
+ * at most one of two concurrent callers can match and flip the status. The
+ * loser's updateMany matches zero rows and therefore skips the activity
+ * write — both callers still return the (now-identical) up-to-date row, but
+ * only the winner logs the transition.
+ *
+ * Pass `db` (a transaction client) when this needs to be part of a larger
+ * atomic operation, e.g. feedback creation + this transition + both
+ * activity events all committing or rolling back together.
+ */
 export async function markReviewRequestFeedbackReceived(
   businessId: string,
   actorId: string,
   id: string,
+  db: DatabaseClient = prisma,
 ) {
-  await getOwnedReviewRequest(businessId, id);
+  const existing = await db.reviewRequest.findFirst({ where: { id, businessId } });
+  if (!existing) {
+    throw ApiError.notFound("Review request not found");
+  }
 
-  const reviewRequest = await prisma.reviewRequest.update({
-    where: { id },
+  const claimed = await db.reviewRequest.updateMany({
+    where: { id, businessId, status: { not: "feedback_received" } },
     data: { status: "feedback_received" },
   });
 
-  await recordActivity({
-    businessId,
-    actorId,
-    eventType: "FEEDBACK_RECEIVED",
-    entityType: "review_request",
-    entityId: id,
-  });
+  if (claimed.count > 0) {
+    await recordActivity(
+      {
+        businessId,
+        actorId,
+        eventType: "FEEDBACK_RECEIVED",
+        entityType: "review_request",
+        entityId: id,
+      },
+      db,
+    );
+  }
 
-  return reviewRequest;
+  return db.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
 }

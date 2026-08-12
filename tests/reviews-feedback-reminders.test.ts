@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
+import { markReviewRequestFeedbackReceived } from "../src/modules/reviews/reviews.service.js";
 
 describe("review requests", () => {
   let app: FastifyInstance;
@@ -174,6 +175,216 @@ describe("feedback", () => {
     });
 
     expect(fetched.json().status).toBe("feedback_received");
+  });
+
+  it("records a FEEDBACK_RECEIVED activity against the review request when feedback triggers the transition automatically", async () => {
+    const { token } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(token),
+      payload: { reviewRequestId, rating: 5, comment: "great" },
+    });
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(1);
+  });
+
+  it("records a FEEDBACK_RECEIVED activity against the review request via the explicit mark-feedback-received transition", async () => {
+    const { token } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    const transitioned = await app.inject({
+      method: "POST",
+      url: `/review-requests/${reviewRequestId}/mark-feedback-received`,
+      headers: authHeader(token),
+    });
+    expect(transitioned.statusCode).toBe(200);
+    expect(transitioned.json().status).toBe("feedback_received");
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(1);
+  });
+
+  it("rolls back the status transition if the activity insertion fails inside the standalone transaction", async () => {
+    // Proves the standalone mark-feedback-received endpoint's status update
+    // and its activity event are genuinely atomic — not a mocked or
+    // artificially-injected failure, but a real database constraint
+    // (activity_events.actor_id has a foreign key to users.id) forced by
+    // calling the service function directly with a nonexistent actorId.
+    // If the transaction were not atomic, the review request would be left
+    // in feedback_received with no corresponding activity event.
+    const { token, businessId } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    const bogusActorId = "00000000-0000-0000-0000-000000000000";
+
+    await expect(
+      prisma.$transaction((tx) => markReviewRequestFeedbackReceived(businessId, bogusActorId, reviewRequestId, tx)),
+    ).rejects.toThrow();
+
+    const unchanged = await prisma.reviewRequest.findUniqueOrThrow({ where: { id: reviewRequestId } });
+    expect(unchanged.status).toBe("pending");
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(0);
+  });
+
+  it("creates only one FEEDBACK_RECEIVED activity when two standalone mark-feedback-received requests race", async () => {
+    // Real concurrency against the standalone endpoint specifically (not
+    // via createFeedback) — two independent HTTP requests fired with
+    // Promise.all, each now wrapped in its own prisma.$transaction at the
+    // route level. The claim-guard updateMany inside
+    // markReviewRequestFeedbackReceived guarantees at most one transaction
+    // can flip the status, so this is deterministic, not flaky.
+    const { token } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    const [first, second] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: `/review-requests/${reviewRequestId}/mark-feedback-received`,
+        headers: authHeader(token),
+      }),
+      app.inject({
+        method: "POST",
+        url: `/review-requests/${reviewRequestId}/mark-feedback-received`,
+        headers: authHeader(token),
+      }),
+    ]);
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(first.json().status).toBe("feedback_received");
+    expect(second.json().status).toBe("feedback_received");
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(1);
+  });
+
+  it("does not create a duplicate review-request transition activity when feedback is created against an already-feedback_received request", async () => {
+    const { token } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    // First transition: via the dedicated endpoint.
+    await app.inject({
+      method: "POST",
+      url: `/review-requests/${reviewRequestId}/mark-feedback-received`,
+      headers: authHeader(token),
+    });
+
+    // Second piece of feedback against the same, already-transitioned
+    // review request — must not log a second review-request-level
+    // FEEDBACK_RECEIVED activity event.
+    const second = await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(token),
+      payload: { reviewRequestId, rating: 2, comment: "also here" },
+    });
+    expect(second.statusCode).toBe(201);
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(1);
+
+    // The feedback row itself must still be created — only the
+    // review-request-level activity log is deduplicated, not the feedback.
+    expect(await prisma.feedback.count({ where: { reviewRequestId } })).toBe(1);
+  });
+
+  it("does not create a duplicate review-request transition activity when two feedback submissions race for the same review request", async () => {
+    // Real concurrency, not a timing trick: two feedback creations are
+    // fired at the same review request via Promise.all, each inside its
+    // own prisma.$transaction. The claim-guard updateMany
+    // (status: { not: "feedback_received" }) inside
+    // markReviewRequestFeedbackReceived means at most one transaction's
+    // update can match — Postgres row-level locking on the UPDATE
+    // guarantees this regardless of how the two requests interleave, so
+    // this assertion is deterministic, not flaky.
+    const { token } = await registerAccount(app);
+
+    const reviewRequest = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(token),
+      payload: {},
+    });
+    const reviewRequestId = reviewRequest.json().id;
+
+    const [first, second] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/feedback",
+        headers: authHeader(token),
+        payload: { reviewRequestId, rating: 5, comment: "race A" },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/feedback",
+        headers: authHeader(token),
+        payload: { reviewRequestId, rating: 1, comment: "race B" },
+      }),
+    ]);
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+
+    const events = await prisma.activityEvent.findMany({
+      where: { entityType: "review_request", entityId: reviewRequestId, eventType: "FEEDBACK_RECEIVED" },
+    });
+    expect(events).toHaveLength(1);
+
+    expect(await prisma.feedback.count({ where: { reviewRequestId } })).toBe(2);
+
+    const finalReviewRequest = await prisma.reviewRequest.findUniqueOrThrow({ where: { id: reviewRequestId } });
+    expect(finalReviewRequest.status).toBe("feedback_received");
   });
 
   it("transitions feedback status via PATCH and records activity", async () => {

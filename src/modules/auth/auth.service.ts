@@ -1,18 +1,68 @@
-import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { randomBytes, randomUUID } from "node:crypto";
+import { AuthChallengePurpose, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { hashPassword, verifyPassword, verifyPasswordConstantTime } from "../../lib/password.js";
 import { ApiError } from "../../lib/errors.js";
 import { normalizeEmail } from "../../lib/email.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
 import { config } from "../../lib/config.js";
 import type { RegisterInput, LoginInput } from "./auth.schemas.js";
+import type { VerifiedGoogleIdentity } from "./googleVerifier.js";
+import type { VerifiedAppleIdentity } from "./appleAuth.js";
+import { appleChallengeHash } from "./appleAuth.js";
+import { decryptProviderCredential, encryptProviderCredential } from "../../lib/providerCredentials.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
 const refreshExpiry = () => new Date(Date.now() + config.REFRESH_TOKEN_TTL_DAYS * 86_400_000);
 
-async function createSession(userId: string, db: DatabaseClient, familyId: string = randomUUID()) {
+export interface AppleChallengeProof { challengeId: string; nonce: string; state: string; }
+
+export async function createAppleChallenge(purpose: AuthChallengePurpose, userId?: string) {
+  if (!config.APPLE_AUTH_ENABLED) {
+    throw ApiError.auth(503, "APPLE_AUTH_NOT_CONFIGURED", "Apple authentication is not configured");
+  }
+  const nonce = randomBytes(32).toString("base64url");
+  const state = randomBytes(32).toString("base64url");
+  const challenge = await prisma.authChallenge.create({
+    data: {
+      userId,
+      purpose,
+      nonceHash: appleChallengeHash(nonce),
+      stateHash: appleChallengeHash(state),
+      expiresAt: new Date(Date.now() + config.APPLE_CHALLENGE_TTL_MINUTES * 60_000),
+    },
+  });
+  return { challengeId: challenge.id, nonce, state, expiresAt: challenge.expiresAt };
+}
+
+export async function validateAppleChallenge(proof: AppleChallengeProof, purpose: AuthChallengePurpose, userId?: string) {
+  const challenge = await prisma.authChallenge.findUnique({ where: { id: proof.challengeId } });
+  if (!challenge || challenge.purpose !== purpose || challenge.userId !== (userId ?? null) ||
+      challenge.nonceHash !== appleChallengeHash(proof.nonce) || challenge.stateHash !== appleChallengeHash(proof.state)) {
+    throw ApiError.auth(401, "APPLE_CHALLENGE_INVALID", "Apple authentication challenge is invalid");
+  }
+  if (challenge.usedAt) throw ApiError.auth(401, "APPLE_CHALLENGE_USED", "Apple authentication challenge has already been used");
+  if (challenge.expiresAt <= new Date()) throw ApiError.auth(401, "APPLE_CHALLENGE_EXPIRED", "Apple authentication challenge has expired");
+}
+
+async function claimAppleChallenge(tx: Prisma.TransactionClient, proof: AppleChallengeProof, purpose: AuthChallengePurpose, userId?: string) {
+  const claimed = await tx.authChallenge.updateMany({
+    where: {
+      id: proof.challengeId,
+      purpose,
+      userId: userId ?? null,
+      nonceHash: appleChallengeHash(proof.nonce),
+      stateHash: appleChallengeHash(proof.state),
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    data: { usedAt: new Date() },
+  });
+  if (claimed.count !== 1) throw ApiError.auth(401, "APPLE_CHALLENGE_USED", "Apple authentication challenge is no longer valid");
+}
+
+export async function createSession(userId: string, db: DatabaseClient, familyId: string = randomUUID()) {
   const token = generateOpaqueToken();
   const session = await db.authSession.create({
     data: {
@@ -24,6 +74,264 @@ async function createSession(userId: string, db: DatabaseClient, familyId: strin
     },
   });
   return { session, refreshToken: token.raw };
+}
+
+export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentity, serializationRetries = 0) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const linked = await tx.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: "GOOGLE", providerSubject: identity.providerSubject } },
+        include: { user: true },
+      });
+      if (linked) {
+        await tx.authIdentity.update({
+          where: { id: linked.id },
+          data: { providerEmail: identity.email, providerEmailVerified: true },
+        });
+        const auth = await createSession(linked.userId, tx);
+        return { user: linked.user, isNewUser: false, ...auth };
+      }
+
+      const existingEmail = await tx.user.findUnique({
+        where: { normalizedEmail: normalizeEmail(identity.email) },
+      });
+      if (existingEmail) {
+        throw ApiError.auth(
+          409,
+          "ACCOUNT_LINK_REQUIRED",
+          "An account with this email already exists. Sign in with your password, then link Google in Settings.",
+        );
+      }
+
+      const user = await tx.user.create({
+        data: {
+          email: identity.email,
+          normalizedEmail: normalizeEmail(identity.email),
+          passwordHash: null,
+          emailVerifiedAt: new Date(),
+          fullName: identity.fullName,
+          authIdentities: {
+            create: {
+              provider: "GOOGLE",
+              providerSubject: identity.providerSubject,
+              providerEmail: identity.email,
+              providerEmailVerified: true,
+            },
+          },
+        },
+      });
+      const auth = await createSession(user.id, tx);
+      return { user, isNewUser: true, ...auth };
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
+      return authenticateGoogleIdentity(identity, serializationRetries + 1);
+    }
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+      throw error;
+    }
+
+    const linked = await prisma.authIdentity.findUnique({
+      where: { provider_providerSubject: { provider: "GOOGLE", providerSubject: identity.providerSubject } },
+      include: { user: true },
+    });
+    if (linked) {
+      const auth = await createSession(linked.userId, prisma);
+      return { user: linked.user, isNewUser: false, ...auth };
+    }
+    const existingEmail = await prisma.user.findUnique({
+      where: { normalizedEmail: normalizeEmail(identity.email) },
+    });
+    if (existingEmail) {
+      throw ApiError.auth(409, "ACCOUNT_LINK_REQUIRED", "This Google identity must be linked from the existing account");
+    }
+    throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "Google identity could not be created safely");
+  }
+}
+
+export async function linkGoogleIdentity(userId: string, identity: VerifiedGoogleIdentity, serializationRetries = 0) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const subjectIdentity = await tx.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: "GOOGLE", providerSubject: identity.providerSubject } },
+      });
+      if (subjectIdentity && subjectIdentity.userId !== userId) {
+        throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "This Google account is linked to another Chakusa account");
+      }
+      if (subjectIdentity) {
+        return tx.authIdentity.update({
+          where: { id: subjectIdentity.id },
+          data: { providerEmail: identity.email, providerEmailVerified: true },
+        });
+      }
+
+      const currentProvider = await tx.authIdentity.findUnique({
+        where: { userId_provider: { userId, provider: "GOOGLE" } },
+      });
+      if (currentProvider) {
+        throw ApiError.auth(409, "AUTH_PROVIDER_ALREADY_LINKED", "A different Google account is already linked");
+      }
+
+      const emailOwner = await tx.user.findUnique({
+        where: { normalizedEmail: normalizeEmail(identity.email) },
+        select: { id: true },
+      });
+      if (emailOwner && emailOwner.id !== userId) {
+        throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "This Google email belongs to a different Chakusa account");
+      }
+
+      return tx.authIdentity.create({
+        data: {
+          userId,
+          provider: "GOOGLE",
+          providerSubject: identity.providerSubject,
+          providerEmail: identity.email,
+          providerEmailVerified: true,
+        },
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
+      return linkGoogleIdentity(userId, identity, serializationRetries + 1);
+    }
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+      throw error;
+    }
+    const subjectIdentity = await prisma.authIdentity.findUnique({
+      where: { provider_providerSubject: { provider: "GOOGLE", providerSubject: identity.providerSubject } },
+    });
+    if (subjectIdentity?.userId === userId) return subjectIdentity;
+    if (subjectIdentity) {
+      throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "This Google account is linked to another Chakusa account");
+    }
+    throw ApiError.auth(409, "AUTH_PROVIDER_ALREADY_LINKED", "A different Google account is already linked");
+  }
+}
+
+function appleDisplayName(email: string, name?: { givenName?: string | null; familyName?: string | null }) {
+  const supplied = [name?.givenName, name?.familyName].map((part) => part?.trim()).filter(Boolean).join(" ");
+  return supplied || email.split("@")[0] || "Chakusa User";
+}
+
+export async function authenticateAppleIdentity(
+  identity: VerifiedAppleIdentity,
+  refreshToken: string,
+  proof: AppleChallengeProof,
+  name?: { givenName?: string | null; familyName?: string | null },
+  serializationRetries = 0,
+) {
+  const encryptedRefreshToken = encryptProviderCredential(refreshToken);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await claimAppleChallenge(tx, proof, "APPLE_SIGN_IN");
+      const linked = await tx.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: "APPLE", providerSubject: identity.providerSubject } },
+        include: { user: true },
+      });
+      if (linked) {
+        await tx.authIdentity.update({ where: { id: linked.id }, data: {
+          providerEmail: identity.email,
+          providerEmailVerified: true,
+          encryptedRefreshToken,
+          credentialUpdatedAt: new Date(),
+        } });
+        return { user: linked.user, isNewUser: false, ...await createSession(linked.userId, tx) };
+      }
+      const normalizedEmail = normalizeEmail(identity.email);
+      if (await tx.user.findUnique({ where: { normalizedEmail } })) {
+        throw ApiError.auth(409, "ACCOUNT_LINK_REQUIRED", "An account with this email already exists. Sign in, then link Apple in Settings.");
+      }
+      const user = await tx.user.create({ data: {
+        email: normalizedEmail,
+        normalizedEmail,
+        passwordHash: null,
+        emailVerifiedAt: new Date(),
+        fullName: appleDisplayName(identity.email, name),
+        authIdentities: { create: {
+          provider: "APPLE",
+          providerSubject: identity.providerSubject,
+          providerEmail: identity.email,
+          providerEmailVerified: true,
+          encryptedRefreshToken,
+          credentialUpdatedAt: new Date(),
+        } },
+      } });
+      return { user, isNewUser: true, ...await createSession(user.id, tx) };
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
+      return authenticateAppleIdentity(identity, refreshToken, proof, name, serializationRetries + 1);
+    }
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "Apple identity could not be created safely");
+  }
+}
+
+export async function linkAppleIdentity(
+  userId: string,
+  identity: VerifiedAppleIdentity,
+  refreshToken: string,
+  proof: AppleChallengeProof,
+) {
+  const encryptedRefreshToken = encryptProviderCredential(refreshToken);
+  return prisma.$transaction(async (tx) => {
+    await claimAppleChallenge(tx, proof, "APPLE_LINK", userId);
+    const subjectIdentity = await tx.authIdentity.findUnique({
+      where: { provider_providerSubject: { provider: "APPLE", providerSubject: identity.providerSubject } },
+    });
+    if (subjectIdentity && subjectIdentity.userId !== userId) {
+      throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "This Apple account is linked to another Chakusa account");
+    }
+    if (subjectIdentity) return tx.authIdentity.update({ where: { id: subjectIdentity.id }, data: {
+      providerEmail: identity.email, providerEmailVerified: true, encryptedRefreshToken, credentialUpdatedAt: new Date(),
+    } });
+    if (await tx.authIdentity.findUnique({ where: { userId_provider: { userId, provider: "APPLE" } } })) {
+      throw ApiError.auth(409, "AUTH_PROVIDER_ALREADY_LINKED", "A different Apple account is already linked");
+    }
+    const emailOwner = await tx.user.findUnique({ where: { normalizedEmail: normalizeEmail(identity.email) }, select: { id: true } });
+    if (emailOwner && emailOwner.id !== userId) {
+      throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "This Apple email belongs to a different Chakusa account");
+    }
+    return tx.authIdentity.create({ data: {
+      userId, provider: "APPLE", providerSubject: identity.providerSubject, providerEmail: identity.email,
+      providerEmailVerified: true, encryptedRefreshToken, credentialUpdatedAt: new Date(),
+    } });
+  }, { isolationLevel: "Serializable" });
+}
+
+export async function getAppleDeletionCredential(userId: string) {
+  const identity = await prisma.authIdentity.findUnique({ where: { userId_provider: { userId, provider: "APPLE" } } });
+  if (!identity?.encryptedRefreshToken) {
+    throw ApiError.auth(409, "AUTH_REAUTHENTICATION_REQUIRED", "A linked Apple account is required for Apple account deletion");
+  }
+  return { providerSubject: identity.providerSubject, refreshToken: decryptProviderCredential(identity.encryptedRefreshToken) };
+}
+
+export async function getOptionalAppleDeletionCredential(userId: string) {
+  const identity = await prisma.authIdentity.findUnique({ where: { userId_provider: { userId, provider: "APPLE" } } });
+  if (!identity?.encryptedRefreshToken) return null;
+  return { providerSubject: identity.providerSubject, refreshToken: decryptProviderCredential(identity.encryptedRefreshToken) };
+}
+
+export async function verifyAccountPassword(userId: string, password: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Authentication session is invalid");
+  if (!user.passwordHash) throw ApiError.auth(409, "AUTH_PASSWORD_UNAVAILABLE", "This account does not have a password");
+  if (!(await verifyPassword(user.passwordHash, password))) {
+    throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Password confirmation failed");
+  }
+}
+
+export async function deleteAccountWithApple(userId: string, providerSubject: string, proof: AppleChallengeProof) {
+  await prisma.$transaction(async (tx) => {
+    await claimAppleChallenge(tx, proof, "APPLE_DELETE", userId);
+    const identity = await tx.authIdentity.findUnique({ where: { provider_providerSubject: { provider: "APPLE", providerSubject } } });
+    if (!identity || identity.userId !== userId) {
+      throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Apple account confirmation failed");
+    }
+    await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date(), revokeReason: "account_deleted" } });
+    await tx.user.delete({ where: { id: userId } });
+  }, { isolationLevel: "Serializable" });
 }
 
 export async function registerUser(input: RegisterInput) {
@@ -52,7 +360,10 @@ export async function authenticateUser(input: LoginInput) {
   const user = await prisma.user.findUnique({
     where: { normalizedEmail: normalizeEmail(input.email) },
   });
-  if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, input.password))) {
+  // Always run the same-cost Argon2id verification, even when the user
+  // doesn't exist, so response timing can't be used to enumerate emails.
+  const valid = await verifyPasswordConstantTime(user?.passwordHash, input.password);
+  if (!user || !valid) {
     throw ApiError.auth(401, "AUTH_INVALID_CREDENTIALS", "Invalid email or password");
   }
   const auth = await createSession(user.id, prisma);
@@ -189,14 +500,42 @@ export async function deleteAccount(userId: string, password: string) {
   }, { isolationLevel: "Serializable" });
 }
 
+export async function deleteAccountWithGoogle(userId: string, providerSubject: string) {
+  await prisma.$transaction(async (tx) => {
+    const identity = await tx.authIdentity.findUnique({
+      where: { provider_providerSubject: { provider: "GOOGLE", providerSubject } },
+    });
+    if (!identity || identity.userId !== userId) {
+      throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Google account confirmation failed");
+    }
+    await tx.authSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date(), revokeReason: "account_deleted" },
+    });
+    await tx.user.delete({ where: { id: userId } });
+  }, { isolationLevel: "Serializable" });
+}
+
 export async function getUserContext(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, fullName: true, createdAt: true },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      passwordHash: true,
+      createdAt: true,
+      authIdentities: { select: { provider: true } },
+    },
   });
   if (!user) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Authentication session is invalid");
   const membership = await prisma.businessMember.findFirst({
     where: { userId }, include: { business: true }, orderBy: { createdAt: "asc" },
   });
-  return { user, business: membership?.business ?? null, role: membership?.role ?? null };
+  const { authIdentities, passwordHash, ...publicUser } = user;
+  return {
+    user: { ...publicUser, hasPassword: Boolean(passwordHash), authProviders: authIdentities.map((identity) => identity.provider) },
+    business: membership?.business ?? null,
+    role: membership?.role ?? null,
+  };
 }

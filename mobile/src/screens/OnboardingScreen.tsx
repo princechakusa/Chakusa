@@ -54,7 +54,11 @@ export function OnboardingScreen() {
   const saveBusiness = async (body: Parameters<typeof businessApi.patch>[0]) => {
     if (saving) return;
     setSaving(true); setError(null);
-    try { await businessApi.patch(body); await refreshBusiness(); next(); }
+    try {
+      if (!business && body.name) await businessApi.create({ name: body.name, industry: body.industry ?? undefined, phone: body.phone ?? undefined });
+      else await businessApi.patch(body);
+      await refreshBusiness(); next();
+    }
     catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to save this step.'); }
     finally { setSaving(false); }
   };

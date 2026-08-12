@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { prisma } from "../../lib/prisma.js";
 import { createReviewRequestSchema, updateReviewRequestSchema } from "./reviews.schemas.js";
 import {
   listReviewRequests,
@@ -58,13 +59,19 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string } }>(
     "/:id/mark-feedback-received",
     async (request, reply) => {
-      reply.send(
-        await markReviewRequestFeedbackReceived(
+      // Wrap the standalone transition in its own transaction so the
+      // ownership check, claimed status update, activity insertion, and
+      // final read are all atomic — matching the guarantee createFeedback
+      // already gets by passing its own transaction client through.
+      const reviewRequest = await prisma.$transaction((tx) =>
+        markReviewRequestFeedbackReceived(
           request.businessId!,
           request.user.userId,
           request.params.id,
+          tx,
         ),
       );
+      reply.send(reviewRequest);
     },
   );
 }

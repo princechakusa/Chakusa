@@ -101,7 +101,7 @@ describe("authentication foundation", () => {
   });
 
   it("rate limits forgot-password requests", async () => {
-    const isolatedApp = await createTestApp();
+    const isolatedApp = await createTestApp({ enableRateLimit: true });
     const responses = [];
     for (let index = 0; index < 6; index += 1) {
       responses.push(await isolatedApp.inject({
@@ -197,5 +197,169 @@ describe("authentication foundation", () => {
     await prisma.authIdentity.create({
       data: { userId: providerOnly.id, provider: "APPLE", providerSubject: "apple-stable-subject", providerEmailVerified: true },
     });
+  });
+
+  it("rate limits login attempts", async () => {
+    const isolatedApp = await createTestApp({ enableRateLimit: true });
+    await registerAccount(isolatedApp, { email: "rate-login@example.com", password: "password123" });
+    const responses = [];
+    for (let index = 0; index < 11; index += 1) {
+      responses.push(await isolatedApp.inject({
+        method: "POST", url: "/auth/login",
+        payload: { email: "rate-login@example.com", password: "wrong-password" },
+      }));
+    }
+    expect(responses.slice(0, 10).every((response) => response.statusCode === 401)).toBe(true);
+    expect(responses[10]!.statusCode).toBe(429);
+    expect(responses[10]!.json().error.code).toBe("RATE_LIMITED");
+    await isolatedApp.close();
+  });
+
+  it("rate limits registration attempts", async () => {
+    const isolatedApp = await createTestApp({ enableRateLimit: true });
+    const responses = [];
+    for (let index = 0; index < 21; index += 1) {
+      responses.push(await isolatedApp.inject({
+        method: "POST", url: "/auth/register",
+        payload: {
+          email: `rate-register-${index}@example.com`,
+          password: "password123",
+          fullName: "Rate Test",
+          businessName: "Rate Test Co",
+        },
+      }));
+    }
+    expect(responses.slice(0, 20).every((response) => response.statusCode === 201)).toBe(true);
+    expect(responses[20]!.statusCode).toBe(429);
+    expect(responses[20]!.json().error.code).toBe("RATE_LIMITED");
+    await isolatedApp.close();
+  });
+
+  it("rate limits refresh-token requests", async () => {
+    const isolatedApp = await createTestApp({ enableRateLimit: true });
+    const responses = [];
+    for (let index = 0; index < 31; index += 1) {
+      responses.push(await isolatedApp.inject({
+        method: "POST", url: "/auth/refresh", payload: { refreshToken: "not-a-real-token" },
+      }));
+    }
+    expect(responses.slice(0, 30).every((response) => response.statusCode === 401)).toBe(true);
+    expect(responses[30]!.statusCode).toBe(429);
+    expect(responses[30]!.json().error.code).toBe("RATE_LIMITED");
+    await isolatedApp.close();
+  });
+
+  it("returns the identical error contract for a wrong password and a nonexistent email", async () => {
+    await registerAccount(app, { email: "enum-check@example.com", password: "correct-password" });
+
+    const wrongPassword = await app.inject({
+      method: "POST", url: "/auth/login",
+      payload: { email: "enum-check@example.com", password: "wrong-password" },
+    });
+    const nonexistentUser = await app.inject({
+      method: "POST", url: "/auth/login",
+      payload: { email: "does-not-exist@example.com", password: "wrong-password" },
+    });
+
+    expect(wrongPassword.statusCode).toBe(401);
+    expect(nonexistentUser.statusCode).toBe(401);
+    expect(wrongPassword.json()).toEqual(nonexistentUser.json());
+    expect(wrongPassword.json().error.code).toBe("AUTH_INVALID_CREDENTIALS");
+  });
+
+  it("rejects login for a nonexistent user without a 500 and without an Argon2 verify shortcut", async () => {
+    // Regression test for the timing side-channel fix: authenticateUser must
+    // run verifyPasswordConstantTime even when no user row is found, rather
+    // than short-circuiting past the hash comparison. We can't reliably
+    // assert on timing in a normal test, so we assert on outcome/shape only:
+    // a nonexistent user must produce the exact same error as a real user
+    // with a wrong password (covered above), and must never 500.
+    const response = await app.inject({
+      method: "POST", url: "/auth/login",
+      payload: { email: "never-registered@example.com", password: "irrelevant" },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("AUTH_INVALID_CREDENTIALS");
+  });
+
+  it("rejects a malformed refresh token on /auth/refresh without a 500", async () => {
+    const response = await app.inject({
+      method: "POST", url: "/auth/refresh", payload: { refreshToken: "garbage-not-a-token" },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("AUTH_TOKEN_INVALID");
+  });
+
+  it("rejects a refresh token with a well-formed id but wrong secret without a 500", async () => {
+    const account = await registerAccount(app, { email: "wrong-secret@example.com" });
+    const sessionId = account.refreshToken.split(".")[0];
+    const response = await app.inject({
+      method: "POST", url: "/auth/refresh",
+      payload: { refreshToken: `${sessionId}.not-the-real-secret-portion-at-all` },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("AUTH_TOKEN_INVALID");
+  });
+
+  it("handles a malformed logout token safely (no error, no session revoked)", async () => {
+    const account = await registerAccount(app, { email: "malformed-logout@example.com" });
+    const response = await app.inject({
+      method: "POST", url: "/auth/logout", payload: { refreshToken: "garbage-not-a-token" },
+    });
+    expect(response.statusCode).toBe(204);
+    // The real session must still be alive — logout with an unrelated
+    // garbage token must not revoke anything.
+    const me = await app.inject({ method: "GET", url: "/auth/me", headers: authHeader(account.token) });
+    expect(me.statusCode).toBe(200);
+  });
+
+  it("allows exactly one winner when two requests race to rotate the same refresh token", async () => {
+    // This is safe to assert deterministically (not flaky) because the
+    // correctness guarantee comes from a database-level atomic compare-and-
+    // swap (`updateMany({ where: { rotatedAt: null, revokedAt: null } })`),
+    // not from timing: Postgres row-level locking on the UPDATE means at
+    // most one of two concurrent updateMany calls can match rotatedAt: null,
+    // regardless of how the two requests happen to interleave. We don't
+    // attempt to assert anything about relative timing, only about the
+    // outcome: exactly one request must succeed and the other must observe
+    // reuse (or a session already rotated by the winner).
+    const account = await registerAccount(app, { email: "race-refresh@example.com" });
+
+    const [first, second] = await Promise.all([
+      app.inject({ method: "POST", url: "/auth/refresh", payload: { refreshToken: account.refreshToken } }),
+      app.inject({ method: "POST", url: "/auth/refresh", payload: { refreshToken: account.refreshToken } }),
+    ]);
+
+    const statuses = [first.statusCode, second.statusCode].sort();
+    // Exactly one 200 (the winner) and one 401 (the loser, reported as reuse
+    // once the winner has already rotated the session).
+    expect(statuses).toEqual([200, 401]);
+
+    const loser = first.statusCode === 200 ? second : first;
+    expect(loser.json().error.code).toBe("AUTH_REFRESH_REUSED");
+
+    // The original session must now be rotated exactly once, not twice.
+    const sessionId = account.refreshToken.split(".")[0]!;
+    const original = await prisma.authSession.findUnique({ where: { id: sessionId } });
+    expect(original?.rotatedAt).not.toBeNull();
+
+    const sessionsInFamily = await prisma.authSession.count({ where: { familyId: original!.familyId } });
+    // The original session plus exactly one replacement — the loser's
+    // attempt must not have created a second replacement session.
+    expect(sessionsInFamily).toBe(2);
+  });
+
+  it("rejects a naturally expired refresh token (not rotated, not revoked, just past its TTL)", async () => {
+    const account = await registerAccount(app, { email: "naturally-expired@example.com" });
+    const sessionId = account.refreshToken.split(".")[0]!;
+    await prisma.authSession.update({
+      where: { id: sessionId },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+    const response = await app.inject({
+      method: "POST", url: "/auth/refresh", payload: { refreshToken: account.refreshToken },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("AUTH_SESSION_EXPIRED");
   });
 });

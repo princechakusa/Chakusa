@@ -128,7 +128,7 @@ export async function generateLeadMessage(businessId: string, leadId: string) {
 
   const template = await prisma.messageTemplate.findFirst({
     where: { businessId, templateType: "missed_call" },
-    orderBy: { isDefault: "desc" },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   });
 
   const body = template?.body ?? getDefaultTemplateBody("missed_call", business.industry);

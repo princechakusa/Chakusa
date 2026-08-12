@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.js";
+import { buildApp, type BuildAppOptions } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
 
-export async function createTestApp(): Promise<FastifyInstance> {
-  const app = await buildApp();
+export async function createTestApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const app = await buildApp(options);
   await app.ready();
   return app;
 }
@@ -19,8 +19,10 @@ export async function resetDatabase() {
     prisma.messageTemplate.deleteMany(),
     prisma.customer.deleteMany(),
     prisma.businessMember.deleteMany(),
+    prisma.deviceToken.deleteMany(),
     prisma.passwordResetToken.deleteMany(),
     prisma.authSession.deleteMany(),
+    prisma.authChallenge.deleteMany(),
     prisma.authIdentity.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),

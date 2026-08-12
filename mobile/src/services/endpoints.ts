@@ -1,5 +1,6 @@
 import { AuthResponse, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto } from '../apiTypes';
 import { api } from './api';
+import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
 const query = (values: Record<string, string | number | undefined>) => { const params = new URLSearchParams(); Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); }); const encoded = params.toString(); return encoded ? `?${encoded}` : ''; };
 
@@ -8,15 +9,29 @@ export const authApi = {
   login: (body: { email: string; password: string }) => api.post<AuthResponse>('/auth/login', body, 'none'),
   google: (idToken: string) => api.post<AuthResponse>('/auth/google', { idToken }, 'none'),
   linkGoogle: (idToken: string) => api.post<{ provider: 'GOOGLE'; providerEmail: string; linkedAt: string }>('/auth/google/link', { idToken }),
+  appleChallenge: () => api.post<AppleChallenge>('/auth/apple/challenge', {}, 'none'),
+  apple: (body: AppleCredentialPayload) => api.post<AuthResponse>('/auth/apple', body, 'none'),
+  appleLinkChallenge: () => api.post<AppleChallenge>('/auth/apple/link/challenge', {}),
+  linkApple: (body: AppleCredentialPayload) => api.post<{ provider: 'APPLE'; providerEmail: string; linkedAt: string }>('/auth/apple/link', body),
+  appleDeleteChallenge: () => api.post<AppleChallenge>('/auth/apple/delete/challenge', {}),
   logout: (refreshToken: string) => api.post<void>('/auth/logout', { refreshToken }, 'none'),
   logoutAll: () => api.post<void>('/auth/logout-all'),
   forgotPassword: (email: string) => api.post<{ message: string }>('/auth/forgot-password', { email }, 'none'),
   resetPassword: (token: string, password: string) => api.post<{ message: string }>('/auth/reset-password', { token, password }, 'none'),
   deleteAccount: (password: string) => api.post<void>('/auth/delete-account', { password }),
   deleteAccountWithGoogle: (googleIdToken: string) => api.post<void>('/auth/delete-account', { googleIdToken }),
+  deleteAccountWithApple: (apple: AppleCredentialPayload) => api.post<void>('/auth/delete-account', { apple }),
   me: () => api.get<MeResponse>('/auth/me'),
 };
-export const businessApi = { get: () => api.get<BusinessDto>('/business'), patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'phone' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body) };
+export const businessApi = {
+  create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
+  get: () => api.get<BusinessDto>('/business'),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'phone' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
+};
+export const devicesApi = {
+  register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),
+  remove: (token: string) => api.delete<void>(`/devices/${encodeURIComponent(token)}`),
+};
 export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary') };
 export const customersApi = {
   list: (search = '', page = 1, pageSize = 100) => api.get<CustomerListResponse>(`/customers${query({ search, page, pageSize })}`),

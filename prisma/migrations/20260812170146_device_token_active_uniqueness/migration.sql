@@ -1,0 +1,11 @@
+-- Ensure a physical push token can never be active for more than one user
+-- at the same time. Prisma's schema DSL cannot express a filtered unique
+-- index without the extendedIndexes preview feature, so this is hand-written
+-- SQL rather than a generated diff; prisma/schema.prisma documents this
+-- constraint in a comment on the DeviceToken model.
+--
+-- This is the actual source of the ownership guarantee: even under
+-- concurrent registration requests for the same token from two different
+-- users, Postgres itself will reject the second row that would leave two
+-- active owners, regardless of how the two transactions interleave.
+CREATE UNIQUE INDEX "device_tokens_token_active_key" ON "device_tokens" ("token") WHERE "is_active" = true;

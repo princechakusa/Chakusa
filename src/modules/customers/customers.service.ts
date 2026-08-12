@@ -66,7 +66,7 @@ export async function getCustomerProfile(businessId: string, customerId: string)
   await assertCustomerInBusiness(businessId, customerId);
 
   const [customer, leads, reviewRequests, feedback, reminders, activity] = await Promise.all([
-    prisma.customer.findUnique({ where: { id: customerId } }),
+    prisma.customer.findFirst({ where: { id: customerId, businessId } }),
     prisma.lead.findMany({ where: { businessId, customerId }, orderBy: { createdAt: "desc" } }),
     prisma.reviewRequest.findMany({
       where: { businessId, customerId },

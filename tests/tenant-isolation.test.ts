@@ -277,4 +277,116 @@ describe("tenant isolation", () => {
     });
     expect(feedbackAsA.json()).toHaveLength(0);
   });
+
+  it("prevents user A from PATCHing user B's review request by guessed ID", async () => {
+    const userA = await registerAccount(app, { email: "rrpatch-a@example.com" });
+    const userB = await registerAccount(app, { email: "rrpatch-b@example.com" });
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/review-requests",
+      headers: authHeader(userB.token),
+      payload: { serviceName: "original" },
+    });
+    const reviewRequestId = created.json().id;
+
+    const crossPatch = await app.inject({
+      method: "PATCH",
+      url: `/review-requests/${reviewRequestId}`,
+      headers: authHeader(userA.token),
+      payload: { serviceName: "hijacked" },
+    });
+    expect(crossPatch.statusCode).toBe(404);
+
+    const crossTransition = await app.inject({
+      method: "POST",
+      url: `/review-requests/${reviewRequestId}/mark-sent`,
+      headers: authHeader(userA.token),
+    });
+    expect(crossTransition.statusCode).toBe(404);
+
+    const unchanged = await prisma.reviewRequest.findUnique({ where: { id: reviewRequestId } });
+    expect(unchanged?.serviceName).toBe("original");
+    expect(unchanged?.status).toBe("pending");
+  });
+
+  it("prevents user A from PATCHing user B's reminder by guessed ID", async () => {
+    const userA = await registerAccount(app, { email: "rempatch-a@example.com" });
+    const userB = await registerAccount(app, { email: "rempatch-b@example.com" });
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/reminders",
+      headers: authHeader(userB.token),
+      payload: { serviceName: "original", dueDate: new Date().toISOString() },
+    });
+    const reminderId = created.json().id;
+
+    const crossPatch = await app.inject({
+      method: "PATCH",
+      url: `/reminders/${reminderId}`,
+      headers: authHeader(userA.token),
+      payload: { serviceName: "hijacked" },
+    });
+    expect(crossPatch.statusCode).toBe(404);
+
+    const crossTransition = await app.inject({
+      method: "POST",
+      url: `/reminders/${reminderId}/mark-sent`,
+      headers: authHeader(userA.token),
+    });
+    expect(crossTransition.statusCode).toBe(404);
+
+    const unchanged = await prisma.reminder.findUnique({ where: { id: reminderId } });
+    expect(unchanged?.serviceName).toBe("original");
+    expect(unchanged?.status).toBe("due");
+  });
+
+  it("prevents user A from PATCHing user B's message template by guessed ID", async () => {
+    const userA = await registerAccount(app, { email: "tplpatch-a@example.com" });
+    const userB = await registerAccount(app, { email: "tplpatch-b@example.com" });
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/message-templates",
+      headers: authHeader(userB.token),
+      payload: { templateType: "missed_call", name: "original", body: "Hi {{customer_name}}" },
+    });
+    const templateId = created.json().id;
+
+    const crossPatch = await app.inject({
+      method: "PATCH",
+      url: `/message-templates/${templateId}`,
+      headers: authHeader(userA.token),
+      payload: { name: "hijacked" },
+    });
+    expect(crossPatch.statusCode).toBe(404);
+
+    const unchanged = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
+    expect(unchanged?.name).toBe("original");
+  });
+
+  it("prevents user A from mutating user B's feedback status by guessed ID", async () => {
+    const userA = await registerAccount(app, { email: "fbpatch-a@example.com" });
+    const userB = await registerAccount(app, { email: "fbpatch-b@example.com" });
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/feedback",
+      headers: authHeader(userB.token),
+      payload: { rating: 4 },
+    });
+    const feedbackId = created.json().id;
+
+    const crossPatch = await app.inject({
+      method: "PATCH",
+      url: `/feedback/${feedbackId}`,
+      headers: authHeader(userA.token),
+      payload: { status: "resolved" },
+    });
+    expect(crossPatch.statusCode).toBe(404);
+
+    const unchanged = await prisma.feedback.findUnique({ where: { id: feedbackId } });
+    expect(unchanged?.status).toBe("new");
+  });
 });

@@ -1,8 +1,11 @@
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
+import { markReviewRequestFeedbackReceived } from "../reviews/reviews.service.js";
 import type { CreateFeedbackInput, UpdateFeedbackStatusInput } from "./feedback.schemas.js";
-import type { FeedbackSentiment } from "@prisma/client";
+import type { FeedbackSentiment, Prisma } from "@prisma/client";
+
+type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
 function deriveSentiment(rating: number): FeedbackSentiment {
   if (rating >= 4) return "positive";
@@ -10,15 +13,15 @@ function deriveSentiment(rating: number): FeedbackSentiment {
   return "negative";
 }
 
-async function assertCustomerInBusiness(businessId: string, customerId: string) {
-  const customer = await prisma.customer.findFirst({ where: { id: customerId, businessId } });
+async function assertCustomerInBusiness(businessId: string, customerId: string, db: DatabaseClient) {
+  const customer = await db.customer.findFirst({ where: { id: customerId, businessId } });
   if (!customer) {
     throw ApiError.badRequest("customerId does not belong to this business");
   }
 }
 
-async function assertReviewRequestInBusiness(businessId: string, reviewRequestId: string) {
-  const reviewRequest = await prisma.reviewRequest.findFirst({
+async function assertReviewRequestInBusiness(businessId: string, reviewRequestId: string, db: DatabaseClient) {
+  const reviewRequest = await db.reviewRequest.findFirst({
     where: { id: reviewRequestId, businessId },
   });
   if (!reviewRequest) {
@@ -39,40 +42,48 @@ export async function createFeedback(
   actorId: string,
   input: CreateFeedbackInput,
 ) {
-  if (input.customerId) {
-    await assertCustomerInBusiness(businessId, input.customerId);
-  }
-  if (input.reviewRequestId) {
-    await assertReviewRequestInBusiness(businessId, input.reviewRequestId);
-  }
+  // Everything below is one atomic unit: feedback creation, the linked
+  // review request's transition to feedback_received, and both activity
+  // events either all commit together or all roll back together. Passing
+  // `tx` into the shared helpers (rather than duplicating their logic here)
+  // also gives this the same concurrency-safe claim-guard behavior as the
+  // dedicated mark-feedback-received endpoint.
+  return prisma.$transaction(async (tx) => {
+    if (input.customerId) {
+      await assertCustomerInBusiness(businessId, input.customerId, tx);
+    }
+    if (input.reviewRequestId) {
+      await assertReviewRequestInBusiness(businessId, input.reviewRequestId, tx);
+    }
 
-  const feedback = await prisma.feedback.create({
-    data: {
-      businessId,
-      customerId: input.customerId,
-      reviewRequestId: input.reviewRequestId,
-      rating: input.rating,
-      comment: input.comment,
-      sentiment: deriveSentiment(input.rating),
-    },
-  });
-
-  if (input.reviewRequestId) {
-    await prisma.reviewRequest.update({
-      where: { id: input.reviewRequestId },
-      data: { status: "feedback_received" },
+    const feedback = await tx.feedback.create({
+      data: {
+        businessId,
+        customerId: input.customerId,
+        reviewRequestId: input.reviewRequestId,
+        rating: input.rating,
+        comment: input.comment,
+        sentiment: deriveSentiment(input.rating),
+      },
     });
-  }
 
-  await recordActivity({
-    businessId,
-    actorId,
-    eventType: "FEEDBACK_RECEIVED",
-    entityType: "feedback",
-    entityId: feedback.id,
+    if (input.reviewRequestId) {
+      await markReviewRequestFeedbackReceived(businessId, actorId, input.reviewRequestId, tx);
+    }
+
+    await recordActivity(
+      {
+        businessId,
+        actorId,
+        eventType: "FEEDBACK_RECEIVED",
+        entityType: "feedback",
+        entityId: feedback.id,
+      },
+      tx,
+    );
+
+    return feedback;
   });
-
-  return feedback;
 }
 
 export async function updateFeedbackStatus(

@@ -109,4 +109,58 @@ describe("message templates", () => {
     expect(generated.json().message).toContain("Smile Dental");
     expect(generated.json().message).toMatch(/checkup|missed your call/i);
   });
+
+  it("deterministically selects the lowest id when isDefault and createdAt are both tied", async () => {
+    const { token, businessId } = await registerAccount(app, { businessName: "Tie Breaker Co" });
+
+    // Force a genuine createdAt tie (two API calls would naturally differ
+    // by at least a few milliseconds) by inserting both rows directly with
+    // the same timestamp — this is the only way to reliably reproduce the
+    // tie-break scenario without a flaky sleep-based test.
+    const tiedCreatedAt = new Date("2026-01-01T00:00:00.000Z");
+    const templateA = await prisma.messageTemplate.create({
+      data: {
+        businessId,
+        templateType: "missed_call",
+        name: "Tied A",
+        body: "Body A for {{customer_name}}",
+        isDefault: false,
+        createdAt: tiedCreatedAt,
+      },
+    });
+    const templateB = await prisma.messageTemplate.create({
+      data: {
+        businessId,
+        templateType: "missed_call",
+        name: "Tied B",
+        body: "Body B for {{customer_name}}",
+        isDefault: false,
+        createdAt: tiedCreatedAt,
+      },
+    });
+
+    const expectedWinner = [templateA.id, templateB.id].sort()[0];
+    const expectedBody = expectedWinner === templateA.id ? "Body A" : "Body B";
+
+    const lead = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: {},
+    });
+
+    // Call generate-message repeatedly — without the id ASC tie-breaker,
+    // Postgres/Prisma give no ordering guarantee between two rows with
+    // identical isDefault and createdAt, so a flaky implementation could
+    // return either template across calls. With the tie-breaker, every
+    // call must pick the same one.
+    for (let i = 0; i < 5; i += 1) {
+      const generated = await app.inject({
+        method: "POST",
+        url: `/leads/${lead.json().id}/generate-message`,
+        headers: authHeader(token),
+      });
+      expect(generated.json().message).toContain(expectedBody);
+    }
+  });
 });

@@ -1,9 +1,11 @@
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
+import { notifyFeedbackReceived } from "../../lib/notifications/notificationTriggers.js";
 import { markReviewRequestFeedbackReceived } from "../reviews/reviews.service.js";
 import type { CreateFeedbackInput, UpdateFeedbackStatusInput } from "./feedback.schemas.js";
 import type { FeedbackSentiment, Prisma } from "@prisma/client";
+import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
@@ -41,6 +43,7 @@ export async function createFeedback(
   businessId: string,
   actorId: string,
   input: CreateFeedbackInput,
+  pushProvider?: PushProvider,
 ) {
   // Everything below is one atomic unit: feedback creation, the linked
   // review request's transition to feedback_received, and both activity
@@ -48,7 +51,7 @@ export async function createFeedback(
   // `tx` into the shared helpers (rather than duplicating their logic here)
   // also gives this the same concurrency-safe claim-guard behavior as the
   // dedicated mark-feedback-received endpoint.
-  return prisma.$transaction(async (tx) => {
+  const feedback = await prisma.$transaction(async (tx) => {
     if (input.customerId) {
       await assertCustomerInBusiness(businessId, input.customerId, tx);
     }
@@ -84,6 +87,17 @@ export async function createFeedback(
 
     return feedback;
   });
+
+  // Notified once per feedback row, outside the transaction (so a push
+  // failure can never roll back the write, and we never call out over the
+  // network from inside a DB transaction). This is the single call site for
+  // "feedback was received" — the review-request-level transition in
+  // markReviewRequestFeedbackReceived intentionally does not also notify,
+  // since createFeedback already triggers it internally when reviewRequestId
+  // is set, and double-notifying for one submission would be a duplicate.
+  await notifyFeedbackReceived(businessId, feedback, pushProvider);
+
+  return feedback;
 }
 
 export async function updateFeedbackStatus(

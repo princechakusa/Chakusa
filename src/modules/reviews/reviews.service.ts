@@ -3,8 +3,10 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
+import { notifyReviewReceived } from "../../lib/notifications/notificationTriggers.js";
 import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./reviews.schemas.js";
 import type { Prisma } from "@prisma/client";
+import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
@@ -151,23 +153,40 @@ export async function markReviewRequestSent(businessId: string, actorId: string,
   return reviewRequest;
 }
 
-export async function markReviewRequestReviewed(businessId: string, actorId: string, id: string) {
-  await getOwnedReviewRequest(businessId, id);
+/**
+ * Uses the same claim-guard pattern as markReviewRequestFeedbackReceived:
+ * the updateMany's WHERE clause (status not already "reviewed") makes the
+ * claim atomic via Postgres row-level locking, so at most one of any number
+ * of concurrent or repeated calls records the activity event and sends the
+ * "new review" notification — a retried or double-tapped mark-reviewed call
+ * is a harmless no-op instead of a duplicate push.
+ */
+export async function markReviewRequestReviewed(
+  businessId: string,
+  actorId: string,
+  id: string,
+  pushProvider?: PushProvider,
+) {
+  const existing = await getOwnedReviewRequest(businessId, id);
 
-  const reviewRequest = await prisma.reviewRequest.update({
-    where: { id },
+  const claimed = await prisma.reviewRequest.updateMany({
+    where: { id, businessId, status: { not: "reviewed" } },
     data: { status: "reviewed" },
   });
 
-  await recordActivity({
-    businessId,
-    actorId,
-    eventType: "REVIEW_RECEIVED",
-    entityType: "review_request",
-    entityId: id,
-  });
+  if (claimed.count > 0) {
+    await recordActivity({
+      businessId,
+      actorId,
+      eventType: "REVIEW_RECEIVED",
+      entityType: "review_request",
+      entityId: id,
+    });
 
-  return reviewRequest;
+    await notifyReviewReceived(businessId, { id, serviceName: existing.serviceName }, pushProvider);
+  }
+
+  return prisma.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
 }
 
 /**

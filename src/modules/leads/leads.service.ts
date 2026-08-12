@@ -3,9 +3,11 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
+import { notifyLeadCreated } from "../../lib/notifications/notificationTriggers.js";
 import { toApiLead } from "./leads.serialization.js";
 import type { CreateLeadInput, UpdateLeadInput } from "./leads.schemas.js";
 import type { Lead } from "@prisma/client";
+import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 export async function listLeads(
   businessId: string,
@@ -35,7 +37,12 @@ function withResponseTime<T extends Lead>(lead: T) {
   return { ...toApiLead(lead), responseTimeSeconds };
 }
 
-export async function createLead(businessId: string, actorId: string, input: CreateLeadInput) {
+export async function createLead(
+  businessId: string,
+  actorId: string,
+  input: CreateLeadInput,
+  pushProvider?: PushProvider,
+) {
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
   }
@@ -60,6 +67,8 @@ export async function createLead(businessId: string, actorId: string, input: Cre
     entityType: "lead",
     entityId: lead.id,
   });
+
+  await notifyLeadCreated(businessId, lead, pushProvider);
 
   return withResponseTime(lead);
 }

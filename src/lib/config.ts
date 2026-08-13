@@ -29,6 +29,19 @@ const envSchema = z.object({
   PROVIDER_TOKEN_ENCRYPTION_KEY: optionalSecret,
   APPLE_CHALLENGE_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   EXPO_ACCESS_TOKEN: optionalSecret,
+  // Twilio is Phase 2's only messaging provider (see
+  // src/lib/messaging/twilioProvider.ts). TWILIO_ENABLED is a deliberate
+  // separate flag from "are credentials present" — it's what production
+  // validation below keys off, so a business can have PRO/OUTBOUND_MESSAGING
+  // entitlement without Twilio necessarily being wired up in every
+  // environment (e.g. staging). Either a single sender number or a
+  // Messaging Service SID is required to actually send; both are accepted
+  // since Twilio itself supports either.
+  TWILIO_ENABLED: booleanFlag,
+  TWILIO_ACCOUNT_SID: optionalSecret,
+  TWILIO_AUTH_TOKEN: optionalSecret,
+  TWILIO_FROM_NUMBER: optionalSecret,
+  TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
   if (!env.RESEND_API_KEY) {
@@ -44,6 +57,14 @@ const envSchema = z.object({
     const appleValues = [env.APPLE_CLIENT_ID, env.APPLE_TEAM_ID, env.APPLE_KEY_ID, env.APPLE_PRIVATE_KEY_BASE64, env.PROVIDER_TOKEN_ENCRYPTION_KEY];
     if (!appleValues.every(Boolean)) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["APPLE_CLIENT_ID"], message: "APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY_BASE64, and PROVIDER_TOKEN_ENCRYPTION_KEY are all required in production when APPLE_AUTH_ENABLED=true" });
+    }
+  }
+  if (env.TWILIO_ENABLED) {
+    if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["TWILIO_ACCOUNT_SID"], message: "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required in production when TWILIO_ENABLED=true" });
+    }
+    if (!env.TWILIO_FROM_NUMBER && !env.TWILIO_MESSAGING_SERVICE_SID) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["TWILIO_FROM_NUMBER"], message: "Either TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID is required in production when TWILIO_ENABLED=true" });
     }
   }
 });

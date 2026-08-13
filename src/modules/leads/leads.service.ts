@@ -1,12 +1,13 @@
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
-import { renderTemplate } from "../../lib/templateEngine.js";
-import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
+import { renderMissedCallFollowUp } from "../../lib/messageRendering.js";
 import { notifyLeadCreated } from "../../lib/notifications/notificationTriggers.js";
+import { scheduleMissedCallFollowUp } from "../../lib/automation/scheduler.js";
+import { assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
 import { toApiLead } from "./leads.serialization.js";
 import type { CreateLeadInput, UpdateLeadInput } from "./leads.schemas.js";
-import type { Lead } from "@prisma/client";
+import type { Lead, Plan } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 export async function listLeads(
@@ -41,23 +42,34 @@ export async function createLead(
   businessId: string,
   actorId: string,
   input: CreateLeadInput,
+  plan: Plan,
   pushProvider?: PushProvider,
 ) {
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
   }
 
-  const lead = await prisma.lead.create({
-    data: {
-      businessId,
-      customerId: input.customerId,
-      source: input.source,
-      missedCallTime: input.missedCallTime,
-      serviceRequested: input.serviceRequested,
-      urgency: input.urgency,
-      estimatedValue: input.estimatedValue,
-      notes: input.notes,
-    },
+  const limit = getPlanLimits(plan).leadsPerMonth;
+  const periodStart = startOfCurrentUtcMonth();
+
+  const lead = await withLimitCheck(async (tx) => {
+    if (limit !== null) {
+      const current = await tx.lead.count({ where: { businessId, createdAt: { gte: periodStart } } });
+      assertUnderLimit({ plan, resource: "leads", limit, current, periodResetsAt: startOfNextUtcMonth() });
+    }
+
+    return tx.lead.create({
+      data: {
+        businessId,
+        customerId: input.customerId,
+        source: input.source,
+        missedCallTime: input.missedCallTime,
+        serviceRequested: input.serviceRequested,
+        urgency: input.urgency,
+        estimatedValue: input.estimatedValue,
+        notes: input.notes,
+      },
+    });
   });
 
   await recordActivity({
@@ -69,6 +81,13 @@ export async function createLead(
   });
 
   await notifyLeadCreated(businessId, lead, pushProvider);
+
+  // Fire-and-forget-but-never-fails-the-caller, same discipline as
+  // notifyLeadCreated above: scheduling a follow-up (or deciding not to)
+  // must never affect whether lead creation itself succeeds. This never
+  // sends anything — it only ever creates a PENDING AutomationRun row for
+  // the (separate, not-yet-started-here) worker to pick up later.
+  await scheduleMissedCallFollowUp(businessId, lead);
 
   return withResponseTime(lead);
 }
@@ -135,19 +154,7 @@ export async function generateLeadMessage(businessId: string, leadId: string) {
 
   const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
 
-  const template = await prisma.messageTemplate.findFirst({
-    where: { businessId, templateType: "missed_call" },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }, { id: "asc" }],
-  });
-
-  const body = template?.body ?? getDefaultTemplateBody("missed_call", business.industry);
-
-  const rendered = renderTemplate(body, {
-    customer_name: lead.customer?.name ?? "there",
-    business_name: business.name,
-    service_name: lead.serviceRequested ?? "your service",
-    phone_number: business.phone ?? "",
-  });
+  const rendered = await renderMissedCallFollowUp(business, lead, lead.customer);
 
   await prisma.lead.update({ where: { id: leadId }, data: { generatedReply: rendered } });
 

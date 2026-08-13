@@ -26,7 +26,11 @@ export type ApiErrorCode =
   | "APPLE_REVOCATION_FAILED"
   | "ACCOUNT_LINK_REQUIRED"
   | "AUTH_IDENTITY_CONFLICT"
-  | "AUTH_PROVIDER_ALREADY_LINKED";
+  | "AUTH_PROVIDER_ALREADY_LINKED"
+  | "LIMIT_REACHED"
+  | "PLAN_REQUIRED"
+  | "FEATURE_NOT_AVAILABLE"
+  | "PROVIDER_SEND_FAILED";
 
 export class ApiError extends Error {
   statusCode: number;
@@ -69,5 +73,37 @@ export class ApiError extends Error {
 
   static conflict(message: string) {
     return new ApiError(409, "CONFLICT", message);
+  }
+
+  static limitReached(
+    resource: string,
+    label: string,
+    details: { limit: number; current: number; plan: string; periodResetsAt?: Date },
+  ) {
+    return new ApiError(403, "LIMIT_REACHED", `Free plan limit reached for ${label}`, {
+      resource,
+      limit: details.limit,
+      current: details.current,
+      plan: details.plan,
+      requiredPlan: "PRO",
+      ...(details.periodResetsAt ? { periodResetsAt: details.periodResetsAt.toISOString() } : {}),
+    });
+  }
+
+  static featureNotAvailable(feature: string, label: string, plan: string) {
+    return new ApiError(403, "FEATURE_NOT_AVAILABLE", `${label} is available on the Pro plan`, {
+      feature,
+      plan,
+      requiredPlan: "PRO",
+    });
+  }
+
+  static planRequired(message: string, details?: unknown) {
+    return new ApiError(403, "PLAN_REQUIRED", message, details);
+  }
+
+  /** The messaging provider (e.g. Twilio) did not accept the message — a real send attempt was made and it failed. */
+  static providerSendFailed(details: { provider: string; errorCode?: string; permanentFailure: boolean; messageId: string }) {
+    return new ApiError(502, "PROVIDER_SEND_FAILED", "The messaging provider did not accept this message", details);
   }
 }

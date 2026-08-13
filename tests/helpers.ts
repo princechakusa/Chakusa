@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Plan, SubscriptionStatus } from "@prisma/client";
 import { buildApp, type BuildAppOptions } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
 
@@ -15,8 +16,11 @@ export async function resetDatabase() {
     prisma.reviewRequest.deleteMany(),
     prisma.reminder.deleteMany(),
     prisma.message.deleteMany(),
+    prisma.automationRun.deleteMany(),
+    prisma.automationRule.deleteMany(),
     prisma.lead.deleteMany(),
     prisma.messageTemplate.deleteMany(),
+    prisma.customerOptOut.deleteMany(),
     prisma.customer.deleteMany(),
     prisma.businessMember.deleteMany(),
     prisma.deviceToken.deleteMany(),
@@ -24,6 +28,7 @@ export async function resetDatabase() {
     prisma.authSession.deleteMany(),
     prisma.authChallenge.deleteMany(),
     prisma.authIdentity.deleteMany(),
+    prisma.subscription.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),
   ]);
@@ -70,4 +75,14 @@ export async function registerAccount(
 
 export function authHeader(token: string) {
   return { authorization: `Bearer ${token}` };
+}
+
+/** Test-only: sets a business's plan directly in the database — there is no purchase endpoint. */
+export async function setPlan(businessId: string, plan: Plan) {
+  await prisma.subscription.update({ where: { businessId }, data: { plan } });
+}
+
+/** Test-only: sets a business's subscription status directly — there is no billing webhook yet. */
+export async function setSubscriptionStatus(businessId: string, status: SubscriptionStatus) {
+  await prisma.subscription.update({ where: { businessId }, data: { status } });
 }

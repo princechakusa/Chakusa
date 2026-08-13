@@ -72,6 +72,7 @@ describe("notification triggers", () => {
         businessId,
         userId,
         { urgency: "high", serviceRequested: "roof repair" } as never,
+        "PRO",
         provider,
       );
 
@@ -88,7 +89,7 @@ describe("notification triggers", () => {
       await registerDevice(app, ownerB.token, "ExponentPushToken[lead-tenant-b-bbbbbbbb]");
 
       const { provider, calls } = makeCapturingProvider();
-      await createLead(ownerA.businessId, ownerA.userId, { urgency: "medium" } as never, provider);
+      await createLead(ownerA.businessId, ownerA.userId, { urgency: "medium" } as never, "PRO", provider);
 
       expect(calls).toHaveLength(1);
       expect(calls[0]?.tokens).toEqual(["ExponentPushToken[lead-tenant-a-aaaaaaaa]"]);
@@ -102,6 +103,7 @@ describe("notification triggers", () => {
         businessId,
         userId,
         { urgency: "low" } as never,
+        "PRO",
         makeThrowingProvider(),
       );
 
@@ -117,7 +119,7 @@ describe("notification triggers", () => {
       const { userId, businessId } = await registerAccount(app);
 
       const { provider, calls } = makeCapturingProvider();
-      const lead = await createLead(businessId, userId, { urgency: "medium" } as never, provider);
+      const lead = await createLead(businessId, userId, { urgency: "medium" } as never, "PRO", provider);
 
       expect(lead.status).toBe("new");
       expect(calls).toHaveLength(0);
@@ -181,7 +183,7 @@ describe("notification triggers", () => {
       const { token, userId, businessId } = await registerAccount(app);
       await registerDevice(app, token, "ExponentPushToken[feedback-single-aaaaaaaa]");
 
-      const reviewRequest = await createReviewRequest(businessId, userId, {} as never);
+      const reviewRequest = await createReviewRequest(businessId, userId, {} as never, "PRO");
 
       const { provider, calls } = makeCapturingProvider();
       await createFeedback(
@@ -208,7 +210,7 @@ describe("notification triggers", () => {
       const deviceToken = "ExponentPushToken[review-owner-aaaaaaaaaaaa]";
       await registerDevice(app, token, deviceToken);
 
-      const reviewRequest = await createReviewRequest(businessId, userId, { serviceName: "deep clean" } as never);
+      const reviewRequest = await createReviewRequest(businessId, userId, { serviceName: "deep clean" } as never, "PRO");
 
       const { provider, calls } = makeCapturingProvider();
       await markReviewRequestReviewed(businessId, userId, reviewRequest.id, provider);
@@ -223,7 +225,7 @@ describe("notification triggers", () => {
       const { token, userId, businessId } = await registerAccount(app);
       await registerDevice(app, token, "ExponentPushToken[review-dup-aaaaaaaaaaaa]");
 
-      const reviewRequest = await createReviewRequest(businessId, userId, {} as never);
+      const reviewRequest = await createReviewRequest(businessId, userId, {} as never, "PRO");
 
       const { provider, calls } = makeCapturingProvider();
       await markReviewRequestReviewed(businessId, userId, reviewRequest.id, provider);
@@ -240,7 +242,7 @@ describe("notification triggers", () => {
       const { token, userId, businessId } = await registerAccount(app);
       await registerDevice(app, token, "ExponentPushToken[review-race-aaaaaaaaaaaa]");
 
-      const reviewRequest = await createReviewRequest(businessId, userId, {} as never);
+      const reviewRequest = await createReviewRequest(businessId, userId, {} as never, "PRO");
 
       const { provider, calls } = makeCapturingProvider();
       await Promise.all([
@@ -255,7 +257,7 @@ describe("notification triggers", () => {
       const { token, userId, businessId } = await registerAccount(app);
       await registerDevice(app, token, "ExponentPushToken[review-fail-aaaaaaaaaaaa]");
 
-      const reviewRequest = await createReviewRequest(businessId, userId, {} as never);
+      const reviewRequest = await createReviewRequest(businessId, userId, {} as never, "PRO");
       const updated = await markReviewRequestReviewed(businessId, userId, reviewRequest.id, makeThrowingProvider());
 
       expect(updated.status).toBe("reviewed");
@@ -274,7 +276,7 @@ describe("notification triggers", () => {
       });
 
       const { provider, calls } = makeCapturingProvider();
-      await createLead(businessId, userId, { urgency: "medium" } as never, provider);
+      await createLead(businessId, userId, { urgency: "medium" } as never, "PRO", provider);
 
       expect(calls).toHaveLength(0);
     });

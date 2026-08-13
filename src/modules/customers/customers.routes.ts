@@ -23,7 +23,7 @@ export default async function customerRoutes(fastify: FastifyInstance) {
 
   fastify.post("/", async (request, reply) => {
     const input = createCustomerSchema.parse(request.body);
-    const customer = await createCustomer(request.businessId!, request.user.userId, input);
+    const customer = await createCustomer(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(customer);
   });
 

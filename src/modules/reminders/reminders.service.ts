@@ -3,7 +3,9 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
+import { assertUnderLimit, getPlanLimits, withLimitCheck } from "../../lib/entitlements.js";
 import type { CreateReminderInput, UpdateReminderInput } from "./reminders.schemas.js";
+import type { Plan } from "@prisma/client";
 
 export async function listReminders(businessId: string) {
   return prisma.reminder.findMany({
@@ -24,6 +26,7 @@ export async function createReminder(
   businessId: string,
   actorId: string,
   input: CreateReminderInput,
+  plan: Plan,
 ) {
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
@@ -40,14 +43,25 @@ export async function createReminder(
     dueDate.setDate(dueDate.getDate() + business.reminderDays);
   }
 
-  const reminder = await prisma.reminder.create({
-    data: {
-      businessId,
-      customerId: input.customerId,
-      serviceName: input.serviceName,
-      lastVisitDate: input.lastVisitDate,
-      dueDate,
-    },
+  const limit = getPlanLimits(plan).openReminders;
+
+  const reminder = await withLimitCheck(async (tx) => {
+    if (limit !== null) {
+      // "Open" = not completed and not dismissed — a standing cap, not a
+      // monthly one, so there is no periodResetsAt for this resource.
+      const current = await tx.reminder.count({ where: { businessId, status: { notIn: ["completed", "dismissed"] } } });
+      assertUnderLimit({ plan, resource: "reminders", limit, current });
+    }
+
+    return tx.reminder.create({
+      data: {
+        businessId,
+        customerId: input.customerId,
+        serviceName: input.serviceName,
+        lastVisitDate: input.lastVisitDate,
+        dueDate,
+      },
+    });
   });
 
   await recordActivity({

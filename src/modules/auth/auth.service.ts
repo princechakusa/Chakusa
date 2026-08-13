@@ -351,6 +351,7 @@ export async function registerUser(input: RegisterInput) {
     await tx.businessMember.create({
       data: { businessId: business.id, userId: user.id, role: "OWNER" },
     });
+    await tx.subscription.create({ data: { businessId: business.id } });
     const auth = await createSession(user.id, tx);
     return { user, business, ...auth };
   });

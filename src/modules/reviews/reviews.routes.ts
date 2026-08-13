@@ -23,7 +23,7 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post("/", async (request, reply) => {
     const input = createReviewRequestSchema.parse(request.body);
-    const created = await createReviewRequest(request.businessId!, request.user.userId, input);
+    const created = await createReviewRequest(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(created);
   });
 

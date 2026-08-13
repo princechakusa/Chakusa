@@ -4,8 +4,9 @@ import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
 import { notifyReviewReceived } from "../../lib/notifications/notificationTriggers.js";
+import { assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
 import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./reviews.schemas.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, Plan } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
@@ -29,6 +30,7 @@ export async function createReviewRequest(
   businessId: string,
   actorId: string,
   input: CreateReviewRequestInput,
+  plan: Plan,
 ) {
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
@@ -36,14 +38,24 @@ export async function createReviewRequest(
 
   const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
 
-  const reviewRequest = await prisma.reviewRequest.create({
-    data: {
-      businessId,
-      customerId: input.customerId,
-      serviceName: input.serviceName,
-      message: input.message,
-      googleReviewLink: business.googleReviewLink,
-    },
+  const limit = getPlanLimits(plan).reviewRequestsPerMonth;
+  const periodStart = startOfCurrentUtcMonth();
+
+  const reviewRequest = await withLimitCheck(async (tx) => {
+    if (limit !== null) {
+      const current = await tx.reviewRequest.count({ where: { businessId, createdAt: { gte: periodStart } } });
+      assertUnderLimit({ plan, resource: "reviewRequests", limit, current, periodResetsAt: startOfNextUtcMonth() });
+    }
+
+    return tx.reviewRequest.create({
+      data: {
+        businessId,
+        customerId: input.customerId,
+        serviceName: input.serviceName,
+        message: input.message,
+        googleReviewLink: business.googleReviewLink,
+      },
+    });
   });
 
   await recordActivity({

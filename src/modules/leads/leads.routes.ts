@@ -20,7 +20,7 @@ export default async function leadRoutes(fastify: FastifyInstance) {
 
   fastify.post("/", async (request, reply) => {
     const input = createLeadSchema.parse(request.body);
-    const lead = await createLead(request.businessId!, request.user.userId, input);
+    const lead = await createLead(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(lead);
   });
 

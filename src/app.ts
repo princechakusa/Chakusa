@@ -16,6 +16,8 @@ import feedbackRoutes from "./modules/feedback/feedback.routes.js";
 import reminderRoutes from "./modules/reminders/reminders.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import deviceRoutes from "./modules/devices/devices.routes.js";
+import messageRoutes from "./modules/messages/messages.routes.js";
+import automationRoutes from "./modules/automation/automation.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
 
@@ -71,6 +73,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(reminderRoutes, { prefix: "/reminders" });
   await app.register(dashboardRoutes, { prefix: "/dashboard" });
   await app.register(deviceRoutes, { prefix: "/devices" });
+  await app.register(messageRoutes, { prefix: "/messages" });
+  await app.register(automationRoutes, { prefix: "/automation" });
 
   return app;
 }

@@ -12,7 +12,7 @@ export default async function templateRoutes(fastify: FastifyInstance) {
 
   fastify.post("/", async (request, reply) => {
     const input = createTemplateSchema.parse(request.body);
-    reply.status(201).send(await createTemplate(request.businessId!, input));
+    reply.status(201).send(await createTemplate(request.businessId!, input, request.plan!));
   });
 
   fastify.patch<{ Params: { id: string } }>("/:id", async (request, reply) => {

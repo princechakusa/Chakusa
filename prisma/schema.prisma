@@ -108,6 +108,24 @@ enum MessageTone {
   casual
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  GRACE_PERIOD
+  EXPIRED
+  CANCELED
+}
+
+enum SubscriptionProvider {
+  APPLE
+  GOOGLE
+}
+
 enum ActivityEventType {
   LEAD_CREATED
   LEAD_CONTACTED
@@ -128,6 +146,56 @@ enum ActivityEventType {
   REMINDER_DISMISSED
   CUSTOMER_CREATED
   CUSTOMER_UPDATED
+  // Schema contract for the future automation engine (not yet implemented —
+  // see src/lib/messaging/messagingProvider.ts and Phase 1 docs). Nothing
+  // in the codebase emits these yet; recordActivity() is never called with
+  // them until the automation engine exists.
+  AUTOMATION_MESSAGE_SCHEDULED
+  AUTOMATION_MESSAGE_SENT
+  AUTOMATION_MESSAGE_FAILED
+}
+
+// Whether a customer opted out of a specific channel or every channel a
+// business might message them on. A dedicated ALL value (rather than a
+// nullable `channel`) is deliberate: Postgres treats NULL as distinct from
+// NULL in a unique index, so two "opted out of everything" rows for the
+// same (business, phone) could otherwise both be inserted — an enum value
+// keeps the uniqueness guarantee in CustomerOptOut.@@unique real.
+enum OptOutChannel {
+  SMS
+  WHATSAPP
+  ALL
+}
+
+// Every trigger justified by an existing domain event this codebase already
+// models. Deliberately not "missed call" only — see Phase 3 report. Each
+// value maps to one of Chakusa's three KPIs (Recovery, Reviews & Reputation,
+// Retention); trigger-specific configuration (e.g. which LeadStatus to wait
+// for, which delay) lives in AutomationRule.config, not in this enum, so a
+// new *variant* of an existing trigger never requires a schema migration —
+// only a genuinely new class of triggering event does.
+enum AutomationTriggerType {
+  LEAD_CREATED // Recovery — includes missed-call leads (Lead.source), not a separate trigger
+  LEAD_FOLLOW_UP // Recovery — lead has sat in a non-terminal status too long
+  REVIEW_REQUEST_FOLLOW_UP // Reviews & Reputation — a sent ReviewRequest hasn't converted
+  CUSTOMER_RETENTION // Retention — mirrors the existing Reminder/reminderDays concept
+}
+
+// SMS is the only real channel Phase 2 can send today (Twilio). WHATSAPP is
+// declared now so AutomationRule rows don't need a channel migration when
+// WhatsApp ships — see Phase 1's OptOutChannel.WHATSAPP, which exists for
+// the identical reason.
+enum AutomationChannel {
+  SMS
+  WHATSAPP
+}
+
+enum AutomationRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +335,23 @@ model Business {
   name             String
   industry         String?
   phone            String?
+  // Best-effort E.164 normalization of `phone`, computed opportunistically
+  // at write time (see src/lib/phone.ts) — never required, never validated
+  // against `phone` staying in sync, and never blocks a write when it can't
+  // be derived. `phone` remains the raw, freeform value every existing
+  // client already reads/writes; this is purely an additive derived field
+  // for the future messaging/automation layer, which needs a dialable
+  // address and has no use for a string it can't send to.
+  phoneE164        String?     @map("phone_e164")
+  // ISO 3166-1 alpha-2 (e.g. "ZW", "ZA"), IANA timezone (e.g.
+  // "Africa/Harare"), ISO 4217 (e.g. "USD", "ZWL"). All nullable: existing
+  // businesses predate these fields, and this phase adds no onboarding flow
+  // to collect them — they're foundational for future
+  // country/timezone-aware automation (provider routing, quiet hours), not
+  // read by anything yet.
+  country          String?
+  timezone         String?
+  currency         String?
   googleReviewLink String?     @map("google_review_link")
   workingHours     Json?       @map("working_hours")
   defaultServices  Json?       @map("default_services")
@@ -285,6 +370,10 @@ model Business {
   reminders        Reminder[]
   messageTemplates MessageTemplate[]
   activityEvents   ActivityEvent[]
+  subscription     Subscription?
+  customerOptOuts  CustomerOptOut[]
+  automationRules  AutomationRule[]
+  automationRuns   AutomationRun[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -311,17 +400,23 @@ model Customer {
   businessId String   @map("business_id")
   name       String
   phone      String?
+  // See Business.phoneE164 — same best-effort, non-blocking derivation,
+  // normalized against the owning business's `country` as the default
+  // region when the raw value isn't already in international (+…) form.
+  phoneE164  String?  @map("phone_e164")
   email      String?
   notes      String?
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   leads          Lead[]
   messages       Message[]
   reviewRequests ReviewRequest[]
   feedback       Feedback[]
   reminders      Reminder[]
+  optOuts        CustomerOptOut[]
+  automationRuns AutomationRun[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
@@ -347,9 +442,10 @@ model Lead {
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
-  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  messages Message[]
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  messages       Message[]
+  automationRuns AutomationRun[]
 
   @@index([businessId])
   @@index([businessId, status])
@@ -359,25 +455,51 @@ model Lead {
 }
 
 model Message {
-  id          String         @id @default(uuid())
-  businessId  String         @map("business_id")
-  customerId  String?        @map("customer_id")
-  leadId      String?        @map("lead_id")
-  messageType MessageType    @map("message_type")
-  channel     MessageChannel @default(sms)
-  body        String
-  status      MessageStatus  @default(draft)
-  sentAt      DateTime?      @map("sent_at")
-  createdAt   DateTime       @default(now()) @map("created_at")
+  id                String         @id @default(uuid())
+  businessId        String         @map("business_id")
+  customerId        String?        @map("customer_id")
+  leadId            String?        @map("lead_id")
+  messageType       MessageType    @map("message_type")
+  channel           MessageChannel @default(sms)
+  body              String
+  status            MessageStatus  @default(draft)
+  sentAt            DateTime?      @map("sent_at")
+  // Which MessagingProvider handled this send (e.g. "twilio") and that
+  // provider's own message id — populated only for messages actually sent
+  // through Chakusa (Phase 2 manual send); rows logged for the pre-existing
+  // manual copy/paste flow have neither. Nullable, additive: existing rows
+  // (there are none in production yet — Message was unused before Phase 2)
+  // and any future non-provider message types are unaffected.
+  provider          String?        @map("provider")
+  providerMessageId String?        @map("provider_message_id")
+  // Set only for messages created by the automation executor — the exact
+  // AutomationRun this send belongs to. This is what makes
+  // executeAutomationRun idempotent regardless of how many times it's
+  // invoked for the same run (fresh claim vs. reclaimed after stale-run
+  // recovery): before ever calling the provider, it checks whether a
+  // Message already carries this run's id, and if so treats that as the
+  // authoritative outcome instead of sending again. Nullable — manual
+  // sends (Phase 2) never set it.
+  automationRunId   String?        @map("automation_run_id")
+  createdAt         DateTime       @default(now()) @map("created_at")
 
-  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead          Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  automationRun AutomationRun? @relation(fields: [automationRunId], references: [id], onDelete: SetNull)
 
+  // Database-level guarantee that one AutomationRun can never have more
+  // than one Message row — defense in depth alongside the application-level
+  // idempotency check in executeAutomationRun (src/lib/automation/executor.ts)
+  // that looks up an existing Message by automationRunId before sending.
+  // Postgres unique indexes treat NULL as distinct from NULL, so any number
+  // of manual-send Messages (automationRunId: null) remain unaffected.
+  @@unique([automationRunId])
   @@index([businessId])
   @@index([businessId, createdAt])
   @@index([customerId])
   @@index([leadId])
+  @@index([providerMessageId])
   @@map("messages")
 }
 
@@ -482,4 +604,168 @@ model ActivityEvent {
   @@index([businessId, createdAt])
   @@index([entityType, entityId])
   @@map("activity_events")
+}
+
+// One Subscription per Business — the sole source of truth for plan
+// entitlement (see src/lib/entitlements.ts). The provider/transaction/period
+// fields are the future billing foundation only; nothing in this codebase
+// writes them yet (no StoreKit/Play Billing verification exists), so they
+// stay nullable and unused until that integration lands.
+model Subscription {
+  id                    String                @id @default(uuid())
+  businessId            String                @unique @map("business_id")
+  plan                  Plan                  @default(FREE)
+  status                SubscriptionStatus    @default(ACTIVE)
+  provider              SubscriptionProvider?
+  providerProductId     String?               @map("provider_product_id")
+  originalTransactionId String?               @map("original_transaction_id")
+  latestTransactionId   String?               @map("latest_transaction_id")
+  currentPeriodStart    DateTime?             @map("current_period_start")
+  currentPeriodEnd      DateTime?             @map("current_period_end")
+  cancelAtPeriodEnd     Boolean               @default(false) @map("cancel_at_period_end")
+  trialEndsAt           DateTime?             @map("trial_ends_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// A customer refusing messages from one business must never opt them out
+// of another business's messages — every row is scoped to a single
+// businessId, deliberately with no global/cross-tenant opt-out concept.
+// This is a foundation-only model for this phase: nothing produces these
+// rows yet (no inbound STOP handling, no webhook, no UI) and nothing reads
+// them yet (no automation engine to check them against). It exists now so
+// the schema contract is settled before the engine that depends on it is
+// built.
+model CustomerOptOut {
+  id         String        @id @default(uuid())
+  businessId String        @map("business_id")
+  customerId String?       @map("customer_id")
+  // Raw phone as received (webhook "From", or manual entry) — not
+  // necessarily E.164, since the source of an opt-out (e.g. a provider
+  // webhook) may not always report the number in normalized form. Stored
+  // as given; normalization happens on the read side when matching against
+  // Customer.phoneE164 rather than being enforced here.
+  phone      String
+  channel    OptOutChannel
+  // Freeform provenance ("customer_reply", "manual", "provider_webhook", …)
+  // — not an enum yet because nothing produces these rows yet, so the real
+  // set of sources isn't known until inbound processing exists.
+  source     String
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, phone, channel])
+  @@index([businessId])
+  @@index([customerId])
+  @@map("customer_opt_outs")
+}
+
+// A configured-but-inert automation policy. Creating or enabling a row here
+// has no side effect — nothing in the codebase reads AutomationRule to
+// decide whether to send anything (no listener, no worker, no cron; see the
+// Phase 3 report). `config` intentionally carries all trigger-specific
+// detail (e.g. which LeadStatus to wait for, minimum delay since last
+// visit) instead of dedicated columns, so a new *variant* of an existing
+// AutomationTriggerType never requires a migration — only a genuinely new
+// trigger type does, which is deliberately rare (four values today).
+model AutomationRule {
+  id           String                @id @default(uuid())
+  businessId   String                @map("business_id")
+  name         String
+  enabled      Boolean               @default(false)
+  triggerType  AutomationTriggerType @map("trigger_type")
+  channel      AutomationChannel     @default(SMS)
+  // Seconds to wait after the trigger event before the (future) worker may
+  // act. A plain Int rather than a Duration/Interval type — matches
+  // Business.reminderDays' precedent of using a primitive for a
+  // business-configurable time offset rather than modeling calendar
+  // semantics that don't apply (this is a fixed delay, not "N business
+  // days").
+  delaySeconds Int                   @default(0) @map("delay_seconds")
+  // Trigger-specific conditions/config (e.g. { "leadStatuses": ["new"],
+  // "minDaysSinceVisit": 30 }). Validated at the Zod layer per triggerType,
+  // not by the database — see automation.schemas.ts.
+  config       Json                  @default("{}")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  business Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  runs     AutomationRun[]
+
+  @@index([businessId])
+  @@index([businessId, enabled])
+  @@index([businessId, triggerType])
+  @@map("automation_rules")
+}
+
+// One prospective (or, once the future engine exists, actual) execution of
+// an AutomationRule against one triggering event. Rows are created only by
+// internal code/tests in this phase — there is no client-reachable
+// "execute" endpoint (see automation.routes.ts) and nothing ever
+// automatically inserts one (no listener wired to Lead/Customer/ReviewRequest
+// creation yet).
+//
+// dedupeKey is this model's idempotency contract: a future worker deciding
+// whether "this exact automation should only be scheduled once for this
+// event" does a create() guarded by the unique constraint below rather than
+// a racy find-then-create — see the Phase 3 report for why a unique
+// constraint was chosen over an application-level lock.
+model AutomationRun {
+  id               String              @id @default(uuid())
+  businessId       String              @map("business_id")
+  automationRuleId String              @map("automation_rule_id")
+  customerId       String?             @map("customer_id")
+  leadId           String?             @map("lead_id")
+  status           AutomationRunStatus @default(PENDING)
+  // Deterministically derived by the future scheduler from
+  // (automationRuleId, triggering entity, trigger occurrence) — e.g.
+  // `${automationRuleId}:lead:${leadId}` for a one-shot lead trigger. Unique
+  // per business so the same event can never produce two PENDING/RUNNING
+  // runs for the same rule, which is exactly the duplicate-execution case
+  // this phase must make structurally impossible to create, even though
+  // nothing creates runs automatically yet.
+  dedupeKey        String              @map("dedupe_key")
+  scheduledFor     DateTime            @map("scheduled_for")
+  startedAt        DateTime?           @map("started_at")
+  completedAt      DateTime?           @map("completed_at")
+  cancelledAt      DateTime?           @map("cancelled_at")
+  errorMessage     String?             @map("error_message")
+  // Number of send attempts made so far — incremented on each transient
+  // provider failure that gets requeued (RUNNING -> PENDING with a
+  // backed-off scheduledFor). Bounded by MAX_ATTEMPTS in
+  // src/lib/automation/executor.ts; once reached, the run is marked FAILED
+  // instead of being requeued again.
+  attemptCount     Int                 @default(0) @map("attempt_count")
+  // Execution lease: set to now + LEASE_DURATION_SECONDS (see executor.ts)
+  // the instant a run is claimed (PENDING -> RUNNING), cleared back to null
+  // whenever the run leaves RUNNING for any reason. A RUNNING row whose
+  // lease has passed is presumed to belong to a crashed/killed worker — it
+  // never got the chance to reach a terminal status — and is eligible for
+  // stale-run recovery (RUNNING -> PENDING) so a live worker can reclaim
+  // it. Never used to recover a run merely because it's old; only once
+  // this specific deadline has passed.
+  leaseExpiresAt   DateTime?           @map("lease_expires_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  automationRule AutomationRule @relation(fields: [automationRuleId], references: [id], onDelete: Cascade)
+  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead           Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  messages       Message[]
+
+  @@unique([businessId, dedupeKey])
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([automationRuleId])
+  @@index([customerId])
+  @@index([leadId])
+  @@index([status, leaseExpiresAt])
+  @@map("automation_runs")
 }

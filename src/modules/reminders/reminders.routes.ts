@@ -21,7 +21,7 @@ export default async function reminderRoutes(fastify: FastifyInstance) {
 
   fastify.post("/", async (request, reply) => {
     const input = createReminderSchema.parse(request.body);
-    const reminder = await createReminder(request.businessId!, request.user.userId, input);
+    const reminder = await createReminder(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(reminder);
   });
 

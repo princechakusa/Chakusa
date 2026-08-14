@@ -17,6 +17,25 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   PASSWORD_RESET_URL: z.string().url().default("chakusa://reset-password"),
+  // How long a public review/private-feedback link (see
+  // src/modules/reviews/reviews.service.ts's generatePublicReviewLink)
+  // stays usable after generation. 30 days by default — long enough that a
+  // customer who doesn't open a review request the day it's sent still has
+  // a working link weeks later, matching how review requests are actually
+  // sent today (a manual, sometimes-delayed action by the business owner),
+  // not an arbitrarily short security-token window.
+  PUBLIC_REVIEW_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // Base URL of the public, unauthenticated web page that consumes
+  // GET/POST /public/reviews/:token (see src/lib/publicReviewLinks.ts).
+  // Deliberately optional with no baked-in production-looking default —
+  // nothing here should let a fake domain slip into a customer-facing
+  // message. Local/dev falls back to a clearly-local placeholder in
+  // publicReviewLinks.ts instead of living here, so "required in
+  // production, easy in dev" doesn't fight itself. Required (and must be
+  // https://) in production because generating a review-request message —
+  // the flow this feeds — is a core, always-available feature, not gated
+  // behind an optional integration the way Twilio/Apple/Google are.
+  PUBLIC_REVIEW_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
   RESEND_API_KEY: optionalSecret,
   EMAIL_FROM: optionalSecret,
   GOOGLE_AUTH_ENABLED: booleanFlag,
@@ -68,6 +87,11 @@ const envSchema = z.object({
   }
   if (!env.EMAIL_FROM) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["EMAIL_FROM"], message: "EMAIL_FROM is required in production" });
+  }
+  if (!env.PUBLIC_REVIEW_BASE_URL) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });
+  } else if (!env.PUBLIC_REVIEW_BASE_URL.startsWith("https://")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL must use https:// in production" });
   }
   if (env.GOOGLE_AUTH_ENABLED && !env.GOOGLE_OAUTH_CLIENT_IDS) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["GOOGLE_OAUTH_CLIENT_IDS"], message: "GOOGLE_OAUTH_CLIENT_IDS is required in production when GOOGLE_AUTH_ENABLED=true" });

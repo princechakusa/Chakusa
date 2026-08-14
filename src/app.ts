@@ -19,6 +19,7 @@ import deviceRoutes from "./modules/devices/devices.routes.js";
 import messageRoutes from "./modules/messages/messages.routes.js";
 import automationRoutes from "./modules/automation/automation.routes.js";
 import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
+import publicReviewRoutes from "./modules/public/public.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
 
@@ -50,6 +51,12 @@ export async function buildApp(options: BuildAppOptions = {}) {
     // behind Render/Railway/etc. sees only the proxy's IP for every
     // request.
     trustProxy: config.TRUST_PROXY,
+    // Public review tokens (id.secret, ~101 chars) travel as a route param
+    // in /public/reviews/:token — above find-my-way's default 100-char
+    // maxParamLength, which otherwise 414s every request. Other opaque
+    // tokens in this codebase go in the Authorization header and never hit
+    // this limit.
+    routerOptions: { maxParamLength: 200 },
   });
 
   await app.register(sensible);
@@ -88,6 +95,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(messageRoutes, { prefix: "/messages" });
   await app.register(automationRoutes, { prefix: "/automation" });
   await app.register(subscriptionRoutes, { prefix: "/subscription" });
+  // No fastify.authenticate/requireBusiness hooks here — see
+  // public.routes.ts's top-level doc comment.
+  await app.register(publicReviewRoutes, { prefix: "/public/reviews" });
 
   return app;
 }

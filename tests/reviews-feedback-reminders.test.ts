@@ -47,7 +47,7 @@ describe("review requests", () => {
     expect(reviewed.json().status).toBe("reviewed");
   });
 
-  it("generates a review message containing the google review link", async () => {
+  it("generates a review message containing the Chakusa public link, not the raw Google review link", async () => {
     const { token } = await registerAccount(app);
 
     await app.inject({
@@ -70,7 +70,8 @@ describe("review requests", () => {
       headers: authHeader(token),
     });
 
-    expect(generated.json().message).toContain("https://g.page/r/example/review");
+    expect(generated.json().message).toMatch(/\/r\//);
+    expect(generated.json().message).not.toContain("https://g.page/r/example/review");
   });
 
   it("supports mark-opened as an explicit transition and records activity", async () => {

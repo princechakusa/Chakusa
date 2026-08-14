@@ -41,7 +41,11 @@ export async function listFeedback(businessId: string) {
 
 export async function createFeedback(
   businessId: string,
-  actorId: string,
+  // null represents a public, customer-submitted feedback — there is no
+  // authenticated business member to attribute it to (see
+  // src/modules/public/publicReviews.service.ts). recordActivity and
+  // markReviewRequestFeedbackReceived both already accept a null actorId.
+  actorId: string | null,
   input: CreateFeedbackInput,
   pushProvider?: PushProvider,
 ) {

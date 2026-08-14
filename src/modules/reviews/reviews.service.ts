@@ -5,18 +5,42 @@ import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
 import { notifyReviewReceived } from "../../lib/notifications/notificationTriggers.js";
 import { assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
+import { generateOpaqueToken } from "../../lib/authTokens.js";
+import { config } from "../../lib/config.js";
+import { buildPublicReviewUrl } from "../../lib/publicReviewLinks.js";
 import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./reviews.schemas.js";
 import type { Prisma, Plan } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
+// Internal public-token bookkeeping (see generatePublicReviewLink) — never
+// part of any authenticated ReviewRequest response. The hash is a one-way
+// digest of the customer's link, not itself a working credential, but it's
+// still purely internal state with no client use; stripping it (and its
+// sibling fields) keeps "the token" from ever surfacing outside the two
+// dedicated issuance paths (generatePublicReviewLink, generateReviewMessage)
+// that return the raw value once, on purpose. Plain destructuring rather
+// than Prisma's `omit` query option, which this generated client doesn't
+// expose.
+function stripPublicTokenFields<T extends {
+  publicTokenId: string | null;
+  publicTokenHash: string | null;
+  publicTokenExpiresAt: Date | null;
+  publicTokenConsumedAt: Date | null;
+}>(reviewRequest: T): Omit<T, "publicTokenId" | "publicTokenHash" | "publicTokenExpiresAt" | "publicTokenConsumedAt"> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberately dropped, not reused
+  const { publicTokenId, publicTokenHash, publicTokenExpiresAt, publicTokenConsumedAt, ...rest } = reviewRequest;
+  return rest;
+}
+
 export async function listReviewRequests(businessId: string) {
-  return prisma.reviewRequest.findMany({
+  const reviewRequests = await prisma.reviewRequest.findMany({
     where: { businessId },
     orderBy: { createdAt: "desc" },
     include: { customer: true },
   });
+  return reviewRequests.map(stripPublicTokenFields);
 }
 
 async function assertCustomerInBusiness(businessId: string, customerId: string) {
@@ -66,7 +90,7 @@ export async function createReviewRequest(
     entityId: reviewRequest.id,
   });
 
-  return reviewRequest;
+  return stripPublicTokenFields(reviewRequest);
 }
 
 async function getOwnedReviewRequest(businessId: string, id: string) {
@@ -85,7 +109,53 @@ export async function getReviewRequest(businessId: string, id: string) {
   if (!reviewRequest) {
     throw ApiError.notFound("Review request not found");
   }
-  return reviewRequest;
+  return stripPublicTokenFields(reviewRequest);
+}
+
+/**
+ * Mints (or re-mints) the token for this review request's public,
+ * unauthenticated link — see src/modules/public/publicReviews.service.ts
+ * for the customer-facing side. Deliberately lazy: called only when the
+ * business explicitly asks for the link, not automatically at
+ * createReviewRequest time. Eagerly minting one for every review request
+ * would start each token's expiry clock before the business has actually
+ * sent anything — many review requests sit unsent for a while (the
+ * existing flow is create -> generate-message -> mark-sent, all separate
+ * manual steps), so an eagerly-created token could expire before it's ever
+ * used.
+ *
+ * Always issues a fresh token rather than returning a previously-generated
+ * one, even if a still-valid one exists. This isn't "rotate on every read"
+ * (GET /review-requests/:id never touches the token) — it's a direct
+ * consequence of only ever storing the token's hash: once the raw value
+ * has been returned from a prior call, it cannot be recovered to return
+ * again, so the only sane response to "give me the link" a second time is
+ * a new one. Any previously-issued token for this request stops working
+ * the moment a new one is minted (its hash is overwritten), which is safe
+ * since only the same authenticated business member who receives this
+ * response could have had the old raw value in the first place.
+ */
+export async function generatePublicReviewLink(businessId: string, id: string) {
+  await getOwnedReviewRequest(businessId, id);
+
+  const { id: tokenId, raw, hash } = generateOpaqueToken();
+  const expiresAt = new Date(Date.now() + config.PUBLIC_REVIEW_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+  await prisma.reviewRequest.update({
+    where: { id },
+    data: {
+      publicTokenId: tokenId,
+      publicTokenHash: hash,
+      publicTokenExpiresAt: expiresAt,
+      // A fresh token is always usable, even if the previous one had
+      // already been consumed by a customer submission.
+      publicTokenConsumedAt: null,
+    },
+  });
+
+  // The raw token is returned here and NEVER persisted or logged anywhere
+  // — this is the only moment it exists outside the caller's response.
+  return { token: raw, expiresAt };
 }
 
 export async function updateReviewRequest(
@@ -94,7 +164,8 @@ export async function updateReviewRequest(
   input: UpdateReviewRequestInput,
 ) {
   await getOwnedReviewRequest(businessId, id);
-  return prisma.reviewRequest.update({ where: { id }, data: input });
+  const reviewRequest = await prisma.reviewRequest.update({ where: { id }, data: input });
+  return stripPublicTokenFields(reviewRequest);
 }
 
 export async function generateReviewMessage(businessId: string, id: string) {
@@ -115,11 +186,32 @@ export async function generateReviewMessage(businessId: string, id: string) {
 
   const body = template?.body ?? getDefaultTemplateBody("review_request", business.industry);
 
+  // {{review_link}} is Chakusa's own public review/feedback page, never the
+  // business's Google review link directly — the public page itself is what
+  // offers the Google review choice (GET /public/reviews/:token already
+  // returns googleReviewLink unconditionally), so the message always routes
+  // through Chakusa first rather than sending customers straight to Google.
+  //
+  // A fresh token is minted on every call rather than reusing a prior one:
+  // the token architecture stores only a hash (see generatePublicReviewLink
+  // above), so a previously-issued raw token can never be recovered to
+  // reuse — regenerating the message necessarily invalidates any
+  // not-yet-used link from an earlier generation, the same accepted
+  // trade-off generatePublicReviewLink already documents. The one exception
+  // is a review request whose token has already been consumed (the
+  // customer already submitted feedback): minting a fresh token there would
+  // hand out a new, working one-time submission link and defeat the
+  // one-submission guarantee, so that case renders with no link at all
+  // instead of rotating.
+  const reviewLink = reviewRequest.publicTokenConsumedAt
+    ? ""
+    : buildPublicReviewUrl((await generatePublicReviewLink(businessId, id)).token);
+
   const rendered = renderTemplate(body, {
     customer_name: reviewRequest.customer?.name ?? "there",
     business_name: business.name,
     service_name: reviewRequest.serviceName ?? "your service",
-    review_link: reviewRequest.googleReviewLink ?? business.googleReviewLink ?? "",
+    review_link: reviewLink,
   });
 
   await prisma.reviewRequest.update({ where: { id }, data: { message: rendered } });
@@ -143,7 +235,7 @@ export async function markReviewRequestOpened(businessId: string, actorId: strin
     entityId: id,
   });
 
-  return reviewRequest;
+  return stripPublicTokenFields(reviewRequest);
 }
 
 export async function markReviewRequestSent(businessId: string, actorId: string, id: string) {
@@ -162,7 +254,7 @@ export async function markReviewRequestSent(businessId: string, actorId: string,
     entityId: id,
   });
 
-  return reviewRequest;
+  return stripPublicTokenFields(reviewRequest);
 }
 
 /**
@@ -198,7 +290,8 @@ export async function markReviewRequestReviewed(
     await notifyReviewReceived(businessId, { id, serviceName: existing.serviceName }, pushProvider);
   }
 
-  return prisma.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
+  const reviewRequest = await prisma.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
+  return stripPublicTokenFields(reviewRequest);
 }
 
 /**
@@ -220,7 +313,10 @@ export async function markReviewRequestReviewed(
  */
 export async function markReviewRequestFeedbackReceived(
   businessId: string,
-  actorId: string,
+  // null for a public, customer-submitted feedback — see
+  // feedback.service.ts's createFeedback and
+  // src/modules/public/publicReviews.service.ts.
+  actorId: string | null,
   id: string,
   db: DatabaseClient = prisma,
 ) {
@@ -247,5 +343,6 @@ export async function markReviewRequestFeedbackReceived(
     );
   }
 
-  return db.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
+  const reviewRequest = await db.reviewRequest.findFirstOrThrow({ where: { id, businessId } });
+  return stripPublicTokenFields(reviewRequest);
 }

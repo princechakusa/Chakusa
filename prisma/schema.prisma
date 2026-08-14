@@ -511,10 +511,36 @@ model ReviewRequest {
   message            String?
   status             ReviewRequestStatus @default(pending)
   googleReviewLink   String?             @map("google_review_link")
+  // Unused by any current code path — appears to have been a stub for the
+  // exact feature this migration adds. Left untouched rather than
+  // repurposed: it's typed as a full URL (frontend-domain-dependent, and no
+  // production domain is configured yet — see the public-review-token
+  // fields below, which store a lookup id + hash instead of a URL).
   privateFeedbackUrl String?             @map("private_feedback_url")
   sentAt             DateTime?           @map("sent_at")
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  // Public review/feedback link — lets an unauthenticated customer open
+  // GET /public/reviews/:token and submit POST .../feedback with no
+  // Chakusa account. Mirrors src/lib/authTokens.ts's existing opaque-token
+  // pattern (used for refresh/reset tokens): the raw token handed to the
+  // customer is never stored — only publicTokenId (a random lookup key,
+  // NOT this row's own id, so the public URL never encodes an internal
+  // primary key) and publicTokenHash (SHA-256 of the full raw token,
+  // verified with a timing-safe comparison) are persisted. One token per
+  // review request — see reviews.service.ts's generatePublicReviewLink for
+  // why lazy (re)generation, not a token minted eagerly at creation time,
+  // is the right default.
+  publicTokenId         String?   @unique @map("public_token_id")
+  publicTokenHash       String?   @map("public_token_hash")
+  publicTokenExpiresAt  DateTime? @map("public_token_expires_at")
+  // Set the instant a feedback submission is accepted through the public
+  // token — this is the idempotency claim guard (see
+  // publicReviews.service.ts's submitPublicFeedback) that makes a second
+  // submission attempt (retry, double-tap, or two concurrent requests) a
+  // safe no-op instead of a duplicate Feedback row.
+  publicTokenConsumedAt DateTime? @map("public_token_consumed_at")
 
   business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)

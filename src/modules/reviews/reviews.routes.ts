@@ -7,6 +7,7 @@ import {
   getReviewRequest,
   updateReviewRequest,
   generateReviewMessage,
+  generatePublicReviewLink,
   markReviewRequestOpened,
   markReviewRequestSent,
   markReviewRequestReviewed,
@@ -38,6 +39,16 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { id: string } }>("/:id/generate-message", async (request, reply) => {
     reply.send(await generateReviewMessage(request.businessId!, request.params.id));
+  });
+
+  // Mints/re-mints the public link token — see generatePublicReviewLink's
+  // doc comment for why this always issues a fresh token. The response
+  // includes the raw token (only ever visible here); the caller is
+  // responsible for building the actual customer-facing URL (see the
+  // Phase report for the recommended path contract) and embedding it
+  // wherever they choose to send it.
+  fastify.post<{ Params: { id: string } }>("/:id/public-link", async (request, reply) => {
+    reply.send(await generatePublicReviewLink(request.businessId!, request.params.id));
   });
 
   fastify.post<{ Params: { id: string } }>("/:id/mark-opened", async (request, reply) => {

@@ -83,9 +83,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { await clearSession(); } },
     forgotPassword: async email => (await authApi.forgotPassword(email)).message,
     resetPassword: async (token, password) => { const result = await authApi.resetPassword(token, password); await clearSession(); return result.message; },
-    deleteAccount: async password => { await authApi.deleteAccount(password); await clearSession(); },
-    deleteAccountWithGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.deleteAccountWithGoogle(idToken); await clearSession(); return true; },
-    deleteAccountWithApple: async () => { const challenge = await authApi.appleDeleteChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.deleteAccountWithApple(credential); await clearSession(); return true; },
+    deleteAccount: async password => { await authApi.deleteAccount(password); preferencesRef.current.resetOnboarding(); await clearSession(); },
+    deleteAccountWithGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.deleteAccountWithGoogle(idToken); preferencesRef.current.resetOnboarding(); await clearSession(); return true; },
+    deleteAccountWithApple: async () => { const challenge = await authApi.appleDeleteChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.deleteAccountWithApple(credential); preferencesRef.current.resetOnboarding(); await clearSession(); return true; },
     refreshBusiness: async () => { const next = await businessApi.get(); setBusiness(next); return next; },
   }), [applySession, business, clearSession, restore, restoreError, role, status, user]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

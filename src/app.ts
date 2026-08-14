@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
-import { config } from "./lib/config.js";
+import { config, corsAllowedOrigins } from "./lib/config.js";
 import authPlugin from "./plugins/auth.js";
 import tenantPlugin from "./plugins/tenant.js";
 import errorHandlerPlugin from "./plugins/errorHandler.js";
@@ -18,6 +18,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import deviceRoutes from "./modules/devices/devices.routes.js";
 import messageRoutes from "./modules/messages/messages.routes.js";
 import automationRoutes from "./modules/automation/automation.routes.js";
+import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
 
@@ -43,10 +44,21 @@ export async function buildApp(options: BuildAppOptions = {}) {
         : config.NODE_ENV === "test"
           ? false
           : true,
+    // See config.ts's TRUST_PROXY doc — off by default, must be explicitly
+    // enabled once the deployment target's reverse proxy is confirmed to
+    // set X-Forwarded-For correctly. Without this, IP-based rate limiting
+    // behind Render/Railway/etc. sees only the proxy's IP for every
+    // request.
+    trustProxy: config.TRUST_PROXY,
   });
 
   await app.register(sensible);
-  await app.register(cors, { origin: true });
+  // corsAllowedOrigins is null (permissive `origin: true`) until
+  // CORS_ALLOWED_ORIGINS is set — see config.ts for why that default is
+  // safe for a mobile-only, bearer-token client with no browser-enforced
+  // Origin header. Once a real web frontend domain exists, set
+  // CORS_ALLOWED_ORIGINS and this becomes a real allowlist.
+  await app.register(cors, { origin: corsAllowedOrigins ?? true });
   const rateLimitEnabled = config.NODE_ENV !== "test" || options.enableRateLimit === true;
   if (rateLimitEnabled) {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
@@ -75,6 +87,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });
   await app.register(automationRoutes, { prefix: "/automation" });
+  await app.register(subscriptionRoutes, { prefix: "/subscription" });
 
   return app;
 }

@@ -6,7 +6,7 @@ import { parsePhoneNumber } from "../../lib/phone.js";
 import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import type { SendMessageInput } from "./messages.schemas.js";
-import type { Plan } from "@prisma/client";
+import type { Plan, SubscriptionStatus } from "@prisma/client";
 
 /**
  * Explicitly, humanly initiated SMS send — the only way an outbound
@@ -23,11 +23,15 @@ export async function sendMessage(
   businessId: string,
   input: SendMessageInput,
   plan: Plan,
+  status: SubscriptionStatus,
   provider?: MessagingProvider,
 ) {
   // FREE must never reach the provider — see entitlements.ts for why this
-  // is OUTBOUND_MESSAGING and not AUTOMATION.
-  assertFeatureAvailable(plan, "OUTBOUND_MESSAGING");
+  // is OUTBOUND_MESSAGING and not AUTOMATION. Status-aware: a PRO business
+  // whose billing lapsed (EXPIRED/CANCELED) must not keep sending real,
+  // billable messages just because Subscription.plan still reads "PRO" —
+  // see the P0 audit fix in entitlements.ts.
+  assertFeatureAvailable(plan, status, "OUTBOUND_MESSAGING");
 
   const customer = await prisma.customer.findFirst({ where: { id: input.customerId, businessId } });
   if (!customer) {

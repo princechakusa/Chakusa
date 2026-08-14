@@ -75,7 +75,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     const customer = await createCustomerWithPhone(app, token);
     const { provider, calls } = makeFakeProvider();
 
-    const message = await sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi there" }), "PRO", provider);
+    const message = await sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi there" }), "PRO", "ACTIVE", provider);
 
     expect(calls).toHaveLength(1);
     expect(message.status).toBe("sent");
@@ -109,7 +109,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     expect(customer.phoneE164).toBe("+263771234567");
     const { provider, calls } = makeFakeProvider();
 
-    await sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider);
+    await sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider);
 
     expect(calls[0]?.to).toBe("+263771234567");
   });
@@ -122,7 +122,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     expect(customer.phoneE164).toBeNull();
     const { provider, calls } = makeFakeProvider();
 
-    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider)).rejects.toBeInstanceOf(ApiError);
+    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider)).rejects.toBeInstanceOf(ApiError);
     expect(calls).toHaveLength(0);
     expect(await prisma.message.count({ where: { businessId } })).toBe(0);
   });
@@ -156,7 +156,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     });
     const { provider, calls } = makeFakeProvider();
 
-    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider)).rejects.toBeInstanceOf(ApiError);
+    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider)).rejects.toBeInstanceOf(ApiError);
     expect(calls).toHaveLength(0);
   });
 
@@ -169,7 +169,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     });
     const { provider, calls } = makeFakeProvider();
 
-    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider)).rejects.toBeInstanceOf(ApiError);
+    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider)).rejects.toBeInstanceOf(ApiError);
     expect(calls).toHaveLength(0);
   });
 
@@ -185,7 +185,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     });
 
     const { provider, calls } = makeFakeProvider();
-    const message = await sendMessage(businessA.businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider);
+    const message = await sendMessage(businessA.businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider);
 
     expect(calls).toHaveLength(1);
     expect(message.status).toBe("sent");
@@ -211,6 +211,7 @@ describe("manual outbound SMS (Phase 2)", () => {
       businessId,
       { customerId: customer.id, leadId: lead.json().id, body: "Following up", messageType: "missed_call" },
       "PRO",
+      "ACTIVE",
       provider,
     );
 
@@ -234,7 +235,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     const customer = await createCustomerWithPhone(app, token);
     const { provider } = makeFakeProvider(async () => ({ accepted: false, errorCode: "21211", permanentFailure: true }));
 
-    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider)).rejects.toMatchObject({
+    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider)).rejects.toMatchObject({
       code: "PROVIDER_SEND_FAILED",
       details: expect.objectContaining({ permanentFailure: true, errorCode: "21211" }),
     });
@@ -250,7 +251,7 @@ describe("manual outbound SMS (Phase 2)", () => {
     const customer = await createCustomerWithPhone(app, token);
     const { provider } = makeFakeProvider(async () => ({ accepted: false, errorCode: "20500", permanentFailure: false }));
 
-    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", provider)).rejects.toMatchObject({
+    await expect(sendMessage(businessId, sendMessageSchema.parse({ customerId: customer.id, body: "Hi" }), "PRO", "ACTIVE", provider)).rejects.toMatchObject({
       code: "PROVIDER_SEND_FAILED",
       details: expect.objectContaining({ permanentFailure: false, errorCode: "20500" }),
     });

@@ -11,7 +11,7 @@ export type MessageStatus = 'draft' | 'copied' | 'sent' | 'failed';
 export type ActivityEventType = 'LEAD_CREATED' | 'LEAD_CONTACTED' | 'LEAD_BOOKED' | 'LEAD_WON' | 'LEAD_LOST' | 'MESSAGE_COPIED' | 'MESSAGE_MARKED_SENT' | 'REVIEW_REQUEST_CREATED' | 'REVIEW_REQUEST_SENT' | 'REVIEW_OPENED' | 'REVIEW_RECEIVED' | 'FEEDBACK_RECEIVED' | 'REMINDER_CREATED' | 'REMINDER_SENT' | 'REMINDER_COMPLETED' | 'REMINDER_DISMISSED' | 'CUSTOMER_CREATED' | 'CUSTOMER_UPDATED';
 
 export interface UserDto { id: string; email: string; fullName: string; hasPassword?: boolean; authProviders?: ('GOOGLE' | 'APPLE')[]; }
-export interface BusinessDto { id: string; ownerId?: string; name: string; industry: string | null; phone: string | null; googleReviewLink?: string | null; workingHours?: Record<string, unknown> | null; defaultServices?: string[] | null; reminderDays?: number; preferredTone?: MessageTone; createdAt?: string; updatedAt?: string; }
+export interface BusinessDto { id: string; ownerId?: string; name: string; industry: string | null; country?: string | null; phone: string | null; googleReviewLink?: string | null; workingHours?: Record<string, unknown> | null; defaultServices?: string[] | null; reminderDays?: number; preferredTone?: MessageTone; createdAt?: string; updatedAt?: string; }
 export interface SessionTokens { accessToken: string; refreshToken: string; expiresIn: number; tokenType: 'Bearer'; token?: string; }
 export interface AuthResponse extends SessionTokens { user: UserDto; business: BusinessDto | null; role?: string | null; isNewUser?: boolean; }
 export type RefreshResponse = SessionTokens;
@@ -24,10 +24,30 @@ export interface LeadDto { id: string; businessId: string; customerId: string | 
 export interface LeadListResponse { items: LeadDto[]; total: number; page: number; pageSize: number; }
 export interface ReviewRequestDto { id: string; businessId: string; customerId: string | null; serviceName: string | null; message: string | null; status: ReviewStatus; googleReviewLink: string | null; privateFeedbackUrl: string | null; sentAt: string | null; createdAt: string; updatedAt: string; customer?: CustomerDto | null; feedback?: FeedbackDto[]; }
 export interface FeedbackDto { id: string; businessId: string; customerId: string | null; reviewRequestId: string | null; rating: number; comment: string | null; sentiment: FeedbackSentiment | null; status: FeedbackStatus; createdAt: string; customer?: CustomerDto | null; }
-export interface ReminderDto { id: string; businessId: string; customerId: string | null; serviceName: string | null; lastVisitDate: string | null; dueDate: string; message: string | null; status: ReminderStatus; createdAt: string; updatedAt: string; customer?: CustomerDto | null; }
+export interface ReminderDto { id: string; businessId: string; customerId: string | null; serviceName: string | null; lastVisitDate: string | null; dueDate: string; message: string | null; status: ReminderStatus; isDueNow: boolean; createdAt: string; updatedAt: string; customer?: CustomerDto | null; }
 export interface MessageTemplateDto { id: string; businessId: string; templateType: MessageType; name: string; body: string; tone: MessageTone; isDefault: boolean; createdAt: string; updatedAt: string; }
 export interface ActivityEventDto { id: string; eventType: ActivityEventType; entityType: string; entityId: string; metadata: Record<string, unknown> | null; createdAt: string; }
 export interface DashboardSummaryDto { recoveredRevenue: { total: number; missedCall: number; comebackCompletedCount: number }; leads: { missedCalls: number; new: number; contacted: number; booked: number; won: number; lost: number; total: number; conversionRate: number; contactRate: number }; reviews: { requestsSent: number; reviewsReceived: number; feedbackReceived: number }; customersDue: number; responseTime: { averageSeconds: number | null; sampleSize: number }; recentActivity: ActivityEventDto[]; todayAttentionItems: { type: 'reminder_due'; id: string; customerName: string | null; dueDate: string }[]; generatedAt: string; windowStart: string; }
 export interface CustomerProfileDto { customer: CustomerDto; leads: LeadDto[]; reviewRequests: ReviewRequestDto[]; feedback: FeedbackDto[]; reminders: ReminderDto[]; activity: ActivityEventDto[]; lifetimeValue: number; }
+export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity';
+export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; detail: string | null; occurredAt: string; }
+export interface AttentionPageDto { items: AttentionItemDto[]; total: number; page: number; pageSize: number; category: AttentionCategory | null; countsByCategory?: Record<AttentionCategory, number>; }
 
 export interface ApiErrorBody { error: { code: 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | string; message: string; details?: unknown }; }
+
+export type SubscriptionPlan = 'FREE' | 'PRO';
+export type SubscriptionStatusValue = 'ACTIVE' | 'TRIALING' | 'GRACE_PERIOD' | 'EXPIRED' | 'CANCELED';
+export interface MonthlyUsageDto { current: number; limit: number | null; period: 'month'; resetsAt: string; }
+export interface StandingUsageDto { current: number; limit: number | null; period: null; resetsAt: null; }
+export interface SubscriptionStatusDto {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatusValue;
+  features: { automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean };
+  usage: {
+    leads: MonthlyUsageDto;
+    reviewRequests: MonthlyUsageDto;
+    customers: StandingUsageDto;
+    openReminders: StandingUsageDto;
+    customTemplates: { limitPerType: number | null; usageByType: Record<MessageType, number> };
+  };
+}

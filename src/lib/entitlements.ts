@@ -13,13 +13,12 @@ import { prisma } from "./prisma.js";
  * OUTBOUND_MESSAGING is "Chakusa may send a message through a provider when
  * a human explicitly asks it to, right now" (Phase 2 — this file gates the
  * manual-send endpoint with it). AUTOMATION is "Chakusa may decide on its
- * own to send a message" (still unimplemented — no AutomationRule, no
- * worker, nothing triggers a send without a human in the loop yet). Both
- * happen to be PRO-only today, which made reusing AUTOMATION for the manual
- * send path tempting, but that would conflate two capabilities that must be
- * able to diverge later (e.g. a future plan tier with manual Chakusa-sent
- * SMS but no automation, or vice versa) — see the Phase 2 report for the
- * full reasoning.
+ * own to send a message" (Phase 3/4 — AutomationRule/AutomationRun/worker).
+ * Both happen to be PRO-only today, which made reusing AUTOMATION for the
+ * manual send path tempting, but that would conflate two capabilities that
+ * must be able to diverge later (e.g. a future plan tier with manual
+ * Chakusa-sent SMS but no automation, or vice versa) — see the Phase 2
+ * report for the full reasoning.
  */
 export type Feature = "AUTOMATION" | "OUTBOUND_MESSAGING" | "ADVANCED_ANALYTICS" | "EXTENDED_HISTORY" | "UNLIMITED_TEMPLATES";
 
@@ -36,41 +35,72 @@ const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   PRO: new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVANCED_ANALYTICS", "EXTENDED_HISTORY", "UNLIMITED_TEMPLATES"]),
 };
 
-export function hasFeature(plan: Plan, feature: Feature): boolean {
+/**
+ * Every Feature gates on plan alone EXCEPT this set, which additionally
+ * requires the subscription to currently be in an entitled status. This is
+ * the P0 fix for a defect where plan-only checks (assertFeatureAvailable
+ * called with just `plan`) kept granting Pro capabilities to a business
+ * whose Subscription.status had moved to EXPIRED/CANCELED — `plan` only
+ * flips to FREE via an explicit downgrade, which nothing in this codebase
+ * does automatically on expiry, so `plan` alone is not a safe signal for
+ * anything that costs money or acts on the business's behalf (sending a
+ * real message, running automation). Every feature in this set MUST be
+ * checked via the status-aware overloads below (hasFeature/
+ * assertFeatureAvailable's second overload), not the plan-only one.
+ */
+const STATUS_SENSITIVE_FEATURES: ReadonlySet<Feature> = new Set(["AUTOMATION", "OUTBOUND_MESSAGING"]);
+
+/**
+ * TRIALING/ACTIVE/GRACE_PERIOD are all "currently paying or about to be
+ * given the benefit of the doubt" — GRACE_PERIOD exists specifically so a
+ * failed renewal doesn't instantly cut off service. EXPIRED/CANCELED must
+ * never retain Pro entitlements regardless of what `plan` still reads.
+ */
+const ENTITLED_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["ACTIVE", "TRIALING", "GRACE_PERIOD"]);
+
+/**
+ * Single authoritative entitlement check — every other function in this
+ * module (hasFeature, assertFeatureAvailable) delegates to this one so
+ * there is exactly one place that decides plan-only vs status-sensitive
+ * features, rather than two parallel systems that can drift out of sync
+ * (see the P0 audit finding this replaces: isAutomationEntitled/
+ * assertAutomationEntitled duplicated this exact logic for AUTOMATION only,
+ * while OUTBOUND_MESSAGING kept using the plan-only path unnoticed).
+ */
+export function isEntitled(plan: Plan, status: SubscriptionStatus, feature: Feature): boolean {
+  if (!PLAN_FEATURES[plan].has(feature)) return false;
+  if (STATUS_SENSITIVE_FEATURES.has(feature)) return ENTITLED_STATUSES.has(status);
+  return true;
+}
+
+/**
+ * Plan-only overload — for callers (e.g. read-only summaries where a
+ * Subscription row wasn't already fetched) that genuinely cannot regress a
+ * status-sensitive feature to "entitled" incorrectly. Throws if called with
+ * a status-sensitive feature, since silently ignoring status for
+ * AUTOMATION/OUTBOUND_MESSAGING is exactly the defect being fixed — any
+ * call site that reaches this branch for one of those two features is a
+ * bug, not a legitimate simplification.
+ */
+export function hasFeature(plan: Plan, feature: Feature): boolean;
+export function hasFeature(plan: Plan, status: SubscriptionStatus, feature: Feature): boolean;
+export function hasFeature(plan: Plan, statusOrFeature: SubscriptionStatus | Feature, maybeFeature?: Feature): boolean {
+  if (maybeFeature) return isEntitled(plan, statusOrFeature as SubscriptionStatus, maybeFeature);
+  const feature = statusOrFeature as Feature;
+  if (STATUS_SENSITIVE_FEATURES.has(feature)) {
+    throw new Error(`hasFeature(plan, "${feature}") called without a status — ${feature} is status-sensitive, use hasFeature(plan, status, "${feature}")`);
+  }
   return PLAN_FEATURES[plan].has(feature);
 }
 
-/** Throws FEATURE_NOT_AVAILABLE (403) when `plan` doesn't include `feature`. */
-export function assertFeatureAvailable(plan: Plan, feature: Feature): void {
-  if (hasFeature(plan, feature)) return;
+/** Throws FEATURE_NOT_AVAILABLE (403) when `plan`/`status` don't entitle `feature`. Plan-only overload rejects status-sensitive features — see hasFeature. */
+export function assertFeatureAvailable(plan: Plan, feature: Feature): void;
+export function assertFeatureAvailable(plan: Plan, status: SubscriptionStatus, feature: Feature): void;
+export function assertFeatureAvailable(plan: Plan, statusOrFeature: SubscriptionStatus | Feature, maybeFeature?: Feature): void {
+  const feature = maybeFeature ?? (statusOrFeature as Feature);
+  const entitled = maybeFeature ? hasFeature(plan, statusOrFeature as SubscriptionStatus, maybeFeature) : hasFeature(plan, statusOrFeature as Feature);
+  if (entitled) return;
   throw ApiError.featureNotAvailable(feature, FEATURE_LABELS[feature], plan);
-}
-
-// ---------------------------------------------------------------------------
-// Automation entitlement — plan AND subscription status
-// ---------------------------------------------------------------------------
-
-/**
- * `request.plan` (resolved in tenant.ts) reflects only `Subscription.plan`,
- * which is sufficient for every plan-tier check elsewhere in this codebase
- * (a business is either FREE or PRO regardless of billing-cycle status).
- * Automation is different: a PRO business whose billing has lapsed
- * (EXPIRED/CANCELED) must not have Chakusa keep sending on their behalf,
- * even though `plan` still reads PRO until something explicitly downgrades
- * it. TRIALING/ACTIVE/GRACE_PERIOD are all "currently paying or about to be
- * given the benefit of the doubt" — GRACE_PERIOD exists specifically so a
- * failed renewal doesn't instantly cut off service.
- */
-const AUTOMATION_ENTITLED_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["ACTIVE", "TRIALING", "GRACE_PERIOD"]);
-
-export function isAutomationEntitled(plan: Plan, status: SubscriptionStatus): boolean {
-  return hasFeature(plan, "AUTOMATION") && AUTOMATION_ENTITLED_STATUSES.has(status);
-}
-
-/** Throws FEATURE_NOT_AVAILABLE (403) unless both the plan and current subscription status allow automation. */
-export function assertAutomationEntitled(plan: Plan, status: SubscriptionStatus): void {
-  if (isAutomationEntitled(plan, status)) return;
-  throw ApiError.featureNotAvailable("AUTOMATION", FEATURE_LABELS.AUTOMATION, plan);
 }
 
 // ---------------------------------------------------------------------------

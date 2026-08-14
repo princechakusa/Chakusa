@@ -73,13 +73,13 @@ describe("entitlements", () => {
   // ---------------------------------------------------------------------
 
   it("4. denies AUTOMATION on FREE", () => {
-    expect(hasFeature("FREE", "AUTOMATION")).toBe(false);
-    expect(() => assertFeatureAvailable("FREE", "AUTOMATION")).toThrow(ApiError);
+    expect(hasFeature("FREE", "ACTIVE", "AUTOMATION")).toBe(false);
+    expect(() => assertFeatureAvailable("FREE", "ACTIVE", "AUTOMATION")).toThrow(ApiError);
   });
 
   it("5. allows AUTOMATION on PRO", () => {
-    expect(hasFeature("PRO", "AUTOMATION")).toBe(true);
-    expect(() => assertFeatureAvailable("PRO", "AUTOMATION")).not.toThrow();
+    expect(hasFeature("PRO", "ACTIVE", "AUTOMATION")).toBe(true);
+    expect(() => assertFeatureAvailable("PRO", "ACTIVE", "AUTOMATION")).not.toThrow();
   });
 
   it("6. denies ADVANCED_ANALYTICS on FREE", () => {
@@ -95,13 +95,13 @@ describe("entitlements", () => {
   // Added in Phase 2 (manual Pro SMS) — see src/lib/entitlements.ts for why
   // this is a separate feature from AUTOMATION rather than reusing it.
   it("denies OUTBOUND_MESSAGING on FREE", () => {
-    expect(hasFeature("FREE", "OUTBOUND_MESSAGING")).toBe(false);
-    expect(() => assertFeatureAvailable("FREE", "OUTBOUND_MESSAGING")).toThrow(ApiError);
+    expect(hasFeature("FREE", "ACTIVE", "OUTBOUND_MESSAGING")).toBe(false);
+    expect(() => assertFeatureAvailable("FREE", "ACTIVE", "OUTBOUND_MESSAGING")).toThrow(ApiError);
   });
 
   it("allows OUTBOUND_MESSAGING on PRO", () => {
-    expect(hasFeature("PRO", "OUTBOUND_MESSAGING")).toBe(true);
-    expect(() => assertFeatureAvailable("PRO", "OUTBOUND_MESSAGING")).not.toThrow();
+    expect(hasFeature("PRO", "ACTIVE", "OUTBOUND_MESSAGING")).toBe(true);
+    expect(() => assertFeatureAvailable("PRO", "ACTIVE", "OUTBOUND_MESSAGING")).not.toThrow();
   });
 
   // ---------------------------------------------------------------------
@@ -343,11 +343,19 @@ describe("entitlements", () => {
     expect(second.json().error.code).toBe("LIMIT_REACHED");
   });
 
-  it("25. does not count a default template toward the custom-template limit", async () => {
+  it("25. a default template row DOES count toward the custom-template limit (P0 quota-bypass fix)", async () => {
     const { token } = await registerAccount(app);
 
-    // A single isDefault:true row for the type — this must never consume
-    // the one non-default slot the Free plan allows.
+    // Every MessageTemplate row a business creates is a stored custom
+    // template regardless of isDefault — the system default
+    // (defaultTemplates.ts) never creates a row at all, so isDefault only
+    // controls render precedence, not whether the row is "custom." A Free
+    // business creating one isDefault:true row has therefore already used
+    // its one allowed slot for that type — a second row of any kind for
+    // the same type must be rejected. This replaces a prior version of
+    // this test that asserted the opposite (the actual P0 bug: isDefault
+    // rows were exempt from the count, letting Free repeatedly bypass the
+    // limit by always passing isDefault: true).
     const defaultTemplate = await app.inject({
       method: "POST",
       url: "/message-templates",
@@ -356,21 +364,14 @@ describe("entitlements", () => {
     });
     expect(defaultTemplate.statusCode).toBe(201);
 
-    // The one non-default slot is still available — proving the default
-    // row above was exempt from the count.
-    const customSlot = await app.inject({
+    const secondRow = await app.inject({
       method: "POST",
       url: "/message-templates",
       headers: authHeader(token),
       payload: { templateType: "missed_call", name: "Custom", body: "Custom body", isDefault: false },
     });
-    expect(customSlot.statusCode).toBe(201);
-
-    // Note: creating a *second* isDefault:true row for the same type would
-    // demote the first to isDefault:false (existing behavior, unchanged by
-    // this task) — at that point it correctly becomes a real custom row and
-    // does consume the limit. That demotion scenario is a separate concern
-    // from "does a default count," which is what this test isolates.
+    expect(secondRow.statusCode).toBe(403);
+    expect(secondRow.json().error.code).toBe("LIMIT_REACHED");
   });
 
   it("26. lets Pro template creation bypass the per-type limit", async () => {
@@ -477,7 +478,7 @@ describe("entitlements", () => {
 
   it("32. returns a fully-shaped FEATURE_NOT_AVAILABLE error", () => {
     try {
-      assertFeatureAvailable("FREE", "AUTOMATION");
+      assertFeatureAvailable("FREE", "ACTIVE", "AUTOMATION");
       throw new Error("expected assertFeatureAvailable to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(ApiError);

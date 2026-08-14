@@ -3,6 +3,7 @@ import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDime
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme';
+import chakusaIcon from '../../assets/chakusa-app-icon.png';
 
 interface FirstEntryScreenProps {
   onGetStarted: () => void;
@@ -24,7 +25,7 @@ export function FirstEntryScreen({ onGetStarted, onSignIn }: FirstEntryScreenPro
           <Image
             accessibilityIgnoresInvertColors
             resizeMode="contain"
-            source={require('../../assets/chakusa-app-icon.png')}
+            source={chakusaIcon}
             style={[styles.logo, compact && styles.logoCompact]}
           />
           <Text accessibilityRole="header" style={styles.wordmark}>CHAKUSA</Text>

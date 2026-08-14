@@ -27,7 +27,7 @@ function makeFakeProvider(sendImpl?: (message: OutboundMessage) => Promise<SendR
 }
 
 async function makeEnabledRule(businessId: string, delaySeconds = 0) {
-  return createAutomationRule(businessId, "PRO", {
+  return createAutomationRule(businessId, "PRO", "ACTIVE", {
     name: "Missed call recovery",
     enabled: true,
     triggerType: "LEAD_CREATED",
@@ -137,7 +137,7 @@ describe("automation execution engine (Phase 4)", () => {
   it("4. does not schedule automation for a disabled rule", async () => {
     const { token, businessId } = await registerAccount(app);
     await setPlan(businessId, "PRO");
-    await createAutomationRule(businessId, "PRO", {
+    await createAutomationRule(businessId, "PRO", "ACTIVE", {
       name: "Disabled rule",
       enabled: false,
       triggerType: "LEAD_CREATED",

@@ -42,6 +42,25 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: optionalSecret,
   TWILIO_FROM_NUMBER: optionalSecret,
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
+  // Behind a reverse proxy (Render/Railway/etc.), the socket's remote
+  // address is the proxy's, not the real client's — Fastify's IP-based
+  // rate limiting (@fastify/rate-limit's default keyGenerator uses
+  // request.ip) silently degrades to "every request looks like it comes
+  // from the same IP" unless the app is told to trust X-Forwarded-For.
+  // Off by default (safe for local/dev, where there's no proxy and
+  // trusting an arbitrary X-Forwarded-For would let a client spoof its
+  // own rate-limit identity); set to "true" in production once the
+  // deployment target's proxy is confirmed to set X-Forwarded-For
+  // correctly and isn't reachable directly (bypassing the proxy).
+  TRUST_PROXY: booleanFlag,
+  // Optional comma-separated origin allowlist for browser-based clients.
+  // Unset (the default) preserves today's `origin: true` behavior — safe
+  // for a mobile-only client, since native apps don't send a
+  // browser-enforced Origin header and this API uses bearer tokens, not
+  // cookies, so there's no CSRF surface from reflecting an arbitrary
+  // origin. Set this once a real web frontend domain exists; no domain is
+  // invented here since none is configured yet.
+  CORS_ALLOWED_ORIGINS: optionalSecret,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
   if (!env.RESEND_API_KEY) {
@@ -82,3 +101,8 @@ export const googleOAuthClientIds = config.GOOGLE_OAUTH_CLIENT_IDS
   ?.split(",")
   .map((value) => value.trim())
   .filter(Boolean) ?? [];
+
+export const corsAllowedOrigins = config.CORS_ALLOWED_ORIGINS
+  ?.split(",")
+  .map((value) => value.trim())
+  .filter(Boolean) ?? null;

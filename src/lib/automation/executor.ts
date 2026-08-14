@@ -1,5 +1,5 @@
 import { prisma } from "../prisma.js";
-import { isAutomationEntitled } from "../entitlements.js";
+import { isEntitled } from "../entitlements.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
 import { renderMissedCallFollowUp } from "../messageRendering.js";
@@ -179,7 +179,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
       where: { businessId: run.businessId },
       select: { plan: true, status: true },
     });
-    if (!subscription || !isAutomationEntitled(subscription.plan, subscription.status)) {
+    if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) {
       return cancelRun(run.id, "Business is no longer entitled to automation");
     }
 

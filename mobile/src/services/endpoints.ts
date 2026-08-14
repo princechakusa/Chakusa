@@ -1,4 +1,4 @@
-import { AuthResponse, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -26,13 +26,13 @@ export const authApi = {
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
   get: () => api.get<BusinessDto>('/business'),
-  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'phone' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'phone' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
 };
 export const devicesApi = {
   register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),
   remove: (token: string) => api.delete<void>(`/devices/${encodeURIComponent(token)}`),
 };
-export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary') };
+export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary'), attention: (category?: AttentionCategory, page = 1, pageSize = 25) => api.get<AttentionPageDto>(`/dashboard/attention${query({ category, page, pageSize })}`) };
 export const customersApi = {
   list: (search = '', page = 1, pageSize = 100) => api.get<CustomerListResponse>(`/customers${query({ search, page, pageSize })}`),
   create: (body: { name: string; phone?: string; email?: string; notes?: string }) => api.post<CustomerDto>('/customers', body),
@@ -49,10 +49,11 @@ export const leadsApi = {
 export const reviewsApi = {
   list: () => api.get<ReviewRequestDto[]>('/review-requests'), create: (body: { customerId?: string; serviceName?: string; message?: string }) => api.post<ReviewRequestDto>('/review-requests', body),
   get: (id: string) => api.get<ReviewRequestDto>(`/review-requests/${id}`), patch: (id: string, body: Partial<Pick<ReviewRequestDto, 'serviceName' | 'message' | 'status'>>) => api.patch<ReviewRequestDto>(`/review-requests/${id}`, body),
-  generateMessage: (id: string) => api.post<{ message: string }>(`/review-requests/${id}/generate-message`), markSent: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-sent`), markReviewed: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-reviewed`), markFeedbackReceived: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-feedback-received`),
+  generateMessage: (id: string) => api.post<{ message: string }>(`/review-requests/${id}/generate-message`), markOpened: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-opened`), markSent: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-sent`), markReviewed: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-reviewed`), markFeedbackReceived: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-feedback-received`),
 };
 export const feedbackApi = { list: () => api.get<FeedbackDto[]>('/feedback'), create: (body: { customerId?: string; reviewRequestId?: string; rating: number; comment?: string }) => api.post<FeedbackDto>('/feedback', body) };
 export const remindersApi = {
   list: () => api.get<ReminderDto[]>('/reminders'), create: (body: { customerId?: string; serviceName?: string; lastVisitDate?: string; dueDate?: string }) => api.post<ReminderDto>('/reminders', body), get: (id: string) => api.get<ReminderDto>(`/reminders/${id}`), patch: (id: string, body: Partial<Pick<ReminderDto, 'serviceName' | 'lastVisitDate' | 'dueDate' | 'status'>>) => api.patch<ReminderDto>(`/reminders/${id}`, body), generateMessage: (id: string) => api.post<{ message: string }>(`/reminders/${id}/generate-message`), markSent: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-sent`), markCompleted: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-completed`), dismiss: (id: string) => api.post<ReminderDto>(`/reminders/${id}/dismiss`),
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
+export const subscriptionApi = { getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status') };

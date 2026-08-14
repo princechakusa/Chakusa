@@ -11,7 +11,7 @@ import { usePreferences } from '../state/PreferencesContext';
 export function AuthScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const preferences = usePreferences();
-  const continueAfterSignIn = () => { if (!preferences.onboardingComplete) preferences.setOnboardingStep(3); };
+  const continueAfterSignIn = () => { if (!preferences.onboardingComplete) preferences.setOnboardingStep(2); };
   const returnToWelcome = () => navigation.reset({ index: 0, routes: [{ name: 'FirstEntry' }] });
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}><ScrollView contentContainerStyle={styles.container} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}><View><Pressable accessibilityLabel="Back to welcome" accessibilityRole="button" hitSlop={8} onPress={returnToWelcome} style={({ pressed }) => [styles.back, pressed && styles.backPressed]}><Ionicons name="chevron-back" size={24} color={colors.text} /><Text style={styles.backText}>Back</Text></Pressable><View style={styles.mark}><Text style={styles.markText}>C</Text></View><Text style={styles.brand}>CHAKUSA</Text><Text style={styles.tagline}>Recover. Reputation. Return.</Text></View><AuthForm defaultMode="login" onSuccess={continueAfterSignIn} onForgotPassword={() => navigation.navigate('ForgotPassword')} /></ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }

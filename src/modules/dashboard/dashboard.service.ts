@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
 
@@ -5,6 +6,31 @@ function startOfDay(date: Date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+/**
+ * Average response time in seconds, computed entirely in SQL (AVG over the
+ * per-row EXTRACT(EPOCH FROM contacted_at - missed_call_time)) — see the
+ * P0 scale fix below for why this replaced a Node-side findMany/reduce.
+ * businessId is passed as a bound parameter (Prisma.sql``'s tagged
+ * template), never string-interpolated, so this carries no injection risk
+ * despite being raw SQL.
+ */
+async function getAverageResponseTime(businessId: string): Promise<{ averageSeconds: number | null; sampleSize: number }> {
+  const rows = await prisma.$queryRaw<{ avg_seconds: number | null; sample_size: bigint }[]>(Prisma.sql`
+    SELECT
+      AVG(EXTRACT(EPOCH FROM (contacted_at - missed_call_time))) AS avg_seconds,
+      COUNT(*) AS sample_size
+    FROM leads
+    WHERE business_id = ${businessId}
+      AND missed_call_time IS NOT NULL
+      AND contacted_at IS NOT NULL
+  `);
+  const row = rows[0];
+  return {
+    averageSeconds: row?.avg_seconds != null ? Number(row.avg_seconds) : null,
+    sampleSize: row ? Number(row.sample_size) : 0,
+  };
 }
 
 export async function getDashboardSummary(businessId: string) {
@@ -23,7 +49,10 @@ export async function getDashboardSummary(businessId: string) {
     customersDue,
     recentActivity,
     dueReminders,
-    respondedLeads,
+    responseTime,
+    totalRecoveredAggregate,
+    missedCallRecoveredAggregate,
+    comebackWonReminders,
   ] = await Promise.all([
     prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL } }),
     prisma.lead.count({ where: { businessId, status: "new" } }),
@@ -50,41 +79,33 @@ export async function getDashboardSummary(businessId: string) {
       take: 10,
       include: { customer: true },
     }),
-    prisma.lead.findMany({
-      where: { businessId, missedCallTime: { not: null }, contactedAt: { not: null } },
-      select: { missedCallTime: true, contactedAt: true },
+    // P0 scale fix: previously two separate prisma.lead.findMany() calls
+    // loaded every matching row into Node just to sum/average in
+    // JavaScript — both queries grew unbounded with a business's all-time
+    // lead history. Both are now SQL-side aggregates (COUNT/AVG/SUM), so
+    // the response time and cost of this endpoint no longer scales with
+    // how many leads a business has ever had.
+    getAverageResponseTime(businessId),
+    prisma.lead.aggregate({
+      where: { businessId, status: "won", estimatedValue: { not: null } },
+      _sum: { estimatedValue: true },
     }),
+    prisma.lead.aggregate({
+      where: { businessId, status: "won", estimatedValue: { not: null }, source: LEAD_SOURCE_MISSED_CALL },
+      _sum: { estimatedValue: true },
+    }),
+    prisma.reminder.count({ where: { businessId, status: "completed" } }),
   ]);
 
   const totalLeads = newLeads + contactedLeads + bookedLeads + wonLeads + lostLeads;
   const conversionRate = totalLeads > 0 ? wonLeads / totalLeads : 0;
   const contactRate = totalLeads > 0 ? (contactedLeads + bookedLeads + wonLeads + lostLeads) / totalLeads : 0;
 
-  const responseTimesSeconds = respondedLeads
-    .filter((lead) => lead.missedCallTime && lead.contactedAt)
-    .map((lead) => (lead.contactedAt!.getTime() - lead.missedCallTime!.getTime()) / 1000);
-  const averageResponseTimeSeconds =
-    responseTimesSeconds.length > 0
-      ? responseTimesSeconds.reduce((sum, s) => sum + s, 0) / responseTimesSeconds.length
-      : null;
+  const averageResponseTimeSeconds = responseTime.averageSeconds;
+  const responseTimesSampleSize = responseTime.sampleSize;
 
-  const wonLeadRecords = await prisma.lead.findMany({
-    where: { businessId, status: "won", estimatedValue: { not: null } },
-    select: { estimatedValue: true, source: true },
-  });
-
-  const missedCallRecoveredRevenue = wonLeadRecords
-    .filter((lead) => lead.source === LEAD_SOURCE_MISSED_CALL)
-    .reduce((sum, lead) => sum + Number(lead.estimatedValue), 0);
-
-  const totalRecoveredRevenue = wonLeadRecords.reduce(
-    (sum, lead) => sum + Number(lead.estimatedValue),
-    0,
-  );
-
-  const comebackWonReminders = await prisma.reminder.count({
-    where: { businessId, status: "completed" },
-  });
+  const totalRecoveredRevenue = Number(totalRecoveredAggregate._sum.estimatedValue ?? 0);
+  const missedCallRecoveredRevenue = Number(missedCallRecoveredAggregate._sum.estimatedValue ?? 0);
 
   const attentionItems = [
     ...dueReminders.map((r) => ({
@@ -121,7 +142,7 @@ export async function getDashboardSummary(businessId: string) {
     customersDue,
     responseTime: {
       averageSeconds: averageResponseTimeSeconds,
-      sampleSize: responseTimesSeconds.length,
+      sampleSize: responseTimesSampleSize,
     },
     recentActivity,
     todayAttentionItems: attentionItems,

@@ -30,7 +30,7 @@ function makeFakeProvider(sendImpl?: (message: OutboundMessage) => Promise<SendR
 }
 
 async function makeEnabledRule(businessId: string) {
-  return createAutomationRule(businessId, "PRO", {
+  return createAutomationRule(businessId, "PRO", "ACTIVE", {
     name: "Missed call recovery",
     enabled: true,
     triggerType: "LEAD_CREATED",

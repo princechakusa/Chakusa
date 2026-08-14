@@ -767,5 +767,12 @@ model AutomationRun {
   @@index([customerId])
   @@index([leadId])
   @@index([status, leaseExpiresAt])
+  // The worker's primary claim query (claimDueAutomationRuns in
+  // executor.ts) filters on status = PENDING AND scheduledFor <= now,
+  // ordered by scheduledFor — this composite index covers that scan
+  // directly. Missing before this pass (P1 scale audit finding); without
+  // it, that query falls back to the (status, leaseExpiresAt) index or a
+  // sequential scan as PENDING rows accumulate across many businesses.
+  @@index([status, scheduledFor])
   @@map("automation_runs")
 }

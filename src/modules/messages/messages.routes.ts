@@ -13,7 +13,7 @@ export default async function messageRoutes(fastify: FastifyInstance) {
   // client sends can override either.
   fastify.post("/send", async (request, reply) => {
     const input = sendMessageSchema.parse(request.body);
-    const message = await sendMessage(request.businessId!, input, request.plan!);
+    const message = await sendMessage(request.businessId!, input, request.plan!, request.status!);
     reply.status(201).send(message);
   });
 }

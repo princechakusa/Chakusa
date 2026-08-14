@@ -171,29 +171,81 @@ const STATUS_TRANSITIONS: Record<
   lost: { field: "lostAt", eventType: "LEAD_LOST" },
 };
 
+/**
+ * Smallest sensible state machine for the existing recovery workflow.
+ * `contacted`/`booked` only ever move forward through the natural
+ * new -> contacted -> booked progression (skipping straight to "booked"
+ * without recording contact first doesn't reflect what happened). `won`
+ * and `lost`, however, are reachable from ANY non-terminal stage
+ * (new/contacted/booked) — a business often records the outcome after the
+ * fact (e.g. "customer called back and booked on the spot, marking this
+ * won" without ever separately clicking "contacted" first), and the
+ * existing mobile LeadDetailScreen and test suite both already rely on
+ * this — see leads.test.ts/dashboard.test.ts/customers.test.ts creating a
+ * lead and going straight to mark-won. won/lost are terminal: nothing
+ * transitions out of them. Re-requesting the lead's own current status is
+ * allowed as a no-op — mobile renders all four "Mark ..." buttons
+ * simultaneously regardless of current status, so treating a same-status
+ * re-click as an error would turn an accidental double-tap into a visible
+ * failure for no product reason. What's actually rejected: any transition
+ * out of a terminal state (won -> anything, lost -> anything) and
+ * `booked` reached without first passing through `contacted`.
+ */
+const ALLOWED_LEAD_TRANSITIONS: Record<Lead["status"], ReadonlySet<Lead["status"]>> = {
+  new: new Set(["new", "contacted", "won", "lost"]),
+  contacted: new Set(["contacted", "booked", "won", "lost"]),
+  booked: new Set(["booked", "won", "lost"]),
+  won: new Set(["won"]),
+  lost: new Set(["lost"]),
+};
+
 export async function transitionLead(
   businessId: string,
   actorId: string,
   leadId: string,
   status: "contacted" | "booked" | "won" | "lost",
 ) {
-  await getOwnedLead(businessId, leadId);
+  const existing = await getOwnedLead(businessId, leadId);
+
+  if (!ALLOWED_LEAD_TRANSITIONS[existing.status].has(status)) {
+    throw ApiError.conflict(`Cannot transition lead from ${existing.status} to ${status}`);
+  }
+
+  // Re-affirming the current status is a no-op — no new activity event,
+  // no timestamp overwrite (the original transition's timestamp is the
+  // meaningful one).
+  if (existing.status === status) {
+    return withResponseTime(existing);
+  }
 
   const transition = STATUS_TRANSITIONS[status];
   const now = new Date();
 
-  const lead = await prisma.lead.update({
-    where: { id: leadId },
+  // Atomic claim guard: the WHERE clause re-asserts the exact status this
+  // decision was made against, so two concurrent transition requests for
+  // the same lead (e.g. "mark booked" fired twice, or racing with a
+  // different transition) can't both succeed and leave an inconsistent
+  // state — the loser's updateMany matches zero rows and gets a
+  // deterministic CONFLICT rather than silently overwriting the winner's
+  // write. Same pattern as automation.service.ts's transitionRun and
+  // reviews.service.ts's markReviewRequestReviewed.
+  const claimed = await prisma.lead.updateMany({
+    where: { id: leadId, businessId, status: existing.status },
     data: { status, [transition.field]: now },
   });
+
+  if (claimed.count === 0) {
+    throw ApiError.conflict(`Cannot transition lead from ${existing.status} to ${status}`);
+  }
 
   await recordActivity({
     businessId,
     actorId,
     eventType: transition.eventType,
     entityType: "lead",
-    entityId: lead.id,
+    entityId: leadId,
   });
 
+  const lead = await prisma.lead.findFirstOrThrow({ where: { id: leadId, businessId } });
   return withResponseTime(lead);
 }

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
+import { createTestApp, resetDatabase, registerAccount, authHeader, setPlan } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
 
 describe("message templates", () => {
@@ -59,6 +59,12 @@ describe("message templates", () => {
 
   it("unsets the previous default when a new default of the same type is created", async () => {
     const { token, businessId } = await registerAccount(app);
+    // PRO — this test isolates the isDefault demotion mechanic from the
+    // Free per-type quota (a Free business creating two rows of the same
+    // type now correctly hits LIMIT_REACHED on the second one, see the
+    // P0 template-quota-bypass fix; that interaction is covered by its
+    // own tests in entitlements.test.ts/p0-integrity-scale.test.ts).
+    await setPlan(businessId, "PRO");
 
     await app.inject({
       method: "POST",

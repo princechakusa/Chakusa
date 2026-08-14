@@ -9,6 +9,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { AppProvider } from './src/state/AppContext';
 import { AuthProvider } from './src/state/AuthContext';
 import { PreferencesProvider } from './src/state/PreferencesContext';
+import { PlanExperienceProvider } from './src/state/PlanExperienceContext';
 import { RootStackParamList } from './src/types';
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -19,7 +20,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <PreferencesProvider><AuthProvider><PushNotificationManager /><NotificationTapHandler /><AppProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AppProvider></AuthProvider></PreferencesProvider>
+      <PreferencesProvider><AuthProvider><PushNotificationManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>
     </SafeAreaProvider>
   );
 }

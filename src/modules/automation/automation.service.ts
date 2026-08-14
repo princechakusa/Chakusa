@@ -1,4 +1,4 @@
-import { Prisma, type AutomationRunStatus, type LeadStatus, type Plan } from "@prisma/client";
+import { Prisma, type AutomationRunStatus, type LeadStatus, type Plan, type SubscriptionStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
@@ -71,8 +71,15 @@ export async function getAutomationRule(businessId: string, id: string) {
   return getOwnedRule(businessId, id);
 }
 
-export async function createAutomationRule(businessId: string, plan: Plan, input: CreateAutomationRuleInput) {
-  assertFeatureAvailable(plan, "AUTOMATION");
+export async function createAutomationRule(businessId: string, plan: Plan, status: SubscriptionStatus, input: CreateAutomationRuleInput) {
+  // Status-aware: a PRO business whose subscription has EXPIRED/CANCELED
+  // must not be able to create/enable new automation rules just because
+  // Subscription.plan still reads "PRO" — see the P0 audit fix in
+  // entitlements.ts. This was previously plan-only here even though the
+  // scheduler/executor already correctly checked status before ever
+  // acting on a rule, which meant rule management and rule execution
+  // silently disagreed about entitlement.
+  assertFeatureAvailable(plan, status, "AUTOMATION");
   validateConfigForTrigger(input.triggerType, input.config as Record<string, unknown>);
 
   return prisma.automationRule.create({
@@ -91,10 +98,11 @@ export async function createAutomationRule(businessId: string, plan: Plan, input
 export async function updateAutomationRule(
   businessId: string,
   plan: Plan,
+  status: SubscriptionStatus,
   id: string,
   input: UpdateAutomationRuleInput,
 ) {
-  assertFeatureAvailable(plan, "AUTOMATION");
+  assertFeatureAvailable(plan, status, "AUTOMATION");
   const existing = await getOwnedRule(businessId, id);
 
   if (input.config !== undefined) {
@@ -120,8 +128,8 @@ export async function updateAutomationRule(
  * and its own entitlement check rather than being one field among many in a
  * general PATCH body.
  */
-export async function setAutomationRuleEnabled(businessId: string, plan: Plan, id: string, enabled: boolean) {
-  assertFeatureAvailable(plan, "AUTOMATION");
+export async function setAutomationRuleEnabled(businessId: string, plan: Plan, status: SubscriptionStatus, id: string, enabled: boolean) {
+  assertFeatureAvailable(plan, status, "AUTOMATION");
   await getOwnedRule(businessId, id);
 
   return prisma.automationRule.update({ where: { id }, data: { enabled } });

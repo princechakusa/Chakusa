@@ -29,20 +29,20 @@ export default async function automationRoutes(fastify: FastifyInstance) {
 
   fastify.post("/rules", async (request, reply) => {
     const input = createAutomationRuleSchema.parse(request.body);
-    const rule = await createAutomationRule(request.businessId!, request.plan!, input);
+    const rule = await createAutomationRule(request.businessId!, request.plan!, request.status!, input);
     reply.status(201).send(rule);
   });
 
   fastify.patch<{ Params: { id: string } }>("/rules/:id", async (request, reply) => {
     const input = updateAutomationRuleSchema.parse(request.body);
-    reply.send(await updateAutomationRule(request.businessId!, request.plan!, request.params.id, input));
+    reply.send(await updateAutomationRule(request.businessId!, request.plan!, request.status!, request.params.id, input));
   });
 
   fastify.post<{ Params: { id: string } }>("/rules/:id/enable", async (request, reply) => {
-    reply.send(await setAutomationRuleEnabled(request.businessId!, request.plan!, request.params.id, true));
+    reply.send(await setAutomationRuleEnabled(request.businessId!, request.plan!, request.status!, request.params.id, true));
   });
 
   fastify.post<{ Params: { id: string } }>("/rules/:id/disable", async (request, reply) => {
-    reply.send(await setAutomationRuleEnabled(request.businessId!, request.plan!, request.params.id, false));
+    reply.send(await setAutomationRuleEnabled(request.businessId!, request.plan!, request.status!, request.params.id, false));
   });
 }

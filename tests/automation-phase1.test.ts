@@ -386,13 +386,13 @@ describe("automation phase 1 foundations", () => {
 
   describe("entitlement regression", () => {
     it("still denies AUTOMATION on FREE", () => {
-      expect(hasFeature("FREE", "AUTOMATION")).toBe(false);
-      expect(() => assertFeatureAvailable("FREE", "AUTOMATION")).toThrow(ApiError);
+      expect(hasFeature("FREE", "ACTIVE", "AUTOMATION")).toBe(false);
+      expect(() => assertFeatureAvailable("FREE", "ACTIVE", "AUTOMATION")).toThrow(ApiError);
     });
 
     it("still allows AUTOMATION on PRO", () => {
-      expect(hasFeature("PRO", "AUTOMATION")).toBe(true);
-      expect(() => assertFeatureAvailable("PRO", "AUTOMATION")).not.toThrow();
+      expect(hasFeature("PRO", "ACTIVE", "AUTOMATION")).toBe(true);
+      expect(() => assertFeatureAvailable("PRO", "ACTIVE", "AUTOMATION")).not.toThrow();
     });
   });
 

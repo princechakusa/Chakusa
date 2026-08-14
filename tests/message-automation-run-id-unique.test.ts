@@ -32,7 +32,7 @@ describe("Message.automationRunId uniqueness", () => {
 
   async function makeRun(businessId: string) {
     await setPlan(businessId, "PRO");
-    const rule = await createAutomationRule(businessId, "PRO", {
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", {
       name: "Missed call recovery",
       enabled: true,
       triggerType: "LEAD_CREATED",

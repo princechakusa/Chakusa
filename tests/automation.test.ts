@@ -73,7 +73,7 @@ describe("automation domain model", () => {
     await setPlan(businessA.businessId, "PRO");
     await setPlan(businessB.businessId, "PRO");
 
-    const rule = await createAutomationRule(businessB.businessId, "PRO", {
+    const rule = await createAutomationRule(businessB.businessId, "PRO", "ACTIVE", {
       name: "B's rule",
       enabled: false,
       triggerType: "LEAD_CREATED",
@@ -204,7 +204,7 @@ describe("automation domain model", () => {
     const { businessId } = await registerAccount(app);
     await setPlan(businessId, "PRO");
 
-    const rule = await createAutomationRule(businessId, "PRO", {
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", {
       name: "Recovery",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -228,7 +228,7 @@ describe("automation domain model", () => {
     const businessB = await registerAccount(app, { email: "run-b@example.com" });
     await setPlan(businessA.businessId, "PRO");
 
-    const rule = await createAutomationRule(businessA.businessId, "PRO", {
+    const rule = await createAutomationRule(businessA.businessId, "PRO", "ACTIVE", {
       name: "Recovery",
       enabled: true,
       triggerType: "CUSTOMER_RETENTION",
@@ -256,7 +256,7 @@ describe("automation domain model", () => {
     const businessB = await registerAccount(app, { email: "run-lead-b@example.com" });
     await setPlan(businessA.businessId, "PRO");
 
-    const rule = await createAutomationRule(businessA.businessId, "PRO", {
+    const rule = await createAutomationRule(businessA.businessId, "PRO", "ACTIVE", {
       name: "Recovery",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -284,7 +284,7 @@ describe("automation domain model", () => {
     const businessB = await registerAccount(app, { email: "run-cross-b@example.com" });
     await setPlan(businessB.businessId, "PRO");
 
-    const ruleB = await createAutomationRule(businessB.businessId, "PRO", {
+    const ruleB = await createAutomationRule(businessB.businessId, "PRO", "ACTIVE", {
       name: "B's rule",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -310,7 +310,7 @@ describe("automation domain model", () => {
     const { businessId } = await registerAccount(app);
     await setPlan(businessId, "PRO");
 
-    const rule = await createAutomationRule(businessId, "PRO", {
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", {
       name: "Recovery",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -337,7 +337,7 @@ describe("automation domain model", () => {
     await setPlan(businessA.businessId, "PRO");
     await setPlan(businessB.businessId, "PRO");
 
-    const ruleA = await createAutomationRule(businessA.businessId, "PRO", {
+    const ruleA = await createAutomationRule(businessA.businessId, "PRO", "ACTIVE", {
       name: "Recovery A",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -345,7 +345,7 @@ describe("automation domain model", () => {
       delaySeconds: 0,
       config: {},
     });
-    const ruleB = await createAutomationRule(businessB.businessId, "PRO", {
+    const ruleB = await createAutomationRule(businessB.businessId, "PRO", "ACTIVE", {
       name: "Recovery B",
       enabled: true,
       triggerType: "LEAD_CREATED",
@@ -375,7 +375,7 @@ describe("automation domain model", () => {
   // ---------------------------------------------------------------------
 
   async function makeRun(businessId: string) {
-    const rule = await createAutomationRule(businessId, "PRO", {
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", {
       name: "Recovery",
       enabled: true,
       triggerType: "LEAD_CREATED",

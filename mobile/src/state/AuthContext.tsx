@@ -47,7 +47,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!current.onboardingComplete) current.completeOnboarding();
     } else if (current.onboardingComplete) {
       current.resetOnboarding();
-      current.setOnboardingStep(4);
+      current.setOnboardingStep(2);
     }
   }, []);
   const applySession = useCallback(async (response: AuthResponse) => {

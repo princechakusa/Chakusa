@@ -8,15 +8,19 @@ import { AttentionPreferences, usePreferences } from '../state/PreferencesContex
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { titleCase } from '../utils/format';
+import { usePlanExperience } from '../state/PlanExperienceContext';
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { business, user, logout, logoutAll, linkGoogle, linkApple } = useAuth();
   const preferences = usePreferences();
+  const { plan, status } = usePlanExperience();
+  const planValue = plan === 'PRO' ? (status === 'ACTIVE' ? 'Active' : status === 'TRIALING' ? 'Trial' : status === 'GRACE_PERIOD' ? 'Payment issue' : status === 'EXPIRED' ? 'Expired' : status === 'CANCELED' ? 'Canceled' : 'Active') : plan === 'FREE' ? 'Free plan' : 'View plans';
   const setPreference = (key: keyof AttentionPreferences, value: boolean) => preferences.setAttention({ ...preferences.attention, [key]: value });
   return <Screen>
     <AppHeader eyebrow="ACCOUNT" title={user?.fullName ?? 'Your account'} subtitle={user?.email} />
     <Group title="Profile"><Row icon="person-circle-outline" label="Name" value={user?.fullName ?? ''} /><Row icon="mail-outline" label="Email" value={user?.email ?? ''} last /></Group>
+    <Group title="Plan"><Row icon="sparkles-outline" label={plan === 'PRO' ? 'Chakusa Pro' : 'Free & Pro'} value={planValue} onPress={() => navigation.navigate('Pro')} last /></Group>
     <Group title="Business"><Row icon="storefront-outline" label="Business profile" value={business?.name ?? 'Not set'} onPress={() => navigation.navigate('BusinessSettings')} /><Row icon="call-outline" label="Phone and country" value={business?.phone ?? 'Not set'} onPress={() => navigation.navigate('BusinessSettings')} /><Row icon="cut-outline" label="Services" value={`${business?.defaultServices?.length ?? 0} services`} onPress={() => navigation.navigate('BusinessSettings')} /><Row icon="star-outline" label="Review link" value={business?.googleReviewLink ? 'Configured' : 'Not set'} onPress={() => navigation.navigate('BusinessSettings')} last /></Group>
     <Group title="Messaging"><Row icon="chatbubble-ellipses-outline" label="Message tone" value={titleCase(business?.preferredTone ?? 'friendly')} onPress={() => navigation.navigate('BusinessSettings')} /><Row icon="document-text-outline" label="Message templates" onPress={() => navigation.navigate('Templates')} last /></Group>
     <Group title="Follow-up"><Row icon="time-outline" label="Comeback timing" value={`${business?.reminderDays ?? 42} days`} onPress={() => navigation.navigate('BusinessSettings')} last /></Group>

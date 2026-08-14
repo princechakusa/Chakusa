@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
-import { isAutomationEntitled } from "../entitlements.js";
+import { isEntitled } from "../entitlements.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../leadSources.js";
 import { createAutomationRun } from "../../modules/automation/automation.service.js";
 import { buildLeadCreatedDedupeKey } from "./dedupeKey.js";
@@ -19,8 +19,8 @@ import type { Lead } from "@prisma/client";
  * Deliberately re-resolves plan+status from the database rather than
  * trusting any caller-supplied plan — createLead's own `plan` parameter is
  * only used for the Free lead-count limit and is not treated as
- * automation-authoritative here (see entitlements.ts's isAutomationEntitled
- * for why plan alone isn't enough: an EXPIRED PRO business must not have
+ * automation-authoritative here (see entitlements.ts's isEntitled for why
+ * plan alone isn't enough: an EXPIRED PRO business must not have
  * automation scheduled just because Subscription.plan still reads "PRO").
  */
 export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead): Promise<void> {
@@ -32,7 +32,7 @@ export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead)
       where: { businessId },
       select: { plan: true, status: true },
     });
-    if (!subscription || !isAutomationEntitled(subscription.plan, subscription.status)) return;
+    if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) return;
 
     const rule = await prisma.automationRule.findFirst({
       where: { businessId, triggerType: "LEAD_CREATED", enabled: true, channel: "SMS" },

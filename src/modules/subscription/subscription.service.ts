@@ -46,6 +46,7 @@ export interface SubscriptionStatusResponse {
     advancedAnalytics: boolean;
     extendedHistory: boolean;
     unlimitedTemplates: boolean;
+    teamManagement: boolean;
   };
   usage: {
     leads: MonthlyUsage;
@@ -130,6 +131,9 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       advancedAnalytics: hasFeature(plan, "ADVANCED_ANALYTICS"),
       extendedHistory: hasFeature(plan, "EXTENDED_HISTORY"),
       unlimitedTemplates: hasFeature(plan, "UNLIMITED_TEMPLATES"),
+      // TEAM_MANAGEMENT is status-sensitive like AUTOMATION/OUTBOUND_MESSAGING
+      // above — a downgraded/expired Business account must report false here.
+      teamManagement: hasFeature(plan, status, "TEAM_MANAGEMENT"),
     },
     usage: {
       leads: { current: leadsCurrent, limit: limits.leadsPerMonth, period: "month", resetsAt },

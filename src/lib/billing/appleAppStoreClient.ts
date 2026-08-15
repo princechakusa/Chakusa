@@ -12,10 +12,12 @@ export interface AppleBillingConfig {
   privateKey: string;
   environment: "SANDBOX" | "PRODUCTION";
   proMonthlyProductId: string;
+  /** Readiness-only — see config.ts's APPLE_BUSINESS_MONTHLY_PRODUCT_ID doc comment. null until Business billing actually ships. */
+  businessMonthlyProductId: string | null;
 }
 
 export function requireAppleBillingConfig(): AppleBillingConfig {
-  const { APPLE_BILLING_ENABLED, APPLE_BUNDLE_ID, APPLE_BILLING_ISSUER_ID, APPLE_BILLING_KEY_ID, APPLE_BILLING_PRIVATE_KEY_BASE64, APPLE_PRO_MONTHLY_PRODUCT_ID, APPLE_STORE_ENVIRONMENT } = config;
+  const { APPLE_BILLING_ENABLED, APPLE_BUNDLE_ID, APPLE_BILLING_ISSUER_ID, APPLE_BILLING_KEY_ID, APPLE_BILLING_PRIVATE_KEY_BASE64, APPLE_PRO_MONTHLY_PRODUCT_ID, APPLE_BUSINESS_MONTHLY_PRODUCT_ID, APPLE_STORE_ENVIRONMENT } = config;
   if (!APPLE_BILLING_ENABLED || !APPLE_BUNDLE_ID || !APPLE_BILLING_ISSUER_ID || !APPLE_BILLING_KEY_ID || !APPLE_BILLING_PRIVATE_KEY_BASE64 || !APPLE_PRO_MONTHLY_PRODUCT_ID) {
     throw new Error("Apple billing is not configured");
   }
@@ -26,6 +28,7 @@ export function requireAppleBillingConfig(): AppleBillingConfig {
     privateKey: Buffer.from(APPLE_BILLING_PRIVATE_KEY_BASE64, "base64").toString("utf8"),
     environment: APPLE_STORE_ENVIRONMENT,
     proMonthlyProductId: APPLE_PRO_MONTHLY_PRODUCT_ID,
+    businessMonthlyProductId: APPLE_BUSINESS_MONTHLY_PRODUCT_ID || null,
   };
 }
 

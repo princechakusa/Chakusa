@@ -11,9 +11,43 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
+// ADMIN added for Business v1 (team operations) — see BusinessMember below
+// and src/lib/authorization.ts. v1 deliberately keeps team-management
+// actions (invite/remove/role-change) OWNER-only regardless of ADMIN vs
+// STAFF; ADMIN exists as a distinct, assignable label now so a future phase
+// can grant it real additional operational permissions without another
+// enum migration, but no route currently treats ADMIN differently from
+// STAFF — see the Business Phase 1 report's "role model" section.
 enum BusinessRole {
   OWNER
+  ADMIN
   STAFF
+}
+
+// A member's access state, independent of BusinessRole. ACTIVE is the only
+// state that existed implicitly before Business v1 (every member always
+// had full access). SUSPENDED is new: it represents a non-owner member
+// whose access is currently disabled because the business no longer holds
+// Business-tier entitlement (see src/plugins/tenant.ts's downgrade-sync
+// logic) — the row and all historical data it's linked to are preserved,
+// only authorization is affected. The owner's own membership is never
+// SUSPENDED (see Business.ownerId's doc comment on the ownership
+// invariant).
+enum BusinessMemberStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+// Lifecycle of one team invitation. EXPIRED is computed at read/accept time
+// from `expiresAt` rather than written by a background job — see
+// TeamInvitation's doc comment — but is still a real status value so an
+// invite that's found to be expired at accept time can be durably recorded
+// as such (a claim-guard update, not a cron).
+enum TeamInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 enum AuthProvider {
@@ -108,9 +142,15 @@ enum MessageTone {
   casual
 }
 
+// BUSINESS inherits every PRO feature plus TEAM_MANAGEMENT — see
+// entitlements.ts's PLAN_FEATURES, which builds BUSINESS's feature set by
+// spreading PRO's rather than duplicating it. Adding this value is
+// additive at the database level (`ALTER TYPE ... ADD VALUE`, applied via
+// a normal migration) and does not touch any existing FREE/PRO row.
 enum Plan {
   FREE
   PRO
+  BUSINESS
 }
 
 enum SubscriptionStatus {
@@ -164,6 +204,13 @@ enum ActivityEventType {
   AUTOMATION_MESSAGE_SCHEDULED
   AUTOMATION_MESSAGE_SENT
   AUTOMATION_MESSAGE_FAILED
+  // Business v1 team events — see teamInvitations.service.ts /
+  // teamMembers.service.ts. Additive to this enum, same as the automation
+  // values above.
+  TEAM_MEMBER_INVITED
+  TEAM_MEMBER_JOINED
+  TEAM_MEMBER_ROLE_CHANGED
+  TEAM_MEMBER_REMOVED
 }
 
 // Whether a customer opted out of a specific channel or every channel a
@@ -223,14 +270,15 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  ownedBusinesses Business[]           @relation("BusinessOwner")
-  memberships     BusinessMember[]
-  activityEvents  ActivityEvent[]      @relation("ActivityActor")
-  authIdentities  AuthIdentity[]
-  authSessions    AuthSession[]
-  authChallenges  AuthChallenge[]
-  passwordResets  PasswordResetToken[]
-  deviceTokens    DeviceToken[]
+  ownedBusinesses     Business[]           @relation("BusinessOwner")
+  memberships         BusinessMember[]
+  activityEvents      ActivityEvent[]      @relation("ActivityActor")
+  authIdentities      AuthIdentity[]
+  authSessions        AuthSession[]
+  authChallenges      AuthChallenge[]
+  passwordResets      PasswordResetToken[]
+  deviceTokens        DeviceToken[]
+  sentTeamInvitations TeamInvitation[]     @relation("TeamInvitationInviter")
 
   @@map("users")
 }
@@ -386,17 +434,22 @@ model Business {
   automationRules  AutomationRule[]
   automationRuns   AutomationRun[]
   billingEvents    BillingEvent[]
+  teamInvitations  TeamInvitation[]
 
   @@index([ownerId])
   @@map("businesses")
 }
 
 model BusinessMember {
-  id         String       @id @default(uuid())
-  businessId String       @map("business_id")
-  userId     String       @map("user_id")
-  role       BusinessRole @default(OWNER)
-  createdAt  DateTime     @default(now()) @map("created_at")
+  id         String               @id @default(uuid())
+  businessId String               @map("business_id")
+  userId     String               @map("user_id")
+  role       BusinessRole         @default(OWNER)
+  // See BusinessMemberStatus's doc comment. Defaults ACTIVE — every
+  // pre-existing row (all OWNER, from before Business v1) is unaffected by
+  // this additive column.
+  status     BusinessMemberStatus @default(ACTIVE)
+  createdAt  DateTime             @default(now()) @map("created_at")
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -405,6 +458,55 @@ model BusinessMember {
   @@index([userId])
   @@index([businessId])
   @@map("business_members")
+}
+
+// One invitation for one email to join one business at one role. Mirrors
+// the existing opaque-token pattern (src/lib/authTokens.ts, already used
+// for refresh/reset/public-review tokens): `tokenId` is the lookup key,
+// `tokenHash` is the only thing persisted of the secret itself — the raw
+// token is returned to the inviting owner exactly once, at creation, and
+// never stored or logged again (same guarantee as
+// reviews.service.ts's generatePublicReviewLink).
+//
+// `status` starts PENDING and moves to ACCEPTED or REVOKED via explicit,
+// claim-guarded transitions (see teamInvitations.service.ts) — the same
+// atomic-updateMany-with-a-WHERE-guard concurrency pattern used throughout
+// this codebase. EXPIRED is derived from `expiresAt` at read/accept time
+// rather than written by a background job (no cron infrastructure exists
+// for this), but is recorded durably the first time an expired PENDING
+// invite is actually touched (accepted-against or explicitly checked), so
+// a stale-forever PENDING row never misleads a later listing.
+//
+// Duplicate-pending-invite and existing-member prevention are enforced at
+// the application layer inside a Serializable transaction (see
+// entitlements.ts's withLimitCheck, reused for seat-limit + duplicate
+// checks together) rather than a partial unique index, since Prisma's
+// schema DSL cannot express "unique only where status = PENDING" and this
+// codebase already has an established pattern for exactly this kind of
+// concurrency-safe check.
+model TeamInvitation {
+  id              String               @id @default(uuid())
+  businessId      String               @map("business_id")
+  invitedEmail    String               @map("invited_email")
+  // Never OWNER — enforced in teamInvitations.schemas.ts's Zod schema, not
+  // just convention.
+  role            BusinessRole         @map("role")
+  tokenId         String               @unique @map("token_id")
+  tokenHash       String               @map("token_hash")
+  status          TeamInvitationStatus @default(PENDING)
+  invitedByUserId String               @map("invited_by_user_id")
+  expiresAt       DateTime             @map("expires_at")
+  acceptedAt      DateTime?            @map("accepted_at")
+  revokedAt       DateTime?            @map("revoked_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedBy User     @relation("TeamInvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, invitedEmail, status])
+  @@map("team_invitations")
 }
 
 model Customer {

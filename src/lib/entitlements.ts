@@ -1,6 +1,7 @@
 import { Prisma, type Plan, type SubscriptionStatus } from "@prisma/client";
 import { ApiError } from "./errors.js";
 import { prisma } from "./prisma.js";
+import { config } from "./config.js";
 
 // ---------------------------------------------------------------------------
 // Features
@@ -20,7 +21,19 @@ import { prisma } from "./prisma.js";
  * Chakusa-sent SMS but no automation, or vice versa) — see the Phase 2
  * report for the full reasoning.
  */
-export type Feature = "AUTOMATION" | "OUTBOUND_MESSAGING" | "ADVANCED_ANALYTICS" | "EXTENDED_HISTORY" | "UNLIMITED_TEMPLATES";
+export type Feature =
+  | "AUTOMATION"
+  | "OUTBOUND_MESSAGING"
+  | "ADVANCED_ANALYTICS"
+  | "EXTENDED_HISTORY"
+  | "UNLIMITED_TEMPLATES"
+  // Business v1's one new capability: multiple staff seats, invitations,
+  // and role management (see src/modules/team/*). Deliberately its own
+  // feature, not folded into an existing one, since it's the thing that
+  // actually justifies BUSINESS as a distinct tier rather than "Pro with a
+  // higher price" — see the Business Phase 1 report's "product goal"
+  // section.
+  | "TEAM_MANAGEMENT";
 
 const FEATURE_LABELS: Record<Feature, string> = {
   AUTOMATION: "Automation",
@@ -28,11 +41,23 @@ const FEATURE_LABELS: Record<Feature, string> = {
   ADVANCED_ANALYTICS: "Advanced analytics",
   EXTENDED_HISTORY: "Extended activity history",
   UNLIMITED_TEMPLATES: "Unlimited custom templates",
+  TEAM_MANAGEMENT: "Team management",
 };
+
+/**
+ * PRO's feature set is defined once and spread into BUSINESS's, rather than
+ * BUSINESS listing all five PRO features again — this is what makes "add a
+ * new PRO feature" a one-line change instead of a two-place edit that can
+ * silently drift (see the Business Phase 1 report's "entitlement
+ * architecture" section, which audited this file specifically for that
+ * risk before writing BUSINESS's entry).
+ */
+const PRO_FEATURES = new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVANCED_ANALYTICS", "EXTENDED_HISTORY", "UNLIMITED_TEMPLATES"]);
 
 const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   FREE: new Set(),
-  PRO: new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVANCED_ANALYTICS", "EXTENDED_HISTORY", "UNLIMITED_TEMPLATES"]),
+  PRO: PRO_FEATURES,
+  BUSINESS: new Set<Feature>([...PRO_FEATURES, "TEAM_MANAGEMENT"]),
 };
 
 /**
@@ -48,7 +73,7 @@ const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
  * checked via the status-aware overloads below (hasFeature/
  * assertFeatureAvailable's second overload), not the plan-only one.
  */
-const STATUS_SENSITIVE_FEATURES: ReadonlySet<Feature> = new Set(["AUTOMATION", "OUTBOUND_MESSAGING"]);
+const STATUS_SENSITIVE_FEATURES: ReadonlySet<Feature> = new Set(["AUTOMATION", "OUTBOUND_MESSAGING", "TEAM_MANAGEMENT"]);
 
 /**
  * TRIALING/ACTIVE/GRACE_PERIOD are all "currently paying or about to be
@@ -111,7 +136,7 @@ export function assertFeatureAvailable(plan: Plan, statusOrFeature: Subscription
  * Every resource this task enforces a Free-plan cap on. Feedback is
  * deliberately absent — it is not limited, per product decision.
  */
-export type LimitedResource = "leads" | "reviewRequests" | "customers" | "reminders" | "templates";
+export type LimitedResource = "leads" | "reviewRequests" | "customers" | "reminders" | "templates" | "staffSeats";
 
 const RESOURCE_LABELS: Record<LimitedResource, string> = {
   leads: "leads",
@@ -119,6 +144,7 @@ const RESOURCE_LABELS: Record<LimitedResource, string> = {
   customers: "customers",
   reminders: "open reminders",
   templates: "custom templates",
+  staffSeats: "team seats",
 };
 
 export interface PlanLimits {
@@ -132,26 +158,63 @@ export interface PlanLimits {
   openReminders: number | null;
   /** Non-default MessageTemplate rows per templateType. null = unlimited. */
   customTemplatesPerType: number | null;
+  /**
+   * Total ACTIVE BusinessMember rows (owner included — see the Business
+   * Phase 1 report's "seat-counting rule" section for why counting the
+   * owner is the simpler, unambiguous choice over excluding them). FREE/PRO
+   * are both 1 (owner only) not because they're "limited" in the usual
+   * sense but because TEAM_MANAGEMENT being false already blocks any
+   * invite attempt — this number exists mainly for consistent display and
+   * as a second, defense-in-depth check inside the seat-limit transaction
+   * (see teamInvitations.service.ts).
+   */
+  staffSeats: number | null;
 }
 
-const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+// PRO's core-resource limits (everything except staffSeats, which BUSINESS
+// alone varies) are spread into BUSINESS the same way PRO_FEATURES is
+// spread above — BUSINESS must never accidentally inherit FREE's numeric
+// caps just because it's a new Record key someone forgot to fill in.
+const PRO_CORE_LIMITS = {
+  leadsPerMonth: null,
+  reviewRequestsPerMonth: null,
+  customers: null,
+  openReminders: null,
+  customTemplatesPerType: null,
+} as const;
+
+const PLAN_LIMITS: Record<Exclude<Plan, "BUSINESS">, PlanLimits> = {
   FREE: {
     leadsPerMonth: 40,
     reviewRequestsPerMonth: 40,
     customers: 200,
     openReminders: 40,
     customTemplatesPerType: 1,
+    staffSeats: 1,
   },
   PRO: {
-    leadsPerMonth: null,
-    reviewRequestsPerMonth: null,
-    customers: null,
-    openReminders: null,
-    customTemplatesPerType: null,
+    ...PRO_CORE_LIMITS,
+    staffSeats: 1,
   },
 };
 
+/**
+ * BUSINESS's staffSeats is read from config on every call rather than baked
+ * into the PLAN_LIMITS table at module-load time, deliberately: it's the
+ * one limit in this whole module that's meant to be tunable via
+ * BUSINESS_SEAT_LIMIT without a redeploy (see config.ts's doc comment) —
+ * baking it into a static object would silently freeze whatever value was
+ * read once at process start.
+ */
 export function getPlanLimits(plan: Plan): PlanLimits {
+  if (plan === "BUSINESS") {
+    return {
+      ...PRO_CORE_LIMITS,
+      // Placeholder default pending a real commercial decision — see the
+      // Business Phase 1 report's "seat limit design" section.
+      staffSeats: config.BUSINESS_SEAT_LIMIT,
+    };
+  }
   return PLAN_LIMITS[plan];
 }
 

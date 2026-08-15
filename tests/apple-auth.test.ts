@@ -4,12 +4,13 @@ import { ApiError } from "../src/lib/errors.js";
 import { config } from "../src/lib/config.js";
 import { prisma } from "../src/lib/prisma.js";
 import { requireAppleConfig, type AppleCodeExchanger, type AppleTokenVerifier, type VerifiedAppleIdentity } from "../src/modules/auth/appleAuth.js";
-import { authHeader, createTestApp, registerAccount, resetDatabase } from "./helpers.js";
+import { authHeader, createTestApp, registerAccount, resetDatabase, setPlan, setSubscriptionStatus } from "./helpers.js";
 
 const identities: Record<string, Omit<VerifiedAppleIdentity, "nonce">> = {
   valid: { providerSubject: "apple-subject-1", email: "relay@privaterelay.appleid.com", emailVerified: true, issuedAt: Math.floor(Date.now() / 1000) },
   second: { providerSubject: "apple-subject-2", email: "second@example.com", emailVerified: true, issuedAt: Math.floor(Date.now() / 1000) },
   shared: { providerSubject: "apple-shared", email: "shared@example.com", emailVerified: true, issuedAt: Math.floor(Date.now() / 1000) },
+  invited: { providerSubject: "apple-invited-subject", email: "invited-apple@example.com", emailVerified: true, issuedAt: Math.floor(Date.now() / 1000) },
 };
 
 const verifier: AppleTokenVerifier = async (token, nonce) => {
@@ -18,7 +19,10 @@ const verifier: AppleTokenVerifier = async (token, nonce) => {
 };
 const exchanger: AppleCodeExchanger = async (code) => {
   if (code === "invalid-code") throw ApiError.auth(401, "APPLE_CODE_INVALID", "Apple authorization code is invalid or expired");
-  return { refreshToken: `apple-refresh-${code}`, identityToken: code.includes("shared") ? "shared" : code.includes("second") ? "second" : "valid" };
+  return {
+    refreshToken: `apple-refresh-${code}`,
+    identityToken: code.includes("shared") ? "shared" : code.includes("second") ? "second" : code.includes("invited") ? "invited" : "valid",
+  };
 };
 
 describe("Apple authentication", () => {
@@ -160,6 +164,33 @@ describe("Apple authentication", () => {
     expect(revoked.sort()).toEqual(["apple-refresh-code-1", "apple-refresh-delete-code"].sort());
     expect(await prisma.user.count({ where: { id: auth.json().user.id } })).toBe(0);
     expect(await prisma.authSession.count({ where: { userId: auth.json().user.id } })).toBe(0);
+  });
+
+  // -------------------------------------------------------------------
+  // Business Phase 1.1: invited registration via Apple sign-in
+  // -------------------------------------------------------------------
+
+  it("joins the invited Business (not a new one) when a new Apple user signs in with an invitationToken", async () => {
+    const owner = await registerAccount(app, { email: "apple-invite-owner@example.com" });
+    await setPlan(owner.businessId, "BUSINESS");
+    await setSubscriptionStatus(owner.businessId, "ACTIVE");
+    const invite = await app.inject({
+      method: "POST", url: "/team/invitations", headers: authHeader(owner.token),
+      payload: { email: "invited-apple@example.com", role: "STAFF" },
+    });
+    expect(invite.statusCode).toBe(201);
+
+    const businessCountBefore = await prisma.business.count();
+    const payload = { ...await credential("invited", "/auth/apple/challenge", undefined, "invited-code"), invitationToken: invite.json().token };
+    const response = await app.inject({ method: "POST", url: "/auth/apple", payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().isNewUser).toBe(true);
+    expect(response.json().business.id).toBe(owner.businessId);
+    expect(response.json().role).toBe("STAFF");
+    expect(await prisma.business.count()).toBe(businessCountBefore);
+
+    const membership = await prisma.businessMember.findFirstOrThrow({ where: { userId: response.json().user.id } });
+    expect(membership).toMatchObject({ businessId: owner.businessId, role: "STAFF", status: "ACTIVE" });
   });
 
   it("does not delete when Apple credential revocation fails", async () => {

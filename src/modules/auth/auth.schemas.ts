@@ -3,13 +3,27 @@ import { z } from "zod";
 const email = z.string().trim().email();
 const password = z.string().min(8, "Password must be at least 8 characters");
 
-export const registerSchema = z.object({
-  email,
-  password,
-  fullName: z.string().trim().min(1, "Full name is required"),
-  businessName: z.string().trim().min(1, "Business name is required"),
-  industry: z.string().trim().optional(),
-});
+// businessName is required UNLESS invitationToken is present — an invited
+// registration joins the invitation's existing Business rather than
+// creating one, so asking the client for a business name there would be
+// meaningless (and the server would ignore it either way; see
+// auth.service.ts's registerUser). This is enforced via superRefine rather
+// than an unconditional .min(1) so normal (non-invited) registration's
+// validation behavior is byte-for-byte unchanged.
+export const registerSchema = z
+  .object({
+    email,
+    password,
+    fullName: z.string().trim().min(1, "Full name is required"),
+    businessName: z.string().trim().min(1).optional(),
+    industry: z.string().trim().optional(),
+    invitationToken: z.string().trim().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.invitationToken && !data.businessName) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["businessName"], message: "Business name is required" });
+    }
+  });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({ email, password: z.string().min(1) });
@@ -30,7 +44,13 @@ export const deleteAccountSchema = z.union([
     authorizationCode: z.string().min(1).max(8_192),
   }) }),
 ]);
-export const googleAuthSchema = z.object({ idToken: z.string().min(1).max(16_384) });
+// invitationToken is only meaningful on /auth/google and /auth/apple
+// (sign-in) for a brand-new user — see auth.service.ts's
+// authenticateGoogleIdentity/authenticateAppleIdentity. /google/link and
+// /apple/link reuse these same schemas but never read the field.
+const invitationToken = z.string().trim().min(1).optional();
+
+export const googleAuthSchema = z.object({ idToken: z.string().min(1).max(16_384), invitationToken });
 
 export const appleAuthSchema = z.object({
   challengeId: z.string().uuid(),
@@ -40,4 +60,5 @@ export const appleAuthSchema = z.object({
   authorizationCode: z.string().min(1).max(8_192),
   givenName: z.string().trim().max(100).nullable().optional(),
   familyName: z.string().trim().max(100).nullable().optional(),
+  invitationToken,
 });

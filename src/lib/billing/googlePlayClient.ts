@@ -9,10 +9,12 @@ export interface GoogleBillingConfig {
   serviceAccountEmail: string;
   serviceAccountPrivateKey: string;
   proMonthlyProductId: string;
+  /** Readiness-only — see config.ts's GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID doc comment. null until Business billing actually ships. */
+  businessMonthlyProductId: string | null;
 }
 
 export function requireGoogleBillingConfig(): GoogleBillingConfig {
-  const { GOOGLE_BILLING_ENABLED, GOOGLE_PLAY_PACKAGE_NAME, GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL, GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, GOOGLE_PRO_MONTHLY_PRODUCT_ID } = config;
+  const { GOOGLE_BILLING_ENABLED, GOOGLE_PLAY_PACKAGE_NAME, GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL, GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, GOOGLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID } = config;
   if (!GOOGLE_BILLING_ENABLED || !GOOGLE_PLAY_PACKAGE_NAME || !GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL || !GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64 || !GOOGLE_PRO_MONTHLY_PRODUCT_ID) {
     throw new Error("Google billing is not configured");
   }
@@ -21,6 +23,7 @@ export function requireGoogleBillingConfig(): GoogleBillingConfig {
     serviceAccountEmail: GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL,
     serviceAccountPrivateKey: Buffer.from(GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, "base64").toString("utf8"),
     proMonthlyProductId: GOOGLE_PRO_MONTHLY_PRODUCT_ID,
+    businessMonthlyProductId: GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID || null,
   };
 }
 

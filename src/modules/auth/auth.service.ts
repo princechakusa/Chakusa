@@ -11,8 +11,39 @@ import type { VerifiedGoogleIdentity } from "./googleVerifier.js";
 import type { VerifiedAppleIdentity } from "./appleAuth.js";
 import { appleChallengeHash } from "./appleAuth.js";
 import { decryptProviderCredential, encryptProviderCredential } from "../../lib/providerCredentials.js";
+import { claimInvitationForNewUser } from "../team/teamInvitations.service.js";
+import { recordActivity } from "../../lib/activity.js";
+import { withLimitCheck } from "../../lib/entitlements.js";
+import type { BusinessRole } from "@prisma/client";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
+
+/**
+ * Business Phase 1 critical fix (see the Phase 1 report's "owner-deletion
+ * protection" section): Business.owner has onDelete: Cascade, so deleting
+ * a User who owns a business previously cascade-deleted that ENTIRE
+ * business — including every other team member's BusinessMember row and
+ * all of the business's data — the instant the owner deleted their own
+ * account, with no warning and no way back. This blocks that outcome
+ * outright rather than attempting an ownership-transfer flow, which this
+ * phase deliberately does not build (see teamMembers.service.ts's doc
+ * comments on why ownership stays immutable in v1): an owner who currently
+ * has any other ACTIVE team member must remove them (or wait for them to
+ * leave) before they can delete their own account. Called inside the same
+ * transaction as the deletion itself, immediately before tx.user.delete,
+ * so this check and the deletion it guards can never race.
+ */
+async function assertAccountDeletionSafe(userId: string, tx: DatabaseClient): Promise<void> {
+  const ownedBusinesses = await tx.business.findMany({ where: { ownerId: userId }, select: { id: true } });
+  for (const business of ownedBusinesses) {
+    const otherActiveMembers = await tx.businessMember.count({
+      where: { businessId: business.id, userId: { not: userId }, status: "ACTIVE" },
+    });
+    if (otherActiveMembers > 0) {
+      throw ApiError.conflict("Remove all other team members before deleting an account that owns a business with active staff");
+    }
+  }
+}
 
 const refreshExpiry = () => new Date(Date.now() + config.REFRESH_TOKEN_TTL_DAYS * 86_400_000);
 
@@ -76,7 +107,34 @@ export async function createSession(userId: string, db: DatabaseClient, familyId
   return { session, refreshToken: token.raw };
 }
 
-export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentity, serializationRetries = 0) {
+/**
+ * Business Phase 1.1: like registerInvitedUser, but for the Google
+ * sign-in new-user branch below. Unlike password registration, Google/Apple
+ * sign-in for a brand-new user never creates a Business on its own (see
+ * business.routes.ts's POST / doc comment — business creation there is a
+ * separate, later authenticated call, part of mobile's onboarding). So
+ * there is no "unconditional business creation" to override here: joining
+ * the invited Business is purely additive to what this branch already does.
+ */
+async function joinInvitedBusinessIfTokenPresent(
+  tx: Prisma.TransactionClient,
+  invitationToken: string | undefined,
+  normalizedEmail: string,
+  userId: string,
+): Promise<void> {
+  if (!invitationToken) return;
+  const claim = await claimInvitationForNewUser(tx, invitationToken, normalizedEmail);
+  if (claim.outcome !== "claimed") throw invitationClaimError(claim.outcome);
+  await tx.businessMember.create({
+    data: { businessId: claim.businessId, userId, role: claim.role, status: "ACTIVE" },
+  });
+  await recordActivity(
+    { businessId: claim.businessId, actorId: userId, eventType: "TEAM_MEMBER_JOINED", entityType: "business_member", entityId: userId },
+    tx,
+  );
+}
+
+export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentity, invitationToken?: string, serializationRetries = 0) {
   try {
     return await prisma.$transaction(async (tx) => {
       const linked = await tx.authIdentity.findUnique({
@@ -92,8 +150,9 @@ export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentit
         return { user: linked.user, isNewUser: false, ...auth };
       }
 
+      const normalizedEmail = normalizeEmail(identity.email);
       const existingEmail = await tx.user.findUnique({
-        where: { normalizedEmail: normalizeEmail(identity.email) },
+        where: { normalizedEmail },
       });
       if (existingEmail) {
         throw ApiError.auth(
@@ -106,7 +165,7 @@ export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentit
       const user = await tx.user.create({
         data: {
           email: identity.email,
-          normalizedEmail: normalizeEmail(identity.email),
+          normalizedEmail,
           passwordHash: null,
           emailVerifiedAt: new Date(),
           fullName: identity.fullName,
@@ -120,12 +179,13 @@ export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentit
           },
         },
       });
+      await joinInvitedBusinessIfTokenPresent(tx, invitationToken, normalizedEmail, user.id);
       const auth = await createSession(user.id, tx);
       return { user, isNewUser: true, ...auth };
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
-      return authenticateGoogleIdentity(identity, serializationRetries + 1);
+      return authenticateGoogleIdentity(identity, invitationToken, serializationRetries + 1);
     }
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
       throw error;
@@ -218,6 +278,7 @@ export async function authenticateAppleIdentity(
   refreshToken: string,
   proof: AppleChallengeProof,
   name?: { givenName?: string | null; familyName?: string | null },
+  invitationToken?: string,
   serializationRetries = 0,
 ) {
   const encryptedRefreshToken = encryptProviderCredential(refreshToken);
@@ -256,11 +317,12 @@ export async function authenticateAppleIdentity(
           credentialUpdatedAt: new Date(),
         } },
       } });
+      await joinInvitedBusinessIfTokenPresent(tx, invitationToken, normalizedEmail, user.id);
       return { user, isNewUser: true, ...await createSession(user.id, tx) };
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
-      return authenticateAppleIdentity(identity, refreshToken, proof, name, serializationRetries + 1);
+      return authenticateAppleIdentity(identity, refreshToken, proof, name, invitationToken, serializationRetries + 1);
     }
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
     throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "Apple identity could not be created safely");
@@ -329,31 +391,107 @@ export async function deleteAccountWithApple(userId: string, providerSubject: st
     if (!identity || identity.userId !== userId) {
       throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Apple account confirmation failed");
     }
+    await assertAccountDeletionSafe(userId, tx);
     await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date(), revokeReason: "account_deleted" } });
     await tx.user.delete({ where: { id: userId } });
   }, { isolationLevel: "Serializable" });
+}
+
+/** Maps claimInvitationForNewUser's non-"claimed" outcomes to the same public error shapes publicTeamInvites.routes.ts's /accept endpoint already uses, so both entry points into "consume a team invitation" fail the same way for the same reasons. */
+function invitationClaimError(outcome: Exclude<Awaited<ReturnType<typeof claimInvitationForNewUser>>, { outcome: "claimed" }>["outcome"]): ApiError {
+  switch (outcome) {
+    case "not-found":
+      return ApiError.notFound("This invitation is invalid or no longer available");
+    case "expired":
+      return ApiError.conflict("This invitation has expired");
+    case "already-used":
+      return ApiError.conflict("This invitation has already been used");
+    case "email-mismatch":
+      // Generic — never confirm to someone registering under the wrong
+      // email that the token itself was otherwise valid.
+      return ApiError.notFound("This invitation is invalid or no longer available");
+    case "seats-full":
+      return ApiError.limitReached("staffSeats", "team seats", { limit: 0, current: 0, plan: "BUSINESS" });
+  }
+}
+
+/**
+ * Business Phase 1.1: registration for someone who followed a team
+ * invitation link and does not yet have a Chakusa account (see
+ * publicTeamInvites.routes.ts's former "KNOWN V1 GAP" doc comment, now
+ * closed). Deliberately a second code path rather than a conditional bolted
+ * onto the normal branch below — the two flows create structurally
+ * different rows (no Business/Subscription/OWNER-membership here at all),
+ * and keeping them as separate top-to-bottom blocks is what makes it
+ * possible to state the "normal registration is byte-for-byte unchanged"
+ * guarantee by inspection rather than by tracing conditionals through
+ * shared code.
+ *
+ * Every value that ends up on the new BusinessMember row (businessId, role)
+ * comes from the server-resolved invitation, never from `input` — there is
+ * no businessId/role/ownerId field in registerSchema at all, so there is
+ * nothing for a client to forge here even in principle.
+ */
+async function registerInvitedUser(
+  tx: Prisma.TransactionClient,
+  invitationToken: string,
+  normalizedEmail: string,
+  passwordHash: string,
+  fullName: string,
+) {
+  const claim = await claimInvitationForNewUser(tx, invitationToken, normalizedEmail);
+  if (claim.outcome !== "claimed") throw invitationClaimError(claim.outcome);
+
+  const user = await tx.user.create({
+    data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName },
+  });
+  await tx.businessMember.create({
+    data: { businessId: claim.businessId, userId: user.id, role: claim.role, status: "ACTIVE" },
+  });
+  await recordActivity(
+    { businessId: claim.businessId, actorId: user.id, eventType: "TEAM_MEMBER_JOINED", entityType: "business_member", entityId: user.id },
+    tx,
+  );
+  const business = await tx.business.findUniqueOrThrow({ where: { id: claim.businessId } });
+  const auth = await createSession(user.id, tx);
+  return { user, business, role: claim.role as BusinessRole, ...auth };
 }
 
 export async function registerUser(input: RegisterInput) {
   const normalizedEmail = normalizeEmail(input.email);
   const passwordHash = await hashPassword(input.password);
 
-  return prisma.$transaction(async (tx) => {
+  // Serializable (via withLimitCheck's same retry-on-P2034 wrapper used
+  // throughout this codebase for check-then-create races) so a
+  // concurrently-accepted final seat is detected the same way
+  // acceptTeamInvitation's own seat check already is — see
+  // claimInvitationForNewUser's doc comment. Plain registration pays for
+  // the same isolation level even though it never hits a shared resource,
+  // which is a negligible cost next to keeping one transaction wrapper for
+  // both branches instead of two.
+  return withLimitCheck(async (tx) => {
     const existing = await tx.user.findUnique({ where: { normalizedEmail } });
     if (existing) throw ApiError.conflict("An account with this email already exists");
 
+    if (input.invitationToken) {
+      return registerInvitedUser(tx, input.invitationToken, normalizedEmail, passwordHash, input.fullName);
+    }
+
+    // Unchanged normal path: businessName is guaranteed present here by
+    // registerSchema's superRefine (required whenever invitationToken is
+    // absent).
     const user = await tx.user.create({
       data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName },
     });
     const business = await tx.business.create({
-      data: { ownerId: user.id, name: input.businessName, industry: input.industry },
+      data: { ownerId: user.id, name: input.businessName!, industry: input.industry },
     });
     await tx.businessMember.create({
       data: { businessId: business.id, userId: user.id, role: "OWNER" },
     });
     await tx.subscription.create({ data: { businessId: business.id } });
     const auth = await createSession(user.id, tx);
-    return { user, business, ...auth };
+    return { user, business, role: "OWNER" as BusinessRole, ...auth };
   });
 }
 
@@ -497,6 +635,7 @@ export async function deleteAccount(userId: string, password: string) {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: "account_deleted" },
     });
+    await assertAccountDeletionSafe(userId, tx);
     await tx.user.delete({ where: { id: userId } });
   }, { isolationLevel: "Serializable" });
 }
@@ -513,6 +652,7 @@ export async function deleteAccountWithGoogle(userId: string, providerSubject: s
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: "account_deleted" },
     });
+    await assertAccountDeletionSafe(userId, tx);
     await tx.user.delete({ where: { id: userId } });
   }, { isolationLevel: "Serializable" });
 }

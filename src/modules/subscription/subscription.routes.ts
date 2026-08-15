@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getSubscriptionStatus, verifySubscriptionWithApple, verifySubscriptionWithGoogle } from "./subscription.service.js";
 import { verifyAppleSubscriptionSchema, verifyGoogleSubscriptionSchema } from "./subscription.schemas.js";
+import { requireOwner } from "../../lib/authorization.js";
 import type { AppleStoreClient } from "../../lib/billing/appleAppStoreClient.js";
 import type { GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
 
@@ -25,6 +26,14 @@ export interface SubscriptionRoutesOptions {
  * re-verified against Apple/Google before anything is written. A rejected
  * or not-yet-entitled transaction/purchase surfaces as a 400, never a
  * silent no-op that could be mistaken for success.
+ *
+ * Business Phase 1 audit finding (see the Phase 1 report's "billing
+ * authorization" section): before team membership existed, "every member"
+ * meant "the sole owner," so this was never actually reachable by a
+ * non-owner. Now that ADMIN/STAFF members exist, both verify routes are
+ * explicitly owner-only — only OWNER may initiate purchase verification or
+ * change this business's billing state, matching PRO's existing single-
+ * owner behavior going forward for BUSINESS too.
  */
 export default async function subscriptionRoutes(fastify: FastifyInstance, options: SubscriptionRoutesOptions = {}) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -38,6 +47,7 @@ export default async function subscriptionRoutes(fastify: FastifyInstance, optio
     "/apple/verify",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request, reply) => {
+      requireOwner(request);
       const input = verifyAppleSubscriptionSchema.parse(request.body);
       await verifySubscriptionWithApple(request.businessId!, input.transactionId, options.appleStoreClient);
       reply.send(await getSubscriptionStatus(request.businessId!));
@@ -48,6 +58,7 @@ export default async function subscriptionRoutes(fastify: FastifyInstance, optio
     "/google/verify",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request, reply) => {
+      requireOwner(request);
       const input = verifyGoogleSubscriptionSchema.parse(request.body);
       await verifySubscriptionWithGoogle(request.businessId!, input.purchaseToken, options.googlePlayClient);
       reply.send(await getSubscriptionStatus(request.businessId!));

@@ -10,7 +10,7 @@ import {
   type GoogleTokenVerifier,
   type VerifiedGoogleIdentity,
 } from "../src/modules/auth/googleVerifier.js";
-import { authHeader, createTestApp, registerAccount, resetDatabase } from "./helpers.js";
+import { authHeader, createTestApp, registerAccount, resetDatabase, setPlan, setSubscriptionStatus } from "./helpers.js";
 
 const now = Math.floor(Date.now() / 1000);
 const googleIdentity = (overrides: Partial<VerifiedGoogleIdentity> = {}): VerifiedGoogleIdentity => ({
@@ -25,6 +25,7 @@ const identities = new Map<string, VerifiedGoogleIdentity>([
   ["valid-new", googleIdentity()],
   ["second-google", googleIdentity({ providerSubject: "google-subject-2", email: "second-google@example.com" })],
   ["shared-email", googleIdentity({ providerSubject: "shared-subject", email: "shared@example.com" })],
+  ["invited-google", googleIdentity({ providerSubject: "invited-google-subject", email: "invited-google@example.com" })],
 ]);
 
 const verifier: GoogleTokenVerifier = async (idToken) => {
@@ -241,5 +242,53 @@ describe("Google authentication", () => {
     await app.inject({ method: "POST", url: "/business", headers: authHeader(second.json().accessToken), payload: { name: "Second" } });
     const forbidden = await app.inject({ method: "GET", url: `/customers/${customer.json().id}`, headers: authHeader(second.json().accessToken) });
     expect(forbidden.statusCode).toBe(404);
+  });
+
+  // -------------------------------------------------------------------
+  // Business Phase 1.1: invited registration via Google sign-in
+  // -------------------------------------------------------------------
+
+  it("joins the invited Business (not a new one) when a new Google user signs in with an invitationToken", async () => {
+    const owner = await registerAccount(app, { email: "google-invite-owner@example.com" });
+    await setPlan(owner.businessId, "BUSINESS");
+    await setSubscriptionStatus(owner.businessId, "ACTIVE");
+    const invite = await app.inject({
+      method: "POST", url: "/team/invitations", headers: authHeader(owner.token),
+      payload: { email: "invited-google@example.com", role: "ADMIN" },
+    });
+    expect(invite.statusCode).toBe(201);
+
+    const businessCountBefore = await prisma.business.count();
+    const response = await app.inject({
+      method: "POST", url: "/auth/google",
+      payload: { idToken: "invited-google", invitationToken: invite.json().token },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().isNewUser).toBe(true);
+    expect(response.json().business.id).toBe(owner.businessId);
+    expect(response.json().role).toBe("ADMIN");
+    expect(await prisma.business.count()).toBe(businessCountBefore);
+
+    const membership = await prisma.businessMember.findFirstOrThrow({ where: { userId: response.json().user.id } });
+    expect(membership).toMatchObject({ businessId: owner.businessId, role: "ADMIN", status: "ACTIVE" });
+    expect(await prisma.teamInvitation.findFirstOrThrow({ where: { id: invite.json().id } })).toMatchObject({ status: "ACCEPTED" });
+  });
+
+  it("rejects an invitationToken whose invited email does not match the Google identity's email (no user created)", async () => {
+    const owner = await registerAccount(app, { email: "google-invite-mismatch-owner@example.com" });
+    await setPlan(owner.businessId, "BUSINESS");
+    await setSubscriptionStatus(owner.businessId, "ACTIVE");
+    const invite = await app.inject({
+      method: "POST", url: "/team/invitations", headers: authHeader(owner.token),
+      payload: { email: "someone-else@example.com", role: "STAFF" },
+    });
+    expect(invite.statusCode).toBe(201);
+
+    const response = await app.inject({
+      method: "POST", url: "/auth/google",
+      payload: { idToken: "invited-google", invitationToken: invite.json().token },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(await prisma.user.count({ where: { normalizedEmail: "invited-google@example.com" } })).toBe(0);
   });
 });

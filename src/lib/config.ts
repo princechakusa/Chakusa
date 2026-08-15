@@ -25,6 +25,15 @@ const envSchema = z.object({
   // sent today (a manual, sometimes-delayed action by the business owner),
   // not an arbitrarily short security-token window.
   PUBLIC_REVIEW_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // Placeholder pending a real commercial decision (see
+  // entitlements.ts's PLAN_LIMITS) — how many ACTIVE BusinessMember rows
+  // (owner included) a BUSINESS-tier business may have at once.
+  BUSINESS_SEAT_LIMIT: z.coerce.number().int().positive().default(10),
+  // How long a team invitation (src/modules/team/teamInvitations.service.ts)
+  // stays acceptable after creation. 7 days is generous enough that an
+  // invited person checking email a few days late still finds a working
+  // link, while still being a bounded, non-indefinite credential.
+  TEAM_INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
   // Base URL of the public, unauthenticated web page that consumes
   // GET/POST /public/reviews/:token (see src/lib/publicReviewLinks.ts).
   // Deliberately optional with no baked-in production-looking default —
@@ -84,6 +93,14 @@ const envSchema = z.object({
   // (never trust a client-supplied product ID) resolves against this, not
   // a hardcoded literal. See src/lib/billing/productCatalog.ts.
   APPLE_PRO_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Business tier's Apple product — deliberately optional even when
+  // APPLE_BILLING_ENABLED=true (never required in production validation
+  // below): there is no mobile purchase UI for Business yet, so this is
+  // readiness-only. Unset means productCatalog.ts simply never resolves
+  // BUSINESS for Apple — the same fail-closed behavior as any unrecognized
+  // product ID, not a startup error. See the Business Phase 1 report's
+  // "Apple Business product mapping" section.
+  APPLE_BUSINESS_MONTHLY_PRODUCT_ID: optionalSecret,
   // Despite the name, this governs BOTH Apple and Google billing (kept as
   // one shared setting deliberately — a single Chakusa deployment targets
   // one store environment at a time for both providers, not one each).
@@ -115,6 +132,9 @@ const envSchema = z.object({
   // Play Console — same "approved catalog, never a client-trusted ID"
   // purpose as APPLE_PRO_MONTHLY_PRODUCT_ID.
   GOOGLE_PRO_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Business tier's Google product — same readiness-only, optional-even-
+  // when-enabled reasoning as APPLE_BUSINESS_MONTHLY_PRODUCT_ID above.
+  GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID: optionalSecret,
   // Real-time Developer Notifications arrive as an authenticated Cloud
   // Pub/Sub push request — Pub/Sub signs each request with a Google-issued
   // OIDC token (Authorization: Bearer <token>) when the push subscription

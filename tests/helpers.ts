@@ -12,6 +12,7 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
 export async function resetDatabase() {
   await prisma.$transaction([
     prisma.billingEvent.deleteMany(),
+    prisma.teamInvitation.deleteMany(),
     prisma.activityEvent.deleteMany(),
     prisma.feedback.deleteMany(),
     prisma.reviewRequest.deleteMany(),

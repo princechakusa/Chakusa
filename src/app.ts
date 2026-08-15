@@ -21,6 +21,8 @@ import automationRoutes from "./modules/automation/automation.routes.js";
 import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import publicReviewRoutes from "./modules/public/public.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
+import teamRoutes from "./modules/team/team.routes.js";
+import publicTeamInviteRoutes from "./modules/team/publicTeamInvites.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
 import type { AppleStoreClient } from "./lib/billing/appleAppStoreClient.js";
@@ -113,9 +115,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleStoreClient: options.appleStoreClient,
     googlePlayClient: options.googlePlayClient,
   });
+  await app.register(teamRoutes, { prefix: "/team" });
   // No fastify.authenticate/requireBusiness hooks here — see
   // public.routes.ts's top-level doc comment.
   await app.register(publicReviewRoutes, { prefix: "/public/reviews" });
+  // GET is unauthenticated; POST /:token/accept applies fastify.authenticate
+  // per-route — see publicTeamInviteRoutes's top-level doc comment.
+  await app.register(publicTeamInviteRoutes, { prefix: "/public/team-invites" });
   // Provider-to-server callbacks — see webhooks.routes.ts's top-level doc
   // comment for why these also have no fastify.authenticate hook and
   // authenticate themselves per-provider instead.

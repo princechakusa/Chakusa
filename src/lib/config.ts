@@ -9,6 +9,16 @@ const booleanFlag = z.preprocess(
 );
 
 const envSchema = z.object({
+  // The only database env var the application (API and worker — both read
+  // this exact same value via src/lib/prisma.ts's PrismaClient, no other
+  // datasource override) ever connects with. In production this is
+  // Supabase's pooled connection. A second variable, DIRECT_URL, exists in
+  // prisma/schema.prisma's datasource block for the Prisma CLI's migration
+  // commands only — PrismaClient's generated runtime never reads directUrl,
+  // so it is deliberately absent from this schema: adding it here would
+  // validate a variable this process never uses, and (worse) invite some
+  // future call site to mistakenly wire application code to the
+  // migration-only connection.
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   PORT: z.coerce.number().int().positive().default(4000),

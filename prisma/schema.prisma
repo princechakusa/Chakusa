@@ -2,9 +2,25 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// DATABASE_URL: runtime connection used by PrismaClient (API + worker,
+// both — see src/lib/prisma.ts, which reads no other env var). In
+// production this points at Supabase's connection pooler (transaction
+// mode), since it's what many short-lived queries from the API/worker
+// processes actually want.
+//
+// DIRECT_URL: used only by the Prisma CLI (`prisma migrate deploy`/`dev`,
+// `prisma db pull`, etc.) for schema/migration operations, which need a
+// direct session-mode connection — DDL and Prisma's migration advisory
+// locks don't work reliably through a transaction-mode pooler. Never read
+// by PrismaClient at runtime, so it is deliberately NOT part of
+// src/lib/config.ts's application env validation — see that file's
+// comment near DATABASE_URL. Locally, both variables point at the same
+// docker-compose Postgres instance; there's no pooler in local dev, so
+// there's nothing to split.
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------

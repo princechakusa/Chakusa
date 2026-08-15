@@ -11,6 +11,7 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
 
 export async function resetDatabase() {
   await prisma.$transaction([
+    prisma.billingEvent.deleteMany(),
     prisma.activityEvent.deleteMany(),
     prisma.feedback.deleteMany(),
     prisma.reviewRequest.deleteMany(),
@@ -82,7 +83,7 @@ export async function setPlan(businessId: string, plan: Plan) {
   await prisma.subscription.update({ where: { businessId }, data: { plan } });
 }
 
-/** Test-only: sets a business's subscription status directly — there is no billing webhook yet. */
+/** Test-only: sets a business's subscription status directly, bypassing real Apple/Google verification. */
 export async function setSubscriptionStatus(businessId: string, status: SubscriptionStatus) {
   await prisma.subscription.update({ where: { businessId }, data: { status } });
 }

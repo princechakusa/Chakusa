@@ -20,14 +20,21 @@ import messageRoutes from "./modules/messages/messages.routes.js";
 import automationRoutes from "./modules/automation/automation.routes.js";
 import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import publicReviewRoutes from "./modules/public/public.routes.js";
+import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
+import type { AppleStoreClient } from "./lib/billing/appleAppStoreClient.js";
+import type { GooglePlayClient } from "./lib/billing/googlePlayClient.js";
+import { assertValidAppleRootCertificates } from "./lib/billing/jws.js";
 
 export interface BuildAppOptions {
   googleTokenVerifier?: GoogleTokenVerifier;
   appleTokenVerifier?: AppleTokenVerifier;
   appleCodeExchanger?: AppleCodeExchanger;
   appleCredentialRevoker?: AppleCredentialRevoker;
+  /** Test-only injection — see subscription.routes.ts's SubscriptionRoutesOptions. */
+  appleStoreClient?: AppleStoreClient;
+  googlePlayClient?: GooglePlayClient;
   /**
    * Rate limiting is skipped by default in NODE_ENV=test so ordinary test
    * suites (which reuse one app instance across many requests in a single
@@ -38,6 +45,13 @@ export interface BuildAppOptions {
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
+  // Fail the deployment at boot, not at the first real purchase/webhook, if
+  // Apple billing trust configuration is broken — see jws.ts's
+  // assertValidAppleRootCertificates doc comment.
+  if (config.APPLE_BILLING_ENABLED) {
+    assertValidAppleRootCertificates();
+  }
+
   const app = Fastify({
     logger:
       config.NODE_ENV === "development"
@@ -94,10 +108,22 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });
   await app.register(automationRoutes, { prefix: "/automation" });
-  await app.register(subscriptionRoutes, { prefix: "/subscription" });
+  await app.register(subscriptionRoutes, {
+    prefix: "/subscription",
+    appleStoreClient: options.appleStoreClient,
+    googlePlayClient: options.googlePlayClient,
+  });
   // No fastify.authenticate/requireBusiness hooks here — see
   // public.routes.ts's top-level doc comment.
   await app.register(publicReviewRoutes, { prefix: "/public/reviews" });
+  // Provider-to-server callbacks — see webhooks.routes.ts's top-level doc
+  // comment for why these also have no fastify.authenticate hook and
+  // authenticate themselves per-provider instead.
+  await app.register(webhookRoutes, {
+    prefix: "/webhooks",
+    appleStoreClient: options.appleStoreClient,
+    googlePlayClient: options.googlePlayClient,
+  });
 
   return app;
 }

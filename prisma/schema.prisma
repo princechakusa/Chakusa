@@ -126,6 +126,17 @@ enum SubscriptionProvider {
   GOOGLE
 }
 
+// Which store environment produced a verified transaction/purchase — read
+// directly from the provider's own signed payload (Apple's `data.environment`,
+// Google's `purchases.subscriptionsv2.get` testPurchase field), never
+// guessed. Exists so a sandbox/test transaction can never be mistaken for a
+// real production entitlement (see billingConfig.ts / the Phase report's
+// "sandbox/production separation" section).
+enum SubscriptionEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
 enum ActivityEventType {
   LEAD_CREATED
   LEAD_CONTACTED
@@ -374,6 +385,7 @@ model Business {
   customerOptOuts  CustomerOptOut[]
   automationRules  AutomationRule[]
   automationRuns   AutomationRun[]
+  billingEvents    BillingEvent[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -638,24 +650,84 @@ model ActivityEvent {
 // writes them yet (no StoreKit/Play Billing verification exists), so they
 // stay nullable and unused until that integration lands.
 model Subscription {
-  id                    String                @id @default(uuid())
-  businessId            String                @unique @map("business_id")
-  plan                  Plan                  @default(FREE)
-  status                SubscriptionStatus    @default(ACTIVE)
+  id                    String                   @id @default(uuid())
+  businessId            String                   @unique @map("business_id")
+  plan                  Plan                     @default(FREE)
+  status                SubscriptionStatus       @default(ACTIVE)
   provider              SubscriptionProvider?
-  providerProductId     String?               @map("provider_product_id")
-  originalTransactionId String?               @map("original_transaction_id")
-  latestTransactionId   String?               @map("latest_transaction_id")
-  currentPeriodStart    DateTime?             @map("current_period_start")
-  currentPeriodEnd      DateTime?             @map("current_period_end")
-  cancelAtPeriodEnd     Boolean               @default(false) @map("cancel_at_period_end")
-  trialEndsAt           DateTime?             @map("trial_ends_at")
-  createdAt             DateTime              @default(now()) @map("created_at")
-  updatedAt             DateTime              @updatedAt @map("updated_at")
+  providerProductId     String?                  @map("provider_product_id")
+  // Apple's stable per-subscription identity (constant across renewals,
+  // upgrades, and downgrades within the same subscription) — the
+  // reconciliation key used to look up a business from an Apple App Store
+  // Server Notification, which carries no Chakusa businessId. Unique (not
+  // per-business-unique) because it is a store-wide identity: a Postgres
+  // unique index on a nullable column allows any number of NULL rows (every
+  // FREE/never-purchased business), so this is safe to add before any real
+  // billing data exists. Set only once, at first successful verification
+  // (see subscriptionReconciliation.ts) — never overwritten afterward.
+  originalTransactionId String?                  @unique @map("original_transaction_id")
+  latestTransactionId   String?                  @map("latest_transaction_id")
+  // Google's reconciliation key, the RTDN equivalent of
+  // originalTransactionId above — Play Real-time Developer Notifications
+  // carry a purchaseToken + subscriptionId, never a Chakusa businessId.
+  // Google can issue a *new* purchaseToken on some plan changes (unlike
+  // Apple's stable originalTransactionId), so this is intentionally
+  // overwritten on every successful re-verification, not set-once.
+  googlePurchaseToken   String?                  @unique @map("google_purchase_token")
+  environment           SubscriptionEnvironment? @map("environment")
+  currentPeriodStart    DateTime?                @map("current_period_start")
+  currentPeriodEnd      DateTime?                @map("current_period_end")
+  cancelAtPeriodEnd     Boolean                  @default(false) @map("cancel_at_period_end")
+  trialEndsAt           DateTime?                @map("trial_ends_at")
+  // The provider's own effective timestamp (Apple's `signedDate`, Google's
+  // purchase/notification time) for the snapshot currently applied to this
+  // row — NOT `updatedAt`, which only reflects when Postgres last wrote the
+  // row. This is the event-ordering guard: reconciliation compares an
+  // incoming snapshot's effective time against this value and refuses to
+  // apply an older one, so a delayed/out-of-order webhook can never
+  // overwrite newer state that a later, faster-arriving call already
+  // applied. See subscriptionReconciliation.ts.
+  providerEventAt       DateTime?                @map("provider_event_at")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+// Idempotency + audit ledger for every Apple/Google billing event this
+// backend processes — both webhook deliveries (App Store Server
+// Notifications V2, Play RTDN) and authenticated verify-endpoint calls.
+// (provider, providerEventId) is the idempotency guard: a duplicate
+// notification (provider retries are expected and normal) or a re-sent
+// verify request produces a second row that fails the unique constraint,
+// which callers treat as "already processed" rather than an error — see
+// subscriptionReconciliation.ts.
+//
+// businessId is nullable with onDelete: SetNull (not Cascade), deliberately
+// different from every other business-owned table in this schema: if the
+// owning account is deleted, this row survives as a minimal, no-longer-
+// business-linked audit trail (provider + eventType + transaction/purchase
+// identity + when it was processed) rather than disappearing along with
+// everything else — see the Phase report's "account deletion" section for
+// why. It carries no customer PII and no raw provider payload.
+model BillingEvent {
+  id              String               @id @default(uuid())
+  businessId      String?              @map("business_id")
+  provider        SubscriptionProvider
+  providerEventId String               @map("provider_event_id")
+  eventType       String               @map("event_type")
+  transactionId   String?              @map("transaction_id")
+  purchaseToken   String?              @map("purchase_token")
+  processedAt     DateTime?            @map("processed_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([businessId])
+  @@map("billing_events")
 }
 
 // A customer refusing messages from one business must never opt them out

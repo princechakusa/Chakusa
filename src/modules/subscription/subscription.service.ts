@@ -1,6 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import { getPlanLimits, hasFeature, startOfCurrentUtcMonth, startOfNextUtcMonth } from "../../lib/entitlements.js";
-import type { MessageType, Plan, SubscriptionStatus } from "@prisma/client";
+import { verifyAppleTransaction, verifyGoogleSubscription, type ReconcileOutcome } from "../../lib/billing/subscriptionReconciliation.js";
+import { realAppleStoreClient, type AppleStoreClient } from "../../lib/billing/appleAppStoreClient.js";
+import { realGooglePlayClient, type GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
+import type { MessageType, Plan, SubscriptionProvider, SubscriptionStatus } from "@prisma/client";
 
 const TEMPLATE_TYPES: readonly MessageType[] = [
   "missed_call",
@@ -28,6 +31,15 @@ interface StandingUsage {
 export interface SubscriptionStatusResponse {
   plan: Plan;
   status: SubscriptionStatus;
+  // Safe billing-UX additions only — see the Phase report's "subscription
+  // status changes" section for the exclusion list this deliberately
+  // respects: never a purchase token, transaction identifier, or raw
+  // provider payload. All additive/nullable, so existing mobile clients
+  // that don't read them are unaffected.
+  provider: SubscriptionProvider | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  trialEndsAt: string | null;
   features: {
     automation: boolean;
     outboundMessaging: boolean;
@@ -67,7 +79,7 @@ export interface SubscriptionStatusResponse {
 export async function getSubscriptionStatus(businessId: string): Promise<SubscriptionStatusResponse> {
   const subscription = await prisma.subscription.findUnique({
     where: { businessId },
-    select: { plan: true, status: true },
+    select: { plan: true, status: true, provider: true, currentPeriodEnd: true, cancelAtPeriodEnd: true, trialEndsAt: true },
   });
 
   if (!subscription) {
@@ -104,6 +116,10 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
   return {
     plan,
     status,
+    provider: subscription?.provider ?? null,
+    currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
+    cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
+    trialEndsAt: subscription?.trialEndsAt?.toISOString() ?? null,
     features: {
       // AUTOMATION/OUTBOUND_MESSAGING are status-sensitive — pass `status`
       // so an EXPIRED/CANCELED Pro business correctly reports these as
@@ -123,4 +139,35 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       customTemplates: { limitPerType: limits.customTemplatesPerType, usageByType },
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Purchase/restore verification — the only two paths that can ever move a
+// Subscription toward Plan.PRO. `businessId` always comes from the
+// authenticated tenant context (request.businessId in the route), never
+// from the request body — see subscriptionReconciliation.ts's doc comments
+// for the full "server is the source of truth" reasoning.
+//
+// The same functions serve both "first purchase" and "restore purchases":
+// restoring is not a distinct code path — mobile re-submits whatever
+// transaction/purchase proof the store itself reports it owns, and this
+// re-verifies it exactly like a fresh purchase, reconciling into the
+// authenticated business's Subscription row. There is no separate
+// "POST /restore" that trusts a plan/status directly.
+// ---------------------------------------------------------------------------
+
+export async function verifySubscriptionWithApple(
+  businessId: string,
+  transactionId: string,
+  client: AppleStoreClient = realAppleStoreClient,
+): Promise<ReconcileOutcome> {
+  return verifyAppleTransaction(businessId, transactionId, client);
+}
+
+export async function verifySubscriptionWithGoogle(
+  businessId: string,
+  purchaseToken: string,
+  client: GooglePlayClient = realGooglePlayClient,
+): Promise<ReconcileOutcome> {
+  return verifyGoogleSubscription(businessId, purchaseToken, client);
 }

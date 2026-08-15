@@ -61,6 +61,70 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: optionalSecret,
   TWILIO_FROM_NUMBER: optionalSecret,
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
+  // --- Apple billing: App Store Server API + Server Notifications V2 ---
+  // Deliberately separate from APPLE_CLIENT_ID/APPLE_TEAM_ID/APPLE_KEY_ID/
+  // APPLE_PRIVATE_KEY_BASE64 above (Sign in with Apple) even though both are
+  // "Apple" and share the same Apple Developer team: App Store Connect
+  // issues a *distinct* API key (its own Key ID + .p8 private key, under
+  // Users and Access > Integrations > In-App Purchase) with a different
+  // issuer ID, scoped to server-to-server App Store Server API calls, not
+  // Sign in with Apple. Reusing the auth keys here would be wrong, not just
+  // confusing. These are application-level Chakusa store-account secrets —
+  // per the Phase report's "credential storage" section, they belong in
+  // deployment environment/secrets, never in the database (the existing
+  // encrypted providerCredentials table is for per-user linked-account
+  // tokens, not this).
+  APPLE_BILLING_ENABLED: booleanFlag,
+  APPLE_BUNDLE_ID: optionalSecret,
+  APPLE_BILLING_ISSUER_ID: optionalSecret,
+  APPLE_BILLING_KEY_ID: optionalSecret,
+  APPLE_BILLING_PRIVATE_KEY_BASE64: optionalSecret,
+  // The one Pro monthly auto-renewable subscription product configured in
+  // App Store Connect — the backend's approved-catalog identity check
+  // (never trust a client-supplied product ID) resolves against this, not
+  // a hardcoded literal. See src/lib/billing/productCatalog.ts.
+  APPLE_PRO_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Despite the name, this governs BOTH Apple and Google billing (kept as
+  // one shared setting deliberately — a single Chakusa deployment targets
+  // one store environment at a time for both providers, not one each).
+  // Selects which App Store Server API base URL to call (sandbox vs
+  // production) and which environment a verified Apple transaction OR
+  // Google purchase (via its `testPurchase` field) must report to ever
+  // grant real Pro entitlement — see subscriptionReconciliation.ts's
+  // assertExpectedEnvironment and the Phase report's "sandbox/production
+  // separation" section. Defaults to SANDBOX so a freshly configured/
+  // staging deployment can never accidentally treat as-yet-untested config
+  // as production-authoritative.
+  APPLE_STORE_ENVIRONMENT: z.enum(["SANDBOX", "PRODUCTION"]).default("SANDBOX"),
+  // Comma-separated base64-DER Apple root CA certificate(s) this deployment
+  // trusts to anchor signed-transaction/notification verification — see
+  // src/lib/billing/jws.ts's doc comment for why this is a required
+  // deployment input rather than a hardcoded certificate.
+  APPLE_ROOT_CERTIFICATES_BASE64: optionalSecret,
+  // --- Google billing: Play Developer API + Real-time Developer Notifications ---
+  GOOGLE_BILLING_ENABLED: booleanFlag,
+  GOOGLE_PLAY_PACKAGE_NAME: optionalSecret,
+  // A Google Cloud service account with the Play Developer API's "View
+  // financial data" / subscription-read role, granted access to this app in
+  // Play Console (Users and permissions > API access) — server-to-server
+  // credentials, kept in deployment environment/secrets like Apple's above,
+  // never the database.
+  GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL: optionalSecret,
+  GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64: optionalSecret,
+  // The one Pro monthly subscription product/base-plan ID configured in
+  // Play Console — same "approved catalog, never a client-trusted ID"
+  // purpose as APPLE_PRO_MONTHLY_PRODUCT_ID.
+  GOOGLE_PRO_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Real-time Developer Notifications arrive as an authenticated Cloud
+  // Pub/Sub push request — Pub/Sub signs each request with a Google-issued
+  // OIDC token (Authorization: Bearer <token>) when the push subscription
+  // is configured with an authenticating service account. These two values
+  // are what src/modules/webhooks/googleWebhook.routes.ts verifies that
+  // token's `email` and `aud` claims against — the same
+  // verify-a-Google-issued-token shape googleVerifier.ts already uses for
+  // Sign-In, applied to a different token source.
+  GOOGLE_RTDN_SERVICE_ACCOUNT_EMAIL: optionalSecret,
+  GOOGLE_RTDN_AUDIENCE: optionalSecret,
   // Behind a reverse proxy (Render/Railway/etc.), the socket's remote
   // address is the proxy's, not the real client's — Fastify's IP-based
   // rate limiting (@fastify/rate-limit's default keyGenerator uses
@@ -108,6 +172,21 @@ const envSchema = z.object({
     }
     if (!env.TWILIO_FROM_NUMBER && !env.TWILIO_MESSAGING_SERVICE_SID) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["TWILIO_FROM_NUMBER"], message: "Either TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID is required in production when TWILIO_ENABLED=true" });
+    }
+  }
+  if (env.APPLE_BILLING_ENABLED) {
+    const appleBillingValues = [env.APPLE_BUNDLE_ID, env.APPLE_BILLING_ISSUER_ID, env.APPLE_BILLING_KEY_ID, env.APPLE_BILLING_PRIVATE_KEY_BASE64, env.APPLE_PRO_MONTHLY_PRODUCT_ID, env.APPLE_ROOT_CERTIFICATES_BASE64];
+    if (!appleBillingValues.every(Boolean)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["APPLE_BUNDLE_ID"], message: "APPLE_BUNDLE_ID, APPLE_BILLING_ISSUER_ID, APPLE_BILLING_KEY_ID, APPLE_BILLING_PRIVATE_KEY_BASE64, APPLE_PRO_MONTHLY_PRODUCT_ID, and APPLE_ROOT_CERTIFICATES_BASE64 are all required in production when APPLE_BILLING_ENABLED=true" });
+    }
+  }
+  if (env.GOOGLE_BILLING_ENABLED) {
+    const googleBillingValues = [env.GOOGLE_PLAY_PACKAGE_NAME, env.GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL, env.GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, env.GOOGLE_PRO_MONTHLY_PRODUCT_ID];
+    if (!googleBillingValues.every(Boolean)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["GOOGLE_PLAY_PACKAGE_NAME"], message: "GOOGLE_PLAY_PACKAGE_NAME, GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL, GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, and GOOGLE_PRO_MONTHLY_PRODUCT_ID are all required in production when GOOGLE_BILLING_ENABLED=true" });
+    }
+    if (!env.GOOGLE_RTDN_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_RTDN_AUDIENCE) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["GOOGLE_RTDN_SERVICE_ACCOUNT_EMAIL"], message: "GOOGLE_RTDN_SERVICE_ACCOUNT_EMAIL and GOOGLE_RTDN_AUDIENCE are required in production when GOOGLE_BILLING_ENABLED=true, to authenticate Real-time Developer Notifications" });
     }
   }
 });

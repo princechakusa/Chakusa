@@ -335,14 +335,23 @@ describe("GET /subscription/status", () => {
     expect(response.json().usage.leads.current).toBe(0);
   });
 
-  it("does not expose provider/billing internals", async () => {
+  it("exposes only safe billing fields, never raw provider identifiers/payloads", async () => {
     const { token } = await registerAccount(app);
     const response = await getStatus(app, token);
     const body = response.json();
+    // provider/currentPeriodEnd/cancelAtPeriodEnd/trialEndsAt are the
+    // deliberate safe additions (null/false for a FREE business with no
+    // billing history) — see the Billing Phase 1 report's "subscription
+    // status changes" section.
+    expect(body.provider).toBeNull();
+    expect(body.currentPeriodEnd).toBeNull();
+    expect(body.cancelAtPeriodEnd).toBe(false);
+    expect(body.trialEndsAt).toBeNull();
     expect(body).not.toHaveProperty("originalTransactionId");
     expect(body).not.toHaveProperty("latestTransactionId");
     expect(body).not.toHaveProperty("providerProductId");
-    expect(body).not.toHaveProperty("provider");
+    expect(body).not.toHaveProperty("googlePurchaseToken");
+    expect(body).not.toHaveProperty("environment");
     expect(JSON.stringify(body)).not.toContain("Twilio");
   });
 

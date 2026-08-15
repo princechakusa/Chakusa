@@ -49,6 +49,10 @@ export interface StandingUsageDto { current: number; limit: number | null; perio
 export interface SubscriptionStatusDto {
   plan: SubscriptionPlan;
   status: SubscriptionStatusValue;
+  provider: 'APPLE' | 'GOOGLE' | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  trialEndsAt: string | null;
   features: { automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean };
   usage: {
     leads: MonthlyUsageDto;

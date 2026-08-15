@@ -2,50 +2,36 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StyleSheet, Text, View } from 'react-native';
-import { SubscriptionStatusValue } from '../apiTypes';
 import { AppHeader, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
+import { canSubscribe, isEntitledStatus, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
+import { legalDestination } from '../domain/trustSettings';
+import { openExternalDestination } from '../services/externalDestinations';
+import { useBilling } from '../state/BillingContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { colors, radius, spacing, typography } from '../theme';
-import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
-import { legalDestination, proDisclosureReady } from '../domain/trustSettings';
-import { openExternalDestination } from '../services/externalDestinations';
 import { RootStackParamList } from '../types';
 
-const free = ['Manual lead recovery', 'Manual message sending', 'Core customer, review, and reminder tools', 'Free usage limits'];
-const proNow = ['Unlimited leads, customers, reviews, and reminders', 'Unlimited custom templates', 'Chakusa-initiated messaging', 'Automation access'];
+const benefits = ['Automatic missed-call follow-up', 'Chakusa outbound SMS', 'Unlimited normal customer, lead, review, and reminder limits', 'Unlimited custom templates', 'Advanced analytics and available Pro features'];
 const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
-
-// Respectful, accurate copy per subscription status — never implies a
-// purchase/renewal action exists in the app, since none does.
-const statusCopy: Record<SubscriptionStatusValue, { label: string; body: string }> = {
-  ACTIVE: { label: 'Active', body: 'Your plan status came from the backend. Free-plan upgrade prompts are suppressed.' },
-  TRIALING: { label: 'Trial', body: 'You’re in a Pro trial period. Your plan status came from the backend.' },
-  GRACE_PERIOD: { label: 'Payment issue', body: 'There’s a billing issue with your Pro subscription. Pro features remain available for now while this is resolved.' },
-  EXPIRED: { label: 'Expired', body: 'Your Pro subscription has expired. Free-plan limits now apply.' },
-  CANCELED: { label: 'Canceled', body: 'Your Pro subscription was canceled. Free-plan limits now apply.' },
-};
 
 export function ProScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { plan, status, features } = usePlanExperience();
-  const isPro = plan === 'PRO';
-  const copy = status ? statusCopy[status] : null;
-  // Pro access should track the entitled feature flags, not the plan label
-  // alone — an EXPIRED/CANCELED Pro business shows Free-limit messaging
-  // even though `plan` may still read "PRO" until it's formally downgraded.
-  const hasProAccess = Boolean(features?.automation || features?.outboundMessaging || features?.unlimitedTemplates);
-
-  return <Screen><AppHeader eyebrow="CHAKUSA PRO" title="Let Chakusa do the follow-up for you." subtitle="A clear look at Free and Pro. Purchases are not enabled in the app yet." right={isPro && copy ? <StatusBadge label={copy.label} /> : undefined} />
-    <View style={styles.price}><Text style={styles.priceValue}>$29</Text><Text style={styles.pricePeriod}>/month</Text><Text style={styles.priceNote}>Current monthly product direction</Text></View>
-    {isPro && copy ? <View style={[styles.active, !hasProAccess && styles.attention]}><Ionicons name={hasProAccess ? 'checkmark-circle' : 'alert-circle'} size={24} color={hasProAccess ? colors.success : colors.attention} /><View style={styles.copy}><Text style={styles.cardTitle}>Chakusa Pro — {copy.label}</Text><Text style={styles.body}>{copy.body}</Text></View></View> : null}
-    <PlanCard title="Free" subtitle="$0 forever" items={free} />
-    <PlanCard title="Pro" subtitle="$29/month" items={proNow} />
-    <View style={styles.disclosure}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Let Chakusa follow up when you can’t with automatic missed-call SMS follow-up.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
-    <View style={styles.disclosure}><Text style={styles.cardTitle}>Purchase disclosure preparation</Text><Text style={styles.body}>Billing is not available yet. A future store purchase screen will show the store-provided localized price, monthly billing period, auto-renewal terms, and purchase controls.</Text><View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use{terms ? '' : ' — not configured'}</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy{privacy ? '' : ' — not configured'}</Text></View><Text style={styles.readiness}>{proDisclosureReady(terms, privacy) ? 'Legal destinations configured' : 'Legal destinations required before purchasing'}</Text></View>
-    <PrimaryButton fullWidth disabled label={isPro ? 'Your Pro plan is active' : 'Pro coming soon'} onPress={() => undefined} />
-    <Text style={styles.footnote}>No purchase, trial, or subscription change happens on this screen.</Text>
+  const { plan, status, subscription } = usePlanExperience(); const billing = useBilling();
+  const entitled = isEntitledStatus(status); const maySubscribe = canSubscribe(plan, status);
+  const statusLabel = subscription ? subscriptionStatusLabel(subscription) : null; const period = subscription ? subscriptionPeriodCopy(subscription) : null;
+  return <Screen><AppHeader eyebrow="CHAKUSA PRO" title="Let Chakusa follow up when you can’t." subtitle="Automation and more room to grow, with entitlement confirmed by Chakusa." right={entitled && statusLabel ? <StatusBadge label={statusLabel} /> : undefined} />
+    <View style={styles.card}>{benefits.map(item => <View key={item} style={styles.feature}><Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} /><Text style={styles.featureText}>{item}</Text></View>)}</View>
+    {subscription && plan === 'PRO' ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Chakusa Pro · {statusLabel}</Text>{period ? <Text style={styles.body}>{period}</Text> : null}{status === 'GRACE_PERIOD' ? <Text style={styles.body}>Your Pro access is still active while the store attempts to resolve your payment.</Text> : null}{subscription.cancelAtPeriodEnd && status === 'ACTIVE' ? <Text style={styles.body}>Your subscription will not renew. Pro access remains active through the date above.</Text> : null}{subscription.provider ? <SecondaryButton fullWidth label="Manage Subscription" onPress={() => void billing.manage()} /> : null}</View> : null}
+    {maySubscribe ? <View style={styles.purchase}><Text style={styles.cardTitle}>Subscribe to Chakusa Pro</Text>
+      {!billing.supported ? <Text style={styles.body}>Subscriptions are available in the Chakusa mobile app.</Text> : !billing.configured ? <><Text style={styles.body}>The monthly Pro product is not configured for this build.</Text><Text style={styles.dev}>Add the platform’s public Pro monthly product ID and create a new development build.</Text></> : billing.productLoading && !billing.product ? <Text accessibilityLiveRegion="polite" style={styles.body}>Loading the store price…</Text> : billing.product ? <><View accessible accessibilityLabel={`Chakusa Pro, monthly, ${billing.product.displayPrice}`} style={styles.price}><Text style={styles.priceValue}>{billing.product.displayPrice}</Text><Text style={styles.pricePeriod}>per month</Text></View><Text style={styles.body}>Plan: Chakusa Pro</Text><Text style={styles.body}>Billing period: Monthly</Text><Text style={styles.body}>Billed monthly. Auto-renews until canceled.</Text>{billing.product.introductoryOffer ? <Text style={styles.offer}>Store offer: {billing.product.introductoryOffer}</Text> : null}<PrimaryButton fullWidth disabled={billing.purchasing || billing.restoring} label={billing.purchasing ? 'Waiting for store…' : 'Subscribe'} onPress={() => void billing.subscribe()} /></> : <><Text style={styles.body}>The store product could not be loaded. No checkout price is available.</Text><PrimaryButton fullWidth disabled={billing.productLoading} label={billing.productLoading ? 'Loading…' : 'Retry store'} onPress={() => void billing.loadProduct()} /></>}
+      <SecondaryButton fullWidth disabled={!billing.supported || billing.restoring || billing.purchasing} label={billing.restoring ? 'Restoring…' : 'Restore Purchases'} onPress={() => void billing.restore()} />
+      {billing.error?.includes('could not confirm') ? <SecondaryButton fullWidth disabled={billing.purchasing} label="Try verification again" onPress={() => void billing.retryVerification()} /> : null}
+      {billing.message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{billing.message}</Text> : null}{billing.error ? <Text accessibilityRole="alert" style={styles.error}>{billing.error}</Text> : null}
+      <View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text></View>
+    </View> : null}
+    <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic missed-call SMS follow-up once Pro is active.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
+    <Text style={styles.footnote}>Approximately US$29/month is Chakusa’s informational product direction. Your store’s localized price above is the purchase authority.</Text>
   </Screen>;
 }
-function PlanCard({ title, subtitle, items }: { title: string; subtitle: string; items: string[] }) { return <View style={styles.card}><View style={styles.cardHeader}><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardPrice}>{subtitle}</Text></View>{items.map(item => <Feature key={item} label={item} icon="checkmark-circle-outline" />)}</View>; }
-function Feature({ label, icon }: { label: string; icon: keyof typeof Ionicons.glyphMap }) { return <View style={styles.feature}><Ionicons name={icon} size={20} color={colors.primary} /><Text style={styles.featureText}>{label}</Text></View>; }
-const styles = StyleSheet.create({ price: { alignItems: 'center', paddingVertical: spacing.lg }, priceValue: { fontSize: 52, lineHeight: 58, fontWeight: '700', color: colors.text }, pricePeriod: { ...typography.heading, color: colors.textSecondary }, priceNote: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }, active: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.success, borderRadius: radius.md }, attention: { borderColor: colors.attention }, copy: { flex: 1 }, card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, cardHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }, cardTitle: { ...typography.subheading, color: colors.text, flexShrink: 1 }, cardPrice: { ...typography.bodyStrong, color: colors.primary }, feature: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, featureText: { ...typography.body, color: colors.text, flex: 1 }, body: { ...typography.body, color: colors.textSecondary }, disclosure: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, legal: { gap: spacing.sm }, link: { ...typography.bodyStrong, color: colors.primary, minHeight: 44, textAlignVertical: 'center' }, readiness: { ...typography.caption, color: colors.textSecondary }, footnote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' } });
+const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, statusCard: { borderColor: colors.success }, purchase: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, cardTitle: { ...typography.subheading, color: colors.text }, feature: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, featureText: { ...typography.body, color: colors.text, flex: 1 }, body: { ...typography.body, color: colors.textSecondary }, price: { alignItems: 'center', paddingVertical: spacing.sm }, priceValue: { fontSize: 36, lineHeight: 44, fontWeight: '700', color: colors.text }, pricePeriod: { ...typography.body, color: colors.textSecondary }, offer: { ...typography.bodyStrong, color: colors.text }, dev: { ...typography.caption, color: colors.textSecondary }, legal: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg }, link: { ...typography.bodyStrong, color: colors.primary, minHeight: 44, textAlignVertical: 'center' }, message: { ...typography.body, color: colors.text }, error: { ...typography.body, color: colors.negative }, footnote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' } });

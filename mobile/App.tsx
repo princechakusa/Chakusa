@@ -10,6 +10,7 @@ import { AppProvider } from './src/state/AppContext';
 import { AuthProvider } from './src/state/AuthContext';
 import { PreferencesProvider } from './src/state/PreferencesContext';
 import { PlanExperienceProvider } from './src/state/PlanExperienceContext';
+import { BillingProvider } from './src/state/BillingContext';
 import { RootStackParamList } from './src/types';
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
 import { publicRouteFromPath } from './src/domain/publicRoutes';
@@ -27,7 +28,7 @@ export default function App() {
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
   return (
     <SafeAreaProvider>
-      <PreferencesProvider><AuthProvider><PushNotificationManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>
+      <PreferencesProvider><AuthProvider><PushNotificationManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><BillingProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></BillingProvider></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>
     </SafeAreaProvider>
   );
 }

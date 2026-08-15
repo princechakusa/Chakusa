@@ -20,6 +20,7 @@ interface PlanExperienceValue {
   status: SubscriptionStatusDto['status'] | null;
   features: SubscriptionStatusDto['features'] | null;
   usage: SubscriptionStatusDto['usage'] | null;
+  subscription: SubscriptionStatusDto | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -129,6 +130,7 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
     status: subscription?.status ?? null,
     features: subscription?.features ?? null,
     usage: subscription?.usage ?? null,
+    subscription,
     loading,
     error,
     refresh,

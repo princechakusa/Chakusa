@@ -56,7 +56,11 @@ export const remindersApi = {
   list: () => api.get<ReminderDto[]>('/reminders'), create: (body: { customerId?: string; serviceName?: string; lastVisitDate?: string; dueDate?: string }) => api.post<ReminderDto>('/reminders', body), get: (id: string) => api.get<ReminderDto>(`/reminders/${id}`), patch: (id: string, body: Partial<Pick<ReminderDto, 'serviceName' | 'lastVisitDate' | 'dueDate' | 'status'>>) => api.patch<ReminderDto>(`/reminders/${id}`, body), generateMessage: (id: string) => api.post<{ message: string }>(`/reminders/${id}/generate-message`), markSent: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-sent`), markCompleted: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-completed`), dismiss: (id: string) => api.post<ReminderDto>(`/reminders/${id}/dismiss`),
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
-export const subscriptionApi = { getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status') };
+export const subscriptionApi = {
+  getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),
+  verifyApple: (transactionId: string) => api.post<SubscriptionStatusDto>('/subscription/apple/verify', { transactionId }),
+  verifyGoogle: (purchaseToken: string) => api.post<SubscriptionStatusDto>('/subscription/google/verify', { purchaseToken }),
+};
 export const automationApi = {
   listRules: () => api.get<AutomationRuleDto[]>('/automation/rules'),
   listRuns: (page = 1, pageSize = 25) => api.get<AutomationRunHistoryDto>(`/automation/runs${query({ page, pageSize })}`),

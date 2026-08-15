@@ -1,4 +1,11 @@
 export type LeadStatus = 'new' | 'contacted' | 'booked' | 'won' | 'lost';
+export type AutomationTriggerType = 'LEAD_CREATED' | 'LEAD_FOLLOW_UP' | 'REVIEW_REQUEST_FOLLOW_UP' | 'CUSTOMER_RETENTION';
+export type AutomationChannel = 'SMS' | 'WHATSAPP';
+export type AutomationRunStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export interface AutomationRuleDto { id: string; businessId: string; name: string; enabled: boolean; triggerType: AutomationTriggerType; channel: AutomationChannel; delaySeconds: number; config: Record<string, unknown>; createdAt: string; updatedAt: string; }
+export type AutomationRunReason = 'INVALID_PHONE' | 'CUSTOMER_OPTED_OUT' | 'SUBSCRIPTION_INACTIVE' | 'LEAD_ALREADY_CONTACTED' | 'RULE_DISABLED' | 'SEND_FAILED' | 'UNKNOWN';
+export interface AutomationRunHistoryItemDto { id: string; status: AutomationRunStatus; scheduledFor: string; startedAt: string | null; completedAt: string | null; triggerType: AutomationTriggerType; channel: AutomationChannel; customer: { id: string; name: string } | null; lead: { id: string; serviceRequested: string | null; status: LeadStatus } | null; reason: AutomationRunReason | null; }
+export interface AutomationRunHistoryDto { items: AutomationRunHistoryItemDto[]; total: number; page: number; pageSize: number; }
 export type LeadUrgency = 'low' | 'medium' | 'high';
 export type ReviewStatus = 'pending' | 'sent' | 'opened' | 'reviewed' | 'feedback_received';
 export type ReminderStatus = 'due' | 'sent' | 'completed' | 'dismissed';

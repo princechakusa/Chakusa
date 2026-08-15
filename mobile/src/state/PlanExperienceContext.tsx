@@ -33,7 +33,7 @@ const resourceLabels: Record<string, { singular: string; plural: string; monthly
   templates: { singular: 'custom template for this type', plural: 'custom templates for this type', monthly: false },
 };
 const featureCopy: Record<string, { title: string; body: string }> = {
-  AUTOMATION: { title: 'Automation is a Pro feature', body: 'With Pro, Chakusa can follow up automatically when you miss a customer. Mobile automation controls are not available yet.' },
+  AUTOMATION: { title: 'Automation is a Pro feature', body: 'With Pro, Chakusa can follow up automatically when you miss a customer. You can review automation controls from Settings.' },
   OUTBOUND_MESSAGING: { title: 'Chakusa messaging is a Pro feature', body: 'Pro enables Chakusa-initiated messaging. You can keep copying or opening messages manually on Free.' },
 };
 

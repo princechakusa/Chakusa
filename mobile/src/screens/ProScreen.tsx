@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StyleSheet, Text, View } from 'react-native';
 import { SubscriptionStatusValue } from '../apiTypes';
-import { AppHeader, PrimaryButton, Screen, StatusBadge } from '../components/ui';
+import { AppHeader, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { colors, radius, spacing, typography } from '../theme';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
 import { legalDestination, proDisclosureReady } from '../domain/trustSettings';
 import { openExternalDestination } from '../services/externalDestinations';
+import { RootStackParamList } from '../types';
 
 const free = ['Manual lead recovery', 'Manual message sending', 'Core customer, review, and reminder tools', 'Free usage limits'];
 const proNow = ['Unlimited leads, customers, reviews, and reminders', 'Unlimited custom templates', 'Chakusa-initiated messaging', 'Automation access'];
@@ -23,6 +26,7 @@ const statusCopy: Record<SubscriptionStatusValue, { label: string; body: string 
 };
 
 export function ProScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { plan, status, features } = usePlanExperience();
   const isPro = plan === 'PRO';
   const copy = status ? statusCopy[status] : null;
@@ -36,6 +40,7 @@ export function ProScreen() {
     {isPro && copy ? <View style={[styles.active, !hasProAccess && styles.attention]}><Ionicons name={hasProAccess ? 'checkmark-circle' : 'alert-circle'} size={24} color={hasProAccess ? colors.success : colors.attention} /><View style={styles.copy}><Text style={styles.cardTitle}>Chakusa Pro — {copy.label}</Text><Text style={styles.body}>{copy.body}</Text></View></View> : null}
     <PlanCard title="Free" subtitle="$0 forever" items={free} />
     <PlanCard title="Pro" subtitle="$29/month" items={proNow} />
+    <View style={styles.disclosure}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Let Chakusa follow up when you can’t with automatic missed-call SMS follow-up.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
     <View style={styles.disclosure}><Text style={styles.cardTitle}>Purchase disclosure preparation</Text><Text style={styles.body}>Billing is not available yet. A future store purchase screen will show the store-provided localized price, monthly billing period, auto-renewal terms, and purchase controls.</Text><View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use{terms ? '' : ' — not configured'}</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy{privacy ? '' : ' — not configured'}</Text></View><Text style={styles.readiness}>{proDisclosureReady(terms, privacy) ? 'Legal destinations configured' : 'Legal destinations required before purchasing'}</Text></View>
     <PrimaryButton fullWidth disabled label={isPro ? 'Your Pro plan is active' : 'Pro coming soon'} onPress={() => undefined} />
     <Text style={styles.footnote}>No purchase, trial, or subscription change happens on this screen.</Text>

@@ -34,3 +34,14 @@ export const updateAutomationRuleSchema = z.object({
   config: configSchema.optional(),
 });
 export type UpdateAutomationRuleInput = z.infer<typeof updateAutomationRuleSchema>;
+
+const runStatusEnum = z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"]);
+
+// Mirrors customers.schemas.ts / leads.schemas.ts's existing page/pageSize
+// convention exactly — see automation.service.ts's listAutomationRunHistory.
+export const listAutomationRunHistoryQuerySchema = z.object({
+  status: runStatusEnum.optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(25),
+});
+export type ListAutomationRunHistoryQuery = z.infer<typeof listAutomationRunHistoryQuerySchema>;

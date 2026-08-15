@@ -2,7 +2,7 @@ import { Prisma, type AutomationRunStatus, type LeadStatus, type Plan, type Subs
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
-import type { CreateAutomationRuleInput, UpdateAutomationRuleInput } from "./automation.schemas.js";
+import type { CreateAutomationRuleInput, ListAutomationRunHistoryQuery, UpdateAutomationRuleInput } from "./automation.schemas.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
@@ -71,6 +71,22 @@ export async function getAutomationRule(businessId: string, id: string) {
   return getOwnedRule(businessId, id);
 }
 
+/**
+ * Rejects a duplicate (businessId, triggerType, channel) with 409 Conflict
+ * rather than silently returning/upserting the existing rule — the same
+ * P2002-to-409 pattern already used for AutomationRun's dedupeKey
+ * (createAutomationRun below) and duplicate-email registration
+ * (auth.service.ts). Chosen over an idempotent get-or-create because every
+ * other unique-constraint violation in this codebase surfaces as a rejected
+ * request, not a silent success; a get-or-create here would also make it
+ * ambiguous to the caller whether their `name`/`enabled`/`delaySeconds`/
+ * `config` were actually applied or silently discarded in favor of the
+ * pre-existing row. The mobile client's own preflight (check-then-create)
+ * is a UX nicety, not the enforcement mechanism — this constraint plus this
+ * 409 is what makes the invariant real under concurrent requests, since two
+ * simultaneous creates can both pass a preflight check and only the
+ * database's unique index can guarantee only one insert wins.
+ */
 export async function createAutomationRule(businessId: string, plan: Plan, status: SubscriptionStatus, input: CreateAutomationRuleInput) {
   // Status-aware: a PRO business whose subscription has EXPIRED/CANCELED
   // must not be able to create/enable new automation rules just because
@@ -82,17 +98,24 @@ export async function createAutomationRule(businessId: string, plan: Plan, statu
   assertFeatureAvailable(plan, status, "AUTOMATION");
   validateConfigForTrigger(input.triggerType, input.config as Record<string, unknown>);
 
-  return prisma.automationRule.create({
-    data: {
-      businessId,
-      name: input.name,
-      enabled: input.enabled,
-      triggerType: input.triggerType,
-      channel: input.channel,
-      delaySeconds: input.delaySeconds,
-      config: input.config as Prisma.InputJsonValue,
-    },
-  });
+  try {
+    return await prisma.automationRule.create({
+      data: {
+        businessId,
+        name: input.name,
+        enabled: input.enabled,
+        triggerType: input.triggerType,
+        channel: input.channel,
+        delaySeconds: input.delaySeconds,
+        config: input.config as Prisma.InputJsonValue,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw ApiError.conflict(`An automation rule for ${input.triggerType} on ${input.channel} already exists for this business`);
+    }
+    throw error;
+  }
 }
 
 export async function updateAutomationRule(
@@ -268,3 +291,136 @@ export const markAutomationRunFailed = (businessId: string, id: string, errorMes
 
 export const cancelAutomationRun = (businessId: string, id: string) =>
   transitionRun(businessId, id, "CANCELLED", { cancelledAt: new Date() });
+
+// ---------------------------------------------------------------------------
+// AutomationRun history — read-only, tenant-scoped, product-facing. See
+// GET /automation/runs (automation.routes.ts).
+// ---------------------------------------------------------------------------
+
+export type SafeAutomationRunReason =
+  | "INVALID_PHONE"
+  | "CUSTOMER_OPTED_OUT"
+  | "SUBSCRIPTION_INACTIVE"
+  | "LEAD_ALREADY_CONTACTED"
+  | "RULE_DISABLED"
+  | "SEND_FAILED"
+  | "UNKNOWN";
+
+/**
+ * Maps executor.ts's internal, free-text errorMessage strings (see its
+ * cancelRun calls and the FAILED-path writes) to a small closed vocabulary
+ * — never returns the raw string. Every branch here corresponds to an
+ * exact, current executor.ts message; anything not recognized (including a
+ * FAILED run's exhausted-retries/permanent-provider-failure messages, which
+ * legitimately vary with whatever the provider returned) falls back to a
+ * generic-but-honest category rather than a fabricated specific one. See
+ * the Phase report's "safe reason strategy" for the two known gaps this
+ * leaves: the executor doesn't distinguish *why* a permanent provider
+ * failure happened (e.g. genuinely-invalid destination vs. carrier
+ * rejection), and its top-level catch-all (unexpected DB/bug errors) is
+ * indistinguishable from a real send failure once sanitized.
+ *
+ * Only terminal statuses (FAILED, CANCELLED) ever get a non-null reason —
+ * PENDING/RUNNING/COMPLETED always return null, even though a PENDING run
+ * mid-retry may carry a stale errorMessage from its last transient failure
+ * (see executor.ts's requeue branch): that message describes a past
+ * attempt, not the run's current state, so surfacing it would be
+ * misleading rather than merely imprecise.
+ */
+function sanitizeAutomationRunReason(status: AutomationRunStatus, errorMessage: string | null): SafeAutomationRunReason | null {
+  if (status !== "FAILED" && status !== "CANCELLED") return null;
+
+  switch (errorMessage) {
+    case "Customer has no valid E.164 phone number":
+      return "INVALID_PHONE";
+    case "Customer has opted out of SMS":
+      return "CUSTOMER_OPTED_OUT";
+    case "Business is no longer entitled to automation":
+      return "SUBSCRIPTION_INACTIVE";
+    case "Automation rule no longer exists or is disabled":
+      return "RULE_DISABLED";
+    default:
+      break;
+  }
+  if (errorMessage?.startsWith("Lead has already been actioned")) return "LEAD_ALREADY_CONTACTED";
+
+  // Any other FAILED row is, from the product's perspective, simply "the
+  // send failed" — whether that was a permanent provider rejection, an
+  // exhausted-retries give-up, or an unexpected internal error, this
+  // codebase does not currently persist enough structure to tell those
+  // apart safely without risking a raw provider/error string leaking
+  // through. See the Phase report.
+  if (status === "FAILED") return "SEND_FAILED";
+
+  // Any other CANCELLED row (missing lead/customer/run linkage — states
+  // that should be rare and are not product-meaningful on their own).
+  return "UNKNOWN";
+}
+
+export interface AutomationRunHistoryItemDto {
+  id: string;
+  status: AutomationRunStatus;
+  scheduledFor: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  triggerType: string;
+  channel: string;
+  customer: { id: string; name: string } | null;
+  lead: { id: string; serviceRequested: string | null; status: string } | null;
+  reason: SafeAutomationRunReason | null;
+}
+
+export interface AutomationRunHistoryDto {
+  items: AutomationRunHistoryItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Tenant-scoped, read-only, product-facing history — deliberately never
+ * gated on AUTOMATION entitlement (see the Phase report's "history and
+ * subscription status" section): a business that lets Pro lapse, or
+ * disables/deletes the rule that produced a run, must still be able to see
+ * what already happened. Ordered by createdAt DESC — the moment each run
+ * entered the system, which stays stable and monotonic across retries
+ * (unlike scheduledFor, which the executor rewrites on every transient
+ * retry backoff) — matching this codebase's existing list-endpoint
+ * convention (customers, leads) rather than inventing a new one.
+ */
+export async function listAutomationRunHistory(
+  businessId: string,
+  opts: ListAutomationRunHistoryQuery,
+): Promise<AutomationRunHistoryDto> {
+  const where = { businessId, ...(opts.status ? { status: opts.status } : {}) };
+
+  const [rows, total] = await Promise.all([
+    prisma.automationRun.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (opts.page - 1) * opts.pageSize,
+      take: opts.pageSize,
+      include: {
+        automationRule: { select: { triggerType: true, channel: true } },
+        customer: { select: { id: true, name: true } },
+        lead: { select: { id: true, serviceRequested: true, status: true } },
+      },
+    }),
+    prisma.automationRun.count({ where }),
+  ]);
+
+  const items: AutomationRunHistoryItemDto[] = rows.map((run) => ({
+    id: run.id,
+    status: run.status,
+    scheduledFor: run.scheduledFor,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    triggerType: run.automationRule.triggerType,
+    channel: run.automationRule.channel,
+    customer: run.customer ? { id: run.customer.id, name: run.customer.name } : null,
+    lead: run.lead ? { id: run.lead.id, serviceRequested: run.lead.serviceRequested, status: run.lead.status } : null,
+    reason: sanitizeAutomationRunReason(run.status, run.errorMessage),
+  }));
+
+  return { items, total, page: opts.page, pageSize: opts.pageSize };
+}

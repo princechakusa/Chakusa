@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -57,3 +57,11 @@ export const remindersApi = {
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export const subscriptionApi = { getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status') };
+export const automationApi = {
+  listRules: () => api.get<AutomationRuleDto[]>('/automation/rules'),
+  listRuns: (page = 1, pageSize = 25) => api.get<AutomationRunHistoryDto>(`/automation/runs${query({ page, pageSize })}`),
+  createRule: (body: { name: string; enabled: boolean; triggerType: 'LEAD_CREATED'; channel: 'SMS'; delaySeconds: number; config: Record<string, unknown> }) => api.post<AutomationRuleDto>('/automation/rules', body),
+  updateRule: (id: string, body: { delaySeconds: number }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
+  enableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/enable`),
+  disableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/disable`),
+};

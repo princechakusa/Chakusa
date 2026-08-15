@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { createAutomationRuleSchema, updateAutomationRuleSchema } from "./automation.schemas.js";
+import { createAutomationRuleSchema, listAutomationRunHistoryQuerySchema, updateAutomationRuleSchema } from "./automation.schemas.js";
 import {
   listAutomationRules,
   getAutomationRule,
   createAutomationRule,
   updateAutomationRule,
   setAutomationRuleEnabled,
+  listAutomationRunHistory,
 } from "./automation.service.js";
 
 /**
@@ -44,5 +45,14 @@ export default async function automationRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { id: string } }>("/rules/:id/disable", async (request, reply) => {
     reply.send(await setAutomationRuleEnabled(request.businessId!, request.plan!, request.status!, request.params.id, false));
+  });
+
+  // Read-only history — deliberately not gated by assertFeatureAvailable
+  // ("AUTOMATION"). Past runs are historical account data the business
+  // already owns; a lapsed subscription or a disabled/deleted rule must
+  // not hide them. See listAutomationRunHistory's doc comment.
+  fastify.get("/runs", async (request, reply) => {
+    const query = listAutomationRunHistoryQuerySchema.parse(request.query);
+    reply.send(await listAutomationRunHistory(request.businessId!, query));
   });
 }

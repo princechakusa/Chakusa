@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { PropsWithChildren, ReactNode } from 'react';
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput,
+  ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput,
   View, ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,10 +13,10 @@ import { formatDate, formatDateTime, formatDuration, formatMoney, titleCase } fr
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-export function Screen({ children, scroll = true, style }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle> }>) {
+export function Screen({ children, scroll = true, style, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void }>) {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} showsVerticalScrollIndicator={false}>{children}</ScrollView>
+      {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined} showsVerticalScrollIndicator={false}>{children}</ScrollView>
         : <View style={[styles.screen, styles.flex, style]}>{children}</View>}
     </SafeAreaView>
   );

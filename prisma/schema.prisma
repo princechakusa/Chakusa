@@ -724,6 +724,17 @@ model AutomationRule {
   business Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   runs     AutomationRun[]
 
+  // At most one rule per (businessId, triggerType, channel). Nothing in this
+  // codebase creates or expects more than one — scheduleMissedCallFollowUp
+  // (src/lib/automation/scheduler.ts) resolves the LEAD_CREATED+SMS rule via
+  // a bare `findFirst`, which silently picks an arbitrary row if duplicates
+  // existed; a client-side "check then create" preflight (see the mobile
+  // Automation screen) is not itself a guarantee under concurrent requests.
+  // This constraint is what actually makes "one rule per trigger/channel"
+  // true, and createAutomationRule (automation.service.ts) surfaces a
+  // violation as 409 Conflict, the same P2002-to-409 pattern already used
+  // for AutomationRun's dedupeKey and account registration's email.
+  @@unique([businessId, triggerType, channel])
   @@index([businessId])
   @@index([businessId, enabled])
   @@index([businessId, triggerType])
@@ -789,6 +800,14 @@ model AutomationRun {
   @@unique([businessId, dedupeKey])
   @@index([businessId])
   @@index([businessId, status])
+  // The GET /automation/runs history endpoint (automation.service.ts's
+  // listAutomationRunHistory) filters by businessId and orders by createdAt
+  // DESC — this composite index covers that scan directly instead of a
+  // businessId-only index plus a per-page sort, the same reasoning already
+  // applied to the (status, scheduledFor) index below for the worker's claim
+  // query. At "many runs per business" scale this is the query that would
+  // otherwise degrade first, since it's the one a human waits on.
+  @@index([businessId, createdAt])
   @@index([automationRuleId])
   @@index([customerId])
   @@index([leadId])

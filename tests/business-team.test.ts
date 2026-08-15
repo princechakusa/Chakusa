@@ -7,6 +7,7 @@ import { isEntitled, getPlanLimits } from "../src/lib/entitlements.js";
 import { resolveApplePlan, resolveGooglePlan } from "../src/lib/billing/productCatalog.js";
 import { createSession } from "../src/modules/auth/auth.service.js";
 import { acceptTeamInvitation } from "../src/modules/team/teamInvitations.service.js";
+import { sendTeamInvitationEmail, type TeamInvitationEmailSender } from "../src/modules/team/teamInvitationEmail.js";
 
 async function businessOwner(app: FastifyInstance, email: string, plan: "FREE" | "PRO" | "BUSINESS" = "BUSINESS") {
   const owner = await registerAccount(app, { email });
@@ -811,5 +812,301 @@ describe("Business Phase 1.1: new-user team invitation registration", () => {
     // since normal registration already created one); ADMIN/STAFF -> skip
     // straight into the existing business's workspace.
     expect(invitedResponse.json().role).not.toBe("OWNER");
+  });
+});
+
+describe("Business Phase 1.2: seat usage summary and invite delivery outcome", () => {
+  let app: FastifyInstance;
+  let emailOutcome: "success" | "unavailable" = "success";
+  const fakeSender: TeamInvitationEmailSender = async () => emailOutcome === "success";
+
+  beforeAll(async () => {
+    app = await createTestApp({ teamInvitationEmailSender: fakeSender });
+  });
+
+  afterEach(async () => {
+    emailOutcome = "success";
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await app.close();
+    await prisma.$disconnect();
+  });
+
+  async function summary(token: string) {
+    return app.inject({ method: "GET", url: "/team/summary", headers: authHeader(token) });
+  }
+
+  // -------------------------------------------------------------------
+  // Seats
+  // -------------------------------------------------------------------
+
+  it("1. owner counts as an active seat", async () => {
+    const owner = await businessOwner(app, "phase12-seat-1@example.com");
+    const response = await summary(owner.token);
+    expect(response.statusCode).toBe(200);
+    expect(response.json().seats).toMatchObject({ activeMembers: 1, pendingReservations: 0, current: 1 });
+  });
+
+  it("2. active staff count toward seats", async () => {
+    const owner = await businessOwner(app, "phase12-seat-2@example.com");
+    const invited = await invite(app, owner, "phase12-staff-2@example.com", "STAFF");
+    const session = await freshUserSession(app, "phase12-staff-2@example.com");
+    await acceptTeamInvitation(invited.json().token, session.userId);
+
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ activeMembers: 2, pendingReservations: 0, current: 2 });
+  });
+
+  it("3. a suspended (removed) member does not count as active", async () => {
+    const owner = await businessOwner(app, "phase12-seat-3@example.com");
+    const invited = await invite(app, owner, "phase12-staff-3@example.com", "STAFF");
+    const session = await freshUserSession(app, "phase12-staff-3@example.com");
+    await acceptTeamInvitation(invited.json().token, session.userId);
+    const member = await prisma.businessMember.findFirstOrThrow({ where: { userId: session.userId } });
+
+    await app.inject({ method: "DELETE", url: `/team/members/${member.id}`, headers: authHeader(owner.token) });
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ activeMembers: 1, current: 1 });
+  });
+
+  it("4. a valid (non-expired) pending invite reserves a seat", async () => {
+    const owner = await businessOwner(app, "phase12-seat-4@example.com");
+    await invite(app, owner, "phase12-pending-4@example.com", "STAFF");
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ activeMembers: 1, pendingReservations: 1, current: 2 });
+  });
+
+  it("5. an expired pending invite does not reserve a seat", async () => {
+    const owner = await businessOwner(app, "phase12-seat-5@example.com");
+    const invited = await invite(app, owner, "phase12-expired-5@example.com", "STAFF");
+    await prisma.teamInvitation.update({ where: { id: invited.json().id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ activeMembers: 1, pendingReservations: 0, current: 1 });
+  });
+
+  it("6. a revoked invite does not reserve a seat", async () => {
+    const owner = await businessOwner(app, "phase12-seat-6@example.com");
+    const invited = await invite(app, owner, "phase12-revoked-6@example.com", "STAFF");
+    await app.inject({ method: "DELETE", url: `/team/invitations/${invited.json().id}`, headers: authHeader(owner.token) });
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ pendingReservations: 0, current: 1 });
+  });
+
+  it("7. an accepted invite is not double-counted as both pending and member", async () => {
+    const owner = await businessOwner(app, "phase12-seat-7@example.com");
+    const invited = await invite(app, owner, "phase12-accepted-7@example.com", "STAFF");
+    const session = await freshUserSession(app, "phase12-accepted-7@example.com");
+    await acceptTeamInvitation(invited.json().token, session.userId);
+    const response = await summary(owner.token);
+    expect(response.json().seats).toMatchObject({ activeMembers: 2, pendingReservations: 0, current: 2 });
+  });
+
+  it("8. current matches the exact usage invitation enforcement itself sees", async () => {
+    const owner = await businessOwner(app, "phase12-seat-8@example.com");
+    const original = config.BUSINESS_SEAT_LIMIT;
+    try {
+      config.BUSINESS_SEAT_LIMIT = 2;
+      await invite(app, owner, "phase12-boundary-8@example.com", "STAFF"); // fills the last seat (owner + 1 pending = 2)
+      const response = await summary(owner.token);
+      expect(response.json().seats.current).toBe(2);
+      expect(response.json().seats.limit).toBe(2);
+      // The same boundary rejects a second invite — proves the summary's
+      // `current` is not a separately-drifting number.
+      const blocked = await invite(app, owner, "phase12-boundary-8b@example.com", "STAFF");
+      expect(blocked.statusCode).toBe(403);
+    } finally {
+      config.BUSINESS_SEAT_LIMIT = original;
+    }
+  });
+
+  it("9. remaining is limit minus current", async () => {
+    const owner = await businessOwner(app, "phase12-seat-9@example.com");
+    await invite(app, owner, "phase12-remaining-9@example.com", "STAFF");
+    const response = await summary(owner.token);
+    const { current, limit, remaining } = response.json().seats;
+    expect(remaining).toBe(limit - current);
+  });
+
+  it("10. limit comes from the backend's plan configuration, not the client", async () => {
+    const owner = await businessOwner(app, "phase12-seat-10@example.com");
+    const original = config.BUSINESS_SEAT_LIMIT;
+    try {
+      config.BUSINESS_SEAT_LIMIT = 7;
+      const response = await summary(owner.token);
+      expect(response.json().seats.limit).toBe(7);
+    } finally {
+      config.BUSINESS_SEAT_LIMIT = original;
+    }
+  });
+
+  it("11. tenant isolation: one business's seat summary never reflects another's", async () => {
+    const a = await businessOwner(app, "phase12-tenant-a-11@example.com");
+    const b = await businessOwner(app, "phase12-tenant-b-11@example.com");
+    await invite(app, b, "phase12-tenant-b-invite-11@example.com", "STAFF");
+
+    const responseA = await summary(a.token);
+    expect(responseA.json().seats).toMatchObject({ activeMembers: 1, pendingReservations: 0, current: 1 });
+  });
+
+  it("12. seat summary exposes only seat numbers, no other business data", async () => {
+    const owner = await businessOwner(app, "phase12-seat-12@example.com");
+    const response = await summary(owner.token);
+    expect(Object.keys(response.json())).toEqual(["seats"]);
+    expect(Object.keys(response.json().seats).sort()).toEqual(["activeMembers", "current", "limit", "pendingReservations", "remaining"].sort());
+  });
+
+  it("13. the concurrency boundary invite enforcement already relies on is unchanged", async () => {
+    const owner = await businessOwner(app, "phase12-seat-13@example.com");
+    const original = config.BUSINESS_SEAT_LIMIT;
+    try {
+      config.BUSINESS_SEAT_LIMIT = 2;
+      const [a, b] = await Promise.all([
+        invite(app, owner, "phase12-concurrent-a-13@example.com", "STAFF"),
+        invite(app, owner, "phase12-concurrent-b-13@example.com", "STAFF"),
+      ]);
+      const codes = [a.statusCode, b.statusCode].sort();
+      expect(codes).toEqual([201, 403]);
+      const response = await summary(owner.token);
+      expect(response.json().seats.current).toBe(2);
+    } finally {
+      config.BUSINESS_SEAT_LIMIT = original;
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Invite delivery outcome
+  // -------------------------------------------------------------------
+
+  it("14. successful email delivery reports emailSent: true", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-14@example.com");
+    emailOutcome = "success";
+    const response = await invite(app, owner, "phase12-delivered-14@example.com", "STAFF");
+    expect(response.statusCode).toBe(201);
+    expect(response.json().emailSent).toBe(true);
+  });
+
+  it("15. an unconfigured email provider reports emailSent: false (default sender, no fake override)", async () => {
+    const plainApp = await createTestApp();
+    try {
+      const owner = await businessOwner(plainApp, "phase12-delivery-15@example.com");
+      // Test env has no RESEND_API_KEY/EMAIL_FROM configured — the real
+      // sender's own config gate returns false deterministically.
+      const response = await invite(plainApp, owner, "phase12-undelivered-15@example.com", "STAFF");
+      expect(response.statusCode).toBe(201);
+      expect(response.json().emailSent).toBe(false);
+    } finally {
+      await plainApp.close();
+    }
+  });
+
+  it("16. a real provider failure never throws and returns false (no error detail leaked)", async () => {
+    const originalKey = config.RESEND_API_KEY;
+    const originalFrom = config.EMAIL_FROM;
+    const originalFetch = globalThis.fetch;
+    try {
+      config.RESEND_API_KEY = "test-key";
+      config.EMAIL_FROM = "invites@chakusa.example";
+      globalThis.fetch = (async () => {
+        throw new Error("simulated network outage — must never surface to the client");
+      }) as typeof fetch;
+
+      const result = await sendTeamInvitationEmail("someone@example.com", "raw-token-value", "Test Business", "Owner Name");
+      expect(result).toBe(false);
+    } finally {
+      config.RESEND_API_KEY = originalKey;
+      config.EMAIL_FROM = originalFrom;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("17. a failed/unconfigured email delivery still creates a valid, usable invitation", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-17@example.com");
+    emailOutcome = "unavailable";
+    const response = await invite(app, owner, "phase12-still-valid-17@example.com", "STAFF");
+    expect(response.statusCode).toBe(201);
+    expect(response.json().emailSent).toBe(false);
+
+    const stored = await prisma.teamInvitation.findFirstOrThrow({ where: { id: response.json().id } });
+    expect(stored.status).toBe("PENDING");
+
+    const session = await freshUserSession(app, "phase12-still-valid-17@example.com");
+    const outcome = await acceptTeamInvitation(response.json().token, session.userId);
+    expect(outcome.outcome).toBe("accepted");
+  });
+
+  it("18. the raw manual-share token is still returned exactly once regardless of delivery outcome", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-18@example.com");
+    emailOutcome = "unavailable";
+    const response = await invite(app, owner, "phase12-manual-18@example.com", "STAFF");
+    expect(response.json().token).toBeTypeOf("string");
+    expect(response.json().token.length).toBeGreaterThan(10);
+  });
+
+  it("19. the invitation creation response never leaks provider internals", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-19@example.com");
+    const response = await invite(app, owner, "phase12-no-leak-19@example.com", "STAFF");
+    const body = response.json();
+    expect(Object.keys(body).sort()).toEqual(["email", "emailSent", "expiresAt", "id", "role", "status", "token"].sort());
+    expect(JSON.stringify(body)).not.toMatch(/resend|message[_-]?id|api[_-]?key/i);
+  });
+
+  it("20. duplicate-invite behavior is unchanged regardless of delivery outcome", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-20@example.com");
+    await invite(app, owner, "phase12-dup-20@example.com", "STAFF");
+    const second = await invite(app, owner, "phase12-dup-20@example.com", "STAFF");
+    expect(second.statusCode).toBe(409);
+  });
+
+  it("21. invitation security (email identity matching) is unchanged", async () => {
+    const owner = await businessOwner(app, "phase12-delivery-21@example.com");
+    const invited = await invite(app, owner, "phase12-secure-21@example.com", "STAFF");
+    const wrongSession = await freshUserSession(app, "phase12-wrong-21@example.com");
+    const outcome = await acceptTeamInvitation(invited.json().token, wrongSession.userId);
+    expect(outcome.outcome).toBe("email-mismatch");
+  });
+
+  // -------------------------------------------------------------------
+  // Regression
+  // -------------------------------------------------------------------
+
+  it("22. the normal Business invite flow still works end to end", async () => {
+    const owner = await businessOwner(app, "phase12-regression-22@example.com");
+    const invited = await invite(app, owner, "phase12-regression-invitee-22@example.com", "ADMIN");
+    expect(invited.statusCode).toBe(201);
+    const session = await freshUserSession(app, "phase12-regression-invitee-22@example.com");
+    const outcome = await acceptTeamInvitation(invited.json().token, session.userId);
+    expect(outcome.outcome).toBe("accepted");
+  });
+
+  it("23. invited registration (Business Phase 1.1) still works", async () => {
+    const owner = await businessOwner(app, "phase12-regression-23@example.com");
+    const invited = await invite(app, owner, "phase12-regression-register-23@example.com", "STAFF");
+    const response = await app.inject({
+      method: "POST", url: "/auth/register",
+      payload: { email: "phase12-regression-register-23@example.com", password: "password123", fullName: "Still Works", invitationToken: invited.json().token },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().role).toBe("STAFF");
+    expect(response.json().business.id).toBe(owner.businessId);
+  });
+
+  it("24. the subscription/status teamManagement contract is unchanged", async () => {
+    const owner = await businessOwner(app, "phase12-regression-24@example.com");
+    const response = await app.inject({ method: "GET", url: "/subscription/status", headers: authHeader(owner.token) });
+    expect(response.json().features.teamManagement).toBe(true);
+  });
+
+  it("25. owner-only team mutations are unchanged", async () => {
+    const owner = await businessOwner(app, "phase12-regression-25@example.com");
+    const invited = await invite(app, owner, "phase12-regression-staff-25@example.com", "STAFF");
+    const session = await freshUserSession(app, "phase12-regression-staff-25@example.com");
+    await acceptTeamInvitation(invited.json().token, session.userId);
+
+    const forbidden = await app.inject({
+      method: "POST", url: "/team/invitations", headers: authHeader(session.accessToken), payload: { email: "someone@example.com", role: "STAFF" },
+    });
+    expect(forbidden.statusCode).toBe(403);
   });
 });

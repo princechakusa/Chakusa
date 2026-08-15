@@ -18,7 +18,7 @@ import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['chakusa://'],
-  config: { screens: { ResetPassword: 'reset-password' } },
+  config: { screens: { ResetPassword: 'reset-password', TeamInvite: 'team-invite/:token' } },
 };
 
 export default function App() {

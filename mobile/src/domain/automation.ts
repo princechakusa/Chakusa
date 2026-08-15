@@ -2,7 +2,7 @@ import { AutomationRuleDto, AutomationRunHistoryItemDto, AutomationRunReason, Au
 
 export const AUTOMATION_DELAYS = [0, 60, 120, 300, 600, 900, 1800] as const;
 export type AutomationAvailability = 'available' | 'free-locked' | 'subscription-unavailable' | 'loading';
-export function automationAvailability(plan: 'FREE' | 'PRO' | null, status: SubscriptionStatusValue | null, feature: boolean | null): AutomationAvailability { if (plan === null || status === null || feature === null) return 'loading'; if (plan === 'FREE') return 'free-locked'; return feature ? 'available' : 'subscription-unavailable'; }
+export function automationAvailability(plan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null, feature: boolean | null): AutomationAvailability { if (plan === null || status === null || feature === null) return 'loading'; if (plan === 'FREE') return 'free-locked'; return feature ? 'available' : 'subscription-unavailable'; }
 export function automationStatusCopy(enabled: boolean) { return enabled ? 'Enabled' : 'Disabled'; }
 export function delayLabel(seconds: number) { if (seconds === 0) return 'Immediately'; if (seconds === 60) return '1 minute'; return `${Math.round(seconds / 60)} minutes`; }
 export function delaySecondsForSelection(seconds: number) { return AUTOMATION_DELAYS.includes(seconds as typeof AUTOMATION_DELAYS[number]) ? seconds : null; }

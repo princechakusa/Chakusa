@@ -115,4 +115,36 @@ export async function reactivateMember(businessId: string, plan: Plan, actorUser
   });
 }
 
+/**
+ * Business Phase 1.2: the one authoritative seat-usage read, for mobile's
+ * "X of N seats used" display. `current`'s definition is deliberately
+ * copy-pasted-in-spirit (not literally shared code, but the exact same two
+ * queries) from createInvitation's own seat check
+ * (teamInvitations.service.ts) — ACTIVE members plus non-expired PENDING
+ * invitations, since a pending invite optimistically reserves a seat the
+ * moment it's sent. This function must never drift from that definition:
+ * if createInvitation's seat check changes, this must change identically,
+ * or mobile's seat display and the server's actual enforcement boundary
+ * will silently disagree.
+ *
+ * Read-only — an expired PENDING invitation is simply excluded from
+ * `pendingReservations` by the `expiresAt: { gt: now }` filter, the same
+ * way createInvitation's own count already does. This does not durably
+ * mark it EXPIRED (that write only happens lazily when the specific
+ * invitation is actually resolved — see resolveTeamInvitation/
+ * claimInvitationForNewUser); a summary read must not have that kind of
+ * side effect.
+ */
+export async function getSeatSummary(businessId: string, plan: Plan) {
+  const now = new Date();
+  const [activeMembers, pendingReservations] = await Promise.all([
+    prisma.businessMember.count({ where: { businessId, status: "ACTIVE" } }),
+    prisma.teamInvitation.count({ where: { businessId, status: "PENDING", expiresAt: { gt: now } } }),
+  ]);
+  const current = activeMembers + pendingReservations;
+  const limit = getPlanLimits(plan).staffSeats;
+  const remaining = limit === null ? null : Math.max(limit - current, 0);
+  return { activeMembers, pendingReservations, current, limit, remaining };
+}
+
 export type { BusinessRole };

@@ -1,5 +1,5 @@
 export type PublicPage = 'privacy' | 'terms' | 'support' | 'delete-account';
-export type PublicRoute = { kind: 'document'; page: PublicPage } | { kind: 'feedback'; token: string | null } | null;
+export type PublicRoute = { kind: 'document'; page: PublicPage } | { kind: 'feedback'; token: string | null } | { kind: 'team-invite'; token: string | null } | null;
 
 const pages: Record<string, PublicPage> = { '/privacy': 'privacy', '/terms': 'terms', '/support': 'support', '/delete-account': 'delete-account' };
 
@@ -12,10 +12,14 @@ export function publicRouteFromPath(pathname: string): PublicRoute {
     if (!match) return { kind: 'feedback', token: null };
     try { return { kind: 'feedback', token: decodeURIComponent(match[1]) }; } catch { return { kind: 'feedback', token: null }; }
   }
+  if (/^\/team-invite(?:\/|$)/.test(pathname)) {
+    const match = pathname.match(/^\/team-invite\/([^/]+)\/?$/);
+    if (!match) return { kind: 'team-invite', token: null };
+    try { return { kind: 'team-invite', token: decodeURIComponent(match[1]) }; } catch { return { kind: 'team-invite', token: null }; }
+  }
   return null;
 }
 
 export function publicPageTitle(page: PublicPage) {
   return ({ privacy: 'Chakusa Privacy Policy', terms: 'Chakusa Terms of Use', support: 'Chakusa Support', 'delete-account': 'Delete Your Chakusa Account' } as const)[page];
 }
-

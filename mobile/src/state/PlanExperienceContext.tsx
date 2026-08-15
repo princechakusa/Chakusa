@@ -9,7 +9,7 @@ import { colors, radius, spacing, typography } from '../theme';
 import { formatDate } from '../utils/format';
 import { useAuth } from './AuthContext';
 
-export type ServerPlan = 'FREE' | 'PRO';
+export type ServerPlan = 'FREE' | 'PRO' | 'BUSINESS';
 type Details = { resource?: string; feature?: string; limit?: number; current?: number; plan?: string; requiredPlan?: string; periodResetsAt?: string };
 type Notice = { title: string; body: string; reset?: string };
 

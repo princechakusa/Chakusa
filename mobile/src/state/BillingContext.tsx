@@ -27,7 +27,7 @@ export function BillingProvider({ children }: PropsWithChildren) {
 }
 
 function NativeBillingProvider({ children }: PropsWithChildren) {
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, role } = useAuth();
   const { refresh: refreshPlan } = usePlanExperience();
   const configured = productConfigured(platform, APPLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID);
   const productId = productIdForPlatform(platform, APPLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID);
@@ -73,6 +73,7 @@ function NativeBillingProvider({ children }: PropsWithChildren) {
   useEffect(() => { if (authStatus === 'anonymous') { pendingProof.current = null; setPurchasing(false); setRestoring(false); setMessage(null); setError(null); } }, [authStatus]);
 
   const verify = useCallback(async (purchase: Purchase) => {
+    if (role !== 'OWNER') return false;
     if (purchase.productId !== productId) return false;
     if (purchase.purchaseState === 'pending') { setMessage('Your purchase is pending approval from the store.'); return false; }
     try {
@@ -89,7 +90,7 @@ function NativeBillingProvider({ children }: PropsWithChildren) {
       setError(conflict ? 'This subscription is already connected to another Chakusa business.' : 'Your purchase was received, but Chakusa could not confirm it yet.');
       return false;
     }
-  }, [finishTransaction, productId, refreshPlan]);
+  }, [finishTransaction, productId, refreshPlan, role]);
   purchaseHandler.current = async purchase => { try { await verify(purchase); } finally { setPurchasing(false); } };
 
   const subscribe = useCallback(async () => {

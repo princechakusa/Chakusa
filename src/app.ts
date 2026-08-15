@@ -22,6 +22,7 @@ import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import publicReviewRoutes from "./modules/public/public.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
 import teamRoutes from "./modules/team/team.routes.js";
+import type { TeamInvitationEmailSender } from "./modules/team/teamInvitationEmail.js";
 import publicTeamInviteRoutes from "./modules/team/publicTeamInvites.routes.js";
 import type { GoogleTokenVerifier } from "./modules/auth/googleVerifier.js";
 import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } from "./modules/auth/appleAuth.js";
@@ -37,6 +38,8 @@ export interface BuildAppOptions {
   /** Test-only injection — see subscription.routes.ts's SubscriptionRoutesOptions. */
   appleStoreClient?: AppleStoreClient;
   googlePlayClient?: GooglePlayClient;
+  /** Test-only injection — see team.routes.ts's TeamRoutesOptions. */
+  teamInvitationEmailSender?: TeamInvitationEmailSender;
   /**
    * Rate limiting is skipped by default in NODE_ENV=test so ordinary test
    * suites (which reuse one app instance across many requests in a single
@@ -115,7 +118,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleStoreClient: options.appleStoreClient,
     googlePlayClient: options.googlePlayClient,
   });
-  await app.register(teamRoutes, { prefix: "/team" });
+  await app.register(teamRoutes, { prefix: "/team", emailSender: options.teamInvitationEmailSender });
   // No fastify.authenticate/requireBusiness hooks here — see
   // public.routes.ts's top-level doc comment.
   await app.register(publicReviewRoutes, { prefix: "/public/reviews" });

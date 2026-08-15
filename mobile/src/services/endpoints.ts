@@ -1,16 +1,16 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
 const query = (values: Record<string, string | number | undefined>) => { const params = new URLSearchParams(); Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); }); const encoded = params.toString(); return encoded ? `?${encoded}` : ''; };
 
 export const authApi = {
-  register: (body: { email: string; password: string; fullName: string; businessName: string; industry?: string }) => api.post<AuthResponse>('/auth/register', body, 'none'),
+  register: (body: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string }) => api.post<AuthResponse>('/auth/register', body, 'none'),
   login: (body: { email: string; password: string }) => api.post<AuthResponse>('/auth/login', body, 'none'),
-  google: (idToken: string) => api.post<AuthResponse>('/auth/google', { idToken }, 'none'),
+  google: (idToken: string, invitationToken?: string) => api.post<AuthResponse>('/auth/google', { idToken, invitationToken }, 'none'),
   linkGoogle: (idToken: string) => api.post<{ provider: 'GOOGLE'; providerEmail: string; linkedAt: string }>('/auth/google/link', { idToken }),
   appleChallenge: () => api.post<AppleChallenge>('/auth/apple/challenge', {}, 'none'),
-  apple: (body: AppleCredentialPayload) => api.post<AuthResponse>('/auth/apple', body, 'none'),
+  apple: (body: AppleCredentialPayload & { invitationToken?: string }) => api.post<AuthResponse>('/auth/apple', body, 'none'),
   appleLinkChallenge: () => api.post<AppleChallenge>('/auth/apple/link/challenge', {}),
   linkApple: (body: AppleCredentialPayload) => api.post<{ provider: 'APPLE'; providerEmail: string; linkedAt: string }>('/auth/apple/link', body),
   appleDeleteChallenge: () => api.post<AppleChallenge>('/auth/apple/delete/challenge', {}),
@@ -68,4 +68,18 @@ export const automationApi = {
   updateRule: (id: string, body: { delaySeconds: number }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
   enableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/enable`),
   disableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/disable`),
+};
+export const teamApi = {
+  getSummary: () => api.get<TeamSeatSummaryDto>('/team/summary'),
+  listMembers: () => api.get<TeamMemberDto[]>('/team/members'),
+  listInvitations: () => api.get<TeamInvitationDto[]>('/team/invitations'),
+  invite: (body: { email: string; role: 'ADMIN' | 'STAFF' }) => api.post<CreatedTeamInvitationDto>('/team/invitations', body),
+  revokeInvitation: (id: string) => api.delete<TeamInvitationDto>(`/team/invitations/${id}`),
+  changeRole: (id: string, role: 'ADMIN' | 'STAFF') => api.patch<TeamMemberDto>(`/team/members/${id}`, { role }),
+  removeMember: (id: string) => api.delete<TeamMemberDto>(`/team/members/${id}`),
+  reactivateMember: (id: string) => api.post<TeamMemberDto>(`/team/members/${id}/reactivate`),
+};
+export const publicTeamInvitesApi = {
+  get: (token: string) => api.get<PublicTeamInvitationDto>(`/public/team-invites/${encodeURIComponent(token)}`, 'none'),
+  accept: (token: string) => api.post<{ state: 'accepted' | 'expired' | 'already-used' }>(`/public/team-invites/${encodeURIComponent(token)}/accept`),
 };

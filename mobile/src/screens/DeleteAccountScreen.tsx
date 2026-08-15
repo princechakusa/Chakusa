@@ -7,12 +7,13 @@ import { useAuth } from '../state/AuthContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { colors, radius, spacing, typography } from '../theme';
 import { deletionConfirmationCopy } from '../domain/trustSettings';
+import { ownerDeletionError } from '../domain/team';
 
 export function DeleteAccountScreen() {
   const { user, business, deleteAccount, deleteAccountWithGoogle, deleteAccountWithApple } = useAuth();
   const { subscription } = usePlanExperience();
   const [password, setPassword] = useState(''); const [loading, setLoading] = useState<'password'|'google'|'apple'|null>(null); const [error, setError] = useState<string | null>(null);
-  const errorText = (caught: unknown) => caught instanceof ApiError || caught instanceof Error ? caught.message : 'Unable to delete your account.';
+  const errorText = (caught: unknown) => caught instanceof ApiError ? ownerDeletionError(caught.code) ?? caught.message : caught instanceof Error ? caught.message : 'Unable to delete your account.';
   const confirm = (action: () => void) => { if (loading) return; Alert.alert('Final confirmation', deletionConfirmationCopy(business?.name), [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete account', style: 'destructive', onPress: action }]); };
   const submitPassword = async () => { if (loading) return; setLoading('password'); setError(null); try { await deleteAccount(password); } catch (caught) { setError(errorText(caught)); } finally { setLoading(null); } };
   const submitGoogle = async () => { if (loading) return; setLoading('google'); setError(null); try { await deleteAccountWithGoogle(); } catch (caught) { setError(errorText(caught)); } finally { setLoading(null); } };

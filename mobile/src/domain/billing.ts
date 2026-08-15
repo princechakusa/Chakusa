@@ -5,7 +5,7 @@ export type BillingErrorKind = 'canceled' | 'pending' | 'already-owned' | 'produ
 export const BILLING_LEGAL_LINKS = ['https://chakusa.com/terms', 'https://chakusa.com/privacy'] as const;
 
 export function isEntitledStatus(status: SubscriptionStatusValue | null) { return status === 'ACTIVE' || status === 'TRIALING' || status === 'GRACE_PERIOD'; }
-export function canSubscribe(plan: 'FREE' | 'PRO' | null, status: SubscriptionStatusValue | null) { return plan === 'FREE' || status === 'EXPIRED' || status === 'CANCELED'; }
+export function canSubscribe(plan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null) { return plan !== 'BUSINESS' && (plan === 'FREE' || status === 'EXPIRED' || status === 'CANCELED'); }
 export function canNativeSubscribe(platform: BillingPlatform) { return platform === 'ios' || platform === 'android'; }
 export function checkoutPrice(displayPrice?: string | null) { return displayPrice?.trim() || null; }
 export function subscriptionStatusLabel(subscription: Pick<SubscriptionStatusDto, 'status'|'cancelAtPeriodEnd'|'currentPeriodEnd'>) {

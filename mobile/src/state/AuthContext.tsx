@@ -12,9 +12,9 @@ type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
   status: AuthStatus; restoreError: string | null; user: UserDto | null; business: BusinessDto | null; role: string | null; isOnboarded: boolean;
   restore: () => Promise<void>; login: (email: string, password: string) => Promise<void>;
-  register: (input: { email: string; password: string; fullName: string; businessName: string; industry?: string }) => Promise<void>;
-  googleSignIn: () => Promise<boolean>; linkGoogle: () => Promise<boolean>;
-  appleSignIn: () => Promise<boolean>; linkApple: () => Promise<boolean>;
+  register: (input: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string }) => Promise<void>;
+  googleSignIn: (invitationToken?: string) => Promise<boolean>; linkGoogle: () => Promise<boolean>;
+  appleSignIn: (invitationToken?: string) => Promise<boolean>; linkApple: () => Promise<boolean>;
   logout: () => Promise<void>; logoutAll: () => Promise<void>; forgotPassword: (email: string) => Promise<string>;
   resetPassword: (token: string, password: string) => Promise<string>; deleteAccount: (password: string) => Promise<void>;
   deleteAccountWithGoogle: () => Promise<boolean>;
@@ -75,9 +75,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     isOnboarded: hasCompletedBusinessSetup(business),
     login: async (email, password) => applySession(await authApi.login({ email, password })),
     register: async input => applySession(await authApi.register(input)),
-    googleSignIn: async () => { const idToken = await requestGoogleIdToken(); if (!idToken) return false; await applySession(await authApi.google(idToken)); return true; },
+    googleSignIn: async invitationToken => { const idToken = await requestGoogleIdToken(); if (!idToken) return false; await applySession(await authApi.google(idToken, invitationToken)); return true; },
     linkGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.linkGoogle(idToken); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'GOOGLE' as const])] } : current); return true; },
-    appleSignIn: async () => { const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await applySession(await authApi.apple(credential)); return true; },
+    appleSignIn: async invitationToken => { const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await applySession(await authApi.apple({ ...credential, invitationToken })); return true; },
     linkApple: async () => { const challenge = await authApi.appleLinkChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.linkApple(credential); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'APPLE' as const])] } : current); return true; },
     logout: async () => { const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { await clearSession(); } },
     logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { await clearSession(); } },

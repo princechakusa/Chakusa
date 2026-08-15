@@ -26,6 +26,8 @@ import { ProScreen } from '../screens/ProScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import { AccountInformationScreen } from '../screens/AccountInformationScreen';
 import { AutomationScreen } from '../screens/AutomationScreen';
+import { TeamScreen } from '../screens/TeamScreen';
+import { TeamInviteScreen } from '../screens/TeamInviteScreen';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 import { useAuth } from '../state/AuthContext';
@@ -56,7 +58,8 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
 }
 
 export function AppNavigator() {
-  const { status, restoreError, restore } = useAuth(); const preferences = usePreferences();
+  const { status, role, restoreError, restore } = useAuth(); const preferences = usePreferences();
+  useEffect(() => { if (status === 'authenticated' && (role === 'ADMIN' || role === 'STAFF') && !preferences.onboardingComplete) preferences.completeOnboarding(); }, [preferences, role, status]);
   if (status === 'restoring' || preferences.restoring) return <View style={styles.restoring}><ActivityIndicator color={colors.primary} /><Text style={styles.restoringText}>Restoring your workspace…</Text></View>;
   if (status === 'restore-error') return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
   return <Root.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, headerTitle: '', headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: colors.background } }}>
@@ -67,6 +70,8 @@ export function AppNavigator() {
     </> : null}
     {status === 'authenticated' && !preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
+    <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
+    {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />
     <Root.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset password' }} />
   </Root.Navigator>;

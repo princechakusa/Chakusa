@@ -23,6 +23,14 @@ export interface SessionTokens { accessToken: string; refreshToken: string; expi
 export interface AuthResponse extends SessionTokens { user: UserDto; business: BusinessDto | null; role?: string | null; isNewUser?: boolean; }
 export type RefreshResponse = SessionTokens;
 export interface MeResponse { user: UserDto; business: BusinessDto | null; role: string | null; }
+export type BusinessRole = 'OWNER' | 'ADMIN' | 'STAFF';
+export type MembershipStatus = 'ACTIVE' | 'SUSPENDED';
+export interface TeamMemberDto { id: string; userId: string; name: string; email: string; role: BusinessRole; status: MembershipStatus; joinedAt: string; }
+export type TeamInvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+export interface TeamInvitationDto { id: string; invitedEmail: string; role: Exclude<BusinessRole, 'OWNER'>; status: TeamInvitationStatus; expiresAt: string; createdAt: string; acceptedAt: string | null; revokedAt: string | null; }
+export interface CreatedTeamInvitationDto { id: string; email: string; role: Exclude<BusinessRole, 'OWNER'>; status: 'PENDING'; expiresAt: string; token: string; emailSent: boolean; }
+export interface TeamSeatSummaryDto { seats: { activeMembers: number; pendingReservations: number; current: number; limit: number; remaining: number; }; }
+export interface PublicTeamInvitationDto { state: 'open' | 'accepted' | 'expired' | 'revoked'; business?: { name: string }; email?: string; role?: Exclude<BusinessRole, 'OWNER'>; }
 
 export interface CustomerDto { id: string; businessId: string; name: string; phone: string | null; email: string | null; notes: string | null; createdAt: string; updatedAt: string; }
 export interface CustomerListResponse { items: CustomerDto[]; total: number; page: number; pageSize: number; }
@@ -42,7 +50,7 @@ export interface AttentionPageDto { items: AttentionItemDto[]; total: number; pa
 
 export interface ApiErrorBody { error: { code: 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | string; message: string; details?: unknown }; }
 
-export type SubscriptionPlan = 'FREE' | 'PRO';
+export type SubscriptionPlan = 'FREE' | 'PRO' | 'BUSINESS';
 export type SubscriptionStatusValue = 'ACTIVE' | 'TRIALING' | 'GRACE_PERIOD' | 'EXPIRED' | 'CANCELED';
 export interface MonthlyUsageDto { current: number; limit: number | null; period: 'month'; resetsAt: string; }
 export interface StandingUsageDto { current: number; limit: number | null; period: null; resetsAt: null; }
@@ -53,7 +61,7 @@ export interface SubscriptionStatusDto {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
-  features: { automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean };
+  features: { automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean; teamManagement: boolean };
   usage: {
     leads: MonthlyUsageDto;
     reviewRequests: MonthlyUsageDto;

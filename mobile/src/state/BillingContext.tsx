@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useCallback, useContext, useEffect, u
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { deepLinkToSubscriptions, ErrorCode, getAvailablePurchases, ProductSubscription, Purchase, useIAP } from 'expo-iap';
-import { APPLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID } from '../config';
+import { APPLE_PRO_MONTHLY_PRODUCT_ID, BILLING_ENABLED, GOOGLE_PRO_MONTHLY_PRODUCT_ID } from '../config';
 import { billingErrorKind, billingMessage, BillingPlatform, canNativeSubscribe, isEntitledStatus, productConfigured, productIdForPlatform } from '../domain/billing';
 import { ApiError } from '../services/api';
 import { subscriptionApi } from '../services/endpoints';
@@ -21,6 +21,7 @@ const platform = (Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.
 const emptyValue = (overrides: Partial<BillingValue> = {}): BillingValue => ({ platform, supported: false, configured: false, connected: false, product: null, productLoading: false, purchasing: false, restoring: false, message: null, error: null, loadProduct: async () => undefined, subscribe: async () => undefined, restore: async () => undefined, retryVerification: async () => undefined, manage: async () => undefined, clearMessage: () => undefined, ...overrides });
 
 export function BillingProvider({ children }: PropsWithChildren) {
+  if (!BILLING_ENABLED) return <BillingContext.Provider value={emptyValue()}>{children}</BillingContext.Provider>;
   if (!canNativeSubscribe(platform)) return <BillingContext.Provider value={emptyValue()}>{children}</BillingContext.Provider>;
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return <BillingContext.Provider value={emptyValue({ platform, configured: productConfigured(platform, APPLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID), error: 'Native subscriptions require a Chakusa development build.' })}>{children}</BillingContext.Provider>;
   return <NativeBillingProvider>{children}</NativeBillingProvider>;

@@ -1,0 +1,14 @@
+{
+  "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://chakusa-api.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_AUTH_ENABLED": "false",
+        "EXPO_PUBLIC_APPLE_AUTH_ENABLED": "false",
+        "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
+        "EXPO_PUBLIC_AUTOMATION_ENABLED": "false",
+        "EXPO_PUBLIC_BILLING_ENABLED": "false"
+      }
+    }
+  }
+}

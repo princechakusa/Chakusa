@@ -1,8 +1,9 @@
 import { ApiErrorBody, RefreshResponse } from '../apiTypes';
 import { API_URL } from '../config';
+import { renderWakeErrorCopy } from '../domain/mobileProduction';
 import { clearStoredSession, getStoredSession, storeSession } from './tokenStorage';
 
-export type ApiErrorKind = 'validation' | 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'server' | 'network' | 'invalid-response';
+export type ApiErrorKind = 'validation' | 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'server' | 'network' | 'configuration' | 'invalid-response';
 const REQUEST_TIMEOUT_MS = 20_000;
 const errorKinds: Record<number, ApiErrorKind> = { 400: 'validation', 401: 'unauthorized', 403: 'forbidden', 404: 'not-found', 409: 'conflict', 500: 'server' };
 
@@ -41,6 +42,7 @@ async function responseError(response: Response) {
 async function rotateSession(): Promise<string> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
+    if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address. Set EXPO_PUBLIC_API_URL and rebuild this app.', undefined, 'API_URL_MISSING');
     const session = await getStoredSession();
     if (!session) throw new ApiError('unauthorized', 'Your session has expired.', 401, 'AUTH_SESSION_EXPIRED');
     let response: Response;
@@ -74,13 +76,14 @@ interface ApiRequestInit extends RequestInit { auth?: 'required' | 'none'; retry
 async function fetchWithTimeout(url: string, init: RequestInit) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try { return await fetch(url, { ...init, signal: controller.signal }); }
-  catch (caught) { if (caught instanceof Error && caught.name === 'AbortError') throw new ApiError('network', 'This request took too long. Check your connection and try again.', undefined, 'REQUEST_TIMEOUT'); throw caught; }
+  catch (caught) { if (caught instanceof Error && caught.name === 'AbortError') throw new ApiError('network', renderWakeErrorCopy('REQUEST_TIMEOUT'), undefined, 'REQUEST_TIMEOUT'); throw caught; }
   finally { clearTimeout(timeout); }
 }
 
 export class ApiClient {
   async request<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
     const { auth = 'required', retryRefresh = true, ...requestInit } = init;
+    if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address. Set EXPO_PUBLIC_API_URL and rebuild this app.', undefined, 'API_URL_MISSING');
     const session = auth === 'required' ? await getStoredSession() : null;
     let response: Response;
     try {

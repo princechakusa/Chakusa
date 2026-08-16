@@ -1,9 +1,17 @@
 import { Platform } from 'react-native';
 import { APPROVED_PUBLIC_DESTINATIONS } from './domain/trustSettings';
+import { normalizeApiUrl, publicFeatureEnabled } from './domain/mobileProduction';
 
-const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
-export const API_URL = configuredUrl || 'http://localhost:4000';
+// Required per build/environment. Local development uses mobile/.env; production
+// builds inject the Render URL through their environment, never a source fallback.
+export const API_URL = configuredUrl;
+export const GOOGLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED);
+export const APPLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED);
+export const PASSWORD_RESET_EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED);
+export const AUTOMATION_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_AUTOMATION_ENABLED);
+export const BILLING_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_BILLING_ENABLED);
 
 export const EAS_PROJECT_ID = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() ?? '';
 export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() ?? '';

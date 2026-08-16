@@ -4,6 +4,7 @@ import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
 import { prisma } from "./lib/prisma.js";
+import { attachFastifySentry } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
 import tenantPlugin from "./plugins/tenant.js";
 import errorHandlerPlugin from "./plugins/errorHandler.js";
@@ -91,6 +92,11 @@ export async function buildApp(options: BuildAppOptions = {}) {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
   }
   await app.register(errorHandlerPlugin);
+  // Reports genuinely unexpected 5xx failures to Sentry — a plain onError
+  // hook that runs alongside errorHandlerPlugin above, never altering its
+  // response. No-ops entirely when Sentry isn't enabled — see
+  // src/lib/sentry.ts's doc comments for why.
+  attachFastifySentry(app);
   await app.register(authPlugin);
   await app.register(tenantPlugin);
 

@@ -194,6 +194,25 @@ export const envSchema = z.object({
   // origin. Set this once a real web frontend domain exists; no domain is
   // invented here since none is configured yet.
   CORS_ALLOWED_ORIGINS: optionalSecret,
+  // Production Infrastructure Phase 4: same "off by default, feature-flag
+  // gated" shape as EMAIL_ENABLED above — Sentry is an operational nicety,
+  // not something local dev/test or an unconfigured deployment should ever
+  // be blocked by. See src/lib/sentry.ts, which additionally refuses to
+  // actually initialize the SDK outside NODE_ENV=production regardless of
+  // this flag (defense in depth — a stray SENTRY_ENABLED=true in a test
+  // run must never start reporting real events).
+  SENTRY_ENABLED: booleanFlag,
+  SENTRY_DSN: optionalSecret,
+  // Free-text, not an enum — Sentry itself just groups events by whatever
+  // string you send. Defaults to NODE_ENV at use-site (src/lib/sentry.ts),
+  // not baked in here, so this only needs setting to override that default
+  // (e.g. distinguishing "production" from a future "staging").
+  SENTRY_ENVIRONMENT: optionalSecret,
+  // Recommended production value: your platform's own deploy/commit
+  // identifier (e.g. Render sets RENDER_GIT_COMMIT automatically) — lets
+  // Sentry associate an issue with the exact deployed commit. Optional;
+  // Sentry functions fine without it, just with less precise grouping.
+  SENTRY_RELEASE: optionalSecret,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
   if (env.EMAIL_ENABLED && !env.RESEND_API_KEY) {
@@ -201,6 +220,9 @@ export const envSchema = z.object({
   }
   if (env.EMAIL_ENABLED && !env.EMAIL_FROM) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["EMAIL_FROM"], message: "EMAIL_FROM is required in production when EMAIL_ENABLED=true" });
+  }
+  if (env.SENTRY_ENABLED && !env.SENTRY_DSN) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["SENTRY_DSN"], message: "SENTRY_DSN is required in production when SENTRY_ENABLED=true" });
   }
   if (!env.PUBLIC_REVIEW_BASE_URL) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });

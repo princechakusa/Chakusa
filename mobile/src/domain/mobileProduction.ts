@@ -9,6 +9,7 @@ export function normalizeApiUrl(value?: string) {
 }
 
 export function publicFeatureEnabled(value?: string) { return value?.trim().toLowerCase() !== 'false'; }
+export function googleIosUrlScheme(clientId?: string) { const value = clientId?.trim(); return value && /^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/.test(value) ? `com.googleusercontent.apps.${value.slice(0, -'.apps.googleusercontent.com'.length)}` : null; }
 export function productionServiceAvailability(enabled: boolean) { return enabled ? 'available' : 'unavailable'; }
 export function renderWakeErrorCopy(code?: string) { return code === 'REQUEST_TIMEOUT' ? 'Chakusa is waking up or taking longer than usual. Please try again in a moment.' : 'Unable to reach Chakusa. Check your connection and try again.'; }
 export function passwordResetCopy(emailEnabled: boolean) { return emailEnabled ? 'Enter your account email. We will send a secure, single-use reset link.' : 'Password reset email is temporarily unavailable. Contact support if you need help accessing your account.'; }

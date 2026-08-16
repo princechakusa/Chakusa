@@ -9,7 +9,8 @@ const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 export const API_URL = configuredUrl;
 export const GOOGLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED);
 export const APPLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED);
-export const PASSWORD_RESET_EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED);
+export const EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_EMAIL_ENABLED ?? process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED);
+export const PASSWORD_RESET_EMAIL_ENABLED = EMAIL_ENABLED;
 export const AUTOMATION_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_AUTOMATION_ENABLED);
 export const BILLING_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_BILLING_ENABLED);
 

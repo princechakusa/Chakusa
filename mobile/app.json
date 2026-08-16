@@ -10,7 +10,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chakusa.mobile",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "buildNumber": "2",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.chakusa.mobile",
@@ -38,9 +42,15 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.CONFIGURE_ME"
+          "iosUrlScheme": "com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3a425309-15fb-4407-8db4-9c380feae21b"
+      }
+    },
+    "owner": "princechakusa"
   }
 }

@@ -4,8 +4,11 @@ Configure the production build environment (EAS or equivalent) with:
 
 ```dotenv
 EXPO_PUBLIC_API_URL=https://chakusa-api.onrender.com
-EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=false
+EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com
 EXPO_PUBLIC_APPLE_AUTH_ENABLED=false
+EXPO_PUBLIC_EMAIL_ENABLED=false
 EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED=false
 EXPO_PUBLIC_AUTOMATION_ENABLED=false
 EXPO_PUBLIC_BILLING_ENABLED=false

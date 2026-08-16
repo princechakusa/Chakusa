@@ -21,7 +21,7 @@ Set the same client ID in:
 GOOGLE_OAUTH_CLIENT_IDS=123456789-example.apps.googleusercontent.com
 
 # mobile/.env
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=123456789-example.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com
 ```
 
 Multiple trusted backend audiences may be comma-separated in `GOOGLE_OAUTH_CLIENT_IDS`. Do not add client IDs belonging to unrelated apps.
@@ -33,13 +33,13 @@ Multiple trusted backend audiences may be comma-separated in `GOOGLE_OAUTH_CLIEN
 3. Copy the iOS client ID into `mobile/.env`:
 
 ```dotenv
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=123456789-ioshash.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m.apps.googleusercontent.com
 ```
 
-4. Reverse that client ID and replace `com.googleusercontent.apps.CONFIGURE_ME` in `mobile/app.json`:
+4. Reverse that client ID and configure this iOS URL scheme in `mobile/app.json`:
 
 ```text
-com.googleusercontent.apps.123456789-ioshash
+com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m
 ```
 
 The reversed client ID is the iOS callback URL scheme. Keep the existing `chakusa` scheme; it is used for Chakusa deep links such as password reset.

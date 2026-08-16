@@ -8,7 +8,11 @@ const booleanFlag = z.preprocess(
   z.boolean().default(false),
 );
 
-const envSchema = z.object({
+// Exported so tests can exercise the production superRefine validation
+// (e.g. EMAIL_ENABLED's RESEND_API_KEY/EMAIL_FROM requirement) directly
+// via envSchema.safeParse({...}) — see tests/config-email.test.ts — without
+// spawning a real process just to prove the schema's own logic.
+export const envSchema = z.object({
   // The only database env var the application (API and worker — both read
   // this exact same value via src/lib/prisma.ts's PrismaClient, no other
   // datasource override) ever connects with. In production this is
@@ -55,6 +59,22 @@ const envSchema = z.object({
   // the flow this feeds — is a core, always-available feature, not gated
   // behind an optional integration the way Twilio/Apple/Google are.
   PUBLIC_REVIEW_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  // Production Infrastructure Phase 2.2: email delivery (password reset,
+  // team invitations) is a real product feature but — unlike
+  // PUBLIC_REVIEW_BASE_URL above — is deliberately NOT unconditionally
+  // required in production. Reasoning: getting Resend's sending domain
+  // verified requires owning and DNS-configuring a real domain, which is a
+  // separate, later step from "the API can boot and serve traffic" — see
+  // sendPasswordResetEmail.ts/teamInvitationEmail.ts, both of which already
+  // return false (never throw) when RESEND_API_KEY/EMAIL_FROM are absent,
+  // and both call sites already treat that as a normal, safe outcome (a
+  // 202 with no differing response for password reset; `emailSent: false`
+  // plus the still-valid manual share link for team invitations). This
+  // flag exists purely to control config.ts's OWN startup validation
+  // below — it changes nothing about how the two send functions already
+  // behave, since they already fail closed on missing credentials
+  // regardless of this flag.
+  EMAIL_ENABLED: booleanFlag,
   RESEND_API_KEY: optionalSecret,
   EMAIL_FROM: optionalSecret,
   GOOGLE_AUTH_ENABLED: booleanFlag,
@@ -176,11 +196,11 @@ const envSchema = z.object({
   CORS_ALLOWED_ORIGINS: optionalSecret,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
-  if (!env.RESEND_API_KEY) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["RESEND_API_KEY"], message: "RESEND_API_KEY is required in production" });
+  if (env.EMAIL_ENABLED && !env.RESEND_API_KEY) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["RESEND_API_KEY"], message: "RESEND_API_KEY is required in production when EMAIL_ENABLED=true" });
   }
-  if (!env.EMAIL_FROM) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["EMAIL_FROM"], message: "EMAIL_FROM is required in production" });
+  if (env.EMAIL_ENABLED && !env.EMAIL_FROM) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["EMAIL_FROM"], message: "EMAIL_FROM is required in production when EMAIL_ENABLED=true" });
   }
   if (!env.PUBLIC_REVIEW_BASE_URL) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });

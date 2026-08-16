@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
+import { prisma } from "./lib/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import tenantPlugin from "./plugins/tenant.js";
 import errorHandlerPlugin from "./plugins/errorHandler.js";
@@ -93,7 +94,27 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(authPlugin);
   await app.register(tenantPlugin);
 
+  // Cheap, DB-free liveness — "the process is up and answering HTTP," not
+  // "the app is fully functional." Deployment platforms (Render, etc.)
+  // should probe this frequently; it must never do real work.
   app.get("/health", async () => ({ status: "ok" }));
+
+  // Readiness — the same liveness guarantee PLUS "the database is
+  // currently reachable," via the cheapest possible round-trip
+  // (`SELECT 1`, no table access, no business data). Used for
+  // deploy-time verification and (optionally) a platform's readiness
+  // probe, kept separate from /health above so a slow/unreachable DB
+  // doesn't make the process look dead to a liveness check that would
+  // otherwise trigger an unnecessary restart.
+  app.get("/health/ready", async (_request, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return { status: "ok" };
+    } catch {
+      reply.code(503);
+      return { status: "unavailable" };
+    }
+  });
 
   await app.register(authRoutes, {
     prefix: "/auth",

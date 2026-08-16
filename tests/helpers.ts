@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Plan, SubscriptionStatus } from "@prisma/client";
 import { buildApp, type BuildAppOptions } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
+import { assertDestructiveTestDatabaseAccessAllowed } from "./dbSafetyGuard.js";
 
 export async function createTestApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = await buildApp(options);
@@ -9,7 +10,13 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
   return app;
 }
 
+/**
+ * Production Safety Phase 2.1: guarded before the first destructive
+ * statement — see dbSafetyGuard.ts. This call must remain the very first
+ * line of this function; nothing destructive may run before it.
+ */
 export async function resetDatabase() {
+  assertDestructiveTestDatabaseAccessAllowed();
   await prisma.$transaction([
     prisma.billingEvent.deleteMany(),
     prisma.teamInvitation.deleteMany(),

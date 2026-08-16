@@ -2,6 +2,12 @@ node_modules/
 dist/
 .env
 .env.local
+# Local-only test database credentials — see .env.test.example for the
+# committed, documented shape. Even though these are local-Postgres
+# defaults (not secrets in the usual sense), .env.test is gitignored for
+# the same reason .env is: it's a local override file, not something a
+# fresh clone should inherit verbatim.
+.env.test
 *.log
 coverage/
 .DS_Store

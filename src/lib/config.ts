@@ -213,6 +213,14 @@ export const envSchema = z.object({
   // Sentry associate an issue with the exact deployed commit. Optional;
   // Sentry functions fine without it, just with less precise grouping.
   SENTRY_RELEASE: optionalSecret,
+  // Production Infrastructure Phase 4.2 — TEMPORARY, for one-time live
+  // Sentry capture verification only. Gates the equally-temporary
+  // GET /internal/debug-sentry route in app.ts. Defaults false (route is
+  // unregistered unless explicitly turned on); no production requirement
+  // exists for it, and it is intentionally never referenced by
+  // .env.example. Both this flag and the route it gates must be removed
+  // once verification is complete — see the Phase 4.2 report.
+  DEBUG_SENTRY_ROUTE_ENABLED: booleanFlag,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
   if (env.EMAIL_ENABLED && !env.RESEND_API_KEY) {

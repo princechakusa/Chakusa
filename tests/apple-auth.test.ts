@@ -62,6 +62,18 @@ describe("Apple authentication", () => {
     expect(await prisma.authSession.count({ where: { userId: identity.userId } })).toBe(1);
   });
 
+  it("creates an account safely when Apple returns no name at all on first authorization (subsequent-login shape)", async () => {
+    // Apple only returns fullName on the very first authorization for a
+    // given user+app; a real subsequent login (or a user who denied the
+    // name prompt) presents exactly this shape — no givenName/familyName.
+    const issued = await challenge();
+    const payload = { ...issued, identityToken: "valid", authorizationCode: "code-1" };
+    const response = await app.inject({ method: "POST", url: "/auth/apple", payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().user.fullName).toBe("relay");
+    expect(response.json().user.email).toBe("relay@privaterelay.appleid.com");
+  });
+
   it("signs in the same Apple subject without replacing its first-use name", async () => {
     const firstPayload = await credential();
     const first = await app.inject({ method: "POST", url: "/auth/apple", payload: firstPayload });

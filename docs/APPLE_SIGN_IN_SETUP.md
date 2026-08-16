@@ -17,13 +17,16 @@ The current native iOS flow uses the App ID/bundle ID as `APPLE_CLIENT_ID`. A Se
 Set these only in the backend secret manager. Never put the `.p8` key or encryption key in Expo public variables or commit them:
 
 ```env
+APPLE_AUTH_ENABLED=true
 APPLE_CLIENT_ID="com.chakusa.mobile"
-APPLE_TEAM_ID="YOUR_10_CHARACTER_TEAM_ID"
-APPLE_KEY_ID="YOUR_KEY_ID"
+APPLE_TEAM_ID="N5DSK22C62"
+APPLE_KEY_ID="2G96HS3R93"
 APPLE_PRIVATE_KEY_BASE64="BASE64_OF_THE_COMPLETE_P8_PEM_FILE"
 PROVIDER_TOKEN_ENCRYPTION_KEY="BASE64_OF_32_RANDOM_BYTES"
 APPLE_CHALLENGE_TTL_MINUTES=5
 ```
+
+Team ID and Key ID are public developer-account identifiers, safe to record here. `APPLE_PRIVATE_KEY_BASE64` and `PROVIDER_TOKEN_ENCRYPTION_KEY` are secrets — set them only as Render environment variables, never here, never in Git.
 
 Generate `PROVIDER_TOKEN_ENCRYPTION_KEY` with a cryptographically secure random generator. Keep old key material available during any future key rotation until stored provider credentials have been re-encrypted.
 

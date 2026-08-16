@@ -122,20 +122,6 @@ export async function buildApp(options: BuildAppOptions = {}) {
     }
   });
 
-  // Production Infrastructure Phase 4.2 — TEMPORARY, one-time-use route to
-  // confirm a real unexpected error is captured by Sentry in the live
-  // Render deployment. Unregistered entirely unless
-  // DEBUG_SENTRY_ROUTE_ENABLED=true (defaults false, never set in
-  // .env.example). No database access, no business data, no secret of any
-  // kind — just a deliberate throw. MUST be removed (this block and the
-  // config flag both) immediately after verification; see the Phase 4.2
-  // report for the removal commit.
-  if (config.DEBUG_SENTRY_ROUTE_ENABLED) {
-    app.get("/internal/debug-sentry", async () => {
-      throw new Error("Chakusa Sentry verification: controlled test error — safe to ignore");
-    });
-  }
-
   await app.register(authRoutes, {
     prefix: "/auth",
     googleTokenVerifier: options.googleTokenVerifier,

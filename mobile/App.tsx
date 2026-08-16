@@ -22,7 +22,12 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function App() {
-  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
+  // React Native defines `window` (it aliases `global`) but has no
+  // `window.location`, so guarding on `window` alone still dereferences
+  // undefined and throws a fatal render-time TypeError before any UI
+  // mounts. Both conditions are required: the first covers SSR/Node, the
+  // second covers native. Web behavior is unchanged.
+  const pathname = typeof window === 'undefined' || !window.location ? '' : window.location.pathname;
   const publicRoute = publicRouteFromPath(pathname);
   if (publicRoute?.kind === 'feedback') return <SafeAreaProvider><StatusBar style="dark" /><PublicFeedbackScreen token={publicRoute.token} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;

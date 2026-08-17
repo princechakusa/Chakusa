@@ -5,7 +5,7 @@ interface Props {
   provisional?: boolean;
 }
 // "Provisional" now only means "the app store isn't live yet, so this leads
-// to /get-started's coming-soon badges" — not a dead self-referencing
+// to /get-started's coming-soon badges", not a dead self-referencing
 // anchor. Kept as a prop so a future page can turn the note off once the
 // store links are real.
 const { heading, support, provisional = true } = Astro.props;
@@ -16,5 +16,5 @@ const { heading, support, provisional = true } = Astro.props;
   <div class="final-cta-actions">
     <a class="button button-primary" href="/get-started">Start free</a>
   </div>
-  {provisional && <p class="provisional-note">Start Free leads to the download page — app store links go live once the listings do.</p>}
+  {provisional && <p class="provisional-note">Start Free leads to the download page. App store links go live once the listings do.</p>}
 </section>

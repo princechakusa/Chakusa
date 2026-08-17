@@ -1,8 +1,8 @@
 // Mirrors src/lib/entitlements.ts's PLAN_LIMITS / PLAN_FEATURES exactly.
-// Re-verify these numbers against that file before every release — see
+// Re-verify these numbers against that file before every release, see
 // docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 2's Pricing acceptance
 // criteria. Do not round or "simplify" a real cap; do not invent a
-// Business price — the backend has no commercial decision on it yet.
+// Business price, the backend has no commercial decision on it yet.
 
 export interface PricingTier {
   name: string;
@@ -36,7 +36,7 @@ export const pricingTiers: PricingTier[] = [
     name: "Pro",
     tagline: "For businesses ready to stop tracking this by hand.",
     price: "~$29/mo",
-    priceNote: "Billed through the App Store or Google Play — the store's localized price is the purchase authority.",
+    priceNote: "Billed through the App Store or Google Play. The store's localized price is the purchase authority.",
     features: [
       "Unlimited leads, review requests, customers, and reminders",
       "Unlimited custom message templates",

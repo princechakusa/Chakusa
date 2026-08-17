@@ -4,8 +4,8 @@ import SiteHeader from "../components/SiteHeader.astro";
 import PillarSection from "../components/PillarSection.astro";
 import CTASection from "../components/CTASection.astro";
 
-const title = "Product — Chakusa";
-const description = "Recover missed customers, ask for reviews at the right moment, and know exactly who's due to come back — see how Chakusa works.";
+const title = "Product | Chakusa";
+const description = "Recover missed customers, ask for reviews at the right moment, and know exactly who's due to come back. See how Chakusa works.";
 ---
 <BaseLayout {title} {description}>
   <SiteHeader current="product" />
@@ -13,14 +13,14 @@ const description = "Recover missed customers, ask for reviews at the right mome
     <section class="page-hero content-shell" aria-labelledby="product-hero-title">
       <p class="eyebrow">Product</p>
       <h1 id="product-hero-title">Everything Chakusa does, in three parts.</h1>
-      <p class="page-hero-support">No dispatch, no invoicing, no dashboard you need training to read — just the three things that keep a customer from quietly disappearing.</p>
+      <p class="page-hero-support">No dispatch, no invoicing, no dashboard you need training to read. Just the three things that keep a customer from quietly disappearing.</p>
     </section>
 
     <PillarSection
       id="recover"
       eyebrow="Recover"
       headline="Catch the customer before they call someone else."
-      copy="The moment a call goes unanswered, Chakusa turns it into a lead you can act on — tracked from new, to contacted, to booked, so nothing sits forgotten in a notifications tab."
+      copy="The moment a call goes unanswered, Chakusa turns it into a lead you can act on, tracked from new, to contacted, to booked, so nothing sits forgotten in a notifications tab."
       accent="coral"
       hasVisual={false}
     />
@@ -28,7 +28,7 @@ const description = "Recover missed customers, ask for reviews at the right mome
     <PillarSection
       id="review"
       eyebrow="Review"
-      headline="Turn a good visit into a public review — and catch a bad one privately first."
+      headline="Turn a good visit into a public review, and catch a bad one privately first."
       copy="Send a review request while the visit is still fresh. If a customer isn't happy, their feedback comes to you privately before it becomes a public rating."
       accent="coral"
       hasVisual={false}
@@ -38,11 +38,11 @@ const description = "Recover missed customers, ask for reviews at the right mome
       id="retain"
       eyebrow="Retain"
       headline="Know exactly who's due to come back."
-      copy="Chakusa tracks when a customer is due for their next visit, based on how long it's been — so a regular who's gone quiet gets noticed before they're gone for good."
+      copy="Chakusa tracks when a customer is due for their next visit, based on how long it's been, so a regular who's gone quiet gets noticed before they're gone for good."
       accent="teal"
       hasVisual={false}
     />
 
-    <CTASection heading="See it for yourself." support="Start free — no card required." />
+    <CTASection heading="See it for yourself." support="Start free, no card required." />
   </main>
 </BaseLayout>

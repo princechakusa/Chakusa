@@ -1,11 +1,28 @@
 ---
+interface NavChild { href: string; label: string }
+interface NavLink { href: string; label: string; id: string; children?: NavChild[] }
 interface Props { current?: string }
 const { current } = Astro.props;
 
-const links = [
-  { href: "/product", label: "Product", id: "product" },
+const links: NavLink[] = [
+  {
+    href: "/product", label: "Product", id: "product",
+    children: [
+      { href: "/product#recover", label: "Recover" },
+      { href: "/product#review", label: "Review" },
+      { href: "/product#retain", label: "Retain" },
+    ],
+  },
   { href: "/pricing", label: "Pricing", id: "pricing" },
-  { href: "/industries", label: "Industries", id: "industries" },
+  {
+    href: "/industries", label: "Industries", id: "industries",
+    children: [
+      { href: "/industries#beauty", label: "Beauty" },
+      { href: "/industries#home-services", label: "Home services" },
+      { href: "/industries#automotive", label: "Automotive" },
+      { href: "/industries#professional", label: "Professional" },
+    ],
+  },
   { href: "/about", label: "About", id: "about" },
 ];
 ---
@@ -14,7 +31,16 @@ const links = [
     <a class="wordmark" href="/" aria-label="Chakusa home"><span class="wordmark-mark" aria-hidden="true">C</span><span>CHAKUSA</span></a>
     <div class="desktop-nav-links">
       {links.map((link) => (
-        <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+        link.children ? (
+          <div class="nav-item">
+            <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+            <div class="nav-dropdown">
+              {link.children.map((child) => <a href={child.href}>{child.label}</a>)}
+            </div>
+          </div>
+        ) : (
+          <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+        )
       ))}
     </div>
     <div class="nav-actions">
@@ -38,7 +64,12 @@ const links = [
   <div class="mobile-nav" id="mobile-nav" hidden>
     <div class="content-shell mobile-nav-inner">
       {links.map((link) => (
-        <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+        <>
+          <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+          {link.children && link.children.map((child) => (
+            <a href={child.href} class="mobile-nav-sub">{child.label}</a>
+          ))}
+        </>
       ))}
       <a href="/login" class="mobile-nav-signin">Sign in</a>
     </div>

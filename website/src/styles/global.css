@@ -6,7 +6,7 @@
   --color-coral-hover: #e95c62;
   /* Text-safe variants: the bright brand coral/success only clear WCAG AA's
      4.5:1 text-contrast minimum against white/paper when used as a
-     background with dark text on top (verified: 5.14:1) — as a foreground
+     background with dark text on top (verified: 5.14:1), as a foreground
      text color on a light background they measure 3.03:1 and 1.93:1
      respectively, both AA failures. These darker variants are for text only;
      buttons, borders, and chip backgrounds keep using the bright originals
@@ -34,7 +34,7 @@
 
   --radius-control: .75rem;
   --radius-pill: 999px;
-  /* Previously declared "Inter" first without ever loading it — since Inter
+  /* Previously declared "Inter" first without ever loading it, since Inter
      isn't a default OS font, every browser was silently falling back to
      Segoe UI/San Francisco the whole time, not the intended typeface. Now
      self-hosted via @fontsource-variable/inter (see BaseLayout.astro) so
@@ -74,8 +74,8 @@ h2 {
   margin: 0;
   font-size: clamp(1.75rem, 4.5vw, 2.375rem);
   line-height: 1.1;
-  letter-spacing: -.025em;
-  font-weight: 800;
+  letter-spacing: -.02em;
+  font-weight: 700;
 }
 .content-shell {
   width: min(100% - 2.5rem, 81rem);
@@ -120,7 +120,7 @@ h2 {
   gap: 2.25rem;
   color: var(--color-text-secondary-accessible);
   font-size: .9375rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 .desktop-nav-links a,
 .nav-cta,
@@ -134,6 +134,44 @@ h2 {
 .desktop-nav-links a[aria-current="page"] {
   color: var(--color-text);
 }
+.nav-item {
+  position: relative;
+}
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, .375rem);
+  min-width: 11rem;
+  padding: .5rem;
+  margin-top: .375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 1.25rem 2.5rem rgba(32, 36, 43, .12);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+.nav-item:hover .nav-dropdown,
+.nav-item:focus-within .nav-dropdown {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.nav-dropdown a {
+  display: block;
+  padding: .5rem .75rem;
+  border-radius: .6rem;
+  font-size: .875rem;
+  color: var(--color-text);
+}
+.nav-dropdown a:hover {
+  background: var(--color-background);
+  color: var(--color-coral-text);
+}
 .nav-actions {
   display: flex;
   align-items: center;
@@ -143,7 +181,7 @@ h2 {
   display: none;
   color: var(--color-text-secondary-accessible);
   font-size: .9375rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 .nav-signin:hover {
   color: var(--color-text);
@@ -154,7 +192,7 @@ h2 {
   background: var(--color-coral);
   color: var(--color-text);
   font-size: .875rem;
-  font-weight: 750;
+  font-weight: 600;
 }
 .nav-cta:hover {
   background: var(--color-coral-hover);
@@ -185,7 +223,7 @@ h2 {
   display: flex;
   align-items: center;
   font-size: 1rem;
-  font-weight: 650;
+  font-weight: 500;
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
 }
@@ -195,9 +233,15 @@ h2 {
 .mobile-nav-inner a[aria-current="page"] {
   color: var(--color-coral-text);
 }
+.mobile-nav-sub {
+  padding-left: 1.25rem;
+  min-height: 2.5rem !important;
+  font-size: .9375rem !important;
+  color: var(--color-text-secondary-accessible) !important;
+}
 .mobile-nav-signin {
   color: var(--color-text-secondary-accessible) !important;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 /* ==========================================================================
@@ -208,16 +252,16 @@ h2 {
   color: var(--color-coral-text);
   font-size: .6875rem;
   line-height: 1.25;
-  font-weight: 800;
-  letter-spacing: .12em;
+  font-weight: 700;
+  letter-spacing: .1em;
   text-transform: uppercase;
 }
 h1 {
   margin: 0;
   font-size: clamp(2.5rem, 11vw, 3.25rem);
-  line-height: 1.06;
-  letter-spacing: -.045em;
-  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.03em;
+  font-weight: 700;
 }
 h1 span {
   display: block;
@@ -244,7 +288,7 @@ h1 span {
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   font-size: 1rem;
-  font-weight: 750;
+  font-weight: 600;
   transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 }
 .button:hover {
@@ -282,8 +326,8 @@ h1 span {
   gap: .625rem;
   margin-top: 2.25rem;
   font-size: .75rem;
-  font-weight: 800;
-  letter-spacing: .08em;
+  font-weight: 600;
+  letter-spacing: .06em;
   text-transform: uppercase;
 }
 .journey i {
@@ -301,13 +345,13 @@ h1 span {
   background: rgba(53, 208, 186, .12);
   color: var(--color-success-text);
   font-size: .8125rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ==========================================================================
-   Hero — typography + color led, no photography. A reserved video slot
+   Hero, typography + color led, no photography. A reserved video slot
    stands in for product proof until a real video exists (see VideoSlot.astro
-   and the note in that file — never fake a playable video).
+   and the note in that file, never fake a playable video).
    ========================================================================== */
 .hero {
   display: grid;
@@ -344,22 +388,22 @@ h1 span {
 }
 .video-slot-label {
   margin: 0;
-  font-weight: 700;
+  font-weight: 600;
   font-size: .9375rem;
   color: var(--color-text);
 }
 .video-slot-status {
   margin: 0;
   font-size: .75rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--color-text-secondary-accessible);
 }
 
 /* ==========================================================================
-   Home — Problem, pillar teasers, FAQ. Pricing and Industries content lives
-   only on their own pages — Home never repeats it (see the working session:
+   Home, Problem, pillar teasers, FAQ. Pricing and Industries content lives
+   only on their own pages, Home never repeats it (see the working session:
    each type of information stays in its own place, no duplication).
    ========================================================================== */
 section.problem,
@@ -399,14 +443,14 @@ section.get-started-steps {
   margin: 0 0 .5rem;
   color: var(--color-coral-text);
   font-size: .6875rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 .pillars-teaser-headline {
   margin: 0;
   font-size: 1.125rem;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1.35;
 }
 .pillars-teaser-copy {
@@ -418,7 +462,7 @@ section.get-started-steps {
 .pillars-teaser-link {
   display: inline-block;
   margin-top: var(--space-5);
-  font-weight: 650;
+  font-weight: 500;
   color: var(--color-coral-text);
 }
 .pillars-teaser-link:hover {
@@ -449,14 +493,14 @@ section.get-started-steps {
   margin: 0 0 .5rem;
   color: var(--color-coral-text);
   font-size: .6875rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 .pricing-card h3 {
   margin: 0;
   font-size: 1.375rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 .pricing-card-tagline {
   margin: .375rem 0 0;
@@ -467,7 +511,7 @@ section.get-started-steps {
 .pricing-card-price {
   margin: var(--space-5) 0 0;
   font-size: 2.25rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -.02em;
 }
 .pricing-card-note {
@@ -525,7 +569,7 @@ section.get-started-steps {
 .comparison-table thead th {
   background: var(--color-background);
   font-size: .75rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
   color: var(--color-text-secondary-accessible);
@@ -556,7 +600,7 @@ section.get-started-steps {
   justify-content: space-between;
   gap: 1rem;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1rem;
   list-style: none;
 }
@@ -653,13 +697,13 @@ section.get-started-steps {
 .industry-card h3 {
   margin: 0;
   font-size: 1.375rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 .industry-card-examples {
   margin: .5rem 0 0;
   color: var(--color-coral-text);
   font-size: .8125rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .02em;
   text-transform: uppercase;
 }
@@ -707,7 +751,7 @@ section.get-started-steps {
   font-size: clamp(2.25rem, 6vw, 3rem);
   line-height: 1.08;
   letter-spacing: -.03em;
-  font-weight: 800;
+  font-weight: 700;
 }
 .page-hero-support {
   margin: var(--space-4) 0 0;
@@ -720,7 +764,7 @@ section.get-started-steps {
   margin: .5rem 0 0;
   font-size: clamp(2.25rem, 6vw, 3rem);
   letter-spacing: -.03em;
-  font-weight: 800;
+  font-weight: 700;
 }
 .about-section h2,
 .legal-section h2 {
@@ -737,7 +781,7 @@ section.get-started-steps {
 .about-section a,
 .legal-section a {
   color: var(--color-coral-text);
-  font-weight: 650;
+  font-weight: 500;
 }
 .legal-draft-notice {
   display: inline-block;
@@ -747,7 +791,7 @@ section.get-started-steps {
   background: rgba(245, 185, 66, .14);
   color: #8a5f0a;
   font-size: .8125rem;
-  font-weight: 650;
+  font-weight: 600;
   max-width: none;
 }
 
@@ -801,7 +845,7 @@ section.get-started-steps {
   border-radius: var(--radius-control);
   color: var(--color-text-secondary-accessible);
   font-size: .875rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 /* ==========================================================================
@@ -825,7 +869,7 @@ section.get-started-steps {
 .footer-col-title {
   margin: 0 0 .25rem;
   font-size: .6875rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--color-text-secondary-accessible);

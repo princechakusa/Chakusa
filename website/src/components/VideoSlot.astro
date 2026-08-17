@@ -1,5 +1,5 @@
 ---
-// Reserved space for a real product video — never a fake video player, never
+// Reserved space for a real product video, never a fake video player, never
 // a static image standing in for one. Once a real file exists, replace the
 // placeholder markup below with a real <video>/embed; until then this
 // renders an honest, clearly-labeled empty slot, not something pretending
@@ -9,7 +9,7 @@ interface Props {
 }
 const { label = "Product video" } = Astro.props;
 ---
-<div class="video-slot" role="img" aria-label={`${label} — coming soon`}>
+<div class="video-slot" role="img" aria-label={`${label}, coming soon`}>
   <div class="video-slot-glyph" aria-hidden="true">
     <svg width="22" height="22" viewBox="0 0 22 22"><path d="M7 5.5v11l9-5.5-9-5.5Z" fill="currentColor" /></svg>
   </div>

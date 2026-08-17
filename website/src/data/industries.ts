@@ -1,5 +1,5 @@
-// Matches mobile/src/screens/OnboardingScreen.tsx's industry picker exactly
-// — do not add a category that isn't offered at signup. Ordered by real
+// Matches mobile/src/screens/OnboardingScreen.tsx's industry picker exactly.
+// Do not add a category that isn't offered at signup. Ordered by real
 // message-template depth (src/lib/defaultTemplates.ts currently has
 // industry-specific templates only for barber, dentist, and restaurant),
 // per docs/WEBSITE_CREATIVE_DIRECTION.md Part 6.
@@ -9,7 +9,7 @@ export interface Industry {
   title: string;
   examples: string[];
   copy: string;
-  /** 3 concrete, honest examples of what Chakusa tracks for this vertical —
+  /** 3 concrete, honest examples of what Chakusa tracks for this vertical ,
    * every line must map to a real feature (Lead, ReviewRequest, Reminder),
    * never an automation claim beyond what's actually live. */
   workflow: string[];
@@ -31,7 +31,7 @@ export const industries: Industry[] = [
     id: "professional",
     title: "Professional",
     examples: ["Dentist", "Photographer", "Consultant", "Other"],
-    copy: "A missed appointment call or a patient overdue for a check-up shouldn't slip through — Chakusa keeps both visible.",
+    copy: "A missed appointment call or a patient overdue for a check-up shouldn't slip through. Chakusa keeps both visible.",
     workflow: [
       "Track every missed booking call as a lead, not a lost message",
       "Ask for a review once a session or appointment wraps up",

@@ -8,13 +8,13 @@ import FaqSchema from "../components/FaqSchema.astro";
 import CTASection from "../components/CTASection.astro";
 import { pricingTiers } from "../data/pricing";
 
-const title = "Pricing — Chakusa";
-const description = "Compare Chakusa's Free, Pro, and Business plans for local service businesses. Real limits, real prices, no hidden tiers — start free, no card required.";
+const title = "Pricing | Chakusa";
+const description = "Compare Chakusa's Free, Pro, and Business plans for local service businesses. Real limits, real prices, no hidden tiers. Start free, no card required.";
 
 const faqs = [
   {
     question: "How does billing work?",
-    answer: "Pro and Business are billed as a native subscription through the App Store or Google Play, not a separate web checkout — the price shown on this page is directional, and the store's localized price is always the final one.",
+    answer: "Pro and Business are billed as a native subscription through the App Store or Google Play, not a separate web checkout. The price shown on this page is directional, and the store's localized price is always the final one.",
   },
   {
     question: "What happens if I go over my Free plan limits?",
@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     question: "Is Business pricing available yet?",
-    answer: "Not yet — Business tier pricing hasn't been finalized. Reach out and we'll follow up once it is.",
+    answer: "Not yet. Business tier pricing hasn't been finalized. Reach out and we'll follow up once it is.",
   },
 ];
 ---
@@ -65,6 +65,6 @@ const faqs = [
       <FaqSchema items={faqs} />
     </section>
 
-    <CTASection heading="Start free — no card required." />
+    <CTASection heading="Start free, no card required." />
   </main>
 </BaseLayout>

@@ -1,0 +1,52 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import CTASection from "../../components/CTASection.astro";
+import { industries } from "../../data/industries";
+
+export function getStaticPaths() {
+  return industries.map((industry) => ({
+    params: { slug: industry.id },
+    props: { industry },
+  }));
+}
+
+const { industry } = Astro.props;
+const title = `${industry.title} businesses | Chakusa`;
+const description = `${industry.copy} See exactly what Chakusa tracks for ${industry.title.toLowerCase()} businesses like ${industry.examples.slice(0, 2).join(" and ").toLowerCase()}.`;
+---
+<BaseLayout {title} {description}>
+  <SiteHeader current="industries" />
+  <main>
+    <section class="page-hero content-shell" aria-labelledby="industry-detail-title">
+      <a class="industry-detail-back" href="/industries">All industries</a>
+      <p class="eyebrow">{industry.title}</p>
+      <h1 id="industry-detail-title">Built for {industry.examples.slice(0, -1).join(", ").toLowerCase()}, and {industry.examples.at(-1)?.toLowerCase()}.</h1>
+      <p class="page-hero-support">{industry.copy}</p>
+    </section>
+
+    <section class="industry-detail-workflow content-shell" aria-labelledby="industry-workflow-title" data-reveal>
+      <p class="eyebrow">What Chakusa tracks for you</p>
+      <h2 id="industry-workflow-title">Recover, review, retain, for {industry.title.toLowerCase()}.</h2>
+      <div class="problem-grid">
+        {industry.workflow.map((item) => (
+          <div class="problem-card">
+            <svg class="problem-card-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M4.5 11.5 9 16l8.5-10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <p>{item}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="industry-detail-fit content-shell" aria-labelledby="industry-fit-title" data-reveal>
+      <p class="eyebrow">Is this you?</p>
+      <h2 id="industry-fit-title">Chakusa fits {industry.title.toLowerCase()} businesses like:</h2>
+      <div class="industry-detail-examples">
+        {industry.examples.map((example) => <span class="industry-detail-chip">{example}</span>)}
+      </div>
+      <p class="industry-detail-note">Don't see your exact business here? If you take appointments or rely on repeat visits, Chakusa most likely still fits. See the full <a href="/product">product breakdown</a>.</p>
+    </section>
+
+    <CTASection heading={`Start free for your ${industry.title.toLowerCase()} business.`} support="No card required." />
+  </main>
+</BaseLayout>

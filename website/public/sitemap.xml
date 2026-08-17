@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Hand-written — only 9 URLs at V1, not worth an Astro sitemap integration
+  Hand-written, only 13 URLs at V1, not worth an Astro sitemap integration
   dependency yet. Regenerate/verify against astro.config.mjs's real `site`
   value once the placeholder domain is replaced (Handbook T23), and add a
   new <url> entry any time a page is added to src/pages/.
@@ -10,6 +10,10 @@
   <url><loc>https://www.chakusa.example/product</loc><priority>0.9</priority></url>
   <url><loc>https://www.chakusa.example/pricing</loc><priority>0.9</priority></url>
   <url><loc>https://www.chakusa.example/industries</loc><priority>0.8</priority></url>
+  <url><loc>https://www.chakusa.example/industries/beauty</loc><priority>0.7</priority></url>
+  <url><loc>https://www.chakusa.example/industries/home-services</loc><priority>0.7</priority></url>
+  <url><loc>https://www.chakusa.example/industries/automotive</loc><priority>0.7</priority></url>
+  <url><loc>https://www.chakusa.example/industries/professional</loc><priority>0.7</priority></url>
   <url><loc>https://www.chakusa.example/about</loc><priority>0.6</priority></url>
   <url><loc>https://www.chakusa.example/get-started</loc><priority>0.7</priority></url>
   <url><loc>https://www.chakusa.example/login</loc><priority>0.3</priority></url>

@@ -443,7 +443,9 @@ section.page-hero,
 section.pricing-full,
 section.about-section,
 section.legal-section,
-section.get-started-steps {
+section.get-started-steps,
+section.industry-detail-workflow,
+section.industry-detail-fit {
   padding-block: var(--space-10);
 }
 section.problem {
@@ -726,7 +728,7 @@ section.problem {
 }
 
 /* ==========================================================================
-   Industries page
+   Industries index page (teaser cards, link out to /industries/[slug])
    ========================================================================== */
 .industries-list {
   display: grid;
@@ -734,11 +736,17 @@ section.problem {
   margin-top: var(--space-6);
 }
 .industry-card {
+  display: block;
   padding: var(--space-6);
   border: 1px solid var(--color-border);
   border-radius: 1.1rem;
   background: var(--color-surface);
-  scroll-margin-top: 6rem;
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+.industry-card:hover {
+  border-color: var(--color-coral);
+  transform: translateY(-2px);
 }
 .industry-card h3 {
   margin: 0;
@@ -760,30 +768,50 @@ section.problem {
   line-height: 1.6;
   max-width: 34rem;
 }
-.industry-card-workflow {
-  list-style: none;
-  margin: var(--space-5) 0 0;
-  padding: var(--space-4) 0 0;
-  border-top: 1px solid var(--color-border);
-  display: grid;
-  gap: .625rem;
-  max-width: 34rem;
-}
-.industry-card-workflow li {
-  padding-left: 1.375rem;
-  position: relative;
+.industry-card-link {
+  display: inline-block;
+  margin-top: var(--space-5);
   font-size: .9375rem;
+  font-weight: 600;
+  color: var(--color-coral-text);
+}
+
+/* ==========================================================================
+   Industries detail page (/industries/[slug])
+   ========================================================================== */
+.industry-detail-back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary-accessible);
+}
+.industry-detail-back:hover {
   color: var(--color-text);
 }
-.industry-card-workflow li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: .5em;
-  width: .5rem;
-  height: .5rem;
-  border-radius: 50%;
-  background: var(--color-coral);
+.industry-detail-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .625rem;
+  margin-top: var(--space-5);
+}
+.industry-detail-chip {
+  padding: .5rem .875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: .875rem;
+  font-weight: 600;
+  background: var(--color-surface);
+}
+.industry-detail-note {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-secondary-accessible);
+  font-size: .9375rem;
+  max-width: 34rem;
+}
+.industry-detail-note a {
+  color: var(--color-coral-text);
+  font-weight: 600;
 }
 
 /* ==========================================================================

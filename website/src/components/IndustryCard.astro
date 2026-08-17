@@ -1,20 +1,18 @@
 ---
+// Index-page teaser only, links out to the category's own full page
+// (src/pages/industries/[slug].astro) rather than piling workflow detail
+// into this card.
 interface Props {
   id: string;
   title: string;
   examples: string[];
   copy: string;
-  workflow?: string[];
 }
-const { id, title, examples, copy, workflow } = Astro.props;
+const { id, title, examples, copy } = Astro.props;
 ---
-<section class="industry-card" id={id} aria-labelledby={`${id}-title`}>
+<a class="industry-card" href={`/industries/${id}`} aria-labelledby={`${id}-title`}>
   <h3 id={`${id}-title`}>{title}</h3>
   <p class="industry-card-examples">{examples.join(" · ")}</p>
   <p class="industry-card-copy">{copy}</p>
-  {workflow && workflow.length > 0 && (
-    <ul class="industry-card-workflow">
-      {workflow.map((item) => <li>{item}</li>)}
-    </ul>
-  )}
-</section>
+  <span class="industry-card-link">See how it works for {title.toLowerCase()} <span aria-hidden="true">→</span></span>
+</a>

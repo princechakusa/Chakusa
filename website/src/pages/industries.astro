@@ -14,15 +14,15 @@ const description = "Chakusa is built for local, appointment-driven businesses i
     <section class="page-hero content-shell" aria-labelledby="industries-hero-title">
       <p class="eyebrow">Industries</p>
       <h1 id="industries-hero-title">Built for businesses that live on repeat customers.</h1>
-      <p class="page-hero-support">If your business depends on people coming back, not one-off sales, Chakusa is built for you.</p>
+      <p class="page-hero-support">If your business depends on people coming back, not one-off sales, Chakusa is built for you. Pick your category to see exactly how it works.</p>
     </section>
 
     <div class="industries-list content-shell" data-reveal>
       {industries.map((industry) => (
-        <IndustryCard id={industry.id} title={industry.title} examples={industry.examples} copy={industry.copy} workflow={industry.workflow} />
+        <IndustryCard id={industry.id} title={industry.title} examples={industry.examples} copy={industry.copy} />
       ))}
     </div>
 
-    <CTASection heading="See what Chakusa tracks for your business." />
+    <CTASection heading="Don't see your exact business?" support="If you run appointments or repeat visits, Chakusa most likely fits. Start free and see for yourself." />
   </main>
 </BaseLayout>

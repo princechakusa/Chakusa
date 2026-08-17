@@ -2,12 +2,9 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import Hero from "../components/Hero.astro";
-import PricingCard from "../components/PricingCard.astro";
 import FAQAccordion from "../components/FAQAccordion.astro";
 import FaqSchema from "../components/FaqSchema.astro";
 import CTASection from "../components/CTASection.astro";
-import { industries } from "../data/industries";
-import { pricingTiers } from "../data/pricing";
 
 const title = "Chakusa — Recover customers and bring them back";
 const description = "Follow up with missed opportunities, request reviews, and keep customers coming back from one simple app.";
@@ -44,7 +41,7 @@ const faqs = [
   },
   {
     question: "Does it work for my type of business?",
-    answer: "Chakusa is built for appointment- and visit-driven local businesses — beauty, home services, automotive, and professional services. See the Industries page for specifics.",
+    answer: "Chakusa is built for appointment- and visit-driven local businesses. See the Industries page for specifics.",
   },
   {
     question: "What if I'm not ready for automation?",
@@ -78,37 +75,7 @@ const faqs = [
         </div>
       ))}
     </div>
-    <a class="pricing-preview-link" href="/product">See how it works →</a>
-  </section>
-
-  <section class="industries-strip content-shell" aria-labelledby="industries-strip-title" data-reveal>
-    <p class="eyebrow">Built for businesses that live on repeat customers</p>
-    <h2 id="industries-strip-title">See your industry</h2>
-    <div class="industries-strip-grid">
-      {industries.map((industry) => (
-        <a class="industry-chip" href={`/industries#${industry.id}`}>{industry.title}</a>
-      ))}
-    </div>
-  </section>
-
-  <section class="pricing-preview content-shell" aria-labelledby="pricing-preview-title" data-reveal>
-    <p class="eyebrow">Pricing</p>
-    <h2 id="pricing-preview-title">Simple pricing. Start for free.</h2>
-    <div class="pricing-grid pricing-grid-compact">
-      {pricingTiers.map((tier) => (
-        <PricingCard
-          name={tier.name}
-          tagline={tier.tagline}
-          price={tier.price}
-          priceNote={tier.priceNote}
-          features={tier.features}
-          ctaLabel={tier.ctaLabel}
-          ctaHref={tier.ctaHref}
-          featured={tier.featured}
-        />
-      ))}
-    </div>
-    <a class="pricing-preview-link" href="/pricing">See full pricing details →</a>
+    <a class="pillars-teaser-link" href="/product">See how it works →</a>
   </section>
 
   <section class="faq content-shell" aria-labelledby="faq-title" data-reveal>

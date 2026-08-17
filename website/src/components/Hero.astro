@@ -1,89 +1,22 @@
 ---
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import JourneyChips from "./JourneyChips.astro";
-import { industries } from "../data/industries";
-
-// Only an industry whose real photo has actually been supplied gets a chip —
-// never a chip pointing at a missing/broken image. Drop a file in at
-// website/public/images/industries/{id}.jpg and it appears here with no
-// code change. See docs/WEBSITE_CREATIVE_DIRECTION.md's per-industry hero
-// direction and src/data/industries.ts's `image` field doc comment.
-const available = industries.filter((industry) =>
-  existsSync(fileURLToPath(new URL(`../../public${industry.image}`, import.meta.url)))
-);
+import VideoSlot from "./VideoSlot.astro";
 ---
 <main id="top">
-  <section class="hero-photo" aria-labelledby="hero-title">
-    <div class="hero-photo-bg" aria-hidden="true">
-      {available.map((industry, i) => (
-        <img
-          class:list={["hero-photo-img", { "is-active": i === 0 }]}
-          data-industry-bg={industry.id}
-          src={industry.image}
-          alt=""
-          decoding="async"
-          fetchpriority={i === 0 ? "high" : "auto"}
-          loading={i === 0 ? "eager" : "lazy"}
-        />
-      ))}
-      <div class="hero-photo-overlay"></div>
-    </div>
-
-    <div class="hero-photo-content content-shell">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
       <p class="eyebrow">Customer recovery, made simple</p>
       <h1 id="hero-title"><span>Recover customers.</span><span>Build your reputation.</span><span>Bring them back.</span></h1>
-      <p class="hero-support" data-hero-copy id="how-it-works">Follow up with missed opportunities, request reviews, and keep customers coming back from one simple app.</p>
+      <p class="hero-support" id="how-it-works">Follow up with missed opportunities, request reviews, and keep customers coming back from one simple app.</p>
       <div class="hero-actions" aria-label="Get started">
         <a class="button button-primary" href="/get-started">Start free</a>
         <a class="button button-secondary" href="#dashboard">See how it works <span aria-hidden="true">→</span></a>
       </div>
-      <p class="provisional-note">Start Free leads to the download page — app store links go live once the listings do.</p>
+      <p class="trust-line">No contracts. No hidden fees. Cancel anytime.</p>
       <JourneyChips />
-
-      {available.length > 0 && (
-        <div class="industry-selector" role="group" aria-label="See Chakusa for your industry">
-          <p class="industry-selector-label">See it for your business</p>
-          <div class="industry-selector-chips">
-            {available.map((industry) => (
-              <button
-                type="button"
-                class="industry-selector-chip"
-                data-industry-target={industry.id}
-                data-industry-copy={industry.copy}
-                aria-pressed="false"
-              >{industry.title}</button>
-            ))}
-          </div>
-        </div>
-      )}
+    </div>
+    <div class="hero-visual" id="dashboard">
+      <VideoSlot label="See Chakusa in action" />
     </div>
   </section>
 </main>
-
-<script>
-  const defaultCopy = document.querySelector<HTMLElement>("[data-hero-copy]")?.textContent ?? "";
-
-  document.querySelectorAll<HTMLButtonElement>("[data-industry-target]").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const targetId = chip.dataset.industryTarget;
-      const alreadyActive = chip.getAttribute("aria-pressed") === "true";
-
-      document.querySelectorAll<HTMLButtonElement>("[data-industry-target]").forEach((c) => c.setAttribute("aria-pressed", "false"));
-      document.querySelectorAll<HTMLImageElement>("[data-industry-bg]").forEach((img) => img.classList.remove("is-active"));
-
-      const copyEl = document.querySelector<HTMLElement>("[data-hero-copy]");
-
-      if (alreadyActive) {
-        // Toggling the same chip off returns to the neutral default state.
-        document.querySelector<HTMLImageElement>("[data-industry-bg]")?.classList.add("is-active");
-        if (copyEl) copyEl.textContent = defaultCopy;
-        return;
-      }
-
-      chip.setAttribute("aria-pressed", "true");
-      document.querySelector<HTMLImageElement>(`[data-industry-bg="${targetId}"]`)?.classList.add("is-active");
-      if (copyEl) copyEl.textContent = chip.dataset.industryCopy ?? defaultCopy;
-    });
-  });
-</script>

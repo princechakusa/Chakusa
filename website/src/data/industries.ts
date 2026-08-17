@@ -13,11 +13,6 @@ export interface Industry {
    * every line must map to a real feature (Lead, ReviewRequest, Reminder),
    * never an automation claim beyond what's actually live. */
   workflow: string[];
-  /** Convention: website/public/images/industries/{id}.jpg — see Hero.astro,
-   * which checks the filesystem at build time and only renders a chip for
-   * industries whose file actually exists. Drop a new file in at that path
-   * and its chip appears automatically; no code change needed. */
-  image: string;
 }
 
 export const industries: Industry[] = [
@@ -31,7 +26,6 @@ export const industries: Industry[] = [
       "Send a review request right after a cut, color, or treatment",
       "See who's overdue for their usual appointment before they book elsewhere",
     ],
-    image: "/images/industries/beauty.jpg",
   },
   {
     id: "professional",
@@ -43,7 +37,6 @@ export const industries: Industry[] = [
       "Ask for a review once a session or appointment wraps up",
       "Know who's due for a check-up, follow-up, or repeat booking",
     ],
-    image: "/images/industries/professional.jpg",
   },
   {
     id: "home-services",
@@ -55,7 +48,6 @@ export const industries: Industry[] = [
       "Request a review once the job's done, while it's still fresh",
       "Get a reminder when a regular client is due for their next service",
     ],
-    image: "/images/industries/home-services.jpg",
   },
   {
     id: "automotive",
@@ -67,6 +59,5 @@ export const industries: Industry[] = [
       "Ask for a review after the work is picked up",
       "See who's due back for a seasonal check or routine service",
     ],
-    image: "/images/industries/automotive.jpg",
   },
 ];

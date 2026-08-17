@@ -34,7 +34,12 @@
 
   --radius-control: .75rem;
   --radius-pill: 999px;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Previously declared "Inter" first without ever loading it — since Inter
+     isn't a default OS font, every browser was silently falling back to
+     Segoe UI/San Francisco the whole time, not the intended typeface. Now
+     self-hosted via @fontsource-variable/inter (see BaseLayout.astro) so
+     this is the font that actually renders, not an unfulfilled request. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --focus-ring: 0 0 0 3px rgba(255, 92, 92, .32);
   --transition-fast: 140ms ease-out;
 }
@@ -286,116 +291,79 @@ h1 span {
   height: 1px;
   background: #d8dbe2;
 }
-/* ==========================================================================
-   Photo-first hero + per-industry background selector
-   Only industries with a supplied photo render a chip/layer — see
-   Hero.astro's build-time existsSync check.
-   ========================================================================== */
-.hero-photo {
-  position: relative;
-  display: grid;
-  align-items: end;
-  min-height: 38rem;
-  overflow: hidden;
-  color: #fff;
-}
-.hero-photo-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-.hero-photo-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 420ms ease-out;
-}
-.hero-photo-img.is-active {
-  opacity: 1;
-}
-.hero-photo-overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(20, 22, 27, .2) 0%, rgba(20, 22, 27, .62) 100%),
-    linear-gradient(100deg, rgba(20, 22, 27, .86) 0%, rgba(20, 22, 27, .58) 42%, rgba(20, 22, 27, .08) 72%);
-}
-.hero-photo-content {
-  position: relative;
-  z-index: 1;
-  padding-block: var(--space-18) var(--space-10);
-}
-.hero-photo .eyebrow {
-  color: var(--color-coral);
-}
-.hero-photo .hero-support {
-  color: rgba(255, 255, 255, .82);
-}
-.hero-photo .provisional-note {
-  color: rgba(255, 255, 255, .6);
-}
-.hero-photo .journey {
-  color: #fff;
-}
-.hero-photo .journey i {
-  background: rgba(255, 255, 255, .35);
-}
-.hero-photo .button-secondary {
-  background: rgba(255, 255, 255, .08);
-  border-color: rgba(255, 255, 255, .5);
-  color: #fff;
-}
-.hero-photo .button-secondary:hover {
-  background: rgba(255, 255, 255, .16);
-  border-color: #fff;
-}
-.industry-selector {
-  margin-top: var(--space-8);
-}
-.industry-selector-label {
-  margin: 0 0 .625rem;
-  font-size: .75rem;
-  font-weight: 700;
-  letter-spacing: .03em;
-  color: rgba(255, 255, 255, .7);
-}
-.industry-selector-chips {
-  display: flex;
-  flex-wrap: wrap;
+.trust-line {
+  display: inline-flex;
+  align-items: center;
   gap: .5rem;
-}
-.industry-selector-chip {
-  min-height: 2.5rem;
-  padding-inline: 1rem;
+  margin-top: var(--space-5);
+  padding: .5rem .875rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, .4);
-  background: transparent;
-  color: rgba(255, 255, 255, .9);
-  font-size: .875rem;
-  font-weight: 650;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-}
-.industry-selector-chip:hover {
-  border-color: #fff;
-}
-.industry-selector-chip[aria-pressed="true"] {
-  background: var(--color-coral);
-  border-color: var(--color-coral);
-  color: var(--color-text);
+  background: rgba(53, 208, 186, .12);
+  color: var(--color-success-text);
+  font-size: .8125rem;
+  font-weight: 700;
 }
 
 /* ==========================================================================
-   Home — Problem, pillar teasers, industries strip, pricing preview, FAQ
+   Hero — typography + color led, no photography. A reserved video slot
+   stands in for product proof until a real video exists (see VideoSlot.astro
+   and the note in that file — never fake a playable video).
+   ========================================================================== */
+.hero {
+  display: grid;
+  gap: var(--space-10);
+  align-items: center;
+  padding-block: var(--space-10) var(--space-18);
+}
+.hero-visual {
+  display: flex;
+  justify-content: center;
+}
+.video-slot {
+  width: 100%;
+  max-width: 20rem;
+  aspect-ratio: 9 / 16;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  border-radius: 1.75rem;
+  border: 1px solid var(--color-border);
+  background: linear-gradient(160deg, rgba(255, 92, 92, .1), rgba(53, 208, 186, .08));
+}
+.video-slot-glyph {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-coral-text);
+  box-shadow: 0 .75rem 1.75rem rgba(32, 36, 43, .1);
+}
+.video-slot-label {
+  margin: 0;
+  font-weight: 700;
+  font-size: .9375rem;
+  color: var(--color-text);
+}
+.video-slot-status {
+  margin: 0;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary-accessible);
+}
+
+/* ==========================================================================
+   Home — Problem, pillar teasers, FAQ. Pricing and Industries content lives
+   only on their own pages — Home never repeats it (see the working session:
+   each type of information stays in its own place, no duplication).
    ========================================================================== */
 section.problem,
 section.pillars-teaser,
-section.industries-strip,
-section.pricing-preview,
 section.pricing-comparison,
 section.faq,
 section.page-hero,
@@ -447,24 +415,14 @@ section.get-started-steps {
   font-size: .9375rem;
   line-height: 1.55;
 }
-.industries-strip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .75rem;
+.pillars-teaser-link {
+  display: inline-block;
   margin-top: var(--space-5);
-}
-.industry-chip {
-  padding: .75rem 1.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  font-size: .9375rem;
   font-weight: 650;
-  background: var(--color-surface);
-  transition: border-color var(--transition-fast), color var(--transition-fast);
-}
-.industry-chip:hover {
-  border-color: var(--color-coral);
   color: var(--color-coral-text);
+}
+.pillars-teaser-link:hover {
+  color: var(--color-coral-text-hover);
 }
 
 /* ==========================================================================
@@ -545,15 +503,6 @@ section.get-started-steps {
 .pricing-card-cta {
   margin-top: var(--space-6);
   width: 100%;
-}
-.pricing-preview-link {
-  display: inline-block;
-  margin-top: var(--space-5);
-  font-weight: 650;
-  color: var(--color-coral-text);
-}
-.pricing-preview-link:hover {
-  color: var(--color-coral-text-hover);
 }
 .comparison-table-wrap {
   margin-top: var(--space-6);
@@ -963,20 +912,21 @@ section.get-started-steps {
   .provisional-note {
     margin-top: var(--space-3);
   }
-  .hero-photo {
-    min-height: calc(100vh - 5.75rem);
+  .hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, .9fr);
+    gap: var(--space-10);
+    text-align: left;
   }
-  .hero-photo-content {
-    max-width: 42rem;
-    padding-block: var(--space-18);
+  .hero-copy {
+    text-align: left;
+  }
+  .video-slot {
+    max-width: 18rem;
   }
   .pillars-teaser-grid {
     grid-template-columns: repeat(3, 1fr);
   }
   .pricing-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .pricing-grid-compact {
     grid-template-columns: repeat(3, 1fr);
   }
   .pillar-grid {

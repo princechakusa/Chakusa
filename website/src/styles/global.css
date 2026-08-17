@@ -444,8 +444,7 @@ section.pricing-full,
 section.about-section,
 section.legal-section,
 section.get-started-steps,
-section.industry-detail-workflow,
-section.industry-detail-fit {
+section.industry-detail-workflow {
   padding-block: var(--space-10);
 }
 section.problem {

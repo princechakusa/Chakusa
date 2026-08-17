@@ -1,0 +1,15 @@
+---
+// A lightweight, honestly-labeled illustration of what a rendered message
+// looks like — NOT a screenshot claim. Used only where a real product
+// screenshot doesn't exist yet (see product.astro), so a pillar section
+// never sits visually empty. The "Example" label is load-bearing: this must
+// never be mistaken for a captured screen.
+interface Props {
+  text: string;
+}
+const { text } = Astro.props;
+---
+<div class="message-preview">
+  <p class="message-preview-label">Example message</p>
+  <div class="message-preview-bubble">{text}</div>
+</div>

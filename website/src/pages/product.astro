@@ -6,6 +6,8 @@ import SiteHeader from "../components/SiteHeader.astro";
 import PillarSection from "../components/PillarSection.astro";
 import PhoneMockup from "../components/PhoneMockup.astro";
 import BrowserFrame from "../components/BrowserFrame.astro";
+import MessagePreview from "../components/MessagePreview.astro";
+import ReminderPreview from "../components/ReminderPreview.astro";
 import CTASection from "../components/CTASection.astro";
 
 const title = "Product — Chakusa";
@@ -58,11 +60,14 @@ const retainImage = hasFile("/images/product/comeback.png") ? "/images/product/c
       copy="Send a review request while the visit is still fresh. If a customer isn't happy, their feedback comes to you privately before it becomes a public rating."
       side="right"
       accent="coral"
-      hasVisual={Boolean(reviewImage || feedbackImage)}
+      hasVisual={true}
     >
       {reviewImage && <PhoneMockup src={reviewImage} alt="Chakusa's review request list, showing pending, sent, and reviewed requests." />}
       {!reviewImage && feedbackImage && (
         <BrowserFrame src={feedbackImage} alt="The public feedback page a customer sees when they open a review request link." />
+      )}
+      {!reviewImage && !feedbackImage && (
+        <MessagePreview text="Hi Amina, thanks for visiting today! Mind leaving us a quick review? chakusa.app/r/8f2k1" />
       )}
     </PillarSection>
 
@@ -73,9 +78,10 @@ const retainImage = hasFile("/images/product/comeback.png") ? "/images/product/c
       copy="Chakusa tracks when a customer is due for their next visit, based on how long it's been — so a regular who's gone quiet gets noticed before they're gone for good."
       side="left"
       accent="teal"
-      hasVisual={Boolean(retainImage)}
+      hasVisual={true}
     >
       {retainImage && <PhoneMockup src={retainImage} alt="Chakusa showing a customer due to be reminded to come back." />}
+      {!retainImage && <ReminderPreview />}
     </PillarSection>
 
     <CTASection heading="See it for yourself." support="Start free — no card required." />

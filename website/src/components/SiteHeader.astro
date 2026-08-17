@@ -1,5 +1,5 @@
 ---
-interface NavChild { href: string; label: string }
+interface NavChild { href: string; label: string; description: string }
 interface NavLink { href: string; label: string; id: string; children?: NavChild[] }
 interface Props { current?: string }
 const { current } = Astro.props;
@@ -8,19 +8,19 @@ const links: NavLink[] = [
   {
     href: "/product", label: "Product", id: "product",
     children: [
-      { href: "/product#recover", label: "Recover" },
-      { href: "/product#review", label: "Review" },
-      { href: "/product#retain", label: "Retain" },
+      { href: "/product#recover", label: "Recover", description: "Turn a missed call into a lead you can act on." },
+      { href: "/product#review", label: "Review", description: "Ask for a review while the visit is still fresh." },
+      { href: "/product#retain", label: "Retain", description: "Know who's due back before they disappear." },
     ],
   },
   { href: "/pricing", label: "Pricing", id: "pricing" },
   {
     href: "/industries", label: "Industries", id: "industries",
     children: [
-      { href: "/industries#beauty", label: "Beauty" },
-      { href: "/industries#home-services", label: "Home services" },
-      { href: "/industries#automotive", label: "Automotive" },
-      { href: "/industries#professional", label: "Professional" },
+      { href: "/industries#beauty", label: "Beauty", description: "Salons, barbers, spas, and beauty clinics." },
+      { href: "/industries#home-services", label: "Home services", description: "Plumbers, electricians, cleaners, contractors." },
+      { href: "/industries#automotive", label: "Automotive", description: "Mechanics, car washes, detailing." },
+      { href: "/industries#professional", label: "Professional", description: "Dentists, photographers, consultants." },
     ],
   },
   { href: "/about", label: "About", id: "about" },
@@ -34,8 +34,24 @@ const links: NavLink[] = [
         link.children ? (
           <div class="nav-item">
             <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
-            <div class="nav-dropdown">
-              {link.children.map((child) => <a href={child.href}>{child.label}</a>)}
+            <button
+              type="button"
+              class="nav-trigger"
+              aria-expanded="false"
+              aria-controls={`dropdown-${link.id}`}
+              aria-label={`${link.label} menu`}
+              data-nav-trigger={link.id}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3 5 6.5 8.5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <div class="nav-dropdown" id={`dropdown-${link.id}`} data-nav-dropdown={link.id} hidden>
+              {link.children.map((child) => (
+                <a href={child.href}>
+                  <span class="nav-dropdown-label">{child.label}</span>
+                  <span class="nav-dropdown-description">{child.description}</span>
+                </a>
+              ))}
+              <a class="nav-dropdown-viewall" href={link.href}>See all of {link.label.toLowerCase()} <span aria-hidden="true">→</span></a>
             </div>
           </div>
         ) : (
@@ -77,6 +93,42 @@ const links: NavLink[] = [
 </header>
 
 <script>
+  // Dropdown triggers: click/tap toggle, not CSS :hover — hover never fires
+  // on touch devices, which made the menu unusable on mobile/tablet.
+  const triggers = document.querySelectorAll<HTMLButtonElement>("[data-nav-trigger]");
+
+  function closeAll(except?: string) {
+    triggers.forEach((t) => {
+      if (t.dataset.navTrigger === except) return;
+      t.setAttribute("aria-expanded", "false");
+      const id = t.getAttribute("aria-controls");
+      const panel = id ? document.getElementById(id) : null;
+      if (panel) panel.hidden = true;
+    });
+  }
+
+  triggers.forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const id = trigger.getAttribute("aria-controls");
+      const panel = id ? document.getElementById(id) : null;
+      if (!panel) return;
+      const isOpen = trigger.getAttribute("aria-expanded") === "true";
+      closeAll(trigger.dataset.navTrigger);
+      trigger.setAttribute("aria-expanded", String(!isOpen));
+      panel.hidden = isOpen;
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Node)) return;
+    if (!Array.from(triggers).some((t) => t.contains(e.target as Node) || document.getElementById(t.getAttribute("aria-controls") ?? "")?.contains(e.target as Node))) {
+      closeAll();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+  });
+
   const toggle = document.getElementById("mobile-nav-toggle");
   const panel = document.getElementById("mobile-nav");
   if (toggle && panel) {

@@ -34,7 +34,6 @@
 
   --radius-control: .75rem;
   --radius-pill: 999px;
-  --shadow-phone: 0 2.125rem 5rem rgba(32, 36, 43, .18), 0 .4375rem 1.375rem rgba(32, 36, 43, .08);
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --focus-ring: 0 0 0 3px rgba(255, 92, 92, .32);
   --transition-fast: 140ms ease-out;
@@ -287,24 +286,6 @@ h1 span {
   height: 1px;
   background: #d8dbe2;
 }
-.phone-frame {
-  position: relative;
-  width: min(81.5vw, 19.875rem);
-  padding: .4375rem;
-  overflow: hidden;
-  border: 1px solid rgba(32, 36, 43, .08);
-  border-radius: 2.4375rem;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-phone);
-  margin-inline: auto;
-}
-.phone-frame img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 2.0625rem;
-}
-
 /* ==========================================================================
    Photo-first hero + per-industry background selector
    Only industries with a supplied photo render a chip/layer — see
@@ -670,96 +651,6 @@ section.get-started-steps {
 }
 
 /* ==========================================================================
-   Browser frame (public feedback page screenshots)
-   ========================================================================== */
-.browser-frame {
-  border: 1px solid var(--color-border);
-  border-radius: .9rem;
-  overflow: hidden;
-  background: var(--color-surface);
-  box-shadow: 0 1.5rem 3rem rgba(32, 36, 43, .1);
-}
-.browser-frame-bar {
-  display: flex;
-  gap: .375rem;
-  padding: .75rem;
-  background: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
-}
-.browser-frame-bar span {
-  width: .625rem;
-  height: .625rem;
-  border-radius: 50%;
-  background: var(--color-border);
-}
-.browser-frame img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* ==========================================================================
-   Message / reminder previews — used only where a real screenshot doesn't
-   exist yet, so a pillar section never sits visually empty. The "Example"
-   label is load-bearing: never let these be mistaken for a captured screen.
-   ========================================================================== */
-.message-preview,
-.reminder-preview {
-  width: 100%;
-  max-width: 22rem;
-}
-.message-preview-label,
-.reminder-preview-label {
-  margin: 0 0 .625rem;
-  font-size: .6875rem;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary-accessible);
-}
-.message-preview-bubble {
-  padding: 1rem 1.25rem;
-  border-radius: 1.25rem 1.25rem 1.25rem .3rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 1rem 2rem rgba(32, 36, 43, .08);
-  font-size: .9375rem;
-  line-height: 1.5;
-  color: var(--color-text);
-}
-.reminder-preview-card {
-  padding: 1.25rem 1.375rem;
-  border-radius: 1rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-success);
-  box-shadow: 0 1rem 2rem rgba(32, 36, 43, .08);
-}
-.reminder-preview-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-}
-.reminder-preview-name {
-  font-weight: 700;
-  font-size: 1rem;
-}
-.reminder-preview-due {
-  padding: .25rem .625rem;
-  border-radius: var(--radius-pill);
-  background: rgba(53, 208, 186, .14);
-  color: var(--color-success-text);
-  font-size: .75rem;
-  font-weight: 700;
-}
-.reminder-preview-meta {
-  margin: .625rem 0 0;
-  color: var(--color-text-secondary-accessible);
-  font-size: .8125rem;
-}
-
-/* ==========================================================================
    Product pillars
    ========================================================================== */
 .pillar {
@@ -1079,14 +970,6 @@ section.get-started-steps {
     max-width: 42rem;
     padding-block: var(--space-18);
   }
-  .phone-frame {
-    width: 22.75rem;
-    padding: .5625rem;
-    border-radius: 2.8125rem;
-  }
-  .phone-frame img {
-    border-radius: 2.3125rem;
-  }
   .pillars-teaser-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1135,7 +1018,6 @@ section.get-started-steps {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
   }
-  .phone-frame,
   .button:hover,
   .nav-cta:hover {
     transform: none;

@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+const title = "Terms of Service — Chakusa";
+const description = "The terms for using Chakusa.";
+const lastUpdated = "This draft has not yet been reviewed by counsel — do not treat as final.";
+---
+<BaseLayout {title} {description}>
+  <SiteHeader />
+  <main>
+    <section class="legal-section content-shell" aria-labelledby="terms-title" data-reveal>
+      {/* TODO(launch-blocker): same status as privacy.astro — factual draft,
+          not counsel-reviewed. Replace or approve before launch. */}
+      <p class="eyebrow">Terms of Service</p>
+      <h1 id="terms-title">Terms of Service</h1>
+      <p class="legal-draft-notice">{lastUpdated}</p>
+
+      <h2>Using Chakusa</h2>
+      <p>Chakusa is a mobile app for local service businesses to track leads, review requests, and customer follow-ups. You need an account to use it, and you're responsible for what you enter — including making sure you have the right to store and message the customer information you add.</p>
+
+      <h2>Plans and billing</h2>
+      <p>Chakusa offers a Free plan with usage limits, and paid Pro and Business plans billed as auto-renewing subscriptions through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store you subscribed through — see their terms for refund and cancellation policies.</p>
+
+      <h2>Acceptable use</h2>
+      <p>Don't use Chakusa to send unsolicited or unlawful messages, to store data you don't have the right to store, or to try to access another business's account.</p>
+
+      <h2>Changes</h2>
+      <p>We'll update these terms as the product changes. Material changes will be reflected on this page.</p>
+
+      <h2>Questions</h2>
+      <p>Reach out — see the <a href="/about#contact">About page</a>.</p>
+    </section>
+  </main>
+</BaseLayout>

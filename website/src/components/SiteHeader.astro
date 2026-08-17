@@ -1,7 +1,68 @@
+---
+interface Props { current?: string }
+const { current } = Astro.props;
+
+const links = [
+  { href: "/product", label: "Product", id: "product" },
+  { href: "/pricing", label: "Pricing", id: "pricing" },
+  { href: "/industries", label: "Industries", id: "industries" },
+  { href: "/about", label: "About", id: "about" },
+];
+---
 <header class="site-header">
   <nav class="site-nav content-shell" aria-label="Primary navigation">
-    <a class="wordmark" href="#top" aria-label="Chakusa home"><span class="wordmark-mark" aria-hidden="true">C</span><span>CHAKUSA</span></a>
-    <div class="desktop-nav-links"><a href="#dashboard">Product</a><a href="#how-it-works">How it works</a></div>
-    <a class="nav-cta" href="#start-free">Start free</a>
+    <a class="wordmark" href="/" aria-label="Chakusa home"><span class="wordmark-mark" aria-hidden="true">C</span><span>CHAKUSA</span></a>
+    <div class="desktop-nav-links">
+      {links.map((link) => (
+        <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+      ))}
+    </div>
+    <div class="nav-actions">
+      <a class="nav-signin" href="/login">Sign in</a>
+      <a class="nav-cta" href="/get-started">Start free</a>
+      <button
+        type="button"
+        class="mobile-nav-toggle"
+        id="mobile-nav-toggle"
+        aria-expanded="false"
+        aria-controls="mobile-nav"
+        aria-label="Open menu"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
   </nav>
+
+  <div class="mobile-nav" id="mobile-nav" hidden>
+    <div class="content-shell mobile-nav-inner">
+      {links.map((link) => (
+        <a href={link.href} aria-current={current === link.id ? "page" : undefined}>{link.label}</a>
+      ))}
+      <a href="/login" class="mobile-nav-signin">Sign in</a>
+    </div>
+  </div>
 </header>
+
+<script>
+  const toggle = document.getElementById("mobile-nav-toggle");
+  const panel = document.getElementById("mobile-nav");
+  if (toggle && panel) {
+    const close = () => {
+      panel.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Open menu");
+    };
+    const open = () => {
+      panel.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.setAttribute("aria-label", "Close menu");
+    };
+    toggle.addEventListener("click", () => (panel.hidden ? open() : close()));
+    panel.querySelectorAll("a").forEach((link) => link.addEventListener("click", close));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !panel.hidden) close();
+    });
+  }
+</script>

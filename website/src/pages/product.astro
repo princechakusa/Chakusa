@@ -1,0 +1,83 @@
+---
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import PillarSection from "../components/PillarSection.astro";
+import PhoneMockup from "../components/PhoneMockup.astro";
+import BrowserFrame from "../components/BrowserFrame.astro";
+import CTASection from "../components/CTASection.astro";
+
+const title = "Product — Chakusa";
+const description = "Recover missed customers, ask for reviews at the right moment, and know exactly who's due to come back — see how Chakusa works.";
+
+// Same build-time existence pattern as Hero.astro's industry photos: a
+// pillar only shows a screenshot once the real file has actually been
+// supplied (see docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 4's asset
+// list). No placeholder or fabricated UI ever ships here.
+const publicDir = (path: string) => fileURLToPath(new URL(`../../public${path}`, import.meta.url));
+const hasFile = (path: string) => existsSync(publicDir(path));
+
+const recoverImage = hasFile("/images/product/leads-list.png")
+  ? "/images/product/leads-list.png"
+  : hasFile("/images/product/chakusa-dashboard.png")
+    ? "/images/product/chakusa-dashboard.png" // real screenshot, genuinely shows a missed-call lead card
+    : null;
+
+const reviewImage = hasFile("/images/product/reviews-list.png") ? "/images/product/reviews-list.png" : null;
+const feedbackImage = hasFile("/images/product/public-feedback.png") ? "/images/product/public-feedback.png" : null;
+const retainImage = hasFile("/images/product/comeback.png") ? "/images/product/comeback.png" : null;
+---
+<BaseLayout {title} {description}>
+  <SiteHeader current="product" />
+  <main>
+    <section class="page-hero content-shell" aria-labelledby="product-hero-title">
+      <p class="eyebrow">Product</p>
+      <h1 id="product-hero-title">Everything Chakusa does, in three parts.</h1>
+      <p class="page-hero-support">No dispatch, no invoicing, no dashboard you need training to read — just the three things that keep a customer from quietly disappearing.</p>
+    </section>
+
+    <PillarSection
+      id="recover"
+      eyebrow="Recover"
+      headline="Catch the customer before they call someone else."
+      copy="The moment a call goes unanswered, Chakusa turns it into a lead you can act on — tracked from new, to contacted, to booked, so nothing sits forgotten in a notifications tab."
+      side="left"
+      accent="coral"
+      hasVisual={Boolean(recoverImage)}
+    >
+      {recoverImage && (
+        <PhoneMockup src={recoverImage} alt="Chakusa showing a missed-call lead ready to follow up." />
+      )}
+    </PillarSection>
+
+    <PillarSection
+      id="review"
+      eyebrow="Review"
+      headline="Turn a good visit into a public review — and catch a bad one privately first."
+      copy="Send a review request while the visit is still fresh. If a customer isn't happy, their feedback comes to you privately before it becomes a public rating."
+      side="right"
+      accent="coral"
+      hasVisual={Boolean(reviewImage || feedbackImage)}
+    >
+      {reviewImage && <PhoneMockup src={reviewImage} alt="Chakusa's review request list, showing pending, sent, and reviewed requests." />}
+      {!reviewImage && feedbackImage && (
+        <BrowserFrame src={feedbackImage} alt="The public feedback page a customer sees when they open a review request link." />
+      )}
+    </PillarSection>
+
+    <PillarSection
+      id="retain"
+      eyebrow="Retain"
+      headline="Know exactly who's due to come back."
+      copy="Chakusa tracks when a customer is due for their next visit, based on how long it's been — so a regular who's gone quiet gets noticed before they're gone for good."
+      side="left"
+      accent="teal"
+      hasVisual={Boolean(retainImage)}
+    >
+      {retainImage && <PhoneMockup src={retainImage} alt="Chakusa showing a customer due to be reminded to come back." />}
+    </PillarSection>
+
+    <CTASection heading="See it for yourself." support="Start free — no card required." />
+  </main>
+</BaseLayout>

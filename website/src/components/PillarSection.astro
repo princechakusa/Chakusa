@@ -1,0 +1,37 @@
+---
+// Used 3x on /product. Alternates mockup side per Creative Direction Part 2 —
+// pass side="left" | "right" to avoid three visually identical sections.
+// On mobile the mockup always renders above the copy regardless of side
+// (Creative Direction Part 7). If no screenshot exists yet for this pillar,
+// pass hasVisual={false} and omit the slot — the section falls back to a
+// single, wider copy column rather than an empty visual half (no fabricated
+// or placeholder imagery, ever).
+interface Props {
+  id: string;
+  eyebrow: string;
+  headline: string;
+  copy: string;
+  side?: "left" | "right";
+  accent?: "coral" | "teal";
+  hasVisual?: boolean;
+}
+const { id, eyebrow, headline, copy, side = "left", accent = "coral", hasVisual = true } = Astro.props;
+---
+<section
+  class:list={["pillar", `pillar-${side}`, `pillar-${accent}`, { "pillar-copy-only": !hasVisual }]}
+  id={id}
+  aria-labelledby={`${id}-title`}
+>
+  <div class="content-shell pillar-grid">
+    <div class="pillar-copy">
+      <p class="eyebrow">{eyebrow}</p>
+      <h2 id={`${id}-title`}>{headline}</h2>
+      <p class="pillar-support">{copy}</p>
+    </div>
+    {hasVisual && (
+      <div class="pillar-visual">
+        <slot />
+      </div>
+    )}
+  </div>
+</section>

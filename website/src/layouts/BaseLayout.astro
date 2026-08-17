@@ -1,9 +1,21 @@
 ---
 import "../styles/global.css";
+import SiteFooter from "../components/SiteFooter.astro";
 interface Props { title: string; description: string; }
 const { title, description } = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const socialImageURL = new URL("/images/product/chakusa-dashboard.png", Astro.site);
+
+// Only facts already established elsewhere on the site — no founding date,
+// address, phone number, or social profile invented to pad this out.
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Chakusa",
+  url: String(Astro.site),
+  logo: String(socialImageURL),
+  description: "Chakusa helps local service businesses recover missed customers, ask for reviews, and bring lapsed customers back.",
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -27,6 +39,11 @@ const socialImageURL = new URL("/images/product/chakusa-dashboard.png", Astro.si
     <meta name="twitter:image" content={socialImageURL} />
     <meta name="twitter:image:alt" content="Chakusa dashboard showing customer follow-up actions and zero dollars in recovered revenue." />
     <title>{title}</title>
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(organizationSchema)} />
   </head>
-  <body><slot /></body>
+  <body>
+    <slot />
+    <SiteFooter />
+    <script src="../scripts/scrollReveal.js"></script>
+  </body>
 </html>

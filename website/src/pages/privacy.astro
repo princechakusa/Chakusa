@@ -1,0 +1,37 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+const title = "Privacy Policy — Chakusa";
+const description = "How Chakusa collects, stores, and protects data.";
+const lastUpdated = "This draft has not yet been reviewed by counsel — do not treat as final.";
+---
+<BaseLayout {title} {description}>
+  <SiteHeader />
+  <main>
+    <section class="legal-section content-shell" aria-labelledby="privacy-title" data-reveal>
+      {/* TODO(launch-blocker): this page is a factual draft grounded in the
+          actual backend implementation, written by engineering — it has not
+          been reviewed by counsel and must not go live as-is. Replace or
+          approve before launch. */}
+      <p class="eyebrow">Privacy Policy</p>
+      <h1 id="privacy-title">Privacy Policy</h1>
+      <p class="legal-draft-notice">{lastUpdated}</p>
+
+      <h2>What we collect</h2>
+      <p>When you create a Chakusa account, we collect your name, email, and business details. If you sign in with Google or Apple, we receive the basic profile information those providers share. If you use Chakusa to track your own customers, the customer names, phone numbers, and notes you enter are stored on your behalf — that data belongs to your business, not to us.</p>
+
+      <h2>How we use it</h2>
+      <p>We use your data to run the product: showing you your leads, review requests, and reminders, sending messages on your behalf when you ask us to (Pro plan), and sending you push notifications about activity in your account. We don't sell your data, and we don't use it to serve you ads.</p>
+
+      <h2>Third parties we work with</h2>
+      <p>Message delivery runs through Twilio. Push notifications run through Expo's notification service. Error monitoring on our backend runs through Sentry, which is configured to scrub authentication tokens and other sensitive fields before anything is sent. If you subscribe to Pro or Business, Apple or Google handles your payment — we never see your card details.</p>
+
+      <h2>How we protect it</h2>
+      <p>Passwords are hashed, never stored in plain text. Sessions are rotated. Any linked sign-in credentials we store are encrypted at rest. Access to production data is limited to what's needed to operate the service.</p>
+
+      <h2>Your choices</h2>
+      <p>You can request a copy of your data or ask us to delete your account by contacting us — see the <a href="/about#contact">About page</a>.</p>
+    </section>
+  </main>
+</BaseLayout>

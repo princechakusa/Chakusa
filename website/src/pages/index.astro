@@ -2,7 +2,121 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import Hero from "../components/Hero.astro";
+import PricingCard from "../components/PricingCard.astro";
+import FAQAccordion from "../components/FAQAccordion.astro";
+import FaqSchema from "../components/FaqSchema.astro";
+import CTASection from "../components/CTASection.astro";
+import { industries } from "../data/industries";
+import { pricingTiers } from "../data/pricing";
+
 const title = "Chakusa — Recover customers and bring them back";
 const description = "Follow up with missed opportunities, request reviews, and keep customers coming back from one simple app.";
+
+const pillars = [
+  {
+    id: "recover",
+    title: "Recover",
+    headline: "Catch the customer before they call someone else.",
+    copy: "A missed call becomes a lead the moment it happens — tracked, not forgotten.",
+  },
+  {
+    id: "review",
+    title: "Review",
+    headline: "Turn a good visit into a public review.",
+    copy: "Ask for a review while the visit is still fresh, and catch an unhappy customer privately first.",
+  },
+  {
+    id: "retain",
+    title: "Retain",
+    headline: "Know exactly who's due to come back.",
+    copy: "See who hasn't rebooked before they quietly stop coming back at all.",
+  },
+];
+
+const faqs = [
+  {
+    question: "Is Chakusa a CRM?",
+    answer: "No. Chakusa doesn't do scheduling, dispatch, or invoicing — it's focused on one thing: making sure a missed call, an un-asked review, or a lapsed customer never gets forgotten.",
+  },
+  {
+    question: "Do I need a special phone number?",
+    answer: "No. On the Free plan, Chakusa tracks everything and you send messages yourself. On Pro, Chakusa can send messages for you through its own number — you don't need to set anything up.",
+  },
+  {
+    question: "Does it work for my type of business?",
+    answer: "Chakusa is built for appointment- and visit-driven local businesses — beauty, home services, automotive, and professional services. See the Industries page for specifics.",
+  },
+  {
+    question: "What if I'm not ready for automation?",
+    answer: "You don't need it to get value. The Free plan lets you track every missed call, review request, and reminder by hand, right from your phone.",
+  },
+];
 ---
-<BaseLayout {title} {description}><SiteHeader /><Hero /></BaseLayout>
+<BaseLayout {title} {description}>
+  <SiteHeader />
+  <Hero />
+
+  <section class="problem content-shell" aria-labelledby="problem-title" data-reveal>
+    <p class="eyebrow">The problem</p>
+    <h2 id="problem-title">You're losing customers you never even see leave.</h2>
+    <div class="problem-grid">
+      <p>A missed call that never gets a callback.</p>
+      <p>A happy customer who's never asked for a review.</p>
+      <p>A regular who quietly stops coming back.</p>
+    </div>
+  </section>
+
+  <section class="pillars-teaser content-shell" id="dashboard" aria-labelledby="pillars-teaser-title" data-reveal>
+    <p class="eyebrow">How Chakusa helps</p>
+    <h2 id="pillars-teaser-title">Three things. Done properly.</h2>
+    <div class="pillars-teaser-grid">
+      {pillars.map((pillar) => (
+        <div class="pillars-teaser-card">
+          <p class="pillars-teaser-label">{pillar.title}</p>
+          <p class="pillars-teaser-headline">{pillar.headline}</p>
+          <p class="pillars-teaser-copy">{pillar.copy}</p>
+        </div>
+      ))}
+    </div>
+    <a class="pricing-preview-link" href="/product">See how it works →</a>
+  </section>
+
+  <section class="industries-strip content-shell" aria-labelledby="industries-strip-title" data-reveal>
+    <p class="eyebrow">Built for businesses that live on repeat customers</p>
+    <h2 id="industries-strip-title">See your industry</h2>
+    <div class="industries-strip-grid">
+      {industries.map((industry) => (
+        <a class="industry-chip" href={`/industries#${industry.id}`}>{industry.title}</a>
+      ))}
+    </div>
+  </section>
+
+  <section class="pricing-preview content-shell" aria-labelledby="pricing-preview-title" data-reveal>
+    <p class="eyebrow">Pricing</p>
+    <h2 id="pricing-preview-title">Simple pricing. Start for free.</h2>
+    <div class="pricing-grid pricing-grid-compact">
+      {pricingTiers.map((tier) => (
+        <PricingCard
+          name={tier.name}
+          tagline={tier.tagline}
+          price={tier.price}
+          priceNote={tier.priceNote}
+          features={tier.features}
+          ctaLabel={tier.ctaLabel}
+          ctaHref={tier.ctaHref}
+          featured={tier.featured}
+        />
+      ))}
+    </div>
+    <a class="pricing-preview-link" href="/pricing">See full pricing details →</a>
+  </section>
+
+  <section class="faq content-shell" aria-labelledby="faq-title" data-reveal>
+    <p class="eyebrow">Questions</p>
+    <h2 id="faq-title">Frequently asked</h2>
+    <FAQAccordion items={faqs} />
+    <FaqSchema items={faqs} />
+  </section>
+
+  <CTASection heading="Stop losing customers you've already earned." support="Start tracking every missed call, review, and reminder today." />
+</BaseLayout>

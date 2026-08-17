@@ -1,0 +1,21 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+const title = "Page not found — Chakusa";
+const description = "This page doesn't exist.";
+---
+<BaseLayout {title} {description}>
+  <SiteHeader />
+  <main>
+    <section class="page-hero content-shell" aria-labelledby="not-found-title" style="text-align:center;padding-block:var(--space-18)">
+      <p class="eyebrow">404</p>
+      <h1 id="not-found-title">That page doesn't exist.</h1>
+      <p class="page-hero-support" style="margin-inline:auto">The link might be old, or mistyped. Here's where you probably meant to go:</p>
+      <div class="hero-actions" style="justify-content:center;margin-top:var(--space-6)">
+        <a class="button button-primary" href="/">Back to home</a>
+        <a class="button button-secondary" href="/product">See the product</a>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

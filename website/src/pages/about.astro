@@ -1,0 +1,37 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import CTASection from "../components/CTASection.astro";
+
+const title = "About — Chakusa";
+const description = "Why Chakusa exists, what it does today, and how it handles your data.";
+---
+<BaseLayout {title} {description}>
+  <SiteHeader current="about" />
+  <main>
+    <section class="about-section content-shell" aria-labelledby="about-title" data-reveal>
+      <p class="eyebrow">About</p>
+      <h1 id="about-title">Why we built Chakusa</h1>
+      <p>Most local businesses lose customers quietly — a call that never gets a callback, a happy visit that never turns into a review, a regular who just stops showing up. None of it shows up as a single dramatic failure. It just adds up, unnoticed, month after month.</p>
+      <p>Chakusa exists to make that loss visible and easy to act on, from a phone, without needing a dashboard, a login for six different tools, or a team dedicated to marketing.</p>
+
+      <h2>What Chakusa does today</h2>
+      <p>Chakusa tracks missed-call leads, review requests, and comeback reminders for local service businesses — beauty, home services, automotive, and professional services. Some of it is manual today and some of it is automated, and we'd rather tell you plainly which is which than let the marketing get ahead of the product. Check the <a href="/product">Product</a> page for the specifics.</p>
+
+      <h2>Who it's for — and who it isn't, yet</h2>
+      <p>Chakusa is built for solo and small-team local service businesses that live on repeat customers: barbers, salons, dentists, cleaners, contractors, mechanics, photographers. If that's you, it's worth ten minutes.</p>
+      <p>It's not built for multi-location chains, and it doesn't do job scheduling, dispatch, or invoicing — if that's what you need today, a tool like Jobber or Housecall Pro will serve you better than Chakusa will. We'd rather say that plainly than have you find out after signing up.</p>
+
+      <h2>Security and privacy</h2>
+      <p>Your account uses standard, rotated session security, and any linked sign-in credentials are stored encrypted, never in plain text. We collect what the product needs to work and nothing beyond that.</p>
+
+      <h2 id="contact">Get in touch</h2>
+      {/* TODO(launch-blocker): CONTACT_EMAIL is a placeholder — replace with
+          the real support address before this page ships. Do not launch
+          with an unverified address. */}
+      <p>Questions, a Business-tier inquiry, or something that isn't working the way this page says it should — <a href="mailto:CONTACT_EMAIL@chakusa.com">CONTACT_EMAIL@chakusa.com</a> reaches a real person, not a ticket queue.</p>
+    </section>
+
+    <CTASection heading="Try Chakusa for free." />
+  </main>
+</BaseLayout>

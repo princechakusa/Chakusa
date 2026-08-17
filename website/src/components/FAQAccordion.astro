@@ -1,0 +1,16 @@
+---
+interface Item { question: string; answer: string }
+interface Props { items: Item[] }
+const { items } = Astro.props;
+---
+<div class="faq-list">
+  {items.map((item, i) => (
+    <details class="faq-item" name={`faq-${i}`}>
+      <summary>
+        <span>{item.question}</span>
+        <svg class="faq-chevron" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 4.5 7 9.5 12 4.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </summary>
+      <p>{item.answer}</p>
+    </details>
+  ))}
+</div>

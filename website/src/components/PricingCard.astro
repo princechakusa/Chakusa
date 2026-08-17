@@ -1,0 +1,24 @@
+---
+interface Props {
+  name: string;
+  tagline: string;
+  price: string;
+  priceNote?: string;
+  features: string[];
+  ctaLabel: string;
+  ctaHref: string;
+  featured?: boolean;
+}
+const { name, tagline, price, priceNote, features, ctaLabel, ctaHref, featured = false } = Astro.props;
+---
+<div class:list={["pricing-card", { featured }]}>
+  {featured && <p class="pricing-card-eyebrow">For growing businesses</p>}
+  <h3>{name}</h3>
+  <p class="pricing-card-tagline">{tagline}</p>
+  <p class="pricing-card-price">{price}</p>
+  {priceNote && <p class="pricing-card-note">{priceNote}</p>}
+  <ul class="pricing-card-features">
+    {features.map((f) => <li>{f}</li>)}
+  </ul>
+  <a class={`button ${featured ? "button-primary" : "button-secondary"} pricing-card-cta`} href={ctaHref}>{ctaLabel}</a>
+</div>

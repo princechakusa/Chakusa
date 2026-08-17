@@ -1,0 +1,23 @@
+---
+// Structured data for whatever FAQ list is already rendered on the page —
+// never introduces new claims, only marks up answers that are already
+// verified and visible. See docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 6's
+// SEO checklist: "verified against real content only."
+interface Item { question: string; answer: string }
+interface Props { items: Item[] }
+const { items } = Astro.props;
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: items.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
+---
+<script type="application/ld+json" is:inline set:html={JSON.stringify(schema)} />

@@ -1,0 +1,20 @@
+---
+interface Props {
+  heading: string;
+  support?: string;
+  provisional?: boolean;
+}
+// "Provisional" now only means "the app store isn't live yet, so this leads
+// to /get-started's coming-soon badges" — not a dead self-referencing
+// anchor. Kept as a prop so a future page can turn the note off once the
+// store links are real.
+const { heading, support, provisional = true } = Astro.props;
+---
+<section class="final-cta content-shell" aria-labelledby="final-cta-title">
+  <h2 id="final-cta-title">{heading}</h2>
+  {support && <p class="final-cta-support">{support}</p>}
+  <div class="final-cta-actions">
+    <a class="button button-primary" href="/get-started">Start free</a>
+  </div>
+  {provisional && <p class="provisional-note">Start Free leads to the download page — app store links go live once the listings do.</p>}
+</section>

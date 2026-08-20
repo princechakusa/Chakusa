@@ -12,8 +12,8 @@
         "EXPO_PUBLIC_APPLE_AUTH_ENABLED": "true",
         "EXPO_PUBLIC_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
-        "EXPO_PUBLIC_AUTOMATION_ENABLED": "false",
-        "EXPO_PUBLIC_BILLING_ENABLED": "false"
+        "EXPO_PUBLIC_AUTOMATION_ENABLED": "true",
+        "EXPO_PUBLIC_BILLING_ENABLED": "true"
       }
     },
     "production-internal": {
@@ -29,8 +29,8 @@
         "EXPO_PUBLIC_APPLE_AUTH_ENABLED": "true",
         "EXPO_PUBLIC_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
-        "EXPO_PUBLIC_AUTOMATION_ENABLED": "false",
-        "EXPO_PUBLIC_BILLING_ENABLED": "false"
+        "EXPO_PUBLIC_AUTOMATION_ENABLED": "true",
+        "EXPO_PUBLIC_BILLING_ENABLED": "true"
       }
     }
   }

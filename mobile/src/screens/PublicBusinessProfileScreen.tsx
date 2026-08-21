@@ -26,12 +26,19 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     if (!slug || view.kind !== 'loaded' || !canSubmitContact(view, name, phone)) return;
     const details = view.details;
     setView({ kind: 'submitting', details });
+    // Referral-program attribution only — a customer's personal share link
+    // carries their own id as ?ref=, which the backend validates belongs to
+    // this business (or silently ignores) before attributing the resulting
+    // lead. Read directly from the URL rather than plumbed through
+    // publicRoutes.ts, since it's a query param, not a path segment.
+    const ref = typeof window === 'undefined' || !window.location ? undefined : new URLSearchParams(window.location.search).get('ref') ?? undefined;
     try {
       await publicBusinessProfileApi.submitContact(slug, {
         name: name.trim(),
         phone: phone.trim(),
         serviceRequested: serviceRequested.trim() || undefined,
         message: message.trim() || undefined,
+        ref,
       });
       setView({ kind: 'submitted', details });
     } catch (error) {

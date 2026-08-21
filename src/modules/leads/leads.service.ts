@@ -52,6 +52,9 @@ export async function createLead(
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
   }
+  if (input.referredByCustomerId) {
+    await assertCustomerInBusiness(businessId, input.referredByCustomerId);
+  }
 
   const limit = getPlanLimits(plan).leadsPerMonth;
   const periodStart = startOfCurrentUtcMonth();
@@ -73,6 +76,7 @@ export async function createLead(
         urgency: input.urgency,
         estimatedValue: input.estimatedValue,
         notes: input.notes,
+        referredByCustomerId: input.referredByCustomerId,
       },
     });
   });
@@ -170,7 +174,7 @@ async function getOwnedLead(businessId: string, leadId: string) {
 export async function getLead(businessId: string, leadId: string) {
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, businessId },
-    include: { customer: true, messages: { orderBy: { createdAt: "desc" } } },
+    include: { customer: true, referredBy: true, messages: { orderBy: { createdAt: "desc" } } },
   });
   if (!lead) {
     throw ApiError.notFound("Lead not found");

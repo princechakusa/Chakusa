@@ -8,6 +8,7 @@ export interface SubmitPublicContactInput {
   phone: string;
   serviceRequested?: string;
   message?: string;
+  ref?: string;
 }
 
 export const publicBusinessProfileApi = {

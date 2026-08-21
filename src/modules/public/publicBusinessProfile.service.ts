@@ -69,12 +69,22 @@ export async function submitPublicContactForm(
     await prisma.customer.update({ where: { id: customer.id }, data: { name: input.name } });
   }
 
+  // Silently ignored rather than validated/rejected: a stale or tampered
+  // ?ref= value must never block a legitimate submission (see
+  // submitPublicContactSchema's doc comment). Also guards against
+  // attributing to the customer that was just created above from a
+  // self-share (a customer can't "refer" themselves).
+  const referrer = input.ref && input.ref !== customer.id
+    ? await prisma.customer.findFirst({ where: { id: input.ref, businessId: business.id }, select: { id: true } })
+    : null;
+
   await createLead(business.id, business.ownerId, {
     customerId: customer.id,
     source: LEAD_SOURCE_PUBLIC_PROFILE,
     serviceRequested: input.serviceRequested,
     urgency: "medium",
     notes: input.message,
+    referredByCustomerId: referrer?.id,
   }, plan);
 
   return { businessName: business.name };

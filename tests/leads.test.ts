@@ -295,6 +295,55 @@ describe("leads", () => {
     expect(response.json().error.code).toBe("VALIDATION_ERROR");
   });
 
+  describe("referral attribution", () => {
+    it("creates a lead with a referredByCustomerId and returns the referrer on GET", async () => {
+      const { token } = await registerAccount(app);
+      const referrer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(token),
+        payload: { name: "Referring Customer" },
+      });
+
+      const created = await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(token),
+        payload: { source: "manual", referredByCustomerId: referrer.json().id },
+      });
+      expect(created.statusCode).toBe(201);
+      expect(created.json().referredByCustomerId).toBe(referrer.json().id);
+
+      const fetched = await app.inject({
+        method: "GET",
+        url: `/leads/${created.json().id}`,
+        headers: authHeader(token),
+      });
+      expect(fetched.json().referredBy.name).toBe("Referring Customer");
+    });
+
+    it("rejects a referredByCustomerId that does not belong to the caller's business", async () => {
+      const { token: tokenA } = await registerAccount(app, { email: "ref-lead-a@example.com" });
+      const { token: tokenB } = await registerAccount(app, { email: "ref-lead-b@example.com" });
+      const otherCustomer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(tokenB),
+        payload: { name: "Business B's Customer" },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(tokenA),
+        payload: { source: "manual", referredByCustomerId: otherCustomer.json().id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe("VALIDATION_ERROR");
+    });
+  });
+
   describe("payment tracking", () => {
     async function createWonLead(app: FastifyInstance, token: string) {
       const created = await app.inject({

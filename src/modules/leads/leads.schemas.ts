@@ -8,6 +8,10 @@ export const createLeadSchema = z.object({
   urgency: z.enum(["low", "medium", "high"]).default("medium"),
   estimatedValue: z.coerce.number().nonnegative().optional(),
   notes: z.string().optional(),
+  // Referral-program attribution only — see Lead.referredByCustomerId's
+  // schema comment. Must belong to the same business as the lead (validated
+  // in leads.service.ts, same as customerId).
+  referredByCustomerId: z.string().uuid().optional(),
 });
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 

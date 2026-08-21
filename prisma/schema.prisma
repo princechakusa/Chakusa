@@ -558,6 +558,7 @@ model Customer {
 
   business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   leads          Lead[]
+  referredLeads  Lead[]           @relation("LeadReferredBy")
   messages       Message[]
   reviewRequests ReviewRequest[]
   feedback       Feedback[]
@@ -593,6 +594,14 @@ model Lead {
   // leads) without Chakusa processing any payment itself.
   paymentStatus    LeadPaymentStatus @default(unpaid) @map("payment_status")
   paidAmount       Decimal?    @map("paid_amount") @db.Decimal(10, 2)
+  // Attribution only — the referral program tracks word-of-mouth, it never
+  // moves money or grants a reward through Chakusa itself. Set when a lead
+  // arrives through a customer's personal referral link (see
+  // src/modules/public/publicBusinessProfile.service.ts); always validated
+  // against the same business as the lead (see leads.service.ts's
+  // assertCustomerInBusiness) so a link can never attribute a lead to a
+  // customer of a different business.
+  referredByCustomerId String?  @map("referred_by_customer_id")
   notes            String?
   generatedReply   String?     @map("generated_reply")
   contactedAt      DateTime?   @map("contacted_at")
@@ -604,6 +613,7 @@ model Lead {
 
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  referredBy     Customer?       @relation("LeadReferredBy", fields: [referredByCustomerId], references: [id], onDelete: SetNull)
   messages       Message[]
   automationRuns AutomationRun[]
 

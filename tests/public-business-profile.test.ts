@@ -199,4 +199,87 @@ describe("public business profile", () => {
     expect(responses[10]!.json().error.code).toBe("RATE_LIMITED");
     await isolatedApp.close();
   });
+
+  describe("referral attribution", () => {
+    it("14. attributes the created lead to the referring customer via ?ref=", async () => {
+      const { token, businessId } = await registerAccount(app, { businessName: "Referral Co" });
+      const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+      const referrer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(token),
+        payload: { name: "Referring Customer", phone: "+263779998888" },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/public/business/${business.publicSlug}/contact`,
+        payload: { name: "New Customer", phone: "+263779997777", ref: referrer.json().id },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const lead = await prisma.lead.findFirstOrThrow({ where: { businessId } });
+      expect(lead.referredByCustomerId).toBe(referrer.json().id);
+    });
+
+    it("15. silently ignores an unknown ref rather than rejecting the submission", async () => {
+      const { businessId } = await registerAccount(app, { businessName: "Bad Ref Co" });
+      const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/public/business/${business.publicSlug}/contact`,
+        payload: { name: "New Customer", phone: "+263779996666", ref: "00000000-0000-0000-0000-000000000000" },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const lead = await prisma.lead.findFirstOrThrow({ where: { businessId } });
+      expect(lead.referredByCustomerId).toBeNull();
+    });
+
+    it("16. silently ignores a ref belonging to a different business", async () => {
+      const businessA = await registerAccount(app, { email: "ref-a@example.com", businessName: "Ref Business A" });
+      const businessB = await registerAccount(app, { email: "ref-b@example.com", businessName: "Ref Business B" });
+      const bizA = await prisma.business.findUniqueOrThrow({ where: { id: businessA.businessId } });
+      const foreignCustomer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(businessB.token),
+        payload: { name: "Business B's Customer" },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/public/business/${bizA.publicSlug}/contact`,
+        payload: { name: "New Customer", phone: "+263779995555", ref: foreignCustomer.json().id },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const lead = await prisma.lead.findFirstOrThrow({ where: { businessId: businessA.businessId } });
+      expect(lead.referredByCustomerId).toBeNull();
+    });
+
+    it("17. does not attribute a lead to itself when ref matches the newly resolved customer", async () => {
+      const { businessId } = await registerAccount(app, { businessName: "Self Ref Co" });
+      const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+
+      const first = await app.inject({
+        method: "POST",
+        url: `/public/business/${business.publicSlug}/contact`,
+        payload: { name: "Repeat Customer", phone: "+263779994444" },
+      });
+      const customer = await prisma.customer.findFirstOrThrow({ where: { businessId } });
+
+      const second = await app.inject({
+        method: "POST",
+        url: `/public/business/${business.publicSlug}/contact`,
+        payload: { name: "Repeat Customer", phone: "+263779994444", ref: customer.id },
+      });
+
+      expect(first.statusCode).toBe(201);
+      expect(second.statusCode).toBe(201);
+      const leads = await prisma.lead.findMany({ where: { businessId } });
+      expect(leads.every((lead) => lead.referredByCustomerId === null)).toBe(true);
+    });
+  });
 });

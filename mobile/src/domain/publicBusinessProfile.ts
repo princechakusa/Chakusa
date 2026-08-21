@@ -28,6 +28,7 @@ export function workingHoursSummary(workingHours: Record<string, unknown> | null
   return typeof summary === 'string' && summary.trim().length > 0 ? summary : null;
 }
 
-export function publicBusinessProfileUrl(slug: string): string {
-  return `https://chakusa.com/b/${encodeURIComponent(slug)}`;
+export function publicBusinessProfileUrl(slug: string, referredByCustomerId?: string): string {
+  const base = `https://chakusa.com/b/${encodeURIComponent(slug)}`;
+  return referredByCustomerId ? `${base}?ref=${encodeURIComponent(referredByCustomerId)}` : base;
 }

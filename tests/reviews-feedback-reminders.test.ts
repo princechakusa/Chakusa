@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader, setPlan } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
-import { markReviewRequestFeedbackReceived } from "../src/modules/reviews/reviews.service.js";
+import { markReviewRequestFeedbackReceived, bulkSendReviewRequests } from "../src/modules/reviews/reviews.service.js";
 import { bulkSendReminders } from "../src/modules/reminders/reminders.service.js";
 import type { MessagingProvider, OutboundMessage, SendResult } from "../src/lib/messaging/messagingProvider.js";
 
@@ -132,6 +132,86 @@ describe("review requests", () => {
     expect(patched.json().status).toBe("pending");
     expect(patched.json().sentAt).toBeNull();
     expect(patched.json().serviceName).toBe("manicure");
+  });
+
+  describe("bulk review campaign", () => {
+    async function createWonCustomer(token: string, phone = "+263771234567") {
+      const customer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(token),
+        payload: { name: "Won Customer", phone },
+      });
+      const lead = await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(token),
+        payload: { customerId: customer.json().id, source: "referral" },
+      });
+      await app.inject({ method: "POST", url: `/leads/${lead.json().id}/mark-won`, headers: authHeader(token) });
+      return customer.json().id as string;
+    }
+
+    it("bulk-create prepares a review request for every won-but-never-asked customer, available on Free", async () => {
+      const { token } = await registerAccount(app);
+      await createWonCustomer(token);
+      await createWonCustomer(token, "+263779876543");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/review-requests/bulk-create",
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().created).toHaveLength(2);
+      expect(response.json().created[0].message.length).toBeGreaterThan(0);
+    });
+
+    it("bulk-create never re-asks a customer who already has a review request", async () => {
+      const { token } = await registerAccount(app);
+      const customerId = await createWonCustomer(token);
+      await app.inject({ method: "POST", url: "/review-requests", headers: authHeader(token), payload: { customerId } });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/review-requests/bulk-create",
+        headers: authHeader(token),
+      });
+
+      expect(response.json().created).toHaveLength(0);
+    });
+
+    it("bulk-send is blocked on Free", async () => {
+      const { token } = await registerAccount(app);
+      await createWonCustomer(token);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/review-requests/bulk-send",
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().error.code).toBe("FEATURE_NOT_AVAILABLE");
+    });
+
+    it("bulk-send sends a review request to every won-but-never-asked customer on PRO", async () => {
+      const { token, userId, businessId } = await registerAccount(app);
+      await setPlan(businessId, "PRO");
+      await createWonCustomer(token, "+263771111111");
+      await createWonCustomer(token, "+263772222222");
+      const { provider, calls } = makeFakeProvider();
+
+      const result = await bulkSendReviewRequests(businessId, userId, "PRO", "ACTIVE", provider);
+
+      expect(result.sentCount).toBe(2);
+      expect(result.failedCount).toBe(0);
+      expect(calls).toHaveLength(2);
+
+      const sentRequests = await prisma.reviewRequest.findMany({ where: { businessId } });
+      expect(sentRequests.every((r) => r.status === "sent")).toBe(true);
+    });
   });
 });
 

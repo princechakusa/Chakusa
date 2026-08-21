@@ -8,6 +8,8 @@ import {
   updateReviewRequest,
   generateReviewMessage,
   generatePublicReviewLink,
+  bulkCreateReviewRequests,
+  bulkSendReviewRequests,
   markReviewRequestOpened,
   markReviewRequestSent,
   markReviewRequestReviewed,
@@ -39,6 +41,18 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { id: string } }>("/:id/generate-message", async (request, reply) => {
     reply.send(await generateReviewMessage(request.businessId!, request.params.id));
+  });
+
+  // Marketing module's "Review campaign" — available on every plan,
+  // creates and prepares messages only. See bulk-send below for Pro+.
+  fastify.post("/bulk-create", async (request, reply) => {
+    reply.send(await bulkCreateReviewRequests(request.businessId!, request.user.userId, request.plan!));
+  });
+
+  fastify.post("/bulk-send", async (request, reply) => {
+    reply.send(
+      await bulkSendReviewRequests(request.businessId!, request.user.userId, request.plan!, request.status!),
+    );
   });
 
   // Mints/re-mints the public link token — see generatePublicReviewLink's

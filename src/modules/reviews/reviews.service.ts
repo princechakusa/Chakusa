@@ -4,13 +4,15 @@ import { recordActivity } from "../../lib/activity.js";
 import { renderTemplate } from "../../lib/templateEngine.js";
 import { getDefaultTemplateBody } from "../../lib/defaultTemplates.js";
 import { notifyReviewReceived } from "../../lib/notifications/notificationTriggers.js";
-import { assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
+import { assertFeatureAvailable, assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
 import { generateOpaqueToken } from "../../lib/authTokens.js";
 import { config } from "../../lib/config.js";
 import { buildPublicReviewUrl } from "../../lib/publicReviewLinks.js";
+import { sendMessage } from "../messages/messages.service.js";
 import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./reviews.schemas.js";
-import type { Prisma, Plan } from "@prisma/client";
+import type { Prisma, Plan, SubscriptionStatus } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
+import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
@@ -91,6 +93,116 @@ export async function createReviewRequest(
   });
 
   return stripPublicTokenFields(reviewRequest);
+}
+
+/**
+ * Marketing module's "Review campaign" target audience: customers with at
+ * least one won lead who have never once been sent a review request for
+ * this business — deliberately "ever," not "since their last won lead," so
+ * a customer already mid-flow on an existing request isn't asked twice in
+ * the same campaign.
+ */
+async function customersDueForReviewRequest(businessId: string) {
+  return prisma.customer.findMany({
+    where: { businessId, leads: { some: { status: "won" } }, reviewRequests: { none: {} } },
+  });
+}
+
+// Callers only ever pass a review request freshly created in this same
+// bulk flow — always unconsumed — so unlike generateReviewMessage's
+// single-request path, there's no "already consumed" case to special-case
+// here.
+async function renderReviewRequestMessage(
+  reviewRequest: { serviceName: string | null; id: string },
+  business: { id: string; name: string; industry: string | null },
+  template: { body: string } | null,
+  customerName: string | undefined,
+) {
+  const body = template?.body ?? getDefaultTemplateBody("review_request", business.industry);
+  const reviewLink = buildPublicReviewUrl((await generatePublicReviewLink(business.id, reviewRequest.id)).token);
+  return renderTemplate(body, {
+    customer_name: customerName ?? "there",
+    business_name: business.name,
+    service_name: reviewRequest.serviceName ?? "your service",
+    review_link: reviewLink,
+  });
+}
+
+/**
+ * Available on every plan — creates (respecting the same monthly
+ * reviewRequestsPerMonth limit as the single-request flow) and prepares a
+ * message for every customer due per customersDueForReviewRequest above.
+ * A Free business that hits its monthly limit partway through still gets
+ * every request it has quota for; the rest are reported back as skipped
+ * rather than failing the whole campaign.
+ */
+export async function bulkCreateReviewRequests(businessId: string, actorId: string, plan: Plan) {
+  const [customers, business, template] = await Promise.all([
+    customersDueForReviewRequest(businessId),
+    prisma.business.findUniqueOrThrow({ where: { id: businessId } }),
+    prisma.messageTemplate.findFirst({
+      where: { businessId, templateType: "review_request" },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+    }),
+  ]);
+
+  const results: { id: string; customerName: string; message: string }[] = [];
+  const skipped: { customerName: string; reason: string }[] = [];
+  for (const customer of customers) {
+    try {
+      const reviewRequest = await createReviewRequest(businessId, actorId, { customerId: customer.id }, plan);
+      const message = await renderReviewRequestMessage(reviewRequest, business, template, customer.name);
+      await prisma.reviewRequest.update({ where: { id: reviewRequest.id }, data: { message } });
+      results.push({ id: reviewRequest.id, customerName: customer.name, message });
+    } catch (error) {
+      skipped.push({ customerName: customer.name, reason: error instanceof ApiError ? error.message : "Could not create this review request" });
+    }
+  }
+  return { created: results, skipped };
+}
+
+/**
+ * Pro+ one-tap version — reuses bulkCreateReviewRequests to prepare (or
+ * pick up any already-pending, unsent) review requests, then sends each via
+ * the same sendMessage pipeline bulkSendReminders uses. Same
+ * per-recipient-isolation reasoning: one bad phone number or opt-out never
+ * blocks the rest of the campaign.
+ */
+export async function bulkSendReviewRequests(
+  businessId: string,
+  actorId: string,
+  plan: Plan,
+  status: SubscriptionStatus,
+  provider?: MessagingProvider,
+) {
+  assertFeatureAvailable(plan, status, "OUTBOUND_MESSAGING");
+
+  const prepared = await bulkCreateReviewRequests(businessId, actorId, plan);
+
+  const results: { id: string; customerName: string; outcome: "sent" | "failed"; reason?: string }[] = [];
+  for (const item of prepared.created) {
+    const reviewRequest = await prisma.reviewRequest.findFirstOrThrow({ where: { id: item.id } });
+    if (!reviewRequest.customerId) {
+      results.push({ id: item.id, customerName: item.customerName, outcome: "failed", reason: "No customer on this review request" });
+      continue;
+    }
+    try {
+      await sendMessage(businessId, { customerId: reviewRequest.customerId, body: item.message, messageType: "review_request" }, plan, status, provider);
+      await markReviewRequestSent(businessId, actorId, item.id);
+      results.push({ id: item.id, customerName: item.customerName, outcome: "sent" });
+    } catch (error) {
+      const reason = error instanceof ApiError ? error.message : "Could not send this message";
+      results.push({ id: item.id, customerName: item.customerName, outcome: "failed", reason });
+    }
+  }
+
+  return {
+    sentCount: results.filter((r) => r.outcome === "sent").length,
+    failedCount: results.filter((r) => r.outcome === "failed").length,
+    skippedCount: prepared.skipped.length,
+    results,
+    skipped: prepared.skipped,
+  };
 }
 
 async function getOwnedReviewRequest(businessId: string, id: string) {

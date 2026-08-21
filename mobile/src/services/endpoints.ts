@@ -51,6 +51,8 @@ export const reviewsApi = {
   list: () => api.get<ReviewRequestDto[]>('/review-requests'), create: (body: { customerId?: string; serviceName?: string; message?: string }) => api.post<ReviewRequestDto>('/review-requests', body),
   get: (id: string) => api.get<ReviewRequestDto>(`/review-requests/${id}`), patch: (id: string, body: Partial<Pick<ReviewRequestDto, 'serviceName' | 'message' | 'status'>>) => api.patch<ReviewRequestDto>(`/review-requests/${id}`, body),
   generateMessage: (id: string) => api.post<{ message: string }>(`/review-requests/${id}/generate-message`), markOpened: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-opened`), markSent: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-sent`), markReviewed: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-reviewed`), markFeedbackReceived: (id: string) => api.post<ReviewRequestDto>(`/review-requests/${id}/mark-feedback-received`),
+  bulkCreate: () => api.post<{ created: { id: string; customerName: string; message: string }[]; skipped: { customerName: string; reason: string }[] }>('/review-requests/bulk-create'),
+  bulkSend: () => api.post<{ sentCount: number; failedCount: number; skippedCount: number; results: { id: string; customerName: string; outcome: 'sent' | 'failed'; reason?: string }[] }>('/review-requests/bulk-send'),
 };
 export const feedbackApi = { list: () => api.get<FeedbackDto[]>('/feedback'), create: (body: { customerId?: string; reviewRequestId?: string; rating: number; comment?: string }) => api.post<FeedbackDto>('/feedback', body) };
 export const remindersApi = {

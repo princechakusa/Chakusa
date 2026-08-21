@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -38,6 +38,7 @@ export const customersApi = {
   create: (body: { name: string; phone?: string; email?: string; notes?: string }) => api.post<CustomerDto>('/customers', body),
   get: (id: string) => api.get<CustomerProfileDto>(`/customers/${id}`),
   patch: (id: string, body: Partial<Pick<CustomerDto, 'name' | 'phone' | 'email' | 'notes'>>) => api.patch<CustomerDto>(`/customers/${id}`, body),
+  bulkImport: (customers: { name: string; phone?: string; email?: string; notes?: string }[]) => api.post<BulkImportCustomersResultDto>('/customers/bulk-import', { customers }),
 };
 export const leadsApi = {
   list: (status?: LeadStatus, page = 1, pageSize = 100) => api.get<LeadListResponse>(`/leads${query({ status, page, pageSize })}`),

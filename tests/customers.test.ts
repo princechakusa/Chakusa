@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
+import { createTestApp, resetDatabase, registerAccount, authHeader, setPlan } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
 
 describe("customers", () => {
@@ -119,5 +119,118 @@ describe("customers", () => {
     });
 
     expect(response.statusCode).toBe(404);
+  });
+
+  describe("bulk import", () => {
+    it("imports every valid row and returns the created customers", async () => {
+      const { token, businessId } = await registerAccount(app);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: {
+          customers: [
+            { name: "Import One", phone: "+263771111111" },
+            { name: "Import Two", email: "two@example.com" },
+          ],
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json().created).toHaveLength(2);
+      expect(response.json().skipped).toEqual([]);
+      expect(response.json().failed).toEqual([]);
+      expect(await prisma.customer.count({ where: { businessId } })).toBe(2);
+    });
+
+    it("skips a row whose phone already matches an existing customer", async () => {
+      const { token, businessId } = await registerAccount(app);
+      await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(token),
+        payload: { name: "Already Here", phone: "+263772222222" },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: [{ name: "Duplicate Row", phone: "+263772222222" }] },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json().created).toEqual([]);
+      expect(response.json().skipped).toEqual([{ name: "Duplicate Row", reason: "duplicate_phone" }]);
+      expect(await prisma.customer.count({ where: { businessId } })).toBe(1);
+    });
+
+    it("stops creating once the plan's customer limit is reached, without failing the whole batch", async () => {
+      const { token, businessId } = await registerAccount(app);
+      await setPlan(businessId, "FREE");
+      await prisma.customer.createMany({
+        data: Array.from({ length: 199 }, (_, i) => ({ businessId, name: `Existing ${i}` })),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: [{ name: "Fits Under Limit" }, { name: "Over The Limit" }] },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json().created).toEqual([{ id: expect.any(String), name: "Fits Under Limit" }]);
+      expect(response.json().skipped).toEqual([{ name: "Over The Limit", reason: "limit_reached" }]);
+      expect(await prisma.customer.count({ where: { businessId } })).toBe(200);
+    });
+
+    it("rejects an empty import and an oversized import", async () => {
+      const { token } = await registerAccount(app);
+
+      const empty = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: [] },
+      });
+      expect(empty.statusCode).toBe(400);
+
+      const oversized = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: Array.from({ length: 501 }, (_, i) => ({ name: `Row ${i}` })) },
+      });
+      expect(oversized.statusCode).toBe(400);
+    });
+
+    it("rejects a row missing a name", async () => {
+      const { token } = await registerAccount(app);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: [{ phone: "+263773333333" }] },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("records one CUSTOMER_CREATED activity event per imported customer", async () => {
+      const { token, businessId } = await registerAccount(app);
+
+      await app.inject({
+        method: "POST",
+        url: "/customers/bulk-import",
+        headers: authHeader(token),
+        payload: { customers: [{ name: "Activity One" }, { name: "Activity Two" }] },
+      });
+
+      const events = await prisma.activityEvent.findMany({ where: { businessId, eventType: "CUSTOMER_CREATED" } });
+      expect(events).toHaveLength(2);
+    });
   });
 });

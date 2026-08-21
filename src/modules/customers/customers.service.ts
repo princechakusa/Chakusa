@@ -4,7 +4,7 @@ import { recordActivity } from "../../lib/activity.js";
 import { assertUnderLimit, getPlanLimits, withLimitCheck } from "../../lib/entitlements.js";
 import { toE164OrNull } from "../../lib/phone.js";
 import { toApiLead } from "../leads/leads.serialization.js";
-import type { CreateCustomerInput, UpdateCustomerInput } from "./customers.schemas.js";
+import type { BulkImportCustomersInput, CreateCustomerInput, UpdateCustomerInput } from "./customers.schemas.js";
 import type { Plan } from "@prisma/client";
 import type { CountryCode } from "libphonenumber-js";
 
@@ -81,6 +81,127 @@ export async function createCustomer(
   });
 
   return customer;
+}
+
+/**
+ * Bulk-onboards a business's existing customer list from CSV/paste-in rows
+ * the client already parsed — deliberately not a device-contacts import.
+ * Chakusa's published Privacy Policy commits to never reading, storing, or
+ * uploading the phone's address book beyond a narrow, system-level Android
+ * call-screening check; a "scan your contacts" growth flow would break that
+ * commitment and also require a new sensitive Android permission with its
+ * own Play Store review risk. This is the one bulk-onboarding path Chakusa
+ * offers instead — same growth outcome (fast bulk-add of an existing list),
+ * no new permission, no policy change.
+ *
+ * Same per-recipient isolation as bulkCreateReviewRequests/bulkSendReminders:
+ * one bad row (duplicate phone, or the plan's customer limit already
+ * reached) never blocks the rest of the import. Rows are deduped against
+ * existing customers by normalized phone the same way
+ * findOrCreateCustomerByPhone matches a repeat caller — a row with no phone,
+ * or one that fails to normalize, always creates a new Customer rather than
+ * guessing a match from name alone.
+ */
+export async function bulkImportCustomers(
+  businessId: string,
+  actorId: string,
+  input: BulkImportCustomersInput,
+  plan: Plan,
+) {
+  const limit = getPlanLimits(plan).customers;
+  let current = limit === null ? 0 : await prisma.customer.count({ where: { businessId } });
+
+  const created: { id: string; name: string }[] = [];
+  const skipped: { name: string; reason: "duplicate_phone" | "limit_reached" }[] = [];
+  const failed: { name: string; reason: string }[] = [];
+
+  for (const row of input.customers) {
+    try {
+      if (limit !== null && current >= limit) {
+        skipped.push({ name: row.name, reason: "limit_reached" });
+        continue;
+      }
+
+      const phoneE164 = await derivePhoneE164(businessId, row.phone);
+      if (phoneE164) {
+        const existing = await prisma.customer.findFirst({ where: { businessId, phoneE164 }, select: { id: true } });
+        if (existing) {
+          skipped.push({ name: row.name, reason: "duplicate_phone" });
+          continue;
+        }
+      }
+
+      const customer = await prisma.customer.create({
+        data: { businessId, name: row.name, phone: row.phone, email: row.email, notes: row.notes, phoneE164 },
+      });
+      current += 1;
+      created.push({ id: customer.id, name: customer.name });
+
+      await recordActivity({
+        businessId,
+        actorId,
+        eventType: "CUSTOMER_CREATED",
+        entityType: "customer",
+        entityId: customer.id,
+        metadata: { source: "bulk_import" },
+      });
+    } catch (error) {
+      failed.push({ name: row.name, reason: error instanceof Error ? error.message : "Could not import this customer" });
+    }
+  }
+
+  return { created, skipped, failed };
+}
+
+/**
+ * Resolves a caller's phone number to a Customer, creating one only if no
+ * match exists yet. Matches on the normalized E.164 form (not the raw
+ * `phone` string) so "0771234567" and "+263771234567" from the same caller
+ * resolve to the same Customer rather than silently duplicating them —
+ * something the existing manual "new caller" lead form does not do today
+ * (it always inserts a fresh Customer), which would be a real correctness
+ * bug for an automated connector expected to see the same repeat caller
+ * many times. Falls back to creating an un-matchable Customer (phoneE164
+ * null) when the number can't be normalized, rather than failing ingestion
+ * entirely — a name-less, best-effort Customer is still far more useful
+ * than dropping a real missed call.
+ */
+export async function findOrCreateCustomerByPhone(
+  businessId: string,
+  actorId: string,
+  rawPhone: string,
+  plan: Plan,
+): Promise<{ id: string; created: boolean }> {
+  const phoneE164 = await derivePhoneE164(businessId, rawPhone);
+
+  if (phoneE164) {
+    const existing = await prisma.customer.findFirst({
+      where: { businessId, phoneE164 },
+      select: { id: true },
+    });
+    if (existing) return { id: existing.id, created: false };
+  }
+
+  const limit = getPlanLimits(plan).customers;
+  const customer = await withLimitCheck(async (tx) => {
+    if (limit !== null) {
+      const current = await tx.customer.count({ where: { businessId } });
+      assertUnderLimit({ plan, resource: "customers", limit, current });
+    }
+    return tx.customer.create({
+      data: { businessId, name: rawPhone, phone: rawPhone, phoneE164 },
+    });
+  });
+
+  await recordActivity({
+    businessId,
+    actorId,
+    eventType: "CUSTOMER_CREATED",
+    entityType: "customer",
+    entityId: customer.id,
+  });
+
+  return { id: customer.id, created: true };
 }
 
 async function assertCustomerInBusiness(businessId: string, customerId: string) {

@@ -34,6 +34,7 @@ export interface PublicTeamInvitationDto { state: 'open' | 'accepted' | 'expired
 
 export interface CustomerDto { id: string; businessId: string; name: string; phone: string | null; email: string | null; notes: string | null; createdAt: string; updatedAt: string; }
 export interface CustomerListResponse { items: CustomerDto[]; total: number; page: number; pageSize: number; }
+export interface BulkImportCustomersResultDto { created: { id: string; name: string }[]; skipped: { name: string; reason: 'duplicate_phone' | 'limit_reached' }[]; failed: { name: string; reason: string }[]; }
 export interface MessageDto { id: string; body: string; status: MessageStatus; channel: MessageChannel; sentAt: string | null; createdAt: string; }
 export type LeadPaymentStatus = 'unpaid' | 'partially_paid' | 'paid';
 export interface LeadDto { id: string; businessId: string; customerId: string | null; source: string | null; missedCallTime: string | null; serviceRequested: string | null; urgency: LeadUrgency; status: LeadStatus; estimatedValue: string | number | null; paymentStatus: LeadPaymentStatus; paidAmount: string | number | null; notes: string | null; generatedReply: string | null; contactedAt: string | null; bookedAt: string | null; wonAt: string | null; lostAt: string | null; createdAt: string; updatedAt: string; responseTimeSeconds?: number | null; customer?: CustomerDto | null; messages?: MessageDto[]; }

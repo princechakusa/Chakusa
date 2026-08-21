@@ -3,12 +3,14 @@ import {
   createCustomerSchema,
   updateCustomerSchema,
   listCustomersQuerySchema,
+  bulkImportCustomersSchema,
 } from "./customers.schemas.js";
 import {
   listCustomers,
   createCustomer,
   getCustomerProfile,
   updateCustomer,
+  bulkImportCustomers,
 } from "./customers.service.js";
 
 export default async function customerRoutes(fastify: FastifyInstance) {
@@ -25,6 +27,12 @@ export default async function customerRoutes(fastify: FastifyInstance) {
     const input = createCustomerSchema.parse(request.body);
     const customer = await createCustomer(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(customer);
+  });
+
+  fastify.post("/bulk-import", async (request, reply) => {
+    const input = bulkImportCustomersSchema.parse(request.body);
+    const result = await bulkImportCustomers(request.businessId!, request.user.userId, input, request.plan!);
+    reply.status(201).send(result);
   });
 
   fastify.get<{ Params: { id: string } }>("/:id", async (request, reply) => {

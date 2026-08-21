@@ -4,14 +4,14 @@ import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-na
 import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AuthScreen } from '../screens/AuthScreen';
 import { ComebackScreen } from '../screens/ComebackScreen';
 import { CustomerProfileScreen } from '../screens/CustomerProfileScreen';
 import { CustomersScreen } from '../screens/CustomersScreen';
+import { CustomersImportScreen } from '../screens/CustomersImportScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LeadDetailCorrectScreen as LeadDetailScreen } from '../screens/LeadDetailCorrectScreen';
 import { LeadsScreen } from '../screens/LeadsScreen';
-import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { PremiumFtueScreen } from '../screens/PremiumFtueScreen';
 import { ReviewDetailScreen } from '../screens/ReviewDetailScreen';
 import { ReviewsScreen } from '../screens/ReviewsScreen';
 import { SettingsCompletionScreen as SettingsScreen } from '../screens/SettingsCompletionScreen';
@@ -21,7 +21,6 @@ import { ActionQueueScreen as AttentionCenterScreen } from '../screens/ActionQue
 import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
-import { FirstEntryScreen } from '../screens/FirstEntryScreen';
 import { ProScreen } from '../screens/ProScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import { AccountInformationScreen } from '../screens/AccountInformationScreen';
@@ -54,7 +53,7 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
   }, [navigation, preferences.onboardingStep, status]);
 
   if (status === 'anonymous' && preferences.onboardingStep === 0) return <View style={styles.routeTransition} />;
-  return <OnboardingScreen />;
+  return <PremiumFtueScreen />;
 }
 
 export function AppNavigator() {
@@ -64,12 +63,11 @@ export function AppNavigator() {
   if (status === 'restore-error') return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
   return <Root.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, headerTitle: '', headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: colors.background } }}>
     {status === 'anonymous' ? <>
-      <Root.Screen name="FirstEntry" options={{ headerShown: false }}>{({ navigation }) => <FirstEntryScreen onGetStarted={() => { if (preferences.onboardingComplete) navigation.navigate('Login'); else { if (preferences.onboardingStep === 0) preferences.setOnboardingStep(1); navigation.navigate('Onboarding'); } }} onSignIn={() => navigation.navigate('Login')} />}</Root.Screen>
-      <Root.Screen name="Login" component={AuthScreen} options={{ headerShown: false }} />
+      <Root.Screen name="FirstEntry" component={PremiumFtueScreen} options={{ headerShown: false }} />
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
     {status === 'authenticated' && !preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
-    {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
+    {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
     {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />

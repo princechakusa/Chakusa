@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
+import { computeBusinessHealth } from "../../lib/businessHealth.js";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -120,6 +121,16 @@ export async function getDashboardSummary(businessId: string) {
   const missedCallRecoveredRevenue = Number(missedCallRecoveredAggregate._sum.estimatedValue ?? 0);
   const outstandingRevenue = Number(outstandingRevenueRows[0]?.outstanding ?? 0);
 
+  const businessHealth = computeBusinessHealth({
+    totalLeads,
+    contactRate,
+    conversionRate,
+    reviewRequestsSent,
+    reviewsReceived,
+    comebackCompletedCount: comebackWonReminders,
+    customersDue,
+  });
+
   const attentionItems = [
     ...dueReminders.map((r) => ({
       type: "reminder_due" as const,
@@ -164,6 +175,7 @@ export async function getDashboardSummary(businessId: string) {
     },
     recentActivity,
     todayAttentionItems: attentionItems,
+    businessHealth,
     generatedAt: new Date(),
     windowStart: today,
   };

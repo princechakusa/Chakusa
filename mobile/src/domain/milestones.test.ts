@@ -5,6 +5,7 @@ const dashboard = (overrides: Partial<{ leadsTotal: number; leadsWon: number; re
   leads: { missedCalls: 0, new: 0, contacted: 0, booked: 0, won: overrides.leadsWon ?? 0, lost: 0, total: overrides.leadsTotal ?? 0, conversionRate: 0, contactRate: 0 },
   reviews: { requestsSent: overrides.requestsSent ?? 0, reviewsReceived: 0, feedbackReceived: 0 },
   recoveredRevenue: { total: 0, missedCall: 0, comebackCompletedCount: overrides.comebackCompletedCount ?? 0, outstanding: 0 },
+  businessHealth: { score: null, label: null },
 });
 
 describe('dashboard milestones', () => {

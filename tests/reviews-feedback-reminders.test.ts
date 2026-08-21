@@ -1,8 +1,26 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { createTestApp, resetDatabase, registerAccount, authHeader } from "./helpers.js";
+import { createTestApp, resetDatabase, registerAccount, authHeader, setPlan } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
 import { markReviewRequestFeedbackReceived } from "../src/modules/reviews/reviews.service.js";
+import { bulkSendReminders } from "../src/modules/reminders/reminders.service.js";
+import type { MessagingProvider, OutboundMessage, SendResult } from "../src/lib/messaging/messagingProvider.js";
+
+function makeFakeProvider(sendImpl?: (message: OutboundMessage) => Promise<SendResult>) {
+  const calls: OutboundMessage[] = [];
+  const provider: MessagingProvider = {
+    id: "fake-test-provider",
+    supportsChannel: () => true,
+    send: async (message) => {
+      calls.push(message);
+      return sendImpl ? sendImpl(message) : { accepted: true, providerMessageId: "fake-msg-1", permanentFailure: false };
+    },
+    parseDeliveryWebhook: () => null,
+    parseInboundWebhook: () => null,
+    verifyWebhookSignature: () => false,
+  };
+  return { provider, calls };
+}
 
 describe("review requests", () => {
   let app: FastifyInstance;
@@ -549,5 +567,93 @@ describe("reminders", () => {
     expect(patched.statusCode).toBe(200);
     expect(patched.json().status).toBe("due");
     expect(patched.json().serviceName).toBe("oil change");
+  });
+
+  describe("bulk comeback campaign", () => {
+    async function createDueReminder(token: string, phone = "+263771234567") {
+      const customer = await app.inject({
+        method: "POST",
+        url: "/customers",
+        headers: authHeader(token),
+        payload: { name: "Due Customer", phone },
+      });
+      const reminder = await app.inject({
+        method: "POST",
+        url: "/reminders",
+        headers: authHeader(token),
+        payload: { customerId: customer.json().id, dueDate: new Date().toISOString() },
+      });
+      return reminder.json().id as string;
+    }
+
+    it("bulk-generate-messages prepares a message for every due reminder, available on Free", async () => {
+      const { token } = await registerAccount(app);
+      await createDueReminder(token);
+      await createDueReminder(token, "+263779876543");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/reminders/bulk-generate-messages",
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toHaveLength(2);
+      expect(response.json()[0].message.length).toBeGreaterThan(0);
+    });
+
+    it("bulk-send is blocked on Free", async () => {
+      const { token } = await registerAccount(app);
+      await createDueReminder(token);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/reminders/bulk-send",
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().error.code).toBe("FEATURE_NOT_AVAILABLE");
+    });
+
+    it("bulk-send sends to every due reminder with a customer and marks them sent, on PRO", async () => {
+      const { token, userId, businessId } = await registerAccount(app);
+      await setPlan(businessId, "PRO");
+      const idA = await createDueReminder(token, "+263771111111");
+      const idB = await createDueReminder(token, "+263772222222");
+      const { provider, calls } = makeFakeProvider();
+
+      const result = await bulkSendReminders(businessId, userId, "PRO", "ACTIVE", provider);
+
+      expect(result.sentCount).toBe(2);
+      expect(result.failedCount).toBe(0);
+      expect(calls).toHaveLength(2);
+
+      const reminderA = await prisma.reminder.findUniqueOrThrow({ where: { id: idA } });
+      const reminderB = await prisma.reminder.findUniqueOrThrow({ where: { id: idB } });
+      expect(reminderA.status).toBe("sent");
+      expect(reminderB.status).toBe("sent");
+    });
+
+    it("reports a reminder with no customer as skipped rather than failing the whole batch", async () => {
+      const { token, userId, businessId } = await registerAccount(app);
+      await setPlan(businessId, "PRO");
+      // No customerId — created directly against the schema's optional field.
+      await app.inject({
+        method: "POST",
+        url: "/reminders",
+        headers: authHeader(token),
+        payload: { dueDate: new Date().toISOString() },
+      });
+      const goodId = await createDueReminder(token);
+      const { provider } = makeFakeProvider();
+
+      const result = await bulkSendReminders(businessId, userId, "PRO", "ACTIVE", provider);
+
+      expect(result.sentCount).toBe(1);
+      expect(result.skippedCount).toBe(1);
+      const goodReminder = await prisma.reminder.findUniqueOrThrow({ where: { id: goodId } });
+      expect(goodReminder.status).toBe("sent");
+    });
   });
 });

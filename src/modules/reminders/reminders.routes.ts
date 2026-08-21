@@ -6,6 +6,8 @@ import {
   getReminder,
   updateReminder,
   generateReminderMessage,
+  bulkGenerateReminderMessages,
+  bulkSendReminders,
   markReminderSent,
   markReminderCompleted,
   dismissReminder,
@@ -36,6 +38,16 @@ export default async function reminderRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { id: string } }>("/:id/generate-message", async (request, reply) => {
     reply.send(await generateReminderMessage(request.businessId!, request.params.id));
+  });
+
+  // Marketing module's "Comeback campaign" — available on every plan,
+  // prepares messages only. See bulk-send below for the Pro+ send version.
+  fastify.post("/bulk-generate-messages", async (request, reply) => {
+    reply.send(await bulkGenerateReminderMessages(request.businessId!));
+  });
+
+  fastify.post("/bulk-send", async (request, reply) => {
+    reply.send(await bulkSendReminders(request.businessId!, request.user.userId, request.plan!, request.status!));
   });
 
   fastify.post<{ Params: { id: string } }>("/:id/mark-sent", async (request, reply) => {

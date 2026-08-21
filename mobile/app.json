@@ -44,7 +44,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m"
         }
-      ]
+      ],
+      "./plugins/withCallDetection"
     ],
     "extra": {
       "eas": {

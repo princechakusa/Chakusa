@@ -81,6 +81,19 @@ async function registerCurrentDevice() {
   await storeToken(token);
 }
 
+export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unsupported';
+
+// Read-only check — never triggers the OS prompt. Used by the onboarding
+// notifications step to render the current state before the user opts in.
+export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return 'unsupported';
+  if (!Device.isDevice) return 'unsupported';
+  const permissions = await Notifications.getPermissionsAsync();
+  if (permissions.status === Notifications.PermissionStatus.GRANTED) return 'granted';
+  if (permissions.status === Notifications.PermissionStatus.DENIED) return 'denied';
+  return 'undetermined';
+}
+
 export function registerCurrentDeviceForPush() {
   if (registrationPromise) return registrationPromise;
   registrationPromise = registerCurrentDevice()

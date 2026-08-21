@@ -1,0 +1,8 @@
+{
+  "name": "chakusa-call-detection",
+  "version": "1.0.0",
+  "description": "Local Expo module: Android missed-call detection via the CallScreeningService role, with an on-device offline queue for the JS layer to sync.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true
+}

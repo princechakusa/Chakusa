@@ -10,6 +10,7 @@ import { automationAvailability, missedCallRules } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
 import { dashboardMilestones, Milestone, milestoneCopy, recoveryEngineReadyMilestone, unseenMilestones } from '../domain/milestones';
 import { recoveryEngineStatus } from '../domain/recoveryEngineStatus';
+import { computeSetupScore } from '../domain/setupScore';
 import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
 import { automationApi } from '../services/endpoints';
 import { getSeenMilestones, markMilestonesSeen } from '../services/milestoneStorage';
@@ -48,6 +49,8 @@ export function DashboardScreen() {
 
   const automationAvail = automationAvailability(plan, planStatus, features?.automation ?? null, AUTOMATION_ENABLED);
   const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: automationAvail, automationEnabled, pushGranted });
+  const setup = computeSetupScore({ business, automationAvailability: automationAvail, automationConfigured: automationEnabled, pushEnabled: pushGranted });
+  const firstIncompleteSetupItem = setup.checklist.find(item => !item.complete);
 
   useEffect(() => {
     if (!dashboard) return;
@@ -84,6 +87,15 @@ export function DashboardScreen() {
     <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'Your customer recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open Attention Center" onPress={() => navigation.navigate('AttentionCenter')} style={styles.attentionButton}><Ionicons name="notifications-outline" size={23} color={colors.text} />{attentionCount ? <View style={styles.count}><Text style={styles.countText}>{attentionCount > 9 ? '9+' : attentionCount}</Text></View> : null}</Pressable>} />
 
     {milestone ? <Reveal><View accessibilityRole="alert" style={styles.milestone}><Ionicons name="sparkles" size={22} color={colors.surface} /><View style={styles.milestoneCopy}><Text style={styles.milestoneTitle}>{milestone.title}</Text><Text style={styles.milestoneMessage}>{milestone.message}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} onPress={() => setMilestone(null)}><Ionicons name="close" size={20} color={colors.surface} /></Pressable></View></Reveal> : null}
+
+    {setup.score < 100 ? <Pressable accessibilityRole="button" accessibilityLabel="Business setup progress" onPress={() => navigation.navigate('BusinessSettings')} style={styles.engineSummary}>
+      <View style={[styles.engineSummaryIcon, { backgroundColor: colors.attention }]}><Ionicons name="clipboard-outline" size={20} color={colors.surface} /></View>
+      <View style={styles.engineSummaryCopy}>
+        <Text style={styles.engineSummaryTitle}>Business Setup</Text>
+        <Text style={styles.engineSummaryDetail}>{firstIncompleteSetupItem ? `Add ${firstIncompleteSetupItem.label.toLowerCase()} to finish setting up your profile.` : 'Finish setting up your business profile.'}</Text>
+      </View>
+      <StatusBadge label={`${setup.complete}/${setup.total}`} />
+    </Pressable> : null}
 
     <Pressable accessibilityRole="button" accessibilityLabel="Recovery engine status" onPress={() => navigation.navigate('Automation')} style={styles.engineSummary}>
       <View style={styles.engineSummaryIcon}><Ionicons name={engine.overall === 'active' ? 'shield-checkmark' : 'shield-half'} size={20} color={colors.surface} /></View>

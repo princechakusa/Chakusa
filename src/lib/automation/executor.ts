@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 import { isEntitled } from "../entitlements.js";
-import { LEAD_SOURCE_MISSED_CALL } from "../leadSources.js";
+import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
 import { renderMissedCallFollowUp } from "../messageRendering.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
@@ -186,7 +186,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
     if (!run.leadId) return cancelRun(run.id, "Run has no associated lead");
     const lead = await prisma.lead.findFirst({ where: { id: run.leadId, businessId: run.businessId } });
     if (!lead) return cancelRun(run.id, "Lead no longer exists");
-    if (lead.source !== LEAD_SOURCE_MISSED_CALL) return cancelRun(run.id, "Lead no longer represents a missed-call case");
+    if (!supportsLeadCreatedAutomation(lead.source)) return cancelRun(run.id, "Lead's source no longer supports automated follow-up");
     if (lead.status !== "new") return cancelRun(run.id, `Lead has already been actioned (status: ${lead.status})`);
 
     if (!run.customerId) return cancelRun(run.id, "Run has no associated customer");

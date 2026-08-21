@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
 import {
-  ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput,
+  ActivityIndicator, Animated, Easing, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput,
   View, ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CustomerDto, LeadDto, ReminderDto, ReviewRequestDto } from '../apiTypes';
+import { recoveryNextStep, recoveryPriority, recoveryPriorityLabel, recoverySourceLabel } from '../domain/recovery';
 import { TimelineItem } from '../types';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatDate, formatDateTime, formatDuration, formatMoney, titleCase } from '../utils/format';
@@ -16,7 +17,7 @@ type IconName = keyof typeof Ionicons.glyphMap;
 export function Screen({ children, scroll = true, style, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void }>) {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined} showsVerticalScrollIndicator={false}>{children}</ScrollView>
+      {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
         : <View style={[styles.screen, styles.flex, style]}>{children}</View>}
     </SafeAreaView>
   );
@@ -28,6 +29,12 @@ export function AppHeader({ title, subtitle, eyebrow, right }: { title: string; 
 
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>{title}</Text>{action ? <Pressable hitSlop={8} onPress={onAction}><Text style={styles.sectionAction}>{action}</Text></Pressable> : null}</View>;
+}
+
+export function Reveal({ children, delay = 0 }: PropsWithChildren<{ delay?: number }>) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.timing(progress, { toValue: 1, duration: 220, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(); }, [delay, progress]);
+  return <Animated.View style={{ opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }}>{children}</Animated.View>;
 }
 
 interface ButtonProps { label: string; onPress: () => void; icon?: IconName; disabled?: boolean; compact?: boolean; fullWidth?: boolean; }
@@ -46,6 +53,10 @@ export function StatusBadge({ label }: { label: string }) {
   return <View style={[styles.badge, tone === 'success' && styles.badgeSuccess, tone === 'negative' && styles.badgeNegative, tone === 'attention' && styles.badgeAttention]}><Text style={[styles.badgeText, tone === 'negative' && styles.badgeNegativeText]}>{label}</Text></View>;
 }
 
+export function PriorityBadge({ priority }: { priority: 'high' | 'medium' | 'standard' }) {
+  return <View accessibilityLabel={`Priority: ${recoveryPriorityLabel(priority)}`} style={[styles.badge, priority === 'high' && styles.badgeNegative, priority === 'medium' && styles.badgeAttention]}><Text style={[styles.badgeText, priority === 'high' && styles.badgeNegativeText]}>{recoveryPriorityLabel(priority)}</Text></View>;
+}
+
 export function MetricCard({ label, value, detail, tone = 'default' }: { label: string; value: string; detail?: string; tone?: 'default' | 'primary' | 'success' }) {
   return <View style={[styles.metric, tone === 'primary' && styles.metricPrimary, tone === 'success' && styles.metricSuccess]}><Text style={[styles.metricLabel, tone !== 'default' && styles.metricOnColor]}>{label}</Text><Text style={[styles.metricValue, tone !== 'default' && styles.metricOnColor]}>{value}</Text>{detail ? <Text style={[styles.metricDetail, tone !== 'default' && styles.metricDetailOnColor]}>{detail}</Text> : null}</View>;
 }
@@ -55,12 +66,12 @@ export function AttentionCard({ name, meta, detail, value, action, onPress, icon
 }
 
 export function LeadCard({ lead, onPress }: { lead: LeadDto; onPress: () => void }) {
-  const name = lead.customer?.name ?? 'Unassigned lead'; const action = lead.status === 'new' ? 'Follow up' : 'View details';
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.itemCard, pressed && styles.cardPressed]}><View style={styles.itemTop}><Avatar name={name} /><View style={styles.itemCopy}><Text style={styles.itemName}>{name}</Text><Text style={styles.itemMeta}>Missed {formatDateTime(lead.missedCallTime)}</Text><Text style={styles.itemDetail}>{lead.serviceRequested ?? 'Service not specified'}</Text></View><View style={styles.alignEnd}><Text style={styles.itemValue}>{formatMoney(lead.estimatedValue)}</Text><StatusBadge label={titleCase(lead.status)} /></View></View><View style={styles.cardFooter}><Text style={styles.responseText}>{lead.responseTimeSeconds == null ? 'Needs a response' : `Response: ${formatDuration(lead.responseTimeSeconds)}`}</Text><Text style={styles.cardAction}>{action} <Ionicons name="chevron-forward" size={14} /></Text></View></Pressable>;
+  const name = lead.customer?.name ?? 'Unassigned lead'; const next = recoveryNextStep(lead); const priority = recoveryPriority(lead);
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${name}. ${recoverySourceLabel(lead.source)}. ${next.title}`} onPress={onPress} style={({ pressed }) => [styles.itemCard, pressed && styles.cardPressed]}><View style={styles.itemTop}><Avatar name={name} /><View style={styles.itemCopy}><Text style={styles.itemName}>{name}</Text><Text style={styles.itemMeta}>{recoverySourceLabel(lead.source)} · {formatDateTime(lead.missedCallTime ?? lead.createdAt)}</Text><Text style={styles.itemDetail}>{lead.serviceRequested ?? 'Service not specified'}</Text></View><View style={styles.alignEnd}><Text style={styles.itemValue}>{formatMoney(lead.estimatedValue)}</Text><StatusBadge label={titleCase(lead.status)} /></View></View><View style={styles.cardFooter}><Text style={styles.responseText}>{lead.responseTimeSeconds == null ? next.title : `Response: ${formatDuration(lead.responseTimeSeconds)}`}</Text><View style={styles.leadFooterAction}><PriorityBadge priority={priority} /><Text style={styles.cardAction}>{next.action} <Ionicons name="chevron-forward" size={14} /></Text></View></View></Pressable>;
 }
 
 export function CustomerRow({ customer, onPress }: { customer: CustomerDto; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}><Avatar name={customer.name} /><View style={styles.itemCopy}><Text style={styles.itemName}>{customer.name}</Text><Text style={styles.itemMeta}>{customer.phone ?? customer.email ?? 'No contact details'}</Text></View><Ionicons name="chevron-forward" size={18} color={colors.tabInactive} /></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Open customer ${customer.name}`} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}><Avatar name={customer.name} /><View style={styles.itemCopy}><Text style={styles.itemName}>{customer.name}</Text><Text style={styles.itemMeta}>{customer.phone ?? customer.email ?? 'No contact details'}</Text></View><Ionicons name="chevron-forward" size={18} color={colors.tabInactive} /></Pressable>;
 }
 
 export function ReviewCard({ review, onPress }: { review: ReviewRequestDto; onPress: () => void }) {
@@ -72,7 +83,7 @@ export function ReminderCard({ reminder, onPress }: { reminder: ReminderDto; onP
 }
 
 export function SearchBar({ value, onChangeText, placeholder = 'Search' }: { value: string; onChangeText: (value: string) => void; placeholder?: string }) {
-  return <View style={styles.search}><Ionicons name="search" size={19} color={colors.textSecondary} /><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.textSecondary} style={styles.searchInput} clearButtonMode="while-editing" /></View>;
+  return <View style={styles.search}><Ionicons name="search" size={19} color={colors.textSecondary} /><TextInput accessibilityLabel={placeholder} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.textSecondary} style={styles.searchInput} clearButtonMode="while-editing" /></View>;
 }
 
 export function FilterTabs<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T; onChange: (value: T) => void }) {
@@ -112,7 +123,7 @@ const styles = StyleSheet.create({
   button: { minHeight: 48, paddingHorizontal: spacing.lg, borderRadius: radius.md, flexDirection: 'row', gap: spacing.xs, alignItems: 'center', justifyContent: 'center' }, buttonCompact: { alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: spacing.md }, fullWidth: { alignSelf: 'stretch' }, primaryButton: { backgroundColor: colors.primary }, primaryPressed: { backgroundColor: colors.primaryPressed }, primaryButtonText: { ...typography.bodyStrong, color: colors.surface }, secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, secondaryPressed: { backgroundColor: colors.background }, secondaryButtonText: { ...typography.bodyStrong, color: colors.text }, disabled: { opacity: 0.45 }, iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   badge: { borderRadius: radius.round, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }, badgeText: { ...typography.micro, color: colors.text }, badgeSuccess: { borderColor: colors.success }, badgeNegative: { borderColor: colors.negative }, badgeNegativeText: { color: colors.negative }, badgeAttention: { borderColor: colors.attention },
   metric: { minWidth: 128, flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }, metricPrimary: { backgroundColor: colors.primary, borderColor: colors.primary }, metricSuccess: { backgroundColor: colors.success, borderColor: colors.success }, metricLabel: { ...typography.caption, color: colors.textSecondary }, metricValue: { ...typography.heading, color: colors.text, marginTop: spacing.xs }, metricDetail: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxs }, metricOnColor: { color: colors.surface }, metricDetailOnColor: { color: 'rgba(255,255,255,0.85)' },
-  itemCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, gap: spacing.md, ...shadows.card }, itemTop: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }, itemCopy: { flex: 1, minWidth: 0 }, itemName: { ...typography.bodyStrong, color: colors.text }, itemMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 }, itemDetail: { ...typography.caption, color: colors.text, marginTop: spacing.xxs }, itemValue: { ...typography.bodyStrong, color: colors.text }, alignEnd: { alignItems: 'flex-end', gap: spacing.xs }, attentionIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }, cardPressed: { opacity: 0.78 }, cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.sm, gap: spacing.sm }, responseText: { ...typography.caption, color: colors.textSecondary }, cardAction: { ...typography.caption, color: colors.primary },
+  itemCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, gap: spacing.md, ...shadows.card }, itemTop: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }, itemCopy: { flex: 1, minWidth: 0 }, itemName: { ...typography.bodyStrong, color: colors.text }, itemMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 }, itemDetail: { ...typography.caption, color: colors.text, marginTop: spacing.xxs }, itemValue: { ...typography.bodyStrong, color: colors.text }, alignEnd: { alignItems: 'flex-end', gap: spacing.xs }, attentionIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }, cardPressed: { opacity: 0.78 }, cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.sm, gap: spacing.sm }, responseText: { ...typography.caption, color: colors.textSecondary }, cardAction: { ...typography.caption, color: colors.primary }, leadFooterAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }, rowPressed: { backgroundColor: colors.background }, avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }, avatarText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   search: { height: 48, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, gap: spacing.xs }, searchInput: { flex: 1, ...typography.body, color: colors.text, paddingVertical: 0 }, filters: { gap: spacing.xs, paddingRight: spacing.lg }, filter: { height: 38, paddingHorizontal: spacing.md, borderRadius: radius.round, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', backgroundColor: colors.surface }, filterActive: { backgroundColor: colors.text, borderColor: colors.text }, filterText: { ...typography.caption, color: colors.textSecondary }, filterTextActive: { color: colors.surface },
   timelineRow: { flexDirection: 'row', minHeight: 82 }, timelineRail: { width: 24, alignItems: 'center' }, timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.tabInactive, marginTop: 5 }, dotSuccess: { backgroundColor: colors.success }, dotAttention: { backgroundColor: colors.attention }, timelineLine: { width: 2, flex: 1, backgroundColor: colors.divider, marginVertical: spacing.xxs }, timelineContent: { flex: 1, paddingLeft: spacing.sm, paddingBottom: spacing.lg }, timelineDate: { ...typography.micro, color: colors.textSecondary, marginBottom: spacing.xxs }, timelineTitleRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }, timelineTitle: { ...typography.bodyStrong, color: colors.text, flex: 1 }, timelineValue: { ...typography.bodyStrong, color: colors.text },

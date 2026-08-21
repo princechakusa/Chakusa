@@ -1,7 +1,7 @@
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
 import { isEntitled } from "../entitlements.js";
-import { LEAD_SOURCE_MISSED_CALL } from "../leadSources.js";
+import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { createAutomationRun } from "../../modules/automation/automation.service.js";
 import { buildLeadCreatedDedupeKey } from "./dedupeKey.js";
 import type { Lead } from "@prisma/client";
@@ -25,7 +25,7 @@ import type { Lead } from "@prisma/client";
  */
 export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead): Promise<void> {
   try {
-    if (lead.source !== LEAD_SOURCE_MISSED_CALL) return;
+    if (!supportsLeadCreatedAutomation(lead.source)) return;
     if (!lead.customerId) return; // nothing to eventually send to — no point scheduling.
 
     const subscription = await prisma.subscription.findUnique({

@@ -43,3 +43,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Gradle/Android build output for custom Expo native modules under
+# modules/ (source under modules/*/android/src is still tracked normally)
+modules/*/android/build/
+modules/*/android/.gradle/
+modules/*/android/.cxx/

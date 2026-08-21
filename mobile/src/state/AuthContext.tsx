@@ -22,8 +22,17 @@ interface AuthValue {
   refreshBusiness: () => Promise<BusinessDto>;
 }
 const AuthContext = createContext<AuthValue | null>(null);
+// Mirrors exactly what the live onboarding wizard (PremiumFtueScreen.tsx)
+// persists before it marks itself complete: a name (step 3), a phone number
+// (step 4), and at least one service (step 5). It never sets workingHours —
+// that field belongs to the legacy, unrouted OnboardingScreen.tsx — so this
+// must not require it. Requiring a field the real wizard never writes made
+// every completed business look permanently unfinished on every session
+// restore, since reconcileOnboarding() below re-derives completion from
+// this check and forces the wizard open again when it disagrees with the
+// already-completed preferences flag.
 const hasCompletedBusinessSetup = (business: BusinessDto | null) => Boolean(
-  business && Array.isArray(business.defaultServices) && business.defaultServices.length > 0 && business.workingHours,
+  business && business.name.trim() && business.phone && Array.isArray(business.defaultServices) && business.defaultServices.length > 0,
 );
 const unregisterPushBeforeLogout = () => Promise.race([
   unregisterCurrentPushToken(),

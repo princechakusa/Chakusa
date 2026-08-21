@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,13 +9,18 @@ import { customersApi, leadsApi } from '../services/endpoints';
 import { useAppState } from '../state/AppContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { colors, radius, spacing, typography } from '../theme';
-import { RootStackParamList } from '../types';
+import { MainTabParamList, RootStackParamList } from '../types';
 import { titleCase } from '../utils/format';
 
 const filters = ['all', 'new', 'contacted', 'booked', 'won', 'lost'] as const;
 export function LeadsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); const { leads, leadTotal, leadPage, customers, state, loadLeads, loadCustomers } = useAppState(); const { usage, refresh: refreshPlan } = usePlanExperience(); const [filter, setFilter] = useState<(typeof filters)[number]>('all'); const [search, setSearch] = useState(''); const [creating, setCreating] = useState(false); const [callerMode, setCallerMode] = useState<'existing'|'new'>('existing'); const [customerId, setCustomerId] = useState(''); const [callerName, setCallerName] = useState(''); const [callerPhone, setCallerPhone] = useState(''); const [service, setService] = useState(''); const [value, setValue] = useState(''); const [notes, setNotes] = useState(''); const [urgency, setUrgency] = useState<'low'|'medium'|'high'>('medium'); const [saving, setSaving] = useState(false); const [formError, setFormError] = useState<string | null>(null);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); const route = useRoute<RouteProp<MainTabParamList, 'Leads'>>(); const { leads, leadTotal, leadPage, customers, state, loadLeads, loadCustomers } = useAppState(); const { usage, refresh: refreshPlan } = usePlanExperience(); const [filter, setFilter] = useState<(typeof filters)[number]>('all'); const [search, setSearch] = useState(''); const [creating, setCreating] = useState(false); const [callerMode, setCallerMode] = useState<'existing'|'new'>('existing'); const [customerId, setCustomerId] = useState(''); const [callerName, setCallerName] = useState(''); const [callerPhone, setCallerPhone] = useState(''); const [service, setService] = useState(''); const [value, setValue] = useState(''); const [notes, setNotes] = useState(''); const [urgency, setUrgency] = useState<'low'|'medium'|'high'>('medium'); const [saving, setSaving] = useState(false); const [formError, setFormError] = useState<string | null>(null);
   useEffect(() => { void loadLeads(filter === 'all' ? undefined : filter); }, [filter, loadLeads]); useEffect(() => { if (!state.customers.loaded) void loadCustomers(); }, [loadCustomers, state.customers.loaded]);
+  // A screen navigated to with a specific customer already in mind (e.g.
+  // "Create a lead" from that customer's own profile) should open straight
+  // into the create flow with them pre-selected — not force the owner to
+  // find that same customer again in a picker they just came from.
+  useEffect(() => { const presetId = route.params?.presetCustomerId; if (presetId) { setCustomerId(presetId); setCallerMode('existing'); setCreating(true); } }, [route.params?.presetCustomerId]);
   const visible = useMemo(() => leads.filter(lead => `${lead.customer?.name ?? ''} ${lead.serviceRequested ?? ''}`.toLowerCase().includes(search.toLowerCase())), [leads, search]);
   const previousSearch = useRef(search);
   useEffect(() => { if (previousSearch.current === search) return; previousSearch.current = search; if (leadPage > 1) void loadLeads(filter === 'all' ? undefined : filter); }, [filter, leadPage, loadLeads, search]);

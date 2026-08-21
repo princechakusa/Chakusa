@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:test": "tsx scripts/dev-test.ts",
     "worker": "tsx src/worker.ts",
     "worker:dev": "tsx watch src/worker.ts",
     "build": "tsc -p tsconfig.json",

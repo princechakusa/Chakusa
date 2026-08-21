@@ -1,12 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
 import { AppHeader, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
-import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, automationStatusCopy, delayLabel, isDuplicateAutomationRuleConflict, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
+import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, automationStatusCopy, delayLabel, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
+import { CallDetectionAvailability } from '../domain/callDetection';
+import { EngineItem, recoveryEngineStatus } from '../domain/recoveryEngineStatus';
 import { ApiError } from '../services/api';
+import { ensureMissedCallAutomationRule } from '../services/automationSetup';
+import { enableCallDetection, enableContactCoverage, getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
 import { automationApi } from '../services/endpoints';
+import { getPushPermissionStatus, registerCurrentDeviceForPush } from '../services/pushNotifications';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { AUTOMATION_ENABLED } from '../config';
 import { colors, radius, spacing, typography } from '../theme';
@@ -32,12 +38,18 @@ export function AutomationScreen({ navigation }: Props) {
   const [mutation, setMutation] = useState<'create'|'delay'|'toggle'|null>(null);
   const [selectedDelay, setSelectedDelay] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [callDetectionAvail, setCallDetectionAvail] = useState<CallDetectionAvailability>('unsupported');
+  const [hasContactsPermission, setHasContactsPermission] = useState(false);
+  const [pushGranted, setPushGranted] = useState(false);
+  const [engineWorking, setEngineWorking] = useState<EngineItem['key'] | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
   const rulesInFlight = useRef<Promise<void> | null>(null);
   const historyGeneration = useRef(0);
   const screenActive = useRef(false);
 
   const availability = automationAvailability(plan, status, features?.automation ?? null, AUTOMATION_ENABLED);
   const rule = missedCallRules(rules)[0] ?? null;
+  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: rule?.enabled ?? false, pushGranted });
 
   const loadRules = useCallback(async () => {
     if (rulesInFlight.current) return rulesInFlight.current;
@@ -82,7 +94,13 @@ export function AutomationScreen({ navigation }: Props) {
     finally { if (generation === historyGeneration.current) setMoreLoading(false); }
   }, [historyLoading, moreLoading, runPage, runTotal, runs.length]);
 
-  const refreshAll = useCallback(async () => { await Promise.all([loadRules(), refreshHistory(), refreshPlan()]); }, [loadRules, refreshHistory, refreshPlan]);
+  const refreshEngineSignals = useCallback(async () => {
+    const [detection, contacts, push] = await Promise.all([getCallDetectionAvailability(), getContactsPermissionStatus(), getPushPermissionStatus()]);
+    setCallDetectionAvail(detection);
+    setHasContactsPermission(contacts);
+    setPushGranted(push === 'granted');
+  }, []);
+  const refreshAll = useCallback(async () => { await Promise.all([loadRules(), refreshHistory(), refreshPlan(), refreshEngineSignals()]); }, [loadRules, refreshHistory, refreshPlan, refreshEngineSignals]);
   useFocusEffect(useCallback(() => { screenActive.current = true; void refreshAll(); return () => { screenActive.current = false; }; }, [refreshAll]));
   useEffect(() => { if (rule && selectedDelay === null) setSelectedDelay(rule.delaySeconds); }, [rule, selectedDelay]);
   useEffect(() => { const listener = AppState.addEventListener('change', next => { if (next === 'active' && screenActive.current) void refreshAll(); }); return () => listener.remove(); }, [refreshAll]);
@@ -97,20 +115,53 @@ export function AutomationScreen({ navigation }: Props) {
   };
   const create = () => mutate('create', async () => {
     if (selectedDelay === null) return;
-    const latest = await automationApi.listRules();
-    if (missedCallRules(latest).length) { setRules(latest); setNotice('Your missed-call automation already exists.'); return; }
-    try { await automationApi.createRule({ name: 'Missed-call follow-up', enabled: false, triggerType: 'LEAD_CREATED', channel: 'SMS', delaySeconds: selectedDelay, config: {} }); }
-    catch (caught) {
-      if (!isDuplicateAutomationRuleConflict(caught instanceof ApiError ? caught : {})) throw caught;
-      await loadRules();
-      setNotice('Your missed-call automation already exists.');
-    }
+    const { rules: latest, alreadyExisted } = await ensureMissedCallAutomationRule(selectedDelay);
+    setRules(latest);
+    if (alreadyExisted) setNotice('Your missed-call automation already exists.');
   });
   const toggle = (enabled: boolean) => { if (!rule || availability !== 'available') return; void mutate('toggle', () => enabled ? automationApi.enableRule(rule.id) : automationApi.disableRule(rule.id)); };
   const saveDelay = () => { if (!rule || selectedDelay === null || selectedDelay === rule.delaySeconds || availability !== 'available') return; void mutate('delay', () => automationApi.updateRule(rule.id, { delaySeconds: selectedDelay })); };
 
+  const handleEngineAction = async (key: EngineItem['key']) => {
+    if (engineWorking) return;
+    setEngineWorking(key); setEngineError(null);
+    try {
+      if (key === 'detection') {
+        await enableCallDetection();
+      } else if (key === 'contactCoverage') {
+        await enableContactCoverage();
+      } else if (key === 'notifications') {
+        await registerCurrentDeviceForPush();
+      } else if (key === 'followUp') {
+        if (availability === 'free-locked' || availability === 'subscription-unavailable' || availability === 'service-unavailable') { navigation.navigate('Pro'); return; }
+        if (rule && !rule.enabled) await automationApi.enableRule(rule.id);
+        // No rule yet: nothing to one-tap here — the "Set up missed-call
+        // follow-up" card below (visible on this same screen) is the next
+        // step, and duplicating a delay picker inside this summary would
+        // be redundant, not a shortcut.
+      }
+      await refreshAll();
+    } catch (caught) {
+      if (!handleEntitlementError(caught)) setEngineError(caught instanceof ApiError ? caught.message : 'Unable to update this right now.');
+    } finally {
+      setEngineWorking(null);
+    }
+  };
+
   return <Screen refreshing={refreshing} onRefresh={() => void pullToRefresh()}>
-    <AppHeader eyebrow="AUTOMATION" title="Missed-call follow-up" subtitle="Missed a call? Chakusa can send the customer a follow-up SMS after your chosen delay." />
+    <AppHeader eyebrow="RECOVERY ENGINE" title="Your recovery engine" subtitle="Everything Chakusa is doing on your behalf, in one place." />
+    <View style={styles.card}>
+      <View style={styles.statusRow}>
+        <Text style={styles.heading}>Engine status</Text>
+        <StatusBadge label={engine.overall === 'active' ? 'Active' : engine.overall === 'attention' ? 'Needs attention' : 'Not started'} />
+      </View>
+      {engine.items.map(item => <View key={item.key} style={styles.engineRow}>
+        <Ionicons name={item.status === 'active' ? 'checkmark-circle' : item.status === 'locked' ? 'lock-closed-outline' : 'alert-circle-outline'} size={22} color={item.status === 'active' ? colors.success : item.status === 'locked' ? colors.textSecondary : colors.attention} />
+        <View style={styles.copy}><Text style={styles.engineLabel}>{item.label}</Text><Text style={styles.body}>{item.value}</Text></View>
+        {item.action ? <SecondaryButton compact disabled={Boolean(engineWorking)} label={engineWorking === item.key ? 'Working…' : item.action} onPress={() => void handleEngineAction(item.key)} /> : null}
+      </View>)}
+      {engineError ? <Text accessibilityRole="alert" style={styles.error}>{engineError}</Text> : null}
+    </View>
     {availability === 'loading' && planLoading ? <LoadingState label="Checking automation access…" /> : null}
     {availability === 'loading' && !planLoading ? <ErrorState message={planError ?? 'Couldn’t confirm automation access.'} onRetry={() => void refreshPlan()} /> : null}
     {!rulesLoaded ? <LoadingState label="Loading automation…" /> : ruleError && rules.length === 0 ? <ErrorState message={ruleError} onRetry={() => void loadRules()} /> : null}
@@ -145,4 +196,4 @@ function HistoryRow({ item, onPress }: { item: AutomationRunHistoryItemDto; onPr
 }
 function DelayPicker({ value, onChange, disabled }: { value: number | null; onChange: (value: number) => void; disabled: boolean }) { return <View accessibilityRole="radiogroup" accessibilityLabel="Follow-up delay" style={styles.options}>{AUTOMATION_DELAYS.map(seconds => <Pressable key={seconds} accessibilityRole="radio" accessibilityState={{ checked: value === seconds, disabled }} disabled={disabled} onPress={() => onChange(seconds)} style={({ pressed }) => [styles.option, value === seconds && styles.optionSelected, pressed && styles.pressed]}><Text style={[styles.optionText, value === seconds && styles.optionTextSelected]}>{delayLabel(seconds)}</Text></Pressable>)}</View>; }
 function Locked({ title, body, action, onPress }: { title: string; body: string; action: string; onPress: () => void }) { return <View style={styles.card}><Text style={styles.heading}>{title}</Text><Text style={styles.body}>{body}</Text><PrimaryButton fullWidth label={action} onPress={onPress} /></View>; }
-const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, heading: { ...typography.subheading, color: colors.text }, body: { ...typography.body, color: colors.textSecondary }, statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md }, copy: { flex: 1, gap: spacing.xs }, options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, option: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round }, optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft }, optionText: { ...typography.caption, color: colors.textSecondary }, optionTextSelected: { color: colors.primary, fontWeight: '700' }, pressed: { opacity: 0.7 }, safety: { backgroundColor: colors.attentionSoft, borderWidth: 1, borderColor: colors.attention, borderRadius: radius.md, padding: spacing.lg, gap: spacing.xs }, safetyTitle: { ...typography.bodyStrong, color: colors.text }, safetyText: { ...typography.caption, color: colors.textSecondary }, notice: { ...typography.caption, color: colors.textSecondary }, error: { ...typography.caption, color: colors.negative }, emptyTitle: { ...typography.bodyStrong, color: colors.text, marginBottom: spacing.xs }, activity: { minHeight: 56, borderTopWidth: 1, borderTopColor: colors.divider, paddingVertical: spacing.md, gap: spacing.xs }, activityTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }, activityName: { ...typography.bodyStrong, color: colors.text }, activityStatus: { ...typography.caption, color: colors.textSecondary }, failed: { color: colors.negative, fontWeight: '700' }, activityTime: { ...typography.caption, color: colors.textSecondary }, reason: { ...typography.caption, color: colors.textSecondary } });
+const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, heading: { ...typography.subheading, color: colors.text }, body: { ...typography.body, color: colors.textSecondary }, statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }, copy: { flex: 1, gap: spacing.xs }, engineRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.divider }, engineLabel: { ...typography.bodyStrong, color: colors.text }, options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, option: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round }, optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft }, optionText: { ...typography.caption, color: colors.textSecondary }, optionTextSelected: { color: colors.primary, fontWeight: '700' }, pressed: { opacity: 0.7 }, safety: { backgroundColor: colors.attentionSoft, borderWidth: 1, borderColor: colors.attention, borderRadius: radius.md, padding: spacing.lg, gap: spacing.xs }, safetyTitle: { ...typography.bodyStrong, color: colors.text }, safetyText: { ...typography.caption, color: colors.textSecondary }, notice: { ...typography.caption, color: colors.textSecondary }, error: { ...typography.caption, color: colors.negative }, emptyTitle: { ...typography.bodyStrong, color: colors.text, marginBottom: spacing.xs }, activity: { minHeight: 56, borderTopWidth: 1, borderTopColor: colors.divider, paddingVertical: spacing.md, gap: spacing.xs }, activityTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }, activityName: { ...typography.bodyStrong, color: colors.text }, activityStatus: { ...typography.caption, color: colors.textSecondary }, failed: { color: colors.negative, fontWeight: '700' }, activityTime: { ...typography.caption, color: colors.textSecondary }, reason: { ...typography.caption, color: colors.textSecondary } });

@@ -1,0 +1,35 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Normal dangerous permission, requestable by any app (not gated by
+         Google Play's SMS-or-Call-Log default-handler policy) — used only
+         to observe RINGING -> IDLE-without-OFFHOOK call-state transitions,
+         never to read the call log. See CallStateWatcher.kt. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Normal dangerous permission, requestable by any app — not used to
+         read the address book. Telecom's CallScreeningServiceFilter checks
+         for this permission before deciding whether to exempt a
+         contacts-matched call from screening at all; without it,
+         ChakusaCallScreeningService is never invoked for calls from numbers
+         already saved in the device's contacts. See
+         AOSP packages/services/Telecomm CallFilteringCompletionInfo. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <application>
+        <!-- Bound by the platform when this app holds
+             RoleManager.ROLE_CALL_SCREENING (requested at runtime via
+             ChakusaCallDetectionModule.requestCallScreeningRole — never
+             granted implicitly). android:permission is required on every
+             CallScreeningService and is a signature permission the OS
+             itself holds, not something this app requests. -->
+        <service
+            android:name="expo.modules.chakusacalldetection.ChakusaCallScreeningService"
+            android:permission="android.permission.BIND_SCREENING_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>

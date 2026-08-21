@@ -14,6 +14,7 @@ import { decryptProviderCredential, encryptProviderCredential } from "../../lib/
 import { claimInvitationForNewUser } from "../team/teamInvitations.service.js";
 import { recordActivity } from "../../lib/activity.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
+import { generatePublicSlug } from "../../lib/publicSlug.js";
 import type { BusinessRole } from "@prisma/client";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
@@ -469,6 +470,11 @@ export async function registerUser(input: RegisterInput) {
   // the same isolation level even though it never hits a shared resource,
   // which is a negligible cost next to keeping one transaction wrapper for
   // both branches instead of two.
+  // Resolved once, outside the transaction, since it's a best-effort
+  // uniqueness check against the global client rather than a write —
+  // re-derived on transaction retry (same registration attempt) is fine.
+  const publicSlug = input.invitationToken ? undefined : await generatePublicSlug(input.businessName!);
+
   return withLimitCheck(async (tx) => {
     const existing = await tx.user.findUnique({ where: { normalizedEmail } });
     if (existing) throw ApiError.conflict("An account with this email already exists");
@@ -484,7 +490,7 @@ export async function registerUser(input: RegisterInput) {
       data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName },
     });
     const business = await tx.business.create({
-      data: { ownerId: user.id, name: input.businessName!, industry: input.industry },
+      data: { ownerId: user.id, name: input.businessName!, industry: input.industry, publicSlug },
     });
     await tx.businessMember.create({
       data: { businessId: business.id, userId: user.id, role: "OWNER" },

@@ -4,6 +4,7 @@ import type { CountryCode } from "libphonenumber-js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { toE164OrNull } from "../../lib/phone.js";
+import { generatePublicSlug } from "../../lib/publicSlug.js";
 import { updateBusinessSchema, createBusinessSchema } from "./business.schemas.js";
 
 export default async function businessRoutes(fastify: FastifyInstance) {
@@ -31,10 +32,11 @@ export default async function businessRoutes(fastify: FastifyInstance) {
     // normalize here — a bare local number stays un-derived until the
     // business sets its country via PATCH /business.
     const phoneE164 = toE164OrNull(input.phone);
+    const publicSlug = await generatePublicSlug(input.name);
 
     const business = await prisma.$transaction(async (tx) => {
       const created = await tx.business.create({
-        data: { ownerId: userId, name: input.name, industry: input.industry, phone: input.phone, phoneE164 },
+        data: { ownerId: userId, name: input.name, industry: input.industry, phone: input.phone, phoneE164, publicSlug },
       });
       await tx.businessMember.create({
         data: { businessId: created.id, userId, role: "OWNER" },

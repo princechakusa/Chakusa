@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { NotificationTapHandler } from './src/components/NotificationTapHandler';
 import { PushNotificationManager } from './src/components/PushNotificationManager';
+import { CallDetectionSyncManager } from './src/components/CallDetectionSyncManager';
 import { navigationRef } from './src/navigation/navigationRef';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AppProvider } from './src/state/AppContext';
@@ -15,6 +16,7 @@ import { RootStackParamList } from './src/types';
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
 import { publicRouteFromPath } from './src/domain/publicRoutes';
 import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
+import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfileScreen';
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['chakusa://'],
@@ -31,9 +33,10 @@ export default function App() {
   const publicRoute = publicRouteFromPath(pathname);
   if (publicRoute?.kind === 'feedback') return <SafeAreaProvider><StatusBar style="dark" /><PublicFeedbackScreen token={publicRoute.token} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
+  if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
   return (
     <SafeAreaProvider>
-      <PreferencesProvider><AuthProvider><PushNotificationManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><BillingProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></BillingProvider></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>
+      <PreferencesProvider><AuthProvider><PushNotificationManager /><CallDetectionSyncManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><BillingProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></BillingProvider></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>
     </SafeAreaProvider>
   );
 }

@@ -13,3 +13,21 @@ export const submitPublicFeedbackSchema = z.object({
     .transform((value) => (value ? value : undefined)),
 });
 export type SubmitPublicFeedbackInput = z.infer<typeof submitPublicFeedbackSchema>;
+
+export const submitPublicContactSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  phone: z.string().trim().min(1).max(50),
+  serviceRequested: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  message: z
+    .string()
+    .trim()
+    .max(2000, "Message must be 2000 characters or fewer")
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+});
+export type SubmitPublicContactInput = z.infer<typeof submitPublicContactSchema>;

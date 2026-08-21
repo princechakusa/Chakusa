@@ -442,6 +442,13 @@ model Business {
   defaultServices  Json?       @map("default_services")
   reminderDays     Int         @default(42) @map("reminder_days")
   preferredTone    MessageTone @default(friendly) @map("preferred_tone")
+  // Permanent, shareable slug for this business's public profile page
+  // (chakusa.app/b/:publicSlug — see src/modules/public/publicBusinessProfile.service.ts).
+  // Generated once at business-creation time (src/lib/publicSlug.ts) and
+  // never regenerated afterward: an already-shared link (on a storefront,
+  // a Google listing, a customer's phone) must keep resolving forever, so
+  // nothing in this codebase ever updates this field after creation.
+  publicSlug       String?     @unique @map("public_slug")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 

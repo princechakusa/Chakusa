@@ -53,6 +53,7 @@ export async function getDashboardSummary(businessId: string) {
     totalRecoveredAggregate,
     missedCallRecoveredAggregate,
     comebackWonReminders,
+    outstandingRevenueRows,
   ] = await Promise.all([
     prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL } }),
     prisma.lead.count({ where: { businessId, status: "new" } }),
@@ -95,6 +96,17 @@ export async function getDashboardSummary(businessId: string) {
       _sum: { estimatedValue: true },
     }),
     prisma.reminder.count({ where: { businessId, status: "completed" } }),
+    // Won leads not yet fully paid, netting out any recorded partial
+    // payment — "money you're owed right now," not a payment rail. SQL-side
+    // for the same scale reason as getAverageResponseTime above.
+    prisma.$queryRaw<{ outstanding: string | null }[]>(Prisma.sql`
+      SELECT SUM(estimated_value - COALESCE(paid_amount, 0)) AS outstanding
+      FROM leads
+      WHERE business_id = ${businessId}
+        AND status = 'won'
+        AND payment_status != 'paid'
+        AND estimated_value IS NOT NULL
+    `),
   ]);
 
   const totalLeads = newLeads + contactedLeads + bookedLeads + wonLeads + lostLeads;
@@ -106,6 +118,7 @@ export async function getDashboardSummary(businessId: string) {
 
   const totalRecoveredRevenue = Number(totalRecoveredAggregate._sum.estimatedValue ?? 0);
   const missedCallRecoveredRevenue = Number(missedCallRecoveredAggregate._sum.estimatedValue ?? 0);
+  const outstandingRevenue = Number(outstandingRevenueRows[0]?.outstanding ?? 0);
 
   const attentionItems = [
     ...dueReminders.map((r) => ({
@@ -121,6 +134,11 @@ export async function getDashboardSummary(businessId: string) {
       total: totalRecoveredRevenue,
       missedCall: missedCallRecoveredRevenue,
       comebackCompletedCount: comebackWonReminders,
+      // Won leads still marked unpaid/partially_paid, net of any recorded
+      // partial payment — see LeadPaymentStatus's schema comment. Zero for
+      // businesses that never use payment tracking, so this is purely
+      // additive to existing dashboard consumers.
+      outstanding: outstandingRevenue,
     },
     leads: {
       missedCalls: totalMissedCalls,

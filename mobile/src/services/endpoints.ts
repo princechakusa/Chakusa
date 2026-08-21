@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BusinessDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -45,6 +45,7 @@ export const leadsApi = {
   get: (id: string) => api.get<LeadDto>(`/leads/${id}`), patch: (id: string, body: Partial<Pick<LeadDto, 'customerId' | 'source' | 'serviceRequested' | 'urgency' | 'estimatedValue' | 'notes' | 'status'>>) => api.patch<LeadDto>(`/leads/${id}`, body),
   generateMessage: (id: string) => api.post<{ message: string }>(`/leads/${id}/generate-message`),
   transition: (id: string, status: Exclude<LeadStatus, 'new'>) => api.post<LeadDto>(`/leads/${id}/mark-${status}`),
+  updatePayment: (id: string, body: { paymentStatus: LeadPaymentStatus; paidAmount?: number }) => api.patch<LeadDto>(`/leads/${id}/payment`, body),
 };
 export const reviewsApi = {
   list: () => api.get<ReviewRequestDto[]>('/review-requests'), create: (body: { customerId?: string; serviceName?: string; message?: string }) => api.post<ReviewRequestDto>('/review-requests', body),
@@ -68,6 +69,9 @@ export const automationApi = {
   updateRule: (id: string, body: { delaySeconds: number }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
   enableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/enable`),
   disableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/disable`),
+};
+export const missedCallsApi = {
+  report: (body: { phone: string; occurredAt: string; clientEventId: string }) => api.post<LeadDto>('/leads/missed-call', body),
 };
 export const teamApi = {
   getSummary: () => api.get<TeamSeatSummaryDto>('/team/summary'),

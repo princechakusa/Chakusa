@@ -294,4 +294,89 @@ describe("leads", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe("VALIDATION_ERROR");
   });
+
+  describe("payment tracking", () => {
+    async function createWonLead(app: FastifyInstance, token: string) {
+      const created = await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(token),
+        payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 100 },
+      });
+      const leadId = created.json().id;
+      await app.inject({ method: "POST", url: `/leads/${leadId}/mark-won`, headers: authHeader(token) });
+      return leadId;
+    }
+
+    it("rejects setting payment status before a lead is won", async () => {
+      const { token } = await registerAccount(app);
+      const created = await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(token),
+        payload: { source: LEAD_SOURCE_MISSED_CALL },
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/leads/${created.json().id}/payment`,
+        headers: authHeader(token),
+        payload: { paymentStatus: "paid", paidAmount: 100 },
+      });
+
+      expect(response.statusCode).toBe(409);
+    });
+
+    it("requires paidAmount when marking paid", async () => {
+      const { token } = await registerAccount(app);
+      const leadId = await createWonLead(app, token);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/leads/${leadId}/payment`,
+        headers: authHeader(token),
+        payload: { paymentStatus: "paid" },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("marks a won lead as paid with an amount", async () => {
+      const { token } = await registerAccount(app);
+      const leadId = await createWonLead(app, token);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/leads/${leadId}/payment`,
+        headers: authHeader(token),
+        payload: { paymentStatus: "paid", paidAmount: 100 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().paymentStatus).toBe("paid");
+      expect(response.json().paidAmount).toBe(100);
+    });
+
+    it("clears paidAmount when moved back to unpaid", async () => {
+      const { token } = await registerAccount(app);
+      const leadId = await createWonLead(app, token);
+      await app.inject({
+        method: "PATCH",
+        url: `/leads/${leadId}/payment`,
+        headers: authHeader(token),
+        payload: { paymentStatus: "paid", paidAmount: 100 },
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/leads/${leadId}/payment`,
+        headers: authHeader(token),
+        payload: { paymentStatus: "unpaid" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().paymentStatus).toBe("unpaid");
+      expect(response.json().paidAmount).toBeNull();
+    });
+  });
 });

@@ -105,6 +105,53 @@ describe("dashboard summary", () => {
     expect(summary.json().recoveredRevenue.missedCall).toBeCloseTo(120.5);
   });
 
+  it("nets partial payments out of recoveredRevenue.outstanding, and excludes fully-paid leads", async () => {
+    const { token } = await registerAccount(app);
+
+    // Won, never marked paid — fully outstanding.
+    const leadA = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 100 },
+    });
+    await app.inject({ method: "POST", url: `/leads/${leadA.json().id}/mark-won`, headers: authHeader(token) });
+
+    // Won, partially paid — only the remainder is outstanding.
+    const leadB = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 50 },
+    });
+    await app.inject({ method: "POST", url: `/leads/${leadB.json().id}/mark-won`, headers: authHeader(token) });
+    await app.inject({
+      method: "PATCH",
+      url: `/leads/${leadB.json().id}/payment`,
+      headers: authHeader(token),
+      payload: { paymentStatus: "partially_paid", paidAmount: 20 },
+    });
+
+    // Won and fully paid — contributes nothing to outstanding.
+    const leadC = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { source: LEAD_SOURCE_MISSED_CALL, estimatedValue: 30 },
+    });
+    await app.inject({ method: "POST", url: `/leads/${leadC.json().id}/mark-won`, headers: authHeader(token) });
+    await app.inject({
+      method: "PATCH",
+      url: `/leads/${leadC.json().id}/payment`,
+      headers: authHeader(token),
+      payload: { paymentStatus: "paid", paidAmount: 30 },
+    });
+
+    const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+
+    expect(summary.json().recoveredRevenue.outstanding).toBeCloseTo(100 + (50 - 20));
+  });
+
   it("counts due reminders as customersDue and surfaces them as attention items", async () => {
     const { token } = await registerAccount(app);
 

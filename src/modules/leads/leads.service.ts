@@ -1,12 +1,15 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { renderMissedCallFollowUp } from "../../lib/messageRendering.js";
 import { notifyLeadCreated } from "../../lib/notifications/notificationTriggers.js";
 import { scheduleMissedCallFollowUp } from "../../lib/automation/scheduler.js";
+import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
 import { assertUnderLimit, getPlanLimits, startOfCurrentUtcMonth, startOfNextUtcMonth, withLimitCheck } from "../../lib/entitlements.js";
+import { findOrCreateCustomerByPhone } from "../customers/customers.service.js";
 import { toApiLead } from "./leads.serialization.js";
-import type { CreateLeadInput, UpdateLeadInput } from "./leads.schemas.js";
+import type { CreateLeadInput, ReportMissedCallInput, UpdateLeadInput, UpdateLeadPaymentInput } from "./leads.schemas.js";
 import type { Lead, Plan } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 
@@ -44,6 +47,7 @@ export async function createLead(
   input: CreateLeadInput,
   plan: Plan,
   pushProvider?: PushProvider,
+  opts?: { clientEventId?: string },
 ) {
   if (input.customerId) {
     await assertCustomerInBusiness(businessId, input.customerId);
@@ -63,6 +67,7 @@ export async function createLead(
         businessId,
         customerId: input.customerId,
         source: input.source,
+        clientEventId: opts?.clientEventId,
         missedCallTime: input.missedCallTime,
         serviceRequested: input.serviceRequested,
         urgency: input.urgency,
@@ -90,6 +95,61 @@ export async function createLead(
   await scheduleMissedCallFollowUp(businessId, lead);
 
   return withResponseTime(lead);
+}
+
+/**
+ * Entry point for an automated recovery-source connector (currently: the
+ * Android missed-call detector). Unlike createLead above, this is
+ * idempotent on `input.clientEventId` — the connector is expected to retry
+ * the exact same event after a network failure or offline-queue replay, and
+ * that retry must return the lead that already exists rather than erroring
+ * or creating a second one. This is a deliberate departure from this
+ * codebase's usual P2002-to-409-conflict convention (see
+ * automation.service.ts's createAutomationRule): those constraints guard
+ * against two *different* human actions colliding, where surfacing a
+ * conflict is the right answer. Here the "duplicate" is the same real-world
+ * event being reported more than once by design — the correct answer is to
+ * hand back the lead that was already created for it, not an error.
+ */
+export async function createLeadFromMissedCall(
+  businessId: string,
+  actorId: string,
+  input: ReportMissedCallInput,
+  plan: Plan,
+  pushProvider?: PushProvider,
+) {
+  const existing = await prisma.lead.findFirst({
+    where: { businessId, clientEventId: input.clientEventId },
+  });
+  if (existing) return withResponseTime(existing);
+
+  const customer = await findOrCreateCustomerByPhone(businessId, actorId, input.phone, plan);
+
+  try {
+    return await createLead(
+      businessId,
+      actorId,
+      {
+        customerId: customer.id,
+        source: LEAD_SOURCE_MISSED_CALL,
+        missedCallTime: input.occurredAt,
+        urgency: "medium",
+      },
+      plan,
+      pushProvider,
+      { clientEventId: input.clientEventId },
+    );
+  } catch (error) {
+    // Lost the race: another concurrent replay of the exact same event
+    // committed first. The unique (businessId, clientEventId) index is the
+    // real guarantee; this just hands back what the winner created instead
+    // of surfacing a conflict for a retry that was always going to be safe.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const winner = await prisma.lead.findFirst({ where: { businessId, clientEventId: input.clientEventId } });
+      if (winner) return withResponseTime(winner);
+    }
+    throw error;
+  }
 }
 
 async function assertCustomerInBusiness(businessId: string, customerId: string) {
@@ -137,6 +197,33 @@ export async function updateLead(
       urgency: input.urgency,
       estimatedValue: input.estimatedValue,
       notes: input.notes,
+    },
+  });
+
+  return withResponseTime(lead);
+}
+
+/**
+ * Payment tracking only — never a payment rail. Restricted to won leads:
+ * paid/unpaid is meaningless before the business has actually closed the
+ * sale, and allowing it earlier would let paymentStatus and the lead
+ * pipeline's own status disagree about whether the job happened at all.
+ */
+export async function updateLeadPayment(
+  businessId: string,
+  leadId: string,
+  input: UpdateLeadPaymentInput,
+) {
+  const existing = await getOwnedLead(businessId, leadId);
+  if (existing.status !== "won") {
+    throw ApiError.conflict("Payment status can only be set on a won lead");
+  }
+
+  const lead = await prisma.lead.update({
+    where: { id: leadId },
+    data: {
+      paymentStatus: input.paymentStatus,
+      paidAmount: input.paymentStatus === "unpaid" ? null : input.paidAmount,
     },
   });
 

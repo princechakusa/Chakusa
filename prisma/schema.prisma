@@ -101,6 +101,16 @@ enum LeadUrgency {
   high
 }
 
+// Tracking only, never a payment rail — set manually by the business when
+// closing out a won lead. Lets Recovered Revenue distinguish a verified
+// amount from a self-reported estimate, and lets a new Outstanding Revenue
+// metric exist without Chakusa ever touching money movement.
+enum LeadPaymentStatus {
+  unpaid
+  partially_paid
+  paid
+}
+
 enum MessageType {
   missed_call
   booking_confirmation
@@ -558,11 +568,24 @@ model Lead {
   businessId       String      @map("business_id")
   customerId       String?     @map("customer_id")
   source           String?
+  // Set only by an automated recovery-source connector (e.g. the Android
+  // missed-call detector) that may retry ingestion after a network failure
+  // or replay an offline-queued event — this is what makes that replay safe.
+  // Manual/API-created leads always leave this null; Postgres unique indexes
+  // permit unlimited NULLs, so they're never constrained by each other here.
+  clientEventId    String?     @map("client_event_id")
   missedCallTime   DateTime?   @map("missed_call_time")
   serviceRequested String?     @map("service_requested")
   urgency          LeadUrgency @default(medium)
   status           LeadStatus  @default(new)
   estimatedValue   Decimal?    @map("estimated_value") @db.Decimal(10, 2)
+  // Manually set by the business when closing out a won lead — never
+  // written by anything else. Distinguishes a verified paid amount from
+  // estimatedValue's self-reported guess, and lets Outstanding Revenue
+  // exist as a real metric (sum of estimatedValue across won-but-unpaid
+  // leads) without Chakusa processing any payment itself.
+  paymentStatus    LeadPaymentStatus @default(unpaid) @map("payment_status")
+  paidAmount       Decimal?    @map("paid_amount") @db.Decimal(10, 2)
   notes            String?
   generatedReply   String?     @map("generated_reply")
   contactedAt      DateTime?   @map("contacted_at")
@@ -577,6 +600,7 @@ model Lead {
   messages       Message[]
   automationRuns AutomationRun[]
 
+  @@unique([businessId, clientEventId])
   @@index([businessId])
   @@index([businessId, status])
   @@index([businessId, createdAt])

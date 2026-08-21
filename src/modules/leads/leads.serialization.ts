@@ -9,5 +9,6 @@ export function toApiLead<T extends Lead>(lead: T) {
   return {
     ...lead,
     estimatedValue: lead.estimatedValue === null ? null : Number(lead.estimatedValue),
+    paidAmount: lead.paidAmount === null ? null : Number(lead.paidAmount),
   };
 }

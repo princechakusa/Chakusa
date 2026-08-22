@@ -64,6 +64,51 @@ export type RecommendationSeverity = 'info' | 'attention';
 export interface RecommendationDto { key: string; message: string; severity: RecommendationSeverity; }
 export interface DashboardSummaryDto { recoveredRevenue: { total: number; missedCall: number; comebackCompletedCount: number; outstanding: number }; businessHealth: { score: number | null; label: BusinessHealthLabel | null; factors: BusinessHealthFactorDto[] }; customerIntelligence: CustomerIntelligenceDto; recommendations: RecommendationDto[]; leads: { missedCalls: number; new: number; contacted: number; booked: number; won: number; lost: number; total: number; conversionRate: number; contactRate: number }; reviews: { requestsSent: number; reviewsReceived: number; feedbackReceived: number }; customersDue: number; responseTime: { averageSeconds: number | null; sampleSize: number }; recentActivity: ActivityEventDto[]; todayAttentionItems: { type: 'reminder_due'; id: string; customerName: string | null; dueDate: string }[]; generatedAt: string; windowStart: string; }
 export interface CustomerProfileDto { customer: CustomerDto; leads: LeadDto[]; reviewRequests: ReviewRequestDto[]; feedback: FeedbackDto[]; reminders: ReminderDto[]; activity: ActivityEventDto[]; lifetimeValue: number; }
+
+export interface MonthlyTrendPointDto {
+  month: string;
+  newLeads: number;
+  wonLeads: number;
+  conversionRate: number | null;
+  newCustomers: number;
+  returningCustomers: number;
+  recoveredRevenue: number;
+  reviewRequestsSent: number;
+  reviewsReceived: number;
+  remindersCompleted: number;
+}
+export interface ServicePerformanceRowDto { service: string; leadCount: number; wonCount: number; conversionRate: number; revenue: number; }
+export interface ServicePerformanceDto {
+  mostRequested: ServicePerformanceRowDto[];
+  highestRevenue: ServicePerformanceRowDto[];
+  highestConverting: ServicePerformanceRowDto[];
+  lowestConverting: ServicePerformanceRowDto[];
+}
+export interface FastestReturningCustomerDto { customerId: string; customerName: string | null; averageDaysBetweenWins: number; }
+export interface LongestInactiveCustomerDto { customerId: string; customerName: string | null; daysSinceLastActivity: number; }
+export interface CustomerValueAnalyticsDto {
+  fastestReturningCustomers: FastestReturningCustomerDto[];
+  longestInactiveCustomers: LongestInactiveCustomerDto[];
+  atRiskCustomers: CustomerNeedingFollowUpDto[];
+  repeatCustomers: { customerId: string; lifetimeValue: number }[];
+}
+export interface RecoveryPerformanceDto {
+  missedCallsRecovered: number;
+  missedCallsTotal: number;
+  recoverySuccessRate: number;
+  recoveryConversionRate: number;
+  reviewRequestSuccessRate: number | null;
+  reminderCompletionRate: number | null;
+  averageRecoveryDays: number | null;
+}
+export interface BusinessInsightsDto {
+  monthlyTrend: MonthlyTrendPointDto[];
+  servicePerformance: ServicePerformanceDto;
+  customerValue: CustomerValueAnalyticsDto;
+  recoveryPerformance: RecoveryPerformanceDto;
+  generatedAt: string;
+  windowStart: string;
+}
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity' | 'payment_outstanding';
 export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; customerPhone: string | null; detail: string | null; occurredAt: string; message: string | null; amount: number | null; }
 export interface AttentionPageDto { items: AttentionItemDto[]; total: number; page: number; pageSize: number; category: AttentionCategory | null; countsByCategory?: Record<AttentionCategory, number>; }

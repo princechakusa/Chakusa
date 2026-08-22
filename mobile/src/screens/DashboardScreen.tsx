@@ -119,6 +119,15 @@ export function DashboardScreen() {
       {dashboard.recommendations.map(item => <Pressable accessibilityRole="button" key={item.key} onPress={() => goToRecommendation(navigation, item.key)} style={styles.recommendationRow}><View style={[styles.recommendationDot, item.severity === 'attention' && styles.recommendationDotAttention]} /><Text style={styles.recommendationText}>{item.message}</Text><Ionicons color={colors.tabInactive} name="chevron-forward" size={16} /></Pressable>)}
     </View> : null}
 
+    <Pressable accessibilityRole="button" accessibilityLabel="Business Insights" onPress={() => navigation.navigate('Insights')} style={styles.engineSummary}>
+      <View style={[styles.engineSummaryIcon, { backgroundColor: colors.text }]}><Ionicons name="trending-up" size={20} color={colors.surface} /></View>
+      <View style={styles.engineSummaryCopy}>
+        <Text style={styles.engineSummaryTitle}>Business Insights</Text>
+        <Text style={styles.engineSummaryDetail}>See growth trends, top services, and your most valuable customers.</Text>
+      </View>
+      <Ionicons color={colors.tabInactive} name="chevron-forward" size={18} />
+    </Pressable>
+
     <View>
       <SectionHeader title="Needs action" action="See all" onAction={() => navigation.navigate('AttentionCenter')} />
       {attentionCount ? <View style={styles.actionList}>

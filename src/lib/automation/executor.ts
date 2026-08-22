@@ -2,10 +2,11 @@ import { prisma } from "../prisma.js";
 import { isEntitled } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
-import { renderLeadFollowUpMessage } from "../messageRendering.js";
+import { renderCustomerRetentionMessage, renderLeadFollowUpMessage, renderLeadStaleFollowUpMessage } from "../messageRendering.js";
+import { DEFAULT_LEAD_FOLLOW_UP_STATUSES } from "./scheduler.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
 import type { MessagingProvider } from "../messaging/messagingProvider.js";
-import type { AutomationRun } from "@prisma/client";
+import type { AutomationRule, AutomationRun, Customer, Lead, LeadStatus, MessageType } from "@prisma/client";
 
 /** Total send attempts allowed for one run before giving up (bounded, not unlimited). */
 export const MAX_SEND_ATTEMPTS = 3;
@@ -109,6 +110,94 @@ async function cancelRun(runId: string, reason: string): Promise<void> {
   });
 }
 
+/** What executeAutomationRun needs to actually send: the resolved lead (absent for CUSTOMER_RETENTION), customer, verified phone, and rendered message. */
+interface ResolvedRunContext {
+  lead: Lead | null;
+  customer: Customer;
+  phone: string;
+  body: string;
+  messageType: MessageType;
+}
+
+/**
+ * Per-trigger-type re-validation and message rendering — this is the one
+ * place execution branches on rule.triggerType, so adding a future trigger
+ * type means adding one case here, not touching the shared send/retry/
+ * bookkeeping tail below. Each branch re-derives its own condition from
+ * scratch (never trusting anything true only at scheduling time), matching
+ * the "re-validates every condition from scratch" discipline documented on
+ * executeAutomationRun itself.
+ */
+async function resolveRunContext(
+  run: AutomationRun,
+  rule: AutomationRule,
+): Promise<ResolvedRunContext | { cancelReason: string }> {
+  if (rule.triggerType === "LEAD_CREATED") {
+    if (!run.leadId) return { cancelReason: "Run has no associated lead" };
+    const lead = await prisma.lead.findFirst({ where: { id: run.leadId, businessId: run.businessId } });
+    if (!lead) return { cancelReason: "Lead no longer exists" };
+    if (!supportsLeadCreatedAutomation(lead.source)) return { cancelReason: "Lead's source no longer supports automated follow-up" };
+    if (lead.status !== "new") return { cancelReason: `Lead has already been actioned (status: ${lead.status})` };
+
+    const customer = await resolveCustomer(run);
+    if ("cancelReason" in customer) return customer;
+
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
+    const { body, messageType } = await renderLeadFollowUpMessage(business, lead, customer.customer);
+    return { lead, customer: customer.customer, phone: customer.phone, body, messageType };
+  }
+
+  if (rule.triggerType === "LEAD_FOLLOW_UP") {
+    if (!run.leadId) return { cancelReason: "Run has no associated lead" };
+    const lead = await prisma.lead.findFirst({ where: { id: run.leadId, businessId: run.businessId } });
+    if (!lead) return { cancelReason: "Lead no longer exists" };
+
+    const config = rule.config as { leadStatuses?: LeadStatus[] } | null;
+    const allowedStatuses = config?.leadStatuses && config.leadStatuses.length > 0 ? config.leadStatuses : DEFAULT_LEAD_FOLLOW_UP_STATUSES;
+    if (!allowedStatuses.includes(lead.status)) return { cancelReason: `Lead status changed since scheduling (now: ${lead.status})` };
+
+    const customer = await resolveCustomer(run);
+    if ("cancelReason" in customer) return customer;
+
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
+    const { body, messageType } = await renderLeadStaleFollowUpMessage(business, lead, customer.customer);
+    return { lead, customer: customer.customer, phone: customer.phone, body, messageType };
+  }
+
+  // CUSTOMER_RETENTION — no lead is involved; the win-back attempt concerns
+  // the customer relationship as a whole, not any one job.
+  const customer = await resolveCustomer(run);
+  if ("cancelReason" in customer) return customer;
+
+  const mostRecentLead = await prisma.lead.findFirst({
+    where: { businessId: run.businessId, customerId: customer.customer.id },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  if (mostRecentLead && mostRecentLead.createdAt > run.scheduledFor) {
+    return { cancelReason: "Customer has since become active again" };
+  }
+
+  const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
+  const { body, messageType } = await renderCustomerRetentionMessage(business, customer.customer);
+  return { lead: null, customer: customer.customer, phone: customer.phone, body, messageType };
+}
+
+/** Shared customer/phone/opt-out resolution every trigger type needs identically. */
+async function resolveCustomer(run: AutomationRun): Promise<{ customer: Customer; phone: string } | { cancelReason: string }> {
+  if (!run.customerId) return { cancelReason: "Run has no associated customer" };
+  const customer = await prisma.customer.findFirst({ where: { id: run.customerId, businessId: run.businessId } });
+  if (!customer) return { cancelReason: "Customer no longer exists" };
+  if (!customer.phoneE164) return { cancelReason: "Customer has no valid E.164 phone number" };
+
+  const optOut = await prisma.customerOptOut.findFirst({
+    where: { businessId: run.businessId, phone: customer.phoneE164, channel: { in: ["SMS", "ALL"] } },
+  });
+  if (optOut) return { cancelReason: "Customer has opted out of SMS" };
+
+  return { customer, phone: customer.phoneE164 };
+}
+
 /**
  * Re-validates every condition from scratch — never trusts anything about
  * the world as it was when this run was scheduled, nor (critically for
@@ -183,28 +272,13 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
       return cancelRun(run.id, "Business is no longer entitled to automation");
     }
 
-    if (!run.leadId) return cancelRun(run.id, "Run has no associated lead");
-    const lead = await prisma.lead.findFirst({ where: { id: run.leadId, businessId: run.businessId } });
-    if (!lead) return cancelRun(run.id, "Lead no longer exists");
-    if (!supportsLeadCreatedAutomation(lead.source)) return cancelRun(run.id, "Lead's source no longer supports automated follow-up");
-    if (lead.status !== "new") return cancelRun(run.id, `Lead has already been actioned (status: ${lead.status})`);
-
-    if (!run.customerId) return cancelRun(run.id, "Run has no associated customer");
-    const customer = await prisma.customer.findFirst({ where: { id: run.customerId, businessId: run.businessId } });
-    if (!customer) return cancelRun(run.id, "Customer no longer exists");
-    if (!customer.phoneE164) return cancelRun(run.id, "Customer has no valid E.164 phone number");
-
-    const optOut = await prisma.customerOptOut.findFirst({
-      where: { businessId: run.businessId, phone: customer.phoneE164, channel: { in: ["SMS", "ALL"] } },
-    });
-    if (optOut) return cancelRun(run.id, "Customer has opted out of SMS");
-
-    const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
-    const { body, messageType } = await renderLeadFollowUpMessage(business, lead, customer);
-    const countryCode = parsePhoneNumber(customer.phoneE164).country ?? "ZZ";
+    const resolved = await resolveRunContext(run, rule);
+    if ("cancelReason" in resolved) return cancelRun(run.id, resolved.cancelReason);
+    const { lead, customer, phone, body, messageType } = resolved;
+    const countryCode = parsePhoneNumber(phone).country ?? "ZZ";
 
     const result = await sendOutboundMessage(
-      { to: customer.phoneE164, channel: "sms", body, countryCode, idempotencyKey: run.id },
+      { to: phone, channel: "sms", body, countryCode, idempotencyKey: run.id },
       provider,
     );
 
@@ -217,7 +291,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
           data: {
             businessId: run.businessId,
             customerId: customer.id,
-            leadId: lead.id,
+            leadId: lead?.id ?? null,
             automationRunId: run.id,
             messageType,
             channel: "sms",
@@ -250,7 +324,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
           data: {
             businessId: run.businessId,
             customerId: customer.id,
-            leadId: lead.id,
+            leadId: lead?.id ?? null,
             automationRunId: run.id,
             messageType,
             channel: "sms",

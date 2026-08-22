@@ -1,9 +1,18 @@
 import { processDueAutomationRuns } from "../lib/automation/executor.js";
+import { sweepLifecycleAutomations } from "../lib/automation/scheduler.js";
 import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
   intervalMs?: number;
+  /**
+   * How often to sweep for lifecycle-triggered runs (LEAD_FOLLOW_UP,
+   * CUSTOMER_RETENTION) that need scheduling. Deliberately much slower than
+   * intervalMs — these are time-elapsed conditions measured in hours/days,
+   * not events needing near-real-time pickup like a newly-created lead.
+   * Default 5 minutes.
+   */
+  lifecycleIntervalMs?: number;
   /** Max runs claimed per poll cycle. Default 20. */
   batchSize?: number;
   provider?: MessagingProvider;
@@ -32,9 +41,11 @@ export interface AutomationWorkerHandle {
  */
 export function startAutomationWorker(options: AutomationWorkerOptions = {}): AutomationWorkerHandle {
   const intervalMs = options.intervalMs ?? 15_000;
+  const lifecycleIntervalMs = options.lifecycleIntervalMs ?? 300_000;
   const batchSize = options.batchSize ?? 20;
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
+  let lifecycleTimer: NodeJS.Timeout | undefined;
 
   const tick = async () => {
     if (stopped) return;
@@ -48,12 +59,29 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     }
   };
 
+  // Same worker process, same AutomationRun pipeline, just a second, much
+  // slower entry point that schedules runs for the Customer Lifecycle
+  // Automation Engine's two time-elapsed triggers — not a second worker.
+  const lifecycleTick = async () => {
+    if (stopped) return;
+    try {
+      await sweepLifecycleAutomations();
+    } catch (error) {
+      options.onError?.(error);
+    }
+    if (!stopped) {
+      lifecycleTimer = setTimeout(() => void lifecycleTick(), lifecycleIntervalMs);
+    }
+  };
+
   timer = setTimeout(() => void tick(), 0);
+  lifecycleTimer = setTimeout(() => void lifecycleTick(), 0);
 
   return {
     stop: () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      if (lifecycleTimer) clearTimeout(lifecycleTimer);
     },
   };
 }

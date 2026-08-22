@@ -5,7 +5,7 @@ export const sendMessageSchema = z.object({
   leadId: z.string().uuid().optional(),
   body: z.string().trim().min(1).max(1600),
   messageType: z
-    .enum(["missed_call", "booking_confirmation", "review_request", "private_feedback", "comeback_reminder", "custom", "public_profile_inquiry"])
+    .enum(["missed_call", "booking_confirmation", "review_request", "private_feedback", "comeback_reminder", "custom", "public_profile_inquiry", "lead_follow_up"])
     .default("custom"),
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

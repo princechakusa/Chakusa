@@ -12,7 +12,7 @@ import { RootStackParamList } from '../types';
 import { colors, radius, spacing, typography } from '../theme';
 import { titleCase } from '../utils/format';
 
-const types: MessageType[] = ['missed_call','booking_confirmation','review_request','private_feedback','comeback_reminder','custom','public_profile_inquiry']; const tones: MessageTone[] = ['friendly','professional','casual'];
+const types: MessageType[] = ['missed_call','booking_confirmation','review_request','private_feedback','comeback_reminder','custom','public_profile_inquiry','lead_follow_up']; const tones: MessageTone[] = ['friendly','professional','casual'];
 export function TemplatesScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { templates, state, loadTemplates } = useAppState(); const { usage, refresh: refreshPlan } = usePlanExperience(); const [activeId, setActiveId] = useState<string | null>(null); const active = useMemo(() => templates.find(item => item.id === activeId) ?? templates[0] ?? null, [activeId, templates]); const [body, setBody] = useState(''); const [name, setName] = useState(''); const [tone, setTone] = useState<MessageTone>('friendly'); const [creating, setCreating] = useState(false); const [newType, setNewType] = useState<MessageType>('missed_call'); const [newName, setNewName] = useState(''); const [newBody, setNewBody] = useState('Hi {{customer_name}}, this is {{business_name}}.'); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);

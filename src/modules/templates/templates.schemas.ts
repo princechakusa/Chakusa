@@ -8,6 +8,7 @@ const templateTypeEnum = z.enum([
   "comeback_reminder",
   "custom",
   "public_profile_inquiry",
+  "lead_follow_up",
 ]);
 
 export const createTemplateSchema = z.object({

@@ -125,6 +125,13 @@ enum MessageType {
   // reached out). See src/lib/leadSources.ts for the automation-eligibility
   // gate this template type is paired with.
   public_profile_inquiry
+  // Automated nudge for a lead that has sat in a non-terminal status
+  // (new/contacted/booked) too long — the Customer Lifecycle Automation
+  // Engine's LEAD_FOLLOW_UP trigger (src/lib/automation/scheduler.ts).
+  // Distinct from missed_call: by the time this fires, the lead has
+  // usually already been contacted once, so "sorry we missed your call"
+  // is no longer accurate — this is a "still interested?" check-in.
+  lead_follow_up
 }
 
 enum MessageChannel {

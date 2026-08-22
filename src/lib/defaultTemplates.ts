@@ -14,6 +14,8 @@ export const DEFAULT_TEMPLATE_BODIES: Record<MessageType, string> = {
   custom: "Hi {{customer_name}}, this is {{business_name}}.",
   public_profile_inquiry:
     "Hi {{customer_name}}, thanks for reaching out to {{business_name}} about your {{service_name}}! We'll get back to you shortly — feel free to call us at {{phone_number}} in the meantime.",
+  lead_follow_up:
+    "Hi {{customer_name}}, just checking in from {{business_name}} about your {{service_name}} — still interested? Call us at {{phone_number}} or reply here.",
 };
 
 // Industry-aware overrides. Only industries with a meaningfully different

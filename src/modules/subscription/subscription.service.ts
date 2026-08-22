@@ -13,6 +13,7 @@ const TEMPLATE_TYPES: readonly MessageType[] = [
   "comeback_reminder",
   "custom",
   "public_profile_inquiry",
+  "lead_follow_up",
 ];
 
 interface MonthlyUsage {

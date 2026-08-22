@@ -12,7 +12,7 @@ export type ReminderStatus = 'due' | 'sent' | 'completed' | 'dismissed';
 export type FeedbackStatus = 'new' | 'acknowledged' | 'resolved';
 export type FeedbackSentiment = 'positive' | 'neutral' | 'negative';
 export type MessageTone = 'friendly' | 'professional' | 'casual';
-export type MessageType = 'missed_call' | 'booking_confirmation' | 'review_request' | 'private_feedback' | 'comeback_reminder' | 'custom' | 'public_profile_inquiry';
+export type MessageType = 'missed_call' | 'booking_confirmation' | 'review_request' | 'private_feedback' | 'comeback_reminder' | 'custom' | 'public_profile_inquiry' | 'lead_follow_up';
 export type MessageChannel = 'sms' | 'whatsapp' | 'call' | 'email' | 'other';
 export type MessageStatus = 'draft' | 'copied' | 'sent' | 'failed';
 export type ActivityEventType = 'LEAD_CREATED' | 'LEAD_CONTACTED' | 'LEAD_BOOKED' | 'LEAD_WON' | 'LEAD_LOST' | 'MESSAGE_COPIED' | 'MESSAGE_MARKED_SENT' | 'REVIEW_REQUEST_CREATED' | 'REVIEW_REQUEST_SENT' | 'REVIEW_OPENED' | 'REVIEW_RECEIVED' | 'FEEDBACK_RECEIVED' | 'REMINDER_CREATED' | 'REMINDER_SENT' | 'REMINDER_COMPLETED' | 'REMINDER_DISMISSED' | 'CUSTOMER_CREATED' | 'CUSTOMER_UPDATED';
@@ -101,11 +101,17 @@ export interface RecoveryPerformanceDto {
   reminderCompletionRate: number | null;
   averageRecoveryDays: number | null;
 }
+export type CustomerLifecycleStage = 'lost' | 'new_lead' | 'contacted' | 'dormant' | 'vip' | 'loyal' | 'returning' | 'first_customer';
+export interface CustomerLifecycleBreakdownDto {
+  counts: Record<CustomerLifecycleStage, number>;
+  totalCustomers: number;
+}
 export interface BusinessInsightsDto {
   monthlyTrend: MonthlyTrendPointDto[];
   servicePerformance: ServicePerformanceDto;
   customerValue: CustomerValueAnalyticsDto;
   recoveryPerformance: RecoveryPerformanceDto;
+  customerLifecycle: CustomerLifecycleBreakdownDto;
   generatedAt: string;
   windowStart: string;
 }

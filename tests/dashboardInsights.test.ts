@@ -158,4 +158,34 @@ describe("GET /dashboard/insights", () => {
     expect(JSON.stringify(body)).not.toContain("Secret Service");
     expect(JSON.stringify(body)).not.toContain("Business B Customer");
   });
+
+  // -------------------------------------------------------------------
+  // customerLifecycle — Customer Lifecycle Automation Engine breakdown
+  // -------------------------------------------------------------------
+
+  it("exposes a customer lifecycle stage breakdown covering every customer with lead history", async () => {
+    const { token, businessId } = await registerAccount(app);
+    const dormantCustomer = await prisma.customer.create({ data: { businessId, name: "Dormant Customer" } });
+    await createWonLead(businessId, dormantCustomer.id, 200, new Date(Date.now() - 60 * 86_400_000), "Detailing");
+    const newLeadCustomer = await prisma.customer.create({ data: { businessId, name: "New Lead Customer" } });
+    await prisma.lead.create({ data: { businessId, customerId: newLeadCustomer.id, source: LEAD_SOURCE_MISSED_CALL, status: "new" } });
+
+    const response = await app.inject({ method: "GET", url: "/dashboard/insights", headers: authHeader(token) });
+    const { customerLifecycle } = response.json();
+
+    expect(customerLifecycle.totalCustomers).toBe(2);
+    expect(customerLifecycle.counts.dormant).toBe(1);
+    expect(customerLifecycle.counts.new_lead).toBe(1);
+  });
+
+  it("never includes another business's customers in the lifecycle breakdown", async () => {
+    const businessA = await registerAccount(app, { email: "lifecycle-insights-a@example.com" });
+    const businessB = await registerAccount(app, { email: "lifecycle-insights-b@example.com" });
+    const customerB = await prisma.customer.create({ data: { businessId: businessB.businessId, name: "Business B Customer" } });
+    await createWonLead(businessB.businessId, customerB.id, 500, new Date(), "Service");
+
+    const response = await app.inject({ method: "GET", url: "/dashboard/insights", headers: authHeader(businessA.token) });
+
+    expect(response.json().customerLifecycle.totalCustomers).toBe(0);
+  });
 });

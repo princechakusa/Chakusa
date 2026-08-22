@@ -72,6 +72,8 @@ const LOW_REPEAT_CUSTOMER_RATE = 0.3;
 const MIN_CUSTOMERS_FOR_REPEAT_RATE_INSIGHT = 3;
 /** A service needs to actually have a meaningfully worse rate than the best one to be worth flagging — this is not a fixed percentage, it's a same-business relative comparison. */
 const MIN_CONVERSION_GAP_FOR_SERVICE_INSIGHT = 0.25;
+/** dormant customer count at or above this is worth flagging "high" rather than "medium" — same style of threshold as CRITICAL_FOLLOW_UP_BACKLOG above. */
+const HIGH_DORMANT_CUSTOMER_COUNT = 5;
 
 function money(value: number): string {
   return `$${value.toFixed(2)}`;
@@ -216,11 +218,38 @@ function servicePerformanceInsight(input: BusinessCoachingInput): CoachingInsigh
   };
 }
 
+/**
+ * The Customer Lifecycle Automation Engine's stage breakdown (already
+ * computed by insights.service.ts, see customerLifecycle field on
+ * getBusinessInsights) surfaced as a coaching insight — this references
+ * lifecycle stages exactly as the Stage 8 mission asked, without this
+ * module gaining any new database access: `dormant` is just another
+ * number already sitting on `input.insights`.
+ */
+function dormantCustomersInsight(input: BusinessCoachingInput): CoachingInsight | null {
+  const { counts, totalCustomers } = input.insights.customerLifecycle;
+  const dormantCount = counts.dormant;
+  if (dormantCount === 0) return null;
+
+  return {
+    key: "dormant_customers",
+    title: "Past customers have gone quiet",
+    context: `${dormantCount} of your ${totalCustomers} customer${totalCustomers === 1 ? "" : "s"} ha${dormantCount === 1 ? "s" : "ve"} won a job before but haven't been back in a while.`,
+    whyItMatters: "A customer who has already paid you once is far easier to win back than finding a brand-new lead.",
+    evidence: [`${dormantCount} dormant customer${dormantCount === 1 ? "" : "s"}`, `${totalCustomers} total customer${totalCustomers === 1 ? "" : "s"} with lead history`],
+    recommendedAction: "Set a comeback reminder to win one back",
+    actionLink: { kind: "comeback" },
+    expectedOutcome: "Reaching out to a dormant customer converts more often than a cold lead, since they already trust your work.",
+    priority: dormantCount >= HIGH_DORMANT_CUSTOMER_COUNT ? "high" : "medium",
+  };
+}
+
 const INSIGHT_GENERATORS: ((input: BusinessCoachingInput) => CoachingInsight | null)[] = [
   businessHealthInsight,
   outstandingRevenueInsight,
   customersWaitingInsight,
   repeatCustomerRateInsight,
+  dormantCustomersInsight,
   servicePerformanceInsight,
 ];
 

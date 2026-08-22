@@ -13,6 +13,7 @@ import {
   type MonthlyMetricRow,
   type ServiceAggregateRow,
 } from "../../lib/businessInsights.js";
+import { classifyCustomerLifecycleStage, tallyLifecycleStages } from "../../lib/customerLifecycle.js";
 
 const TREND_MONTHS = 6;
 /** Scale safety net on the two per-customer raw queries below — final ranking/top-5 selection still happens in businessInsights.ts's pure functions, this just bounds how many candidate rows ever leave Postgres. */
@@ -63,6 +64,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     customerWonTimelineRows,
     customerLastActivityRows,
     missedCallsRecoveredCount,
+    customerLeadStatusRows,
   ] = await Promise.all([
     precomputedSummary ? Promise.resolve(precomputedSummary) : getDashboardSummary(businessId),
 
@@ -155,6 +157,26 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     // only has the missed-call lead total and the revenue from won ones,
     // not this count).
     prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL, status: "won" } }),
+    // Feeds the Customer Lifecycle Automation Engine's stage breakdown
+    // (src/lib/customerLifecycle.ts) — one row per customer with at least
+    // one lead, exactly the inputs classifyCustomerLifecycleStage needs.
+    // Not a duplicate of customerLastActivityRows above: that query only
+    // has last_activity_at, this one also needs the per-status counts and
+    // lifetime value, so both queries stay separate rather than widening
+    // an existing one used elsewhere for a different shape.
+    prisma.$queryRaw<{ customer_id: string; lost_count: bigint; contacted_count: bigint; new_count: bigint; won_count: bigint; lifetime_value: string | null; last_activity_at: Date }[]>(Prisma.sql`
+      SELECT customer_id,
+             COUNT(*) FILTER (WHERE status = 'lost') AS lost_count,
+             COUNT(*) FILTER (WHERE status IN ('contacted', 'booked')) AS contacted_count,
+             COUNT(*) FILTER (WHERE status = 'new') AS new_count,
+             COUNT(*) FILTER (WHERE status = 'won') AS won_count,
+             COALESCE(SUM(estimated_value) FILTER (WHERE status = 'won'), 0) AS lifetime_value,
+             MAX(created_at) AS last_activity_at
+      FROM leads
+      WHERE business_id = ${businessId} AND customer_id IS NOT NULL
+      GROUP BY customer_id
+      LIMIT ${CUSTOMER_CANDIDATE_LIMIT}
+    `),
   ]);
 
   const monthlyTrend = buildMonthlyTrend(months, {
@@ -205,6 +227,21 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     averageRecoveryDays: dashboardSummary.customerIntelligence.averageRecoveryDays,
   };
 
+  const lifecycleStages = customerLeadStatusRows.map((row) =>
+    classifyCustomerLifecycleStage({
+      lostLeadCount: Number(row.lost_count),
+      contactedOrBookedLeadCount: Number(row.contacted_count),
+      newLeadCount: Number(row.new_count),
+      wonLeadCount: Number(row.won_count),
+      lifetimeValue: Number(row.lifetime_value ?? 0),
+      daysSinceLastActivity: Math.floor((now.getTime() - new Date(row.last_activity_at).getTime()) / 86_400_000),
+    }),
+  );
+  const customerLifecycle = {
+    counts: tallyLifecycleStages(lifecycleStages),
+    totalCustomers: lifecycleStages.length,
+  };
+
   return {
     monthlyTrend,
     servicePerformance,
@@ -215,6 +252,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
       repeatCustomers: dashboardSummary.customerIntelligence.topCustomersByValue,
     },
     recoveryPerformance,
+    customerLifecycle,
     generatedAt: now,
     windowStart,
   };

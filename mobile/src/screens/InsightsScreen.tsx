@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, ServicePerformanceRowDto } from '../apiTypes';
+import { BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, CustomerLifecycleStage, ServicePerformanceRowDto } from '../apiTypes';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader, StatusBadge } from '../components/ui';
 import { ApiError } from '../services/api';
 import { dashboardApi } from '../services/endpoints';
@@ -31,6 +31,18 @@ function pct(value: number | null): string {
   return value == null ? '—' : `${Math.round(value * 100)}%`;
 }
 
+/** Display order/labels for the Customer Lifecycle Automation Engine's stages — zero-count stages are simply omitted, so a small business doesn't see a wall of empty chips. */
+const LIFECYCLE_STAGE_LABELS: [CustomerLifecycleStage, string][] = [
+  ['new_lead', 'New lead'],
+  ['contacted', 'Contacted'],
+  ['first_customer', 'First customer'],
+  ['returning', 'Returning'],
+  ['loyal', 'Loyal'],
+  ['vip', 'VIP'],
+  ['dormant', 'Dormant'],
+  ['lost', 'Lost'],
+];
+
 export function InsightsScreen({ navigation }: Props) {
   const [insights, setInsights] = useState<BusinessInsightsDto | null>(null);
   const [coaching, setCoaching] = useState<CoachingInsightDto[] | null>(null);
@@ -52,7 +64,7 @@ export function InsightsScreen({ navigation }: Props) {
   if (error && !insights) return <Screen><ErrorState message={error} onRetry={() => void load()} /></Screen>;
   if (!insights) return <Screen><EmptyState title="No insights yet" message="Insights will appear as you build up business activity." /></Screen>;
 
-  const { monthlyTrend, servicePerformance, customerValue, recoveryPerformance } = insights;
+  const { monthlyTrend, servicePerformance, customerValue, recoveryPerformance, customerLifecycle } = insights;
   const hasAnyServiceData = servicePerformance.mostRequested.length > 0;
   const goToCustomer = (customerId: string | null) => { if (customerId) navigation.navigate('CustomerProfile', { customerId }); };
 
@@ -101,6 +113,24 @@ export function InsightsScreen({ navigation }: Props) {
       <CustomerList title="Longest inactive" rows={customerValue.longestInactiveCustomers} onPress={goToCustomer} render={r => `${r.daysSinceLastActivity} days since last contact`} />
       {customerValue.atRiskCustomers.length > 0 ? <View style={styles.subsection}><Text style={styles.subsectionTitle}>At risk ({customerValue.atRiskCustomers.length})</Text>{customerValue.atRiskCustomers.slice(0, 5).map(c => <Row key={c.customerId} onPress={() => goToCustomer(c.customerId)} title={c.customerName ?? 'Unassigned customer'} detail="Overdue for a comeback reminder" />)}</View> : null}
     </View>
+
+    {customerLifecycle.totalCustomers > 0 ? <View>
+      <SectionHeader title="Customer lifecycle" />
+      <Text style={styles.caption}>Where your {customerLifecycle.totalCustomers} customer{customerLifecycle.totalCustomers === 1 ? '' : 's'} stand right now.</Text>
+      <View style={styles.lifecycleGrid}>
+        {LIFECYCLE_STAGE_LABELS.filter(([stage]) => customerLifecycle.counts[stage] > 0).map(([stage, label]) => (
+          <Pressable
+            key={stage}
+            accessibilityRole={stage === 'dormant' ? 'button' : undefined}
+            onPress={stage === 'dormant' ? () => navigation.navigate('Comeback') : undefined}
+            style={styles.lifecycleChip}
+          >
+            <Text style={styles.lifecycleCount}>{customerLifecycle.counts[stage]}</Text>
+            <Text style={styles.lifecycleLabel}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View> : null}
 
     <View>
       <SectionHeader title="Recovery performance" />
@@ -162,6 +192,10 @@ const styles = StyleSheet.create({
   rowTitle: { ...typography.bodyStrong, color: colors.text },
   rowDetail: { ...typography.caption, color: colors.textSecondary },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  lifecycleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
+  lifecycleChip: { minHeight: 52, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: 2 },
+  lifecycleCount: { ...typography.bodyStrong, color: colors.text },
+  lifecycleLabel: { ...typography.caption, color: colors.textSecondary },
   coachingCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs, marginBottom: spacing.sm },
   coachingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   coachingTitle: { ...typography.bodyStrong, color: colors.text, flex: 1 },

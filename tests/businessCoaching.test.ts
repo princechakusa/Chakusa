@@ -48,6 +48,10 @@ function baseInput(): BusinessCoachingInput {
         reminderCompletionRate: null,
         averageRecoveryDays: null,
       },
+      customerLifecycle: {
+        counts: { lost: 0, new_lead: 0, contacted: 0, dormant: 0, vip: 0, loyal: 0, returning: 0, first_customer: 0 },
+        totalCustomers: 0,
+      },
       generatedAt: new Date(),
       windowStart: new Date(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,6 +163,31 @@ describe("generateBusinessCoaching", () => {
     input.summary.customerIntelligence.customersWithWonLead = 10;
 
     expect(generateBusinessCoaching(input).find((i) => i.key === "repeat_customer_rate")).toBeUndefined();
+  });
+
+  it("generates a medium dormant_customers insight below the high-count threshold", () => {
+    const input = baseInput();
+    input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, dormant: 2 }, totalCustomers: 8 };
+
+    const insight = generateBusinessCoaching(input).find((i) => i.key === "dormant_customers");
+    expect(insight?.priority).toBe("medium");
+    expect(insight?.actionLink).toEqual({ kind: "comeback" });
+    expect(insight?.evidence).toContain("2 dormant customers");
+  });
+
+  it("generates a high dormant_customers insight at or above the high-count threshold", () => {
+    const input = baseInput();
+    input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, dormant: 5 }, totalCustomers: 20 };
+
+    const insight = generateBusinessCoaching(input).find((i) => i.key === "dormant_customers");
+    expect(insight?.priority).toBe("high");
+  });
+
+  it("does not generate dormant_customers insight when no customer is dormant", () => {
+    const input = baseInput();
+    input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, vip: 3 }, totalCustomers: 8 };
+
+    expect(generateBusinessCoaching(input).find((i) => i.key === "dormant_customers")).toBeUndefined();
   });
 
   it("generates a service_performance_gap insight only when the conversion gap is large enough", () => {

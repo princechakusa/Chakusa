@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BusinessInsightsDto, ServicePerformanceRowDto } from '../apiTypes';
-import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader } from '../components/ui';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, ServicePerformanceRowDto } from '../apiTypes';
+import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader, StatusBadge } from '../components/ui';
 import { ApiError } from '../services/api';
 import { dashboardApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
@@ -10,6 +10,19 @@ import { RootStackParamList } from '../types';
 import { formatMoney, titleCase } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Insights'>;
+type Navigator = Pick<NativeStackNavigationProp<RootStackParamList>, 'navigate'>;
+
+/** Every actionLink the backend can return maps to a screen that already exists — see businessCoaching.ts's own closed CoachingActionLink type. Nothing here invents a destination. */
+function goToAction(navigation: Navigator, actionLink: CoachingActionLinkDto) {
+  if (actionLink.kind === 'attentionCenter') navigation.navigate('AttentionCenter', { category: actionLink.category });
+  else if (actionLink.kind === 'customerProfile') navigation.navigate('CustomerProfile', { customerId: actionLink.customerId });
+  else if (actionLink.kind === 'comeback') navigation.navigate('Comeback');
+  else if (actionLink.kind === 'businessSettings') navigation.navigate('BusinessSettings');
+  // 'insights' needs no navigation — the insight is already on this screen.
+}
+function priorityTone(priority: CoachingPriority): string {
+  return ({ critical: colors.negative, high: colors.attention, medium: colors.primary, low: colors.textSecondary } as const)[priority];
+}
 
 function monthLabel(month: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(new Date(`${month}-01T00:00:00Z`));
@@ -20,13 +33,17 @@ function pct(value: number | null): string {
 
 export function InsightsScreen({ navigation }: Props) {
   const [insights, setInsights] = useState<BusinessInsightsDto | null>(null);
+  const [coaching, setCoaching] = useState<CoachingInsightDto[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setInsights(await dashboardApi.insights()); }
-    catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to load business insights.'); }
+    try {
+      const [insightsResult, coachingResult] = await Promise.all([dashboardApi.insights(), dashboardApi.coaching()]);
+      setInsights(insightsResult);
+      setCoaching(coachingResult.insights);
+    } catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to load business insights.'); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -41,6 +58,19 @@ export function InsightsScreen({ navigation }: Props) {
 
   return <Screen>
     <AppHeader eyebrow="GROWTH" title="Business Insights" subtitle="How your business is performing, in your own numbers" />
+
+    {coaching && coaching.length > 0 ? <View>
+      <SectionHeader title="Coaching" />
+      <Text style={styles.caption}>Generated entirely from your own numbers above — what it means, why it matters, and what to do about it.</Text>
+      {coaching.map(insight => <View key={insight.key} style={styles.coachingCard}>
+        <View style={styles.coachingHeader}><Text style={styles.coachingTitle}>{insight.title}</Text><StatusBadge label={titleCase(insight.priority)} /></View>
+        <Text style={styles.coachingContext}>{insight.context}</Text>
+        <Text style={styles.coachingBody}>{insight.whyItMatters}</Text>
+        <View style={styles.evidenceList}>{insight.evidence.map(line => <Text key={line} style={styles.evidenceLine}>· {line}</Text>)}</View>
+        <Text style={styles.coachingOutcome}>{insight.expectedOutcome}</Text>
+        {insight.actionLink.kind !== 'insights' ? <Pressable accessibilityRole="button" onPress={() => goToAction(navigation, insight.actionLink)} style={[styles.coachingAction, { borderColor: priorityTone(insight.priority) }]}><Text style={[styles.coachingActionText, { color: priorityTone(insight.priority) }]}>{insight.recommendedAction}</Text></Pressable> : null}
+      </View>)}
+    </View> : null}
 
     <View>
       <SectionHeader title="Growth trend" />
@@ -132,4 +162,14 @@ const styles = StyleSheet.create({
   rowTitle: { ...typography.bodyStrong, color: colors.text },
   rowDetail: { ...typography.caption, color: colors.textSecondary },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  coachingCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs, marginBottom: spacing.sm },
+  coachingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  coachingTitle: { ...typography.bodyStrong, color: colors.text, flex: 1 },
+  coachingContext: { ...typography.body, color: colors.text },
+  coachingBody: { ...typography.caption, color: colors.textSecondary },
+  evidenceList: { gap: 2 },
+  evidenceLine: { ...typography.caption, color: colors.textSecondary },
+  coachingOutcome: { ...typography.caption, color: colors.text, fontStyle: 'italic' },
+  coachingAction: { minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.round, borderWidth: 1, marginTop: spacing.xs },
+  coachingActionText: { ...typography.caption, fontWeight: '700' },
 });

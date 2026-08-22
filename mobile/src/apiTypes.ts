@@ -111,6 +111,26 @@ export interface BusinessInsightsDto {
 }
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity' | 'payment_outstanding';
 export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; customerPhone: string | null; detail: string | null; occurredAt: string; message: string | null; amount: number | null; }
+
+export type CoachingPriority = 'critical' | 'high' | 'medium' | 'low';
+export type CoachingActionLinkDto =
+  | { kind: 'attentionCenter'; category: AttentionCategory }
+  | { kind: 'customerProfile'; customerId: string }
+  | { kind: 'comeback' }
+  | { kind: 'businessSettings' }
+  | { kind: 'insights' };
+export interface CoachingInsightDto {
+  key: string;
+  title: string;
+  context: string;
+  whyItMatters: string;
+  evidence: string[];
+  recommendedAction: string;
+  actionLink: CoachingActionLinkDto;
+  expectedOutcome: string;
+  priority: CoachingPriority;
+}
+export interface BusinessCoachingDto { insights: CoachingInsightDto[]; generatedAt: string; }
 export interface AttentionPageDto { items: AttentionItemDto[]; total: number; page: number; pageSize: number; category: AttentionCategory | null; countsByCategory?: Record<AttentionCategory, number>; }
 
 export interface ApiErrorBody { error: { code: 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | string; message: string; details?: unknown }; }

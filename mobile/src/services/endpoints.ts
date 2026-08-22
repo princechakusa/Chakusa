@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -32,7 +32,7 @@ export const devicesApi = {
   register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),
   remove: (token: string) => api.delete<void>(`/devices/${encodeURIComponent(token)}`),
 };
-export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary'), attention: (category?: AttentionCategory, page = 1, pageSize = 25) => api.get<AttentionPageDto>(`/dashboard/attention${query({ category, page, pageSize })}`), insights: () => api.get<BusinessInsightsDto>('/dashboard/insights') };
+export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary'), attention: (category?: AttentionCategory, page = 1, pageSize = 25) => api.get<AttentionPageDto>(`/dashboard/attention${query({ category, page, pageSize })}`), insights: () => api.get<BusinessInsightsDto>('/dashboard/insights'), coaching: () => api.get<BusinessCoachingDto>('/dashboard/coaching') };
 export const customersApi = {
   list: (search = '', page = 1, pageSize = 100) => api.get<CustomerListResponse>(`/customers${query({ search, page, pageSize })}`),
   create: (body: { name: string; phone?: string; email?: string; notes?: string }) => api.post<CustomerDto>('/customers', body),

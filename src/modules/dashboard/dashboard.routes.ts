@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { getDashboardSummary } from "./dashboard.service.js";
 import { listAttentionItems } from "./attentionCenter.service.js";
 import { getBusinessInsights } from "./insights.service.js";
+import { getBusinessCoaching } from "./coaching.service.js";
 import { listAttentionItemsQuerySchema } from "./dashboard.schemas.js";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
@@ -27,5 +28,13 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
   // use. See insights.service.ts.
   fastify.get("/insights", async (request, reply) => {
     reply.send(await getBusinessInsights(request.businessId!));
+  });
+
+  // AI Business Assistant Foundation — NOT an LLM, NOT conversational.
+  // Purely a deterministic reshaping of the summary/insights endpoints
+  // above into a short, explainable, actionable list. See
+  // businessCoaching.ts and coaching.service.ts.
+  fastify.get("/coaching", async (request, reply) => {
+    reply.send(await getBusinessCoaching(request.businessId!));
   });
 }

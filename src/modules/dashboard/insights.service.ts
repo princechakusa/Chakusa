@@ -30,7 +30,16 @@ function toMonthlyRows(rows: { month: Date; value: unknown }[]): MonthlyMetricRo
   }));
 }
 
-export async function getBusinessInsights(businessId: string) {
+type DashboardSummary = Awaited<ReturnType<typeof getDashboardSummary>>;
+
+/**
+ * `precomputedSummary` lets a caller that has already fetched
+ * getDashboardSummary (e.g. coaching.service.ts, which needs both this and
+ * the summary) pass it in rather than triggering the exact same query set
+ * a second time. Every existing caller (the /insights route) omits it and
+ * gets the original behavior unchanged.
+ */
+export async function getBusinessInsights(businessId: string, precomputedSummary?: DashboardSummary) {
   const now = new Date();
   const months = lastNMonthKeys(TREND_MONTHS, now);
   const windowStart = monthStart(TREND_MONTHS, now);
@@ -55,7 +64,7 @@ export async function getBusinessInsights(businessId: string) {
     customerLastActivityRows,
     missedCallsRecoveredCount,
   ] = await Promise.all([
-    getDashboardSummary(businessId),
+    precomputedSummary ? Promise.resolve(precomputedSummary) : getDashboardSummary(businessId),
 
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', created_at) AS month, COUNT(*) AS value

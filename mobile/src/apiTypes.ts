@@ -45,7 +45,24 @@ export interface ReminderDto { id: string; businessId: string; customerId: strin
 export interface MessageTemplateDto { id: string; businessId: string; templateType: MessageType; name: string; body: string; tone: MessageTone; isDefault: boolean; createdAt: string; updatedAt: string; }
 export interface ActivityEventDto { id: string; eventType: ActivityEventType; entityType: string; entityId: string; metadata: Record<string, unknown> | null; createdAt: string; }
 export type BusinessHealthLabel = 'excellent' | 'good' | 'needs_attention' | 'at_risk';
-export interface DashboardSummaryDto { recoveredRevenue: { total: number; missedCall: number; comebackCompletedCount: number; outstanding: number }; businessHealth: { score: number | null; label: BusinessHealthLabel | null }; leads: { missedCalls: number; new: number; contacted: number; booked: number; won: number; lost: number; total: number; conversionRate: number; contactRate: number }; reviews: { requestsSent: number; reviewsReceived: number; feedbackReceived: number }; customersDue: number; responseTime: { averageSeconds: number | null; sampleSize: number }; recentActivity: ActivityEventDto[]; todayAttentionItems: { type: 'reminder_due'; id: string; customerName: string | null; dueDate: string }[]; generatedAt: string; windowStart: string; }
+export type BusinessHealthFactorKey = 'contactRate' | 'conversionRate' | 'reviewConversion' | 'comebackCompletion' | 'profileCompleteness' | 'paymentCollectionRate';
+export interface BusinessHealthFactorDto { key: BusinessHealthFactorKey; label: string; value: number | null; included: boolean; }
+export interface CustomerNeedingFollowUpDto { customerId: string; customerName: string | null; reason: 'new_lead' | 'comeback_due'; }
+export interface CustomerIntelligenceDto {
+  totalCustomers: number;
+  newCustomersThisPeriod: number;
+  customersWithWonLead: number;
+  returningCustomers: number;
+  repeatCustomerRate: number | null;
+  averageLifetimeValue: number | null;
+  averageRecoveryDays: number | null;
+  needingFollowUp: CustomerNeedingFollowUpDto[];
+  needingFollowUpTotalCount: number;
+  topCustomersByValue: { customerId: string; lifetimeValue: number }[];
+}
+export type RecommendationSeverity = 'info' | 'attention';
+export interface RecommendationDto { key: string; message: string; severity: RecommendationSeverity; }
+export interface DashboardSummaryDto { recoveredRevenue: { total: number; missedCall: number; comebackCompletedCount: number; outstanding: number }; businessHealth: { score: number | null; label: BusinessHealthLabel | null; factors: BusinessHealthFactorDto[] }; customerIntelligence: CustomerIntelligenceDto; recommendations: RecommendationDto[]; leads: { missedCalls: number; new: number; contacted: number; booked: number; won: number; lost: number; total: number; conversionRate: number; contactRate: number }; reviews: { requestsSent: number; reviewsReceived: number; feedbackReceived: number }; customersDue: number; responseTime: { averageSeconds: number | null; sampleSize: number }; recentActivity: ActivityEventDto[]; todayAttentionItems: { type: 'reminder_due'; id: string; customerName: string | null; dueDate: string }[]; generatedAt: string; windowStart: string; }
 export interface CustomerProfileDto { customer: CustomerDto; leads: LeadDto[]; reviewRequests: ReviewRequestDto[]; feedback: FeedbackDto[]; reminders: ReminderDto[]; activity: ActivityEventDto[]; lifetimeValue: number; }
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity';
 export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; detail: string | null; occurredAt: string; }

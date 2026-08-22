@@ -102,7 +102,12 @@ export async function createReviewRequest(
  * a customer already mid-flow on an existing request isn't asked twice in
  * the same campaign.
  */
-async function customersDueForReviewRequest(businessId: string) {
+/**
+ * Exported for reuse by dashboard.service.ts (customer-intelligence
+ * recommendations) — same query, no reason to run it twice with two
+ * separate definitions of "due for a review request."
+ */
+export async function customersDueForReviewRequest(businessId: string) {
   return prisma.customer.findMany({
     where: { businessId, leads: { some: { status: "won" } }, reviewRequests: { none: {} } },
   });

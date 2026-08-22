@@ -20,6 +20,17 @@ describe("dashboard summary", () => {
     await prisma.$disconnect();
   });
 
+  async function createWonLead(token: string, customerId: string, estimatedValue: number) {
+    const created = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { customerId, source: LEAD_SOURCE_MISSED_CALL, estimatedValue },
+    });
+    await app.inject({ method: "POST", url: `/leads/${created.json().id}/mark-won`, headers: authHeader(token) });
+    return created.json().id;
+  }
+
   it("aggregates lead funnel counts and conversion rate", async () => {
     const { token } = await registerAccount(app);
 
@@ -211,5 +222,121 @@ describe("dashboard summary", () => {
 
     expect(summary.json().recoveredRevenue.total).toBe(0);
     expect(summary.json().leads.won).toBe(0);
+  });
+
+  describe("customer intelligence", () => {
+    it("reports total and new-this-month customer counts", async () => {
+      const { token } = await registerAccount(app);
+      await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "Jane" } });
+      await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "John" } });
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+
+      expect(summary.json().customerIntelligence.totalCustomers).toBe(2);
+      expect(summary.json().customerIntelligence.newCustomersThisPeriod).toBe(2);
+    });
+
+    it("computes repeat customer rate and lifetime value from won leads only", async () => {
+      const { token } = await registerAccount(app);
+      const repeatCustomer = await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "Repeat Customer" } });
+      const oneTimeCustomer = await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "One Time" } });
+
+      await createWonLead(token, repeatCustomer.json().id, 100);
+      await createWonLead(token, repeatCustomer.json().id, 150);
+      await createWonLead(token, oneTimeCustomer.json().id, 200);
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+      const intelligence = summary.json().customerIntelligence;
+
+      expect(intelligence.customersWithWonLead).toBe(2);
+      expect(intelligence.returningCustomers).toBe(1);
+      expect(intelligence.repeatCustomerRate).toBeCloseTo(0.5);
+      expect(intelligence.averageLifetimeValue).toBeCloseTo((250 + 200) / 2);
+      expect(intelligence.topCustomersByValue[0]).toMatchObject({ customerId: repeatCustomer.json().id, lifetimeValue: 250 });
+    });
+
+    it("lists customers needing follow-up from new leads and due reminders, without double-counting", async () => {
+      const { token } = await registerAccount(app);
+      const customer = await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "Needs Attention" } });
+
+      await app.inject({
+        method: "POST",
+        url: "/leads",
+        headers: authHeader(token),
+        payload: { customerId: customer.json().id, source: LEAD_SOURCE_MISSED_CALL },
+      });
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+      const intelligence = summary.json().customerIntelligence;
+
+      expect(intelligence.needingFollowUpTotalCount).toBe(1);
+      expect(intelligence.needingFollowUp).toEqual([{ customerId: customer.json().id, customerName: "Needs Attention", reason: "new_lead" }]);
+    });
+
+    it("returns null repeat/lifetime-value metrics for a business with no won leads yet", async () => {
+      const { token } = await registerAccount(app);
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+      const intelligence = summary.json().customerIntelligence;
+
+      expect(intelligence.repeatCustomerRate).toBeNull();
+      expect(intelligence.averageLifetimeValue).toBeNull();
+      expect(intelligence.averageRecoveryDays).toBeNull();
+    });
+  });
+
+  describe("recommendations", () => {
+    it("recommends completing the profile when it is incomplete", async () => {
+      const { token } = await registerAccount(app);
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+
+      expect(summary.json().recommendations.some((r: { key: string }) => r.key === "complete_profile")).toBe(true);
+    });
+
+    it("stops recommending profile completion once every field is filled", async () => {
+      const { token } = await registerAccount(app);
+      await app.inject({
+        method: "PATCH",
+        url: "/business",
+        headers: authHeader(token),
+        payload: {
+          industry: "plumbing",
+          phone: "+263771234567",
+          description: "We fix pipes.",
+          defaultServices: ["Leak repair"],
+          workingHours: { summary: "Mon-Sat, 9-6" },
+          googleReviewLink: "https://g.page/r/example",
+        },
+      });
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+
+      expect(summary.json().recommendations.some((r: { key: string }) => r.key === "complete_profile")).toBe(false);
+    });
+
+    it("recommends collecting outstanding revenue once a won lead is unpaid", async () => {
+      const { token } = await registerAccount(app);
+      await createWonLead(token, (await app.inject({ method: "POST", url: "/customers", headers: authHeader(token), payload: { name: "Unpaid" } })).json().id, 500);
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+
+      expect(summary.json().recommendations.some((r: { key: string }) => r.key === "collect_outstanding_revenue")).toBe(true);
+    });
+  });
+
+  describe("business health explainability", () => {
+    it("includes profileCompleteness and paymentCollectionRate as named factors", async () => {
+      const { token } = await registerAccount(app);
+
+      const summary = await app.inject({ method: "GET", url: "/dashboard/summary", headers: authHeader(token) });
+      const factors = summary.json().businessHealth.factors;
+
+      expect(factors.map((f: { key: string }) => f.key)).toEqual(
+        expect.arrayContaining(["contactRate", "conversionRate", "reviewConversion", "comebackCompletion", "profileCompleteness", "paymentCollectionRate"]),
+      );
+      const profileFactor = factors.find((f: { key: string }) => f.key === "profileCompleteness");
+      expect(profileFactor.included).toBe(true);
+    });
   });
 });

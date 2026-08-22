@@ -77,4 +77,59 @@ describe("computeBusinessHealth", () => {
 
     expect(result.score).toBe(100);
   });
+
+  it("reports every factor, included or not, for explainability", () => {
+    const result = computeBusinessHealth({
+      totalLeads: 10,
+      contactRate: 1,
+      conversionRate: 1,
+      reviewRequestsSent: 0,
+      reviewsReceived: 0,
+      comebackCompletedCount: 0,
+      customersDue: 0,
+    });
+
+    expect(result.factors).toHaveLength(6);
+    const byKey = Object.fromEntries(result.factors.map((f) => [f.key, f]));
+    expect(byKey.contactRate).toMatchObject({ included: true, value: 100 });
+    expect(byKey.conversionRate).toMatchObject({ included: true, value: 100 });
+    expect(byKey.reviewConversion).toMatchObject({ included: false, value: null });
+    expect(byKey.comebackCompletion).toMatchObject({ included: false, value: null });
+    expect(byKey.profileCompleteness).toMatchObject({ included: false, value: null });
+    expect(byKey.paymentCollectionRate).toMatchObject({ included: false, value: null });
+  });
+
+  it("includes profileCompleteness as a component whenever it's provided, unconditionally", () => {
+    const result = computeBusinessHealth({
+      totalLeads: 0,
+      contactRate: 0,
+      conversionRate: 0,
+      reviewRequestsSent: 0,
+      reviewsReceived: 0,
+      comebackCompletedCount: 0,
+      customersDue: 0,
+      profileCompleteness: 0.5,
+    });
+
+    // Unlike lead/review/comeback ratios, profile completeness is always
+    // meaningful — even a brand-new business's profile is either complete
+    // or not — so a business with zero activity but a half-finished
+    // profile gets a real score, not null.
+    expect(result.score).toBe(50);
+    expect(result.label).toBe("needs_attention");
+  });
+
+  it("includes paymentCollectionRate only when it isn't null", () => {
+    const withData = computeBusinessHealth({
+      totalLeads: 0, contactRate: 0, conversionRate: 0, reviewRequestsSent: 0, reviewsReceived: 0, comebackCompletedCount: 0, customersDue: 0,
+      paymentCollectionRate: 0.75,
+    });
+    expect(withData.score).toBe(75);
+
+    const withoutData = computeBusinessHealth({
+      totalLeads: 0, contactRate: 0, conversionRate: 0, reviewRequestsSent: 0, reviewsReceived: 0, comebackCompletedCount: 0, customersDue: 0,
+      paymentCollectionRate: null,
+    });
+    expect(withoutData.score).toBeNull();
+  });
 });

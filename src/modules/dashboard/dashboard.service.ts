@@ -2,6 +2,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
 import { computeBusinessHealth } from "../../lib/businessHealth.js";
+import { computeBusinessProfileCompleteness } from "../../lib/businessProfileCompleteness.js";
+import { computeCustomerIntelligence, type CustomerNeedingFollowUp } from "../../lib/customerIntelligence.js";
+import { generateRecommendations } from "../../lib/recommendations.js";
+import { customersDueForReviewRequest } from "../reviews/reviews.service.js";
+import { startOfCurrentUtcMonth } from "../../lib/entitlements.js";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -34,6 +39,21 @@ async function getAverageResponseTime(businessId: string): Promise<{ averageSeco
   };
 }
 
+/** Sum of (won_at - created_at) in days across won leads with both timestamps, and the sample it's averaged over — SQL-side for the same scale reason as getAverageResponseTime. */
+async function getRecoveryDaysAggregate(businessId: string): Promise<{ totalDays: number; sampleSize: number }> {
+  const rows = await prisma.$queryRaw<{ total_days: number | null; sample_size: bigint }[]>(Prisma.sql`
+    SELECT
+      SUM(EXTRACT(EPOCH FROM (won_at - created_at)) / 86400) AS total_days,
+      COUNT(*) AS sample_size
+    FROM leads
+    WHERE business_id = ${businessId}
+      AND status = 'won'
+      AND won_at IS NOT NULL
+  `);
+  const row = rows[0];
+  return { totalDays: row?.total_days != null ? Number(row.total_days) : 0, sampleSize: row ? Number(row.sample_size) : 0 };
+}
+
 export async function getDashboardSummary(businessId: string) {
   const today = startOfDay(new Date());
 
@@ -55,6 +75,14 @@ export async function getDashboardSummary(businessId: string) {
     missedCallRecoveredAggregate,
     comebackWonReminders,
     outstandingRevenueRows,
+    business,
+    totalCustomers,
+    newCustomersThisPeriod,
+    wonLeadCountRows,
+    recoveryDays,
+    newLeadCustomers,
+    dueReminderCustomers,
+    customersDueForReview,
   ] = await Promise.all([
     prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL } }),
     prisma.lead.count({ where: { businessId, status: "new" } }),
@@ -108,6 +136,33 @@ export async function getDashboardSummary(businessId: string) {
         AND payment_status != 'paid'
         AND estimated_value IS NOT NULL
     `),
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: { industry: true, phone: true, description: true, defaultServices: true, workingHours: true, googleReviewLink: true },
+    }),
+    prisma.customer.count({ where: { businessId } }),
+    prisma.customer.count({ where: { businessId, createdAt: { gte: startOfCurrentUtcMonth() } } }),
+    prisma.lead.groupBy({
+      by: ["customerId"],
+      where: { businessId, status: "won", customerId: { not: null } },
+      _count: { _all: true },
+      _sum: { estimatedValue: true },
+    }),
+    getRecoveryDaysAggregate(businessId),
+    // "Needing follow-up" — a customer with a new (never-contacted) lead.
+    // distinct() keeps this a customer-level list even if a customer
+    // somehow has more than one new lead at once.
+    prisma.lead.findMany({
+      where: { businessId, status: "new", customerId: { not: null } },
+      select: { customerId: true, customer: { select: { name: true } } },
+      distinct: ["customerId"],
+    }),
+    prisma.reminder.findMany({
+      where: { businessId, status: "due", dueDate: { lte: new Date() }, customerId: { not: null } },
+      select: { customerId: true, customer: { select: { name: true } } },
+      distinct: ["customerId"],
+    }),
+    customersDueForReviewRequest(businessId),
   ]);
 
   const totalLeads = newLeads + contactedLeads + bookedLeads + wonLeads + lostLeads;
@@ -121,6 +176,20 @@ export async function getDashboardSummary(businessId: string) {
   const missedCallRecoveredRevenue = Number(missedCallRecoveredAggregate._sum.estimatedValue ?? 0);
   const outstandingRevenue = Number(outstandingRevenueRows[0]?.outstanding ?? 0);
 
+  const workingHoursSummary = (() => {
+    const summary = (business?.workingHours as Record<string, unknown> | null)?.summary;
+    return typeof summary === "string" ? summary : null;
+  })();
+  const profileCompleteness = computeBusinessProfileCompleteness({
+    industry: business?.industry ?? null,
+    phone: business?.phone ?? null,
+    description: business?.description ?? null,
+    defaultServices: business?.defaultServices ?? null,
+    workingHoursSummary: workingHoursSummary,
+    googleReviewLink: business?.googleReviewLink ?? null,
+  });
+  const paymentCollectionRate = totalRecoveredRevenue > 0 ? (totalRecoveredRevenue - outstandingRevenue) / totalRecoveredRevenue : null;
+
   const businessHealth = computeBusinessHealth({
     totalLeads,
     contactRate,
@@ -129,6 +198,46 @@ export async function getDashboardSummary(businessId: string) {
     reviewsReceived,
     comebackCompletedCount: comebackWonReminders,
     customersDue,
+    profileCompleteness,
+    paymentCollectionRate,
+  });
+
+  // A customer with both a new lead AND a due reminder is merged into one
+  // entry (new_lead takes priority as the more time-sensitive reason) —
+  // this is a customer-level list, never double-counting the same person.
+  const needingFollowUpMap = new Map<string, CustomerNeedingFollowUp>();
+  for (const lead of newLeadCustomers) {
+    if (!lead.customerId) continue;
+    needingFollowUpMap.set(lead.customerId, { customerId: lead.customerId, customerName: lead.customer?.name ?? null, reason: "new_lead" });
+  }
+  for (const reminder of dueReminderCustomers) {
+    if (!reminder.customerId || needingFollowUpMap.has(reminder.customerId)) continue;
+    needingFollowUpMap.set(reminder.customerId, { customerId: reminder.customerId, customerName: reminder.customer?.name ?? null, reason: "comeback_due" });
+  }
+  const needingFollowUpAll = [...needingFollowUpMap.values()];
+
+  const customerIntelligence = computeCustomerIntelligence({
+    totalCustomers,
+    newCustomersThisPeriod,
+    wonLeadCountsByCustomer: wonLeadCountRows
+      .filter((row): row is typeof row & { customerId: string } => row.customerId != null)
+      .map((row) => ({
+        customerId: row.customerId,
+        wonLeadCount: row._count._all,
+        lifetimeValue: Number(row._sum.estimatedValue ?? 0),
+      })),
+    recoveryDaysTotal: recoveryDays.totalDays,
+    recoveryDaysSampleSize: recoveryDays.sampleSize,
+    needingFollowUp: needingFollowUpAll.slice(0, 8),
+    needingFollowUpTotalCount: needingFollowUpAll.length,
+  });
+
+  const recommendations = generateRecommendations({
+    needingFollowUpCount: needingFollowUpAll.length,
+    customersDueForReviewRequestCount: customersDueForReview.length,
+    outstandingRevenue,
+    customersDue,
+    profileCompleteness,
   });
 
   const attentionItems = [
@@ -176,6 +285,8 @@ export async function getDashboardSummary(businessId: string) {
     recentActivity,
     todayAttentionItems: attentionItems,
     businessHealth,
+    customerIntelligence,
+    recommendations,
     generatedAt: new Date(),
     windowStart: today,
   };

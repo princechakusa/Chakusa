@@ -35,7 +35,7 @@ export interface PublicTeamInvitationDto { state: 'open' | 'accepted' | 'expired
 export interface CustomerDto { id: string; businessId: string; name: string; phone: string | null; email: string | null; notes: string | null; createdAt: string; updatedAt: string; }
 export interface CustomerListResponse { items: CustomerDto[]; total: number; page: number; pageSize: number; }
 export interface BulkImportCustomersResultDto { created: { id: string; name: string }[]; skipped: { name: string; reason: 'duplicate_phone' | 'limit_reached' }[]; failed: { name: string; reason: string }[]; }
-export interface MessageDto { id: string; body: string; status: MessageStatus; channel: MessageChannel; sentAt: string | null; createdAt: string; }
+export interface MessageDto { id: string; body: string; status: MessageStatus; channel: MessageChannel; messageType?: MessageType; automationRunId?: string | null; sentAt: string | null; createdAt: string; }
 export type LeadPaymentStatus = 'unpaid' | 'partially_paid' | 'paid';
 export interface LeadDto { id: string; businessId: string; customerId: string | null; source: string | null; missedCallTime: string | null; serviceRequested: string | null; urgency: LeadUrgency; status: LeadStatus; estimatedValue: string | number | null; paymentStatus: LeadPaymentStatus; paidAmount: string | number | null; notes: string | null; generatedReply: string | null; contactedAt: string | null; bookedAt: string | null; wonAt: string | null; lostAt: string | null; createdAt: string; updatedAt: string; responseTimeSeconds?: number | null; customer?: CustomerDto | null; messages?: MessageDto[]; referredByCustomerId?: string | null; referredBy?: CustomerDto | null; }
 export interface LeadListResponse { items: LeadDto[]; total: number; page: number; pageSize: number; }
@@ -44,6 +44,16 @@ export interface FeedbackDto { id: string; businessId: string; customerId: strin
 export interface ReminderDto { id: string; businessId: string; customerId: string | null; serviceName: string | null; lastVisitDate: string | null; dueDate: string; message: string | null; status: ReminderStatus; isDueNow: boolean; createdAt: string; updatedAt: string; customer?: CustomerDto | null; }
 export interface MessageTemplateDto { id: string; businessId: string; templateType: MessageType; name: string; body: string; tone: MessageTone; isDefault: boolean; createdAt: string; updatedAt: string; }
 export interface ActivityEventDto { id: string; eventType: ActivityEventType; entityType: string; entityId: string; metadata: Record<string, unknown> | null; createdAt: string; }
+
+// Conversation & Communication Center (Stage 9)
+export type CommunicationEventKind = 'lead_created' | 'missed_call_recovered' | 'follow_up_manual' | 'follow_up_automated' | 'review_requested' | 'review_completed' | 'reminder_created' | 'reminder_completed' | 'payment_recorded';
+export type CommunicationFilter = 'needs_action' | 'automated' | 'manual' | 'reviews' | 'payments' | 'recovery';
+export type CommunicationTone = 'default' | 'success' | 'attention';
+export type CommunicationTimelineSource = { type: 'lead'; leadId: string } | { type: 'reviewRequest'; reviewRequestId: string } | { type: 'reminder' } | { type: 'message' };
+export interface CommunicationTimelineEntryDto { id: string; kind: CommunicationEventKind; at: string; title: string; detail: string | null; tone: CommunicationTone; filters: CommunicationFilter[]; source: CommunicationTimelineSource; }
+export type CommunicationStatus = 'waiting_for_follow_up' | 'waiting_for_review' | 'reminder_scheduled' | 'payment_outstanding' | 'customer_returned' | 'dormant';
+export type CustomerCoachingQuickAction = 'recordPayment' | 'createReminder' | 'requestReview';
+export interface CustomerCoachingHighlightDto { title: string; evidence: string[]; recommendedAction: string; quickAction: CustomerCoachingQuickAction; }
 export type BusinessHealthLabel = 'excellent' | 'good' | 'needs_attention' | 'at_risk';
 export type BusinessHealthFactorKey = 'contactRate' | 'conversionRate' | 'reviewConversion' | 'comebackCompletion' | 'profileCompleteness' | 'paymentCollectionRate';
 export interface BusinessHealthFactorDto { key: BusinessHealthFactorKey; label: string; value: number | null; included: boolean; }
@@ -63,7 +73,20 @@ export interface CustomerIntelligenceDto {
 export type RecommendationSeverity = 'info' | 'attention';
 export interface RecommendationDto { key: string; message: string; severity: RecommendationSeverity; }
 export interface DashboardSummaryDto { recoveredRevenue: { total: number; missedCall: number; comebackCompletedCount: number; outstanding: number }; businessHealth: { score: number | null; label: BusinessHealthLabel | null; factors: BusinessHealthFactorDto[] }; customerIntelligence: CustomerIntelligenceDto; recommendations: RecommendationDto[]; leads: { missedCalls: number; new: number; contacted: number; booked: number; won: number; lost: number; total: number; conversionRate: number; contactRate: number }; reviews: { requestsSent: number; reviewsReceived: number; feedbackReceived: number }; customersDue: number; responseTime: { averageSeconds: number | null; sampleSize: number }; recentActivity: ActivityEventDto[]; todayAttentionItems: { type: 'reminder_due'; id: string; customerName: string | null; dueDate: string }[]; generatedAt: string; windowStart: string; }
-export interface CustomerProfileDto { customer: CustomerDto; leads: LeadDto[]; reviewRequests: ReviewRequestDto[]; feedback: FeedbackDto[]; reminders: ReminderDto[]; activity: ActivityEventDto[]; lifetimeValue: number; }
+export interface CustomerProfileDto {
+  customer: CustomerDto;
+  leads: LeadDto[];
+  reviewRequests: ReviewRequestDto[];
+  feedback: FeedbackDto[];
+  reminders: ReminderDto[];
+  activity: ActivityEventDto[];
+  messages: MessageDto[];
+  lifetimeValue: number;
+  lifecycleStage: CustomerLifecycleStage;
+  communicationStatuses: CommunicationStatus[];
+  communicationTimeline: CommunicationTimelineEntryDto[];
+  assistantHighlight: CustomerCoachingHighlightDto | null;
+}
 
 export interface MonthlyTrendPointDto {
   month: string;

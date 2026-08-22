@@ -445,6 +445,12 @@ model Business {
   timezone         String?
   currency         String?
   googleReviewLink String?     @map("google_review_link")
+  // Shown on the public business profile page (see publicSlug below) as a
+  // short "about this business" summary — distinct from `industry` (a
+  // category) and `defaultServices` (a list), this is free-text the owner
+  // writes in their own words. Never required; the public page renders
+  // fine without it.
+  description      String?
   workingHours     Json?       @map("working_hours")
   defaultServices  Json?       @map("default_services")
   reminderDays     Int         @default(42) @map("reminder_days")

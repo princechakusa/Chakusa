@@ -26,6 +26,10 @@ export const updateBusinessSchema = z.object({
   timezone: timezoneSchema.optional(),
   currency: currencySchema.optional(),
   googleReviewLink: z.string().url().optional(),
+  // Shown on the public business profile page — what a prospective
+  // customer reads before deciding to reach out. Capped well short of a
+  // full "about us" essay; this is a page summary, not a blog post.
+  description: z.string().trim().max(500, "Description must be 500 characters or fewer").optional(),
   workingHours: z.record(z.string(), z.unknown()).optional(),
   defaultServices: z.array(z.string()).optional(),
   reminderDays: z.number().int().positive().optional(),

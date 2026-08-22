@@ -57,6 +57,44 @@ describe("public business profile", () => {
     });
   });
 
+  it("3b. exposes a business's description on the public profile", async () => {
+    const { businessId, token } = await registerAccount(app, { businessName: "Sparkle Clean" });
+    await app.inject({
+      method: "PATCH",
+      url: "/business",
+      headers: authHeader(token),
+      payload: { description: "Family-run cleaning service serving the whole city since 2015." },
+    });
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+
+    const response = await app.inject({ method: "GET", url: `/public/business/${business.publicSlug}` });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().description).toBe("Family-run cleaning service serving the whole city since 2015.");
+  });
+
+  it("3c. returns null description when none has been set", async () => {
+    const { businessId } = await registerAccount(app, { businessName: "No Description Co" });
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+
+    const response = await app.inject({ method: "GET", url: `/public/business/${business.publicSlug}` });
+
+    expect(response.json().description).toBeNull();
+  });
+
+  it("3d. rejects a description longer than 500 characters", async () => {
+    const { token } = await registerAccount(app);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/business",
+      headers: authHeader(token),
+      payload: { description: "x".repeat(501) },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("4. returns a generic 404 for an unknown slug", async () => {
     const response = await app.inject({ method: "GET", url: "/public/business/does-not-exist" });
 

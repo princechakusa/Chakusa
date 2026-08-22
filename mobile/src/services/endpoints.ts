@@ -26,7 +26,7 @@ export const authApi = {
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
   get: () => api.get<BusinessDto>('/business'),
-  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'phone' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
 };
 export const devicesApi = {
   register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),

@@ -76,6 +76,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
         timezone: input.timezone,
         currency: input.currency,
         googleReviewLink: input.googleReviewLink,
+        description: input.description,
         workingHours: input.workingHours as Prisma.InputJsonValue | undefined,
         defaultServices: input.defaultServices as Prisma.InputJsonValue | undefined,
         reminderDays: input.reminderDays,

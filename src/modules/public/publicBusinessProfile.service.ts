@@ -15,6 +15,7 @@ export interface PublicBusinessProfile {
   name: string;
   industry: string | null;
   phone: string | null;
+  description: string | null;
   googleReviewLink: string | null;
   workingHours: Record<string, unknown> | null;
   defaultServices: string[] | null;
@@ -32,6 +33,7 @@ function serializePublicBusinessProfile(business: Business): PublicBusinessProfi
     name: business.name,
     industry: business.industry,
     phone: business.phone,
+    description: business.description,
     googleReviewLink: business.googleReviewLink,
     workingHours: (business.workingHours as Record<string, unknown> | null) ?? null,
     defaultServices: (business.defaultServices as string[] | null) ?? null,

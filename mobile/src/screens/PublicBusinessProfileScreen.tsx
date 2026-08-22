@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { canSubmitContact, errorViewState, PublicBusinessProfileViewState, workingHoursSummary } from '../domain/publicBusinessProfile';
+import { canSubmitContact, errorViewState, publicProfileShareMessage, publicProfileWhatsAppGreeting, PublicBusinessProfileViewState, workingHoursSummary } from '../domain/publicBusinessProfile';
 import { ApiError } from '../services/api';
+import { openCall, openWhatsApp } from '../services/messaging';
 import { publicBusinessProfileApi } from '../services/publicBusinessProfile';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 
@@ -21,6 +22,24 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     catch (error) { setView(errorViewState(error instanceof ApiError ? error.kind : 'network')); }
   }, [slug]);
   useEffect(() => { void load(); }, [load]);
+
+  const details = view.kind === 'loaded' || view.kind === 'submitting' || view.kind === 'submitted' ? view.details : null;
+
+  // Best-effort: a real browser tab gets the business's name and a
+  // description-derived summary, matching PublicDocumentScreen's
+  // document.title pattern. This does not help a non-JS-executing social
+  // link-preview crawler (WhatsApp, Facebook) render a rich card — that
+  // needs server-rendered Open Graph meta tags, which this Expo-web page
+  // cannot produce on its own. Real browsers and JS-executing crawlers
+  // (e.g. Googlebot) still benefit.
+  useEffect(() => {
+    if (typeof document === 'undefined' || !details) return;
+    document.title = `${details.name} | Chakusa`;
+    const description = details.description ?? `Contact ${details.name} on Chakusa.`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
+    meta.setAttribute('content', description);
+  }, [details]);
 
   const submit = async () => {
     if (!slug || view.kind !== 'loaded' || !canSubmitContact(view, name, phone)) return;
@@ -46,8 +65,11 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     }
   };
 
-  const details = view.kind === 'loaded' || view.kind === 'submitting' || view.kind === 'submitted' ? view.details : null;
   const hours = details ? workingHoursSummary(details.workingHours) : null;
+  const shareProfile = async () => {
+    if (typeof window === 'undefined' || !details) return;
+    try { await Share.share({ message: publicProfileShareMessage(details.name, window.location.href) }); } catch { /* dismissed */ }
+  };
 
   return <SafeAreaView style={styles.page}><View style={styles.shell}><Text style={styles.brand}>CHAKUSA</Text><View style={styles.card} accessibilityLiveRegion="polite">
     {view.kind === 'loading' ? <State icon="hourglass-outline" title="Loading business page…"><ActivityIndicator color={colors.primary} accessibilityLabel="Loading business page" /></State> : null}
@@ -57,9 +79,19 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     {details && (view.kind === 'loaded' || view.kind === 'submitting') ? <View style={styles.form}>
       <Text style={styles.business}>{details.name}</Text>
       {details.industry ? <Text style={styles.service}>{details.industry}</Text> : null}
-      {hours ? <Row icon="time-outline" text={hours} /> : null}
-      {details.phone ? <Row icon="call-outline" text={details.phone} /> : null}
-      {details.defaultServices && details.defaultServices.length > 0 ? <Text style={styles.services}>{details.defaultServices.join(' · ')}</Text> : null}
+      {details.description ? <Text style={styles.description}>{details.description}</Text> : null}
+      <View style={styles.infoRows}>
+        {hours ? <Row icon="time-outline" text={hours} /> : null}
+        {details.phone ? <Row icon="call-outline" text={details.phone} /> : null}
+      </View>
+      {details.defaultServices && details.defaultServices.length > 0 ? <View style={styles.serviceChips}>{details.defaultServices.map(service => <View key={service} style={styles.serviceChip}><Text style={styles.serviceChipText}>{service}</Text></View>)}</View> : null}
+
+      {details.phone ? <View style={styles.contactActions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Call ${details.name}`} onPress={() => void openCall(details.phone!)} style={styles.contactButton}><Ionicons color={colors.text} name="call" size={18} /><Text style={styles.contactButtonText}>Call</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Message ${details.name} on WhatsApp`} onPress={() => void openWhatsApp(details.phone!, publicProfileWhatsAppGreeting(details.name))} style={[styles.contactButton, styles.contactButtonWhatsApp]}><Ionicons color={colors.surface} name="logo-whatsapp" size={18} /><Text style={[styles.contactButtonText, styles.contactButtonTextWhatsApp]}>WhatsApp</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Share this business page" onPress={() => void shareProfile()} style={styles.contactButton}><Ionicons color={colors.text} name="share-social-outline" size={18} /><Text style={styles.contactButtonText}>Share</Text></Pressable>
+      </View> : null}
+
       <Text style={styles.title}>Get in touch</Text>
       <Text style={styles.label}>Your name</Text><TextInput accessibilityLabel="Your name" editable={view.kind !== 'submitting'} onChangeText={setName} placeholder="Full name" placeholderTextColor={colors.tabInactive} style={styles.textInput} value={name} />
       <Text style={styles.label}>Phone number</Text><TextInput accessibilityLabel="Your phone number" editable={view.kind !== 'submitting'} keyboardType="phone-pad" onChangeText={setPhone} placeholder="e.g. 0771234567" placeholderTextColor={colors.tabInactive} style={styles.textInput} value={phone} />
@@ -74,4 +106,13 @@ function State({ icon, title, body, children }: { icon: keyof typeof Ionicons.gl
 function Row({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) { return <View style={styles.row}><Ionicons name={icon} size={16} color={colors.textSecondary} /><Text style={styles.rowText}>{text}</Text></View>; }
 function Action({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) { const [focused, setFocused] = useState(false); return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onBlur={() => setFocused(false)} onFocus={() => setFocused(true)} onPress={onPress} style={({ pressed }) => [styles.action, disabled && styles.disabled, focused && styles.focused, pressed && styles.pressed]}><Text style={styles.actionText}>{label}</Text></Pressable>; }
 
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: colors.background }, shell: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center', justifyContent: 'center', padding: spacing.lg }, brand: { ...typography.micro, color: colors.primary, letterSpacing: 2, textAlign: 'center', marginBottom: spacing.md }, card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xxl, ...shadows.card }, form: { gap: spacing.md }, state: { alignItems: 'center', gap: spacing.md }, business: { ...typography.heading, color: colors.text, textAlign: 'center' }, service: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' }, services: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' }, row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, rowText: { ...typography.caption, color: colors.textSecondary }, title: { ...typography.title, color: colors.text, textAlign: 'center', marginTop: spacing.sm }, body: { ...typography.body, color: colors.textSecondary, textAlign: 'center' }, label: { ...typography.caption, color: colors.text }, optional: { color: colors.textSecondary }, textInput: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, color: colors.text, ...typography.body }, input: { minHeight: 116, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, color: colors.text, ...typography.body, textAlignVertical: 'top' }, action: { minHeight: 52, backgroundColor: colors.primary, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg }, actionText: { ...typography.bodyStrong, color: colors.surface }, disabled: { opacity: 0.45 }, focused: { outlineStyle: 'solid', outlineWidth: 3, outlineColor: colors.primary }, pressed: { opacity: 0.72 }, footer: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.lg } });
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: colors.background }, shell: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center', justifyContent: 'center', padding: spacing.lg }, brand: { ...typography.micro, color: colors.primary, letterSpacing: 2, textAlign: 'center', marginBottom: spacing.md }, card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xxl, ...shadows.card }, form: { gap: spacing.md }, state: { alignItems: 'center', gap: spacing.md },
+  business: { ...typography.heading, color: colors.text, textAlign: 'center' }, service: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 }, description: { ...typography.body, color: colors.text, textAlign: 'center', marginTop: spacing.xs },
+  infoRows: { alignItems: 'center', gap: spacing.xxs, marginTop: spacing.xs }, row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }, rowText: { ...typography.caption, color: colors.textSecondary },
+  serviceChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs, marginTop: spacing.xs }, serviceChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.round, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }, serviceChipText: { ...typography.caption, color: colors.text },
+  contactActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }, contactButton: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, contactButtonText: { ...typography.caption, color: colors.text, fontWeight: '700' }, contactButtonWhatsApp: { backgroundColor: '#25D366', borderColor: '#25D366' }, contactButtonTextWhatsApp: { color: colors.surface },
+  title: { ...typography.title, color: colors.text, textAlign: 'center', marginTop: spacing.sm }, body: { ...typography.body, color: colors.textSecondary, textAlign: 'center' }, label: { ...typography.caption, color: colors.text }, optional: { color: colors.textSecondary },
+  textInput: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, color: colors.text, ...typography.body }, input: { minHeight: 116, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, color: colors.text, ...typography.body, textAlignVertical: 'top' },
+  action: { minHeight: 52, backgroundColor: colors.primary, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg }, actionText: { ...typography.bodyStrong, color: colors.surface }, disabled: { opacity: 0.45 }, focused: { outlineStyle: 'solid', outlineWidth: 3, outlineColor: colors.primary }, pressed: { opacity: 0.72 }, footer: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.lg },
+});

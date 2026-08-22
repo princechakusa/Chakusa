@@ -2,7 +2,7 @@ import { prisma } from "../prisma.js";
 import { isEntitled } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
-import { renderMissedCallFollowUp } from "../messageRendering.js";
+import { renderLeadFollowUpMessage } from "../messageRendering.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
 import type { MessagingProvider } from "../messaging/messagingProvider.js";
 import type { AutomationRun } from "@prisma/client";
@@ -200,7 +200,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
     if (optOut) return cancelRun(run.id, "Customer has opted out of SMS");
 
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
-    const body = await renderMissedCallFollowUp(business, lead, customer);
+    const { body, messageType } = await renderLeadFollowUpMessage(business, lead, customer);
     const countryCode = parsePhoneNumber(customer.phoneE164).country ?? "ZZ";
 
     const result = await sendOutboundMessage(
@@ -219,7 +219,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
             customerId: customer.id,
             leadId: lead.id,
             automationRunId: run.id,
-            messageType: "missed_call",
+            messageType,
             channel: "sms",
             body,
             status: "sent",
@@ -252,7 +252,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
             customerId: customer.id,
             leadId: lead.id,
             automationRunId: run.id,
-            messageType: "missed_call",
+            messageType,
             channel: "sms",
             body,
             status: "failed",

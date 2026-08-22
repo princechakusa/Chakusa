@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
-import { renderMissedCallFollowUp } from "../../lib/messageRendering.js";
+import { renderLeadFollowUpMessage } from "../../lib/messageRendering.js";
 import { notifyLeadCreated } from "../../lib/notifications/notificationTriggers.js";
 import { scheduleMissedCallFollowUp } from "../../lib/automation/scheduler.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../../lib/leadSources.js";
@@ -245,7 +245,7 @@ export async function generateLeadMessage(businessId: string, leadId: string) {
 
   const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
 
-  const rendered = await renderMissedCallFollowUp(business, lead, lead.customer);
+  const { body: rendered } = await renderLeadFollowUpMessage(business, lead, lead.customer);
 
   await prisma.lead.update({ where: { id: leadId }, data: { generatedReply: rendered } });
 

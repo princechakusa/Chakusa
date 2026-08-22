@@ -57,6 +57,45 @@ describe("message templates", () => {
     expect(generated.json().message).toBe("Yo Alex, Sparkle Clean here, we missed you!");
   });
 
+  it("accepts and uses a custom public_profile_inquiry template over the built-in default", async () => {
+    const { token } = await registerAccount(app, { businessName: "Sparkle Clean" });
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/message-templates",
+      headers: authHeader(token),
+      payload: {
+        templateType: "public_profile_inquiry",
+        name: "Custom inquiry reply",
+        body: "Hey {{customer_name}}, {{business_name}} got your message!",
+        isDefault: true,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+
+    const customer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(token),
+      payload: { name: "Alex" },
+    });
+
+    const lead = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { customerId: customer.json().id, source: "public_profile" },
+    });
+
+    const generated = await app.inject({
+      method: "POST",
+      url: `/leads/${lead.json().id}/generate-message`,
+      headers: authHeader(token),
+    });
+
+    expect(generated.json().message).toBe("Hey Alex, Sparkle Clean got your message!");
+  });
+
   it("unsets the previous default when a new default of the same type is created", async () => {
     const { token, businessId } = await registerAccount(app);
     // PRO — this test isolates the isDefault demotion mechanic from the

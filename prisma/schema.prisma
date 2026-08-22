@@ -118,6 +118,13 @@ enum MessageType {
   private_feedback
   comeback_reminder
   custom
+  // Automated follow-up for a lead submitted through a business's public
+  // profile contact form (src/modules/public/publicBusinessProfile.service.ts)
+  // — distinct from missed_call because the copy is wrong otherwise ("sorry
+  // we missed your call" makes no sense for a customer who just proactively
+  // reached out). See src/lib/leadSources.ts for the automation-eligibility
+  // gate this template type is paired with.
+  public_profile_inquiry
 }
 
 enum MessageChannel {

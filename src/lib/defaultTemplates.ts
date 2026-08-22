@@ -12,6 +12,8 @@ export const DEFAULT_TEMPLATE_BODIES: Record<MessageType, string> = {
   comeback_reminder:
     "Hi {{customer_name}}, it's been a while since your last {{service_name}} at {{business_name}}. Ready to book again?",
   custom: "Hi {{customer_name}}, this is {{business_name}}.",
+  public_profile_inquiry:
+    "Hi {{customer_name}}, thanks for reaching out to {{business_name}} about your {{service_name}}! We'll get back to you shortly — feel free to call us at {{phone_number}} in the meantime.",
 };
 
 // Industry-aware overrides. Only industries with a meaningfully different

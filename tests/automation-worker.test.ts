@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createTestApp, resetDatabase, registerAccount, authHeader, setPlan, setSubscriptionStatus } from "./helpers.js";
 import { prisma } from "../src/lib/prisma.js";
-import { LEAD_SOURCE_MISSED_CALL } from "../src/lib/leadSources.js";
+import { LEAD_SOURCE_MISSED_CALL, LEAD_SOURCE_PUBLIC_PROFILE } from "../src/lib/leadSources.js";
 import { createAutomationRule } from "../src/modules/automation/automation.service.js";
 import { scheduleMissedCallFollowUp } from "../src/lib/automation/scheduler.js";
 import { buildLeadCreatedDedupeKey } from "../src/lib/automation/dedupeKey.js";
@@ -420,6 +420,40 @@ describe("automation execution engine (Phase 4)", () => {
       providerMessageId: "SM-auto-1",
     });
     expect(message.sentAt).not.toBeNull();
+  });
+
+  it("17b. schedules automation for a public_profile lead and sends public_profile_inquiry wording, not missed-call wording", async () => {
+    const { token, businessId } = await registerAccount(app, { businessName: "Fresh Cuts" });
+    await setPlan(businessId, "PRO");
+    await makeEnabledRule(businessId, 0);
+
+    const customerResponse = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(token),
+      payload: { name: "Sam", phone: "+263771234567" },
+    });
+    const customerId = customerResponse.json().id;
+
+    const leadResponse = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { customerId, source: LEAD_SOURCE_PUBLIC_PROFILE, serviceRequested: "hair coloring" },
+    });
+
+    const run = await prisma.automationRun.findFirstOrThrow({ where: { businessId, leadId: leadResponse.json().id } });
+    await forceRunning(run.id);
+    const { provider, calls } = makeFakeProvider(async () => ({ accepted: true, providerMessageId: "SM-public-profile-1", permanentFailure: false }));
+
+    await executeAutomationRun({ ...run, status: "RUNNING" }, provider);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.body).toContain("thanks for reaching out");
+    expect(calls[0]!.body).not.toContain("missed your call");
+
+    const message = await prisma.message.findFirstOrThrow({ where: { businessId } });
+    expect(message.messageType).toBe("public_profile_inquiry");
   });
 
   it("18. completes the AutomationRun on a successful send", async () => {

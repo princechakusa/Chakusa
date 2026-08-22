@@ -148,6 +148,34 @@ describe("leads", () => {
     expect(generated.json().message).toContain("hair coloring");
   });
 
+  it("generates public-profile-inquiry wording (not missed-call wording) for a public_profile lead", async () => {
+    const { token } = await registerAccount(app, { businessName: "Fresh Cuts" });
+
+    const customer = await app.inject({
+      method: "POST",
+      url: "/customers",
+      headers: authHeader(token),
+      payload: { name: "Sam" },
+    });
+
+    const lead = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: authHeader(token),
+      payload: { customerId: customer.json().id, source: "public_profile", serviceRequested: "hair coloring" },
+    });
+
+    const generated = await app.inject({
+      method: "POST",
+      url: `/leads/${lead.json().id}/generate-message`,
+      headers: authHeader(token),
+    });
+
+    expect(generated.statusCode).toBe(200);
+    expect(generated.json().message).toContain("thanks for reaching out");
+    expect(generated.json().message).not.toContain("missed your call");
+  });
+
   it("filters the lead list by status", async () => {
     const { token } = await registerAccount(app);
 

@@ -116,7 +116,7 @@ export function DashboardScreen() {
     </View> : null}
 
     {dashboard.recommendations.length ? <View style={styles.recommendations}>
-      {dashboard.recommendations.map(item => <View key={item.key} style={styles.recommendationRow}><View style={[styles.recommendationDot, item.severity === 'attention' && styles.recommendationDotAttention]} /><Text style={styles.recommendationText}>{item.message}</Text></View>)}
+      {dashboard.recommendations.map(item => <Pressable accessibilityRole="button" key={item.key} onPress={() => goToRecommendation(navigation, item.key)} style={styles.recommendationRow}><View style={[styles.recommendationDot, item.severity === 'attention' && styles.recommendationDotAttention]} /><Text style={styles.recommendationText}>{item.message}</Text><Ionicons color={colors.tabInactive} name="chevron-forward" size={16} /></Pressable>)}
     </View> : null}
 
     <View>
@@ -146,6 +146,12 @@ function ActionRow({ icon, color, title, detail, action, onPress }: { icon: keyo
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.actionRow, { borderLeftColor: color }, pressed && styles.pressed]}><View style={styles.activityIcon}><Ionicons name={icon} size={19} color={color} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{title}</Text><Text style={styles.activityDetail}>{detail}</Text></View><Text style={[styles.actionText, { color }]}>{action}</Text><Ionicons name="chevron-forward" size={17} color={colors.tabInactive} /></Pressable>;
 }
 function Row({ label, value, last }: { label: string; value: string; last?: boolean }) { return <View style={[styles.breakdownRow, last && styles.lastRow]}><Text style={styles.breakdownLabel}>{label}</Text><Text style={styles.breakdownValue}>{value}</Text></View>; }
+/** One tap from a recommendation straight to where it can be acted on — the exact category tab in Attention Center that has the quick actions for it, or Business Settings for the one recommendation that isn't customer-level. */
+function goToRecommendation(navigation: NativeStackNavigationProp<RootStackParamList>, key: string) {
+  if (key === 'complete_profile') { navigation.navigate('BusinessSettings'); return; }
+  const category = ({ contact_customers: 'missed_call_followup', request_reviews: 'review_opportunity', collect_outstanding_revenue: 'payment_outstanding', bring_back_customers: 'customer_due' } as const)[key as 'contact_customers' | 'request_reviews' | 'collect_outstanding_revenue' | 'bring_back_customers'];
+  if (category) navigation.navigate('AttentionCenter', { category });
+}
 function healthColor(label: BusinessHealthLabel | null) { return label === 'excellent' || label === 'good' ? colors.success : label === 'needs_attention' ? colors.attention : colors.negative; }
 function healthMessage(label: BusinessHealthLabel | null) { return ({ excellent: 'Your recovery workflow is performing excellently.', good: 'Your recovery workflow is performing well.', needs_attention: 'A few things could use your attention to improve this.', at_risk: 'Several things need your attention — check Recover, Reputation, and Grow.' } as const)[label ?? 'good']; }
 function Guidance({ title, message }: { title: string; message: string }) { return <View style={styles.guidance}><Text style={styles.guidanceTitle}>{title}</Text><Text style={styles.guidanceText}>{message}</Text></View>; }

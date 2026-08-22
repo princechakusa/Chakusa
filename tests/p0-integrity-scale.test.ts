@@ -465,6 +465,69 @@ describe("P0 backend integrity + scale correction pass", () => {
     expect(response.json().total).toBe(0);
   });
 
+  it("27b. GET /dashboard/attention includes a payment_outstanding category for won-but-unpaid leads", async () => {
+    const { token, businessId } = await registerAccount(app);
+    const customer = await prisma.customer.create({ data: { businessId, name: "Owes Money", phone: "+263771234567" } });
+    await prisma.lead.create({
+      data: { businessId, customerId: customer.id, status: "won", estimatedValue: 200, paidAmount: 50, paymentStatus: "partially_paid" },
+    });
+    await prisma.lead.create({
+      data: { businessId, customerId: customer.id, status: "won", estimatedValue: 100, paymentStatus: "paid", paidAmount: 100 },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard/attention?category=payment_outstanding",
+      headers: authHeader(token),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.total).toBe(1);
+    expect(body.items[0]).toMatchObject({
+      customerId: customer.id,
+      customerName: "Owes Money",
+      customerPhone: "+263771234567",
+      detail: "$150.00 outstanding",
+      amount: 200,
+    });
+  });
+
+  it("27c. attention items carry a pre-rendered message only when one already exists, never generating one", async () => {
+    const { token, businessId } = await registerAccount(app);
+    const customer = await prisma.customer.create({ data: { businessId, name: "Has Message" } });
+    await prisma.lead.create({
+      data: { businessId, customerId: customer.id, status: "new", generatedReply: "Hi there, sorry we missed you!" },
+    });
+    await prisma.lead.create({ data: { businessId, status: "new" } });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard/attention?category=missed_call_followup",
+      headers: authHeader(token),
+    });
+
+    const messages = response.json().items.map((item: { message: string | null }) => item.message);
+    expect(messages).toContain("Hi there, sorry we missed you!");
+    expect(messages).toContain(null);
+  });
+
+  it("27d. payment_outstanding is tenant-isolated", async () => {
+    const businessA = await registerAccount(app, { email: "payment-attention-a@example.com" });
+    const businessB = await registerAccount(app, { email: "payment-attention-b@example.com" });
+    await prisma.lead.create({
+      data: { businessId: businessB.businessId, status: "won", estimatedValue: 500, paymentStatus: "unpaid" },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/dashboard/attention?category=payment_outstanding",
+      headers: authHeader(businessA.token),
+    });
+
+    expect(response.json().total).toBe(0);
+  });
+
   // ---------------------------------------------------------------------
   // 8. Dashboard aggregation correctness (SQL aggregate rewrite)
   // ---------------------------------------------------------------------

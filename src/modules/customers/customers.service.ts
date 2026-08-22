@@ -4,8 +4,12 @@ import { recordActivity } from "../../lib/activity.js";
 import { assertUnderLimit, getPlanLimits, withLimitCheck } from "../../lib/entitlements.js";
 import { toE164OrNull } from "../../lib/phone.js";
 import { toApiLead } from "../leads/leads.serialization.js";
+import { classifyCustomerLifecycleStage } from "../../lib/customerLifecycle.js";
+import { deriveCommunicationStatuses } from "../../lib/communicationStatus.js";
+import { buildCommunicationTimeline } from "../../lib/communicationTimeline.js";
+import { generateCustomerCoachingHighlight } from "../../lib/customerCoachingHighlight.js";
 import type { BulkImportCustomersInput, CreateCustomerInput, UpdateCustomerInput } from "./customers.schemas.js";
-import type { Plan } from "@prisma/client";
+import type { Lead, Plan } from "@prisma/client";
 import type { CountryCode } from "libphonenumber-js";
 
 /**
@@ -212,10 +216,29 @@ async function assertCustomerInBusiness(businessId: string, customerId: string) 
   return customer;
 }
 
+/** Reuses classifyCustomerLifecycleStage (src/lib/customerLifecycle.ts) against one customer's own already-fetched leads — no new query, the same aggregation insights.service.ts already does per-business, just scoped to one customer. */
+function lifecycleStageForCustomer(leads: Lead[], now: Date) {
+  const wonLeads = leads.filter((lead) => lead.status === "won");
+  const lifetimeValue = wonLeads.filter((lead) => lead.estimatedValue).reduce((sum, lead) => sum + Number(lead.estimatedValue), 0);
+  const lastActivityAt = leads.length > 0 ? Math.max(...leads.map((lead) => lead.createdAt.getTime())) : null;
+
+  const stage = classifyCustomerLifecycleStage({
+    lostLeadCount: leads.filter((lead) => lead.status === "lost").length,
+    contactedOrBookedLeadCount: leads.filter((lead) => lead.status === "contacted" || lead.status === "booked").length,
+    newLeadCount: leads.filter((lead) => lead.status === "new").length,
+    wonLeadCount: wonLeads.length,
+    lifetimeValue,
+    daysSinceLastActivity: lastActivityAt == null ? null : Math.floor((now.getTime() - lastActivityAt) / 86_400_000),
+  });
+
+  return { stage, lifetimeValue, wonLeadCount: wonLeads.length, daysSinceLastActivity: lastActivityAt == null ? null : Math.floor((now.getTime() - lastActivityAt) / 86_400_000) };
+}
+
 export async function getCustomerProfile(businessId: string, customerId: string) {
   await assertCustomerInBusiness(businessId, customerId);
+  const now = new Date();
 
-  const [customer, leads, reviewRequests, feedback, reminders, activity] = await Promise.all([
+  const [customer, leads, reviewRequests, feedback, reminders, activity, messages] = await Promise.all([
     prisma.customer.findFirst({ where: { id: customerId, businessId } }),
     prisma.lead.findMany({ where: { businessId, customerId }, orderBy: { createdAt: "desc" } }),
     prisma.reviewRequest.findMany({
@@ -229,11 +252,38 @@ export async function getCustomerProfile(businessId: string, customerId: string)
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    prisma.message.findMany({ where: { businessId, customerId }, orderBy: { createdAt: "desc" } }),
   ]);
 
   const lifetimeValue = leads
     .filter((lead) => lead.status === "won" && lead.estimatedValue)
     .reduce((sum, lead) => sum + Number(lead.estimatedValue), 0);
+
+  const { stage: lifecycleStage, wonLeadCount, daysSinceLastActivity } = lifecycleStageForCustomer(leads, now);
+  const hasOutstandingPayment = leads.some((lead) => lead.status === "won" && lead.paymentStatus !== "paid");
+  const outstandingLead = leads.find((lead) => lead.status === "won" && lead.paymentStatus !== "paid");
+  const outstandingAmount = outstandingLead?.estimatedValue != null ? `$${(Number(outstandingLead.estimatedValue) - Number(outstandingLead.paidAmount ?? 0)).toFixed(2)}` : null;
+
+  const communicationStatuses = deriveCommunicationStatuses({
+    hasOpenLead: leads.some((lead) => lead.status === "new" || lead.status === "contacted" || lead.status === "booked"),
+    hasPendingReviewRequest: reviewRequests.some((review) => review.status === "pending" || review.status === "sent" || review.status === "opened"),
+    hasDueReminder: reminders.some((reminder) => reminder.status === "due" && reminder.dueDate <= now),
+    hasOutstandingPayment,
+    lifecycleStage,
+  });
+
+  const communicationTimeline = buildCommunicationTimeline({ leads, messages, reviewRequests, feedback, reminders, now });
+
+  const assistantHighlight = generateCustomerCoachingHighlight({
+    customerName: customer?.name ?? "This customer",
+    lifecycleStage,
+    daysSinceLastActivity,
+    hasOutstandingPayment,
+    outstandingAmount,
+    hasDueReminder: reminders.some((reminder) => reminder.status === "due" && reminder.dueDate <= now),
+    hasAnyReviewRequest: reviewRequests.length > 0,
+    wonLeadCount,
+  });
 
   return {
     customer,
@@ -242,7 +292,12 @@ export async function getCustomerProfile(businessId: string, customerId: string)
     feedback,
     reminders,
     activity,
+    messages,
     lifetimeValue,
+    lifecycleStage,
+    communicationStatuses,
+    communicationTimeline,
+    assistantHighlight,
   };
 }
 

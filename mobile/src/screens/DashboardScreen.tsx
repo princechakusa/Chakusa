@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Reveal, Screen, SectionHeader, StatusBadge } from '../components/ui';
-import { BusinessHealthLabel } from '../apiTypes';
+import { AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey } from '../apiTypes';
+import { DashboardAudienceSummary } from '../components/DashboardAudienceSummary';
 import { AUTOMATION_ENABLED } from '../config';
 import { automationAvailability, missedCallRules } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
 import { dashboardMilestones, Milestone, milestoneCopy, recoveryEngineReadyMilestone, unseenMilestones } from '../domain/milestones';
 import { recoveryEngineStatus } from '../domain/recoveryEngineStatus';
+import { audienceCoachingDestination } from '../domain/coachingNavigation';
 import { computeSetupScore } from '../domain/setupScore';
 import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
-import { automationApi } from '../services/endpoints';
+import { automationApi, customersApi } from '../services/endpoints';
 import { getSeenMilestones, markMilestonesSeen } from '../services/milestoneStorage';
 import { getPushPermissionStatus } from '../services/pushNotifications';
 import { useAppState } from '../state/AppContext';
@@ -34,7 +36,12 @@ export function DashboardScreen() {
   const [pushGranted, setPushGranted] = useState(false);
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [milestone, setMilestone] = useState<Milestone | null>(null);
-  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()]); }, [loadDashboard, loadLeads, loadReminders, loadReviews]);
+  const [audiences, setAudiences] = useState<AudienceCenterDto | null>(null);
+  const loadAudiences = useCallback(async () => {
+    try { setAudiences(await customersApi.audiences()); }
+    catch { setAudiences(null); }
+  }, []);
+  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences()]); }, [loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews]);
   useEffect(() => {
     let active = true;
     void Promise.all([getCallDetectionAvailability(), getContactsPermissionStatus(), getPushPermissionStatus(), automationApi.listRules().catch(() => [])]).then(([detection, contacts, push, rules]) => {
@@ -81,7 +88,11 @@ export function DashboardScreen() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
-  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()]);
+  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences()]);
+  const openAudience = (audienceKey: SmartAudienceKey) => {
+    const destination = audienceCoachingDestination(audienceKey);
+    navigation.navigate(destination.screen, destination.params);
+  };
 
   return <Screen>
     <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'Your customer recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open Attention Center" onPress={() => navigation.navigate('AttentionCenter')} style={styles.attentionButton}><Ionicons name="notifications-outline" size={23} color={colors.text} />{attentionCount ? <View style={styles.count}><Text style={styles.countText}>{attentionCount > 9 ? '9+' : attentionCount}</Text></View> : null}</Pressable>} />
@@ -146,6 +157,7 @@ export function DashboardScreen() {
       <MetricCard label="Repeat rate" value={dashboard.customerIntelligence.repeatCustomerRate == null ? '—' : `${Math.round(dashboard.customerIntelligence.repeatCustomerRate * 100)}%`} detail={dashboard.customerIntelligence.repeatCustomerRate == null ? 'No won jobs yet' : undefined} />
       <MetricCard label="Avg. customer value" value={dashboard.customerIntelligence.averageLifetimeValue == null ? '—' : formatMoney(dashboard.customerIntelligence.averageLifetimeValue)} />
     </View>}</View>
+    {audiences ? <DashboardAudienceSummary data={audiences} onSelect={openAudience} onViewAll={() => navigation.navigate('Main', { screen: 'Customers' })} /> : null}
     <View><SectionHeader title="Reviews" />{dashboard.reviews.requestsSent === 0 && dashboard.reviews.reviewsReceived === 0 && dashboard.reviews.feedbackReceived === 0 ? <Guidance title="Generate your first review" message="Request a review after completing a customer job — it only takes a minute." /> : null}<View style={styles.metricGrid}><MetricCard label="Requests sent" value={String(dashboard.reviews.requestsSent)} /><MetricCard label="Reviews received" value={String(dashboard.reviews.reviewsReceived)} /><MetricCard label="Private feedback" value={String(dashboard.reviews.feedbackReceived)} /></View></View>
     <View><SectionHeader title="Recent activity" action={refreshing ? 'Refreshing...' : 'Refresh'} onAction={refresh} />{dashboard.recentActivity.length ? <View>{dashboard.recentActivity.map(item => <View key={item.id} style={styles.activity}><View style={styles.activityIcon}><Ionicons name="checkmark" size={17} color={colors.success} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{titleCase(item.eventType)}</Text><Text style={styles.activityDetail}>{titleCase(item.entityType)} · {formatDateTime(item.createdAt)}</Text></View></View>)}</View> : <Text style={styles.muted}>Your activity will appear here as you use Chakusa.</Text>}</View>
   </Screen>;

@@ -1,7 +1,7 @@
 import { getDashboardSummary } from "./dashboard.service.js";
 import { getBusinessInsights } from "./insights.service.js";
 import { generateBusinessCoaching } from "../../lib/businessCoaching.js";
-import { getAudienceCenter } from "../customers/audiences.service.js";
+import { getAudienceSummaries } from "../customers/audiences.service.js";
 
 /**
  * The Business Assistant Foundation's only entry point — fetches the
@@ -14,13 +14,13 @@ import { getAudienceCenter } from "../customers/audiences.service.js";
  */
 export async function getBusinessCoaching(businessId: string) {
   const summary = await getDashboardSummary(businessId);
-  const [insights, audienceCenter] = await Promise.all([
+  const [insights, audiences] = await Promise.all([
     getBusinessInsights(businessId, summary),
-    getAudienceCenter(businessId),
+    getAudienceSummaries(businessId),
   ]);
 
   return {
-    insights: generateBusinessCoaching({ summary, insights, audiences: audienceCenter.audiences }),
+    insights: generateBusinessCoaching({ summary, insights, audiences }),
     generatedAt: new Date(),
   };
 }

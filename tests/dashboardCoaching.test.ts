@@ -75,7 +75,7 @@ describe("GET /dashboard/coaching", () => {
 
     expect(insight).toBeDefined();
     expect(insight.evidence).toContain("$400.00 outstanding");
-    expect(insight.actionLink).toEqual({ kind: "attentionCenter", category: "payment_outstanding" });
+    expect(insight.actionLink).toEqual({ kind: "audience", audienceKey: "outstanding_payments" });
   });
 
   it("generates a customers_waiting insight that matches the same count Customer Intelligence already reports", async () => {
@@ -106,7 +106,7 @@ describe("GET /dashboard/coaching", () => {
 
     const response = await app.inject({ method: "GET", url: "/dashboard/coaching", headers: authHeader(token) });
     const validCategories = ["missed_call_followup", "customer_due", "review_opportunity", "payment_outstanding"];
-    const validKinds = ["attentionCenter", "customerProfile", "comeback", "businessSettings", "insights"];
+    const validKinds = ["attentionCenter", "customerProfile", "comeback", "businessSettings", "audience", "insights"];
 
     for (const insight of response.json().insights) {
       expect(validKinds).toContain(insight.actionLink.kind);

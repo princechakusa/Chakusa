@@ -7,6 +7,7 @@ import { ApiError } from '../services/api';
 import { dashboardApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
+import { audienceCoachingDestination } from '../domain/coachingNavigation';
 import { formatMoney, titleCase } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Insights'>;
@@ -18,6 +19,10 @@ function goToAction(navigation: Navigator, actionLink: CoachingActionLinkDto) {
   else if (actionLink.kind === 'customerProfile') navigation.navigate('CustomerProfile', { customerId: actionLink.customerId });
   else if (actionLink.kind === 'comeback') navigation.navigate('Comeback');
   else if (actionLink.kind === 'businessSettings') navigation.navigate('BusinessSettings');
+  else if (actionLink.kind === 'audience') {
+    const destination = audienceCoachingDestination(actionLink.audienceKey);
+    navigation.navigate(destination.screen, destination.params);
+  }
   // 'insights' needs no navigation — the insight is already on this screen.
 }
 function priorityTone(priority: CoachingPriority): string {

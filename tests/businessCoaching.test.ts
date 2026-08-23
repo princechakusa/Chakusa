@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { generateBusinessCoaching, type BusinessCoachingInput } from "../src/lib/businessCoaching.js";
+import type { AudienceSummary, SmartAudienceKey } from "../src/modules/customers/audiences.service.js";
+
+function addAudience(input: BusinessCoachingInput, key: SmartAudienceKey, values: Partial<AudienceSummary> = {}) {
+  input.audiences.push({ key, label: key.replaceAll("_", " "), customerIds: ["customer-a"], totalCustomers: 1, averageValue: 0, repeatRate: null, revenue: 0, outstandingPayments: 0, ...values });
+}
 
 /**
  * Minimal, fully-typed fixtures matching dashboard.service.ts's and
@@ -56,6 +61,7 @@ function baseInput(): BusinessCoachingInput {
       windowStart: new Date(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
+    audiences: [],
   };
 }
 
@@ -89,16 +95,18 @@ describe("generateBusinessCoaching", () => {
   it("generates a critical outstanding_revenue insight when over half of recovered revenue is unpaid", () => {
     const input = baseInput();
     input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 600 };
+    addAudience(input, "outstanding_payments", { totalCustomers: 2, outstandingPayments: 600 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
     expect(insight?.priority).toBe("critical");
     expect(insight?.evidence).toContain("$600.00 outstanding");
-    expect(insight?.actionLink).toEqual({ kind: "attentionCenter", category: "payment_outstanding" });
+    expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: "outstanding_payments" });
   });
 
   it("generates a high (not critical) outstanding_revenue insight when under half is unpaid", () => {
     const input = baseInput();
     input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 100 };
+    addAudience(input, "outstanding_payments", { outstandingPayments: 100 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
     expect(insight?.priority).toBe("high");
@@ -168,16 +176,18 @@ describe("generateBusinessCoaching", () => {
   it("generates a medium dormant_customers insight below the high-count threshold", () => {
     const input = baseInput();
     input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, dormant: 2 }, totalCustomers: 8 };
+    addAudience(input, "dormant", { totalCustomers: 2 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "dormant_customers");
     expect(insight?.priority).toBe("medium");
-    expect(insight?.actionLink).toEqual({ kind: "comeback" });
+    expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: "dormant" });
     expect(insight?.evidence).toContain("2 dormant customers");
   });
 
   it("generates a high dormant_customers insight at or above the high-count threshold", () => {
     const input = baseInput();
     input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, dormant: 5 }, totalCustomers: 20 };
+    addAudience(input, "dormant", { totalCustomers: 5 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "dormant_customers");
     expect(insight?.priority).toBe("high");
@@ -188,6 +198,36 @@ describe("generateBusinessCoaching", () => {
     input.insights.customerLifecycle = { counts: { ...input.insights.customerLifecycle.counts, vip: 3 }, totalCustomers: 8 };
 
     expect(generateBusinessCoaching(input).find((i) => i.key === "dormant_customers")).toBeUndefined();
+  });
+
+  it("generates review coaching only when the existing Needs reviews audience has members", () => {
+    const input = baseInput();
+    addAudience(input, "needs_reviews", { label: "Needs reviews", totalCustomers: 3, revenue: 900 });
+
+    const insight = generateBusinessCoaching(input).find((i) => i.key === "needs_reviews_audience");
+    expect(insight?.evidence).toContain("3 customers in Needs reviews");
+    expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: "needs_reviews" });
+  });
+
+  it.each([
+    ["vip", "VIP customers"],
+    ["high_value", "High-value customers"],
+    ["loyal", "Loyal customers"],
+  ] as const)("generates coaching for a non-empty %s audience using its existing metrics", (key, label) => {
+    const input = baseInput();
+    addAudience(input, key, { label, totalCustomers: 2, revenue: 2400, averageValue: 1200 });
+
+    const insight = generateBusinessCoaching(input).find((i) => i.key === `${key}_audience`);
+    expect(insight?.evidence).toEqual([`2 customers in ${label}`, "$2400.00 total value", "Average value: $1200.00"]);
+    expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: key });
+    expect(insight?.priority).toBe("low");
+  });
+
+  it("never references an empty audience", () => {
+    const input = baseInput();
+    addAudience(input, "vip", { label: "VIP customers", customerIds: [], totalCustomers: 0 });
+
+    expect(generateBusinessCoaching(input).some((insight) => insight.actionLink.kind === "audience")).toBe(false);
   });
 
   it("generates a service_performance_gap insight only when the conversion gap is large enough", () => {
@@ -219,6 +259,7 @@ describe("generateBusinessCoaching", () => {
   it("sorts insights critical-first, deterministically", () => {
     const input = baseInput();
     input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 }; // critical
+    addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
     input.summary.customerIntelligence.needingFollowUpTotalCount = 1; // high
     input.summary.customerIntelligence.needingFollowUp = [{ customerId: "a", customerName: "Jane", reason: "new_lead" }];
     input.summary.customerIntelligence.repeatCustomerRate = 0.1; // medium
@@ -232,6 +273,7 @@ describe("generateBusinessCoaching", () => {
   it("produces byte-identical output for the same input twice — no randomness", () => {
     const input = baseInput();
     input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 };
+    addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
 
     expect(generateBusinessCoaching(input)).toEqual(generateBusinessCoaching(input));
   });
@@ -239,6 +281,7 @@ describe("generateBusinessCoaching", () => {
   it("never mentions the Recovery Engine — that state is on-device and never reported to the backend", () => {
     const input = baseInput();
     input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 };
+    addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
     input.summary.customerIntelligence.needingFollowUpTotalCount = 5;
     input.summary.businessHealth = { score: 20, label: "at_risk", factors: [{ key: "contactRate", label: "x", value: 20, included: true }] };
 

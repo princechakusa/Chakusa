@@ -150,6 +150,7 @@ export type CoachingActionLinkDto =
   | { kind: 'customerProfile'; customerId: string }
   | { kind: 'comeback' }
   | { kind: 'businessSettings' }
+  | { kind: 'audience'; audienceKey: SmartAudienceKey }
   | { kind: 'insights' };
 export interface CoachingInsightDto {
   key: string;

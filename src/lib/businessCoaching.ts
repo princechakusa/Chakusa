@@ -1,6 +1,7 @@
 import type { AttentionCategory } from "../modules/dashboard/attentionCenter.service.js";
 import type { getDashboardSummary } from "../modules/dashboard/dashboard.service.js";
 import type { getBusinessInsights } from "../modules/dashboard/insights.service.js";
+import type { AudienceSummary, SmartAudienceKey } from "../modules/customers/audiences.service.js";
 
 /**
  * The AI Business Assistant Foundation — NOT a chatbot, NOT an LLM
@@ -33,6 +34,7 @@ export type CoachingActionLink =
   | { kind: "customerProfile"; customerId: string }
   | { kind: "comeback" }
   | { kind: "businessSettings" }
+  | { kind: "audience"; audienceKey: SmartAudienceKey }
   | { kind: "insights" };
 
 export interface CoachingInsight {
@@ -56,6 +58,7 @@ type BusinessInsights = Awaited<ReturnType<typeof getBusinessInsights>>;
 export interface BusinessCoachingInput {
   summary: DashboardSummary;
   insights: BusinessInsights;
+  audiences: AudienceSummary[];
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +83,11 @@ function money(value: number): string {
 }
 function pct(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+function audience(input: BusinessCoachingInput, key: SmartAudienceKey): AudienceSummary | null {
+  const match = input.audiences.find((item) => item.key === key);
+  return match && match.totalCustomers > 0 ? match : null;
 }
 
 /**
@@ -128,9 +136,10 @@ function customersWaitingInsight(input: BusinessCoachingInput): CoachingInsight 
 }
 
 function outstandingRevenueInsight(input: BusinessCoachingInput): CoachingInsight | null {
-  const outstanding = input.summary.recoveredRevenue.outstanding;
-  if (outstanding <= 0) return null;
+  const segment = audience(input, "outstanding_payments");
+  if (!segment || segment.outstandingPayments <= 0) return null;
 
+  const outstanding = segment.outstandingPayments;
   const total = input.summary.recoveredRevenue.total;
   const outstandingShare = total > 0 ? outstanding / total : 1;
   const priority: CoachingPriority = outstandingShare >= 0.5 ? "critical" : "high";
@@ -140,9 +149,9 @@ function outstandingRevenueInsight(input: BusinessCoachingInput): CoachingInsigh
     title: "Revenue is sitting uncollected",
     context: `${money(outstanding)} from won jobs has not been marked as paid.`,
     whyItMatters: "This is money already earned on completed work — it just hasn't been collected or recorded yet.",
-    evidence: [`${money(outstanding)} outstanding`, `${money(total)} total recovered revenue`, `${pct(outstandingShare)} of recovered revenue is still outstanding`],
-    recommendedAction: "Open the Action Center and record payments",
-    actionLink: { kind: "attentionCenter", category: "payment_outstanding" },
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Outstanding payments`, `${money(outstanding)} outstanding`, `${pct(outstandingShare)} of recovered revenue is still outstanding`],
+    recommendedAction: "View customers with outstanding payments",
+    actionLink: { kind: "audience", audienceKey: segment.key },
     expectedOutcome: "Recording payments as they come in keeps your recovered-revenue numbers accurate and surfaces who still owes you.",
     priority,
   };
@@ -219,17 +228,15 @@ function servicePerformanceInsight(input: BusinessCoachingInput): CoachingInsigh
 }
 
 /**
- * The Customer Lifecycle Automation Engine's stage breakdown (already
- * computed by insights.service.ts, see customerLifecycle field on
- * getBusinessInsights) surfaced as a coaching insight — this references
- * lifecycle stages exactly as the Stage 8 mission asked, without this
- * module gaining any new database access: `dormant` is just another
- * number already sitting on `input.insights`.
+ * Dormant membership is consumed directly from the existing Audience
+ * Engine. Business Insights supplies only the already-computed lifecycle
+ * denominator, so no audience or lifecycle calculation is duplicated here.
  */
 function dormantCustomersInsight(input: BusinessCoachingInput): CoachingInsight | null {
-  const { counts, totalCustomers } = input.insights.customerLifecycle;
-  const dormantCount = counts.dormant;
-  if (dormantCount === 0) return null;
+  const segment = audience(input, "dormant");
+  if (!segment) return null;
+  const dormantCount = segment.totalCustomers;
+  const totalCustomers = input.insights.customerLifecycle.totalCustomers;
 
   return {
     key: "dormant_customers",
@@ -237,10 +244,42 @@ function dormantCustomersInsight(input: BusinessCoachingInput): CoachingInsight 
     context: `${dormantCount} of your ${totalCustomers} customer${totalCustomers === 1 ? "" : "s"} ha${dormantCount === 1 ? "s" : "ve"} won a job before but haven't been back in a while.`,
     whyItMatters: "A customer who has already paid you once is far easier to win back than finding a brand-new lead.",
     evidence: [`${dormantCount} dormant customer${dormantCount === 1 ? "" : "s"}`, `${totalCustomers} total customer${totalCustomers === 1 ? "" : "s"} with lead history`],
-    recommendedAction: "Set a comeback reminder to win one back",
-    actionLink: { kind: "comeback" },
+    recommendedAction: "View dormant customers",
+    actionLink: { kind: "audience", audienceKey: segment.key },
     expectedOutcome: "Reaching out to a dormant customer converts more often than a cold lead, since they already trust your work.",
     priority: dormantCount >= HIGH_DORMANT_CUSTOMER_COUNT ? "high" : "medium",
+  };
+}
+
+function needsReviewsAudienceInsight(input: BusinessCoachingInput): CoachingInsight | null {
+  const segment = audience(input, "needs_reviews");
+  if (!segment) return null;
+  return {
+    key: "needs_reviews_audience",
+    title: "Customers are still waiting to complete reviews",
+    context: `${segment.totalCustomers} customer${segment.totalCustomers === 1 ? " has" : "s have"} an active review request without a completed review.`,
+    whyItMatters: "These requests are already in progress, so this audience shows exactly where review follow-up may still be useful.",
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Needs reviews`, `${money(segment.revenue)} customer value in this audience`],
+    recommendedAction: "View customers needing reviews",
+    actionLink: { kind: "audience", audienceKey: segment.key },
+    expectedOutcome: "Focusing on this existing audience keeps review follow-up directed at customers with an unfinished request.",
+    priority: "medium",
+  };
+}
+
+function relationshipAudienceInsight(input: BusinessCoachingInput, key: "vip" | "high_value" | "loyal"): CoachingInsight | null {
+  const segment = audience(input, key);
+  if (!segment) return null;
+  return {
+    key: `${key}_audience`,
+    title: `${segment.label} deserve focused attention`,
+    context: `${segment.totalCustomers} customer${segment.totalCustomers === 1 ? " is" : "s are"} currently in your ${segment.label.toLowerCase()} audience.`,
+    whyItMatters: "This audience is identified from your recorded customer and revenue history, ready for you to review as a group.",
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in ${segment.label}`, `${money(segment.revenue)} total value`, `Average value: ${money(segment.averageValue)}`],
+    recommendedAction: `View ${segment.label.toLowerCase()}`,
+    actionLink: { kind: "audience", audienceKey: segment.key },
+    expectedOutcome: "Reviewing the segment helps you decide which known customer relationship needs attention next.",
+    priority: "low",
   };
 }
 
@@ -250,6 +289,10 @@ const INSIGHT_GENERATORS: ((input: BusinessCoachingInput) => CoachingInsight | n
   customersWaitingInsight,
   repeatCustomerRateInsight,
   dormantCustomersInsight,
+  needsReviewsAudienceInsight,
+  (input) => relationshipAudienceInsight(input, "vip"),
+  (input) => relationshipAudienceInsight(input, "high_value"),
+  (input) => relationshipAudienceInsight(input, "loyal"),
   servicePerformanceInsight,
 ];
 

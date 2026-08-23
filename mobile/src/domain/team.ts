@@ -15,7 +15,7 @@ export function remainingSeatCopy({ remaining }: TeamSeatSummaryDto['seats']) { 
 export function inviteResultCopy(email: string, emailSent: boolean) { return emailSent ? `Invitation sent to ${email}.` : 'Invitation created, but the email could not be sent.'; }
 export function inviteNeedsManualDelivery(emailSent: boolean) { return !emailSent; }
 export function shouldReactivate(member: TeamMemberDto, ownerCanMutate: boolean) { return ownerCanMutate && member.role !== 'OWNER' && member.status === 'SUSPENDED'; }
-export function teamDataVisible(_available: boolean) { return true; }
+export function teamDataVisible(available: boolean) { void available; return true; }
 export function removeMemberCopy() { return 'Remove from team'; }
 export function teamErrorCopy(code?: string, message?: string) {
   if (code === 'LIMIT_REACHED') return 'There are no available team seats on the current plan.';

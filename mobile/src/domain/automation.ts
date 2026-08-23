@@ -29,7 +29,7 @@ export function appendUniqueRuns(current: AutomationRunHistoryItemDto[], incomin
 }
 export function replaceHistoryPage(items: AutomationRunHistoryItemDto[]) { return [...items]; }
 export function shouldLoadMoreHistory(itemCount: number, total: number) { return itemCount < total; }
-export function historyIsReadable(_availability: AutomationAvailability) { return true; }
+export function historyIsReadable(availability: AutomationAvailability) { void availability; return true; }
 export function isDuplicateAutomationRuleConflict(error: { kind?: string; code?: string; message?: string }) {
   return error.kind === 'conflict' && error.code === 'CONFLICT' && /automation rule/i.test(error.message ?? '') && /already exists/i.test(error.message ?? '');
 }

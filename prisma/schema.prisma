@@ -674,6 +674,7 @@ model Lead {
   @@index([businessId, status])
   @@index([businessId, createdAt])
   @@index([customerId])
+  @@index([referredByCustomerId])
   @@map("leads")
 }
 

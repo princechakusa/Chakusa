@@ -30,6 +30,7 @@ import { TeamScreen } from '../screens/TeamScreen';
 import { TeamInviteScreen } from '../screens/TeamInviteScreen';
 import { AuthScreen } from '../screens/AuthScreen';
 import { FirstEntryScreen } from '../screens/FirstEntryScreen';
+import { PublicDocumentScreen } from '../screens/PublicDocumentScreen';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 import { useAuth } from '../state/AuthContext';
@@ -70,6 +71,7 @@ export function AppNavigator() {
     {routes.anonymous ? <>
       <Root.Screen name="FirstEntry" component={FirstEntryScreen} options={{ headerShown: false }} />
       <Root.Screen name="Login" component={AuthScreen} options={{ headerShown: false }} />
+      <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
     {status === 'authenticated' && routes.onboarding ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}

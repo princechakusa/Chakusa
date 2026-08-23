@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -39,6 +39,9 @@ export const customersApi = {
   get: (id: string) => api.get<CustomerProfileDto>(`/customers/${id}`),
   patch: (id: string, body: Partial<Pick<CustomerDto, 'name' | 'phone' | 'email' | 'notes'>>) => api.patch<CustomerDto>(`/customers/${id}`, body),
   bulkImport: (customers: { name: string; phone?: string; email?: string; notes?: string }[]) => api.post<BulkImportCustomersResultDto>('/customers/bulk-import', { customers }),
+  audiences: () => api.get<AudienceCenterDto>('/customers/audiences'),
+  createTag: (name: string) => api.post<{ id: string; name: string }>('/customers/tags', { name }),
+  setTags: (customerId: string, tagIds: string[]) => api.patch(`/customers/${customerId}/tags`, { tagIds }),
 };
 export const leadsApi = {
   list: (status?: LeadStatus, page = 1, pageSize = 100) => api.get<LeadListResponse>(`/leads${query({ status, page, pageSize })}`),

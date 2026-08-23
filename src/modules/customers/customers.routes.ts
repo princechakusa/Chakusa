@@ -4,6 +4,8 @@ import {
   updateCustomerSchema,
   listCustomersQuerySchema,
   bulkImportCustomersSchema,
+  customerTagSchema,
+  customerTagAssignmentsSchema,
 } from "./customers.schemas.js";
 import {
   listCustomers,
@@ -12,6 +14,7 @@ import {
   updateCustomer,
   bulkImportCustomers,
 } from "./customers.service.js";
+import { createCustomerTag, getAudienceCenter, setCustomerTags } from "./audiences.service.js";
 
 export default async function customerRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -34,6 +37,10 @@ export default async function customerRoutes(fastify: FastifyInstance) {
     const result = await bulkImportCustomers(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(result);
   });
+
+  fastify.get("/audiences", async (request, reply) => reply.send(await getAudienceCenter(request.businessId!)));
+  fastify.post("/tags", async (request, reply) => reply.status(201).send(await createCustomerTag(request.businessId!, customerTagSchema.parse(request.body).name)));
+  fastify.patch<{ Params: { id: string } }>("/:id/tags", async (request, reply) => reply.send(await setCustomerTags(request.businessId!, request.params.id, customerTagAssignmentsSchema.parse(request.body).tagIds)));
 
   fastify.get<{ Params: { id: string } }>("/:id", async (request, reply) => {
     const profile = await getCustomerProfile(request.businessId!, request.params.id);

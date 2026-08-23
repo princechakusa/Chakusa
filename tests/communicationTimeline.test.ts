@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCommunicationTimeline } from "../src/lib/communicationTimeline.js";
-import type { Feedback, Lead, Message, Reminder, ReviewRequest } from "@prisma/client";
+import { Prisma, type Feedback, type Lead, type Message, type Reminder, type ReviewRequest } from "@prisma/client";
 
 const NOW = new Date("2026-06-15T12:00:00Z");
 
@@ -129,7 +129,7 @@ describe("buildCommunicationTimeline", () => {
   });
 
   it("emits a payment_recorded entry only for a won lead with a non-unpaid status", () => {
-    const withPayment = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "paid", estimatedValue: 100, paidAmount: 100 })] });
+    const withPayment = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "paid", estimatedValue: new Prisma.Decimal(100), paidAmount: new Prisma.Decimal(100) })] });
     expect(withPayment.some((e) => e.kind === "payment_recorded")).toBe(true);
 
     const withoutPayment = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "unpaid" })] });
@@ -137,10 +137,10 @@ describe("buildCommunicationTimeline", () => {
   });
 
   it("tags a partial payment as needing action, but a full payment as not", () => {
-    const partial = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "partially_paid", estimatedValue: 100, paidAmount: 50 })] });
+    const partial = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "partially_paid", estimatedValue: new Prisma.Decimal(100), paidAmount: new Prisma.Decimal(50) })] });
     expect(partial.find((e) => e.kind === "payment_recorded")!.filters).toContain("needs_action");
 
-    const full = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "paid", estimatedValue: 100, paidAmount: 100 })] });
+    const full = buildCommunicationTimeline({ ...empty, leads: [makeLead({ status: "won", paymentStatus: "paid", estimatedValue: new Prisma.Decimal(100), paidAmount: new Prisma.Decimal(100) })] });
     expect(full.find((e) => e.kind === "payment_recorded")!.filters).not.toContain("needs_action");
   });
 

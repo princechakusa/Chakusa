@@ -125,6 +125,9 @@ export interface RecoveryPerformanceDto {
   averageRecoveryDays: number | null;
 }
 export type CustomerLifecycleStage = 'lost' | 'new_lead' | 'contacted' | 'dormant' | 'vip' | 'loyal' | 'returning' | 'first_customer';
+export type SmartAudienceKey = 'new' | 'returning' | 'loyal' | 'vip' | 'dormant' | 'high_value' | 'outstanding_payments' | 'needs_reviews' | 'active_reminders';
+export interface AudienceSummaryDto { key: SmartAudienceKey; label: string; customerIds: string[]; totalCustomers: number; averageValue: number; repeatRate: number | null; revenue: number; outstandingPayments: number; }
+export interface AudienceCenterDto { audiences: AudienceSummaryDto[]; members: { customerId: string; name: string; lifecycleStage: CustomerLifecycleStage; lifetimeValue: number; outstandingAmount: number; manualTagIds: string[]; systemTags: string[] }[]; tags: { id: string; businessId: string; name: string; createdAt: string }[]; }
 export interface CustomerLifecycleBreakdownDto {
   counts: Record<CustomerLifecycleStage, number>;
   totalCustomers: number;

@@ -36,3 +36,6 @@ export const listCustomersQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(25),
 });
+
+export const customerTagSchema = z.object({ name: z.string().trim().min(1).max(40) });
+export const customerTagAssignmentsSchema = z.object({ tagIds: z.array(z.string().uuid()).max(30) });

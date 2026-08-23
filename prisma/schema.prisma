@@ -488,6 +488,7 @@ model Business {
   automationRuns   AutomationRun[]
   billingEvents    BillingEvent[]
   teamInvitations  TeamInvitation[]
+  customerTags     CustomerTag[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -585,10 +586,41 @@ model Customer {
   reminders      Reminder[]
   optOuts        CustomerOptOut[]
   automationRuns AutomationRun[]
+  tagAssignments CustomerTagAssignment[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
   @@map("customers")
+}
+
+// Owner-created labels for organising contacts. System audience labels are
+// calculated at read time (lifecycle/payment/review/reminder state) and are
+// intentionally not stored here, so they can never become stale.
+model CustomerTag {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  name       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  business    Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments CustomerTagAssignment[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("customer_tags")
+}
+
+model CustomerTagAssignment {
+  customerId String @map("customer_id")
+  tagId      String @map("tag_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag      CustomerTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, tagId])
+  @@index([tagId])
+  @@map("customer_tag_assignments")
 }
 
 model Lead {

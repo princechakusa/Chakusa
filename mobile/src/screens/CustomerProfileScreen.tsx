@@ -2,7 +2,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CustomerProfileDto } from '../apiTypes';
+import { AudienceCenterDto, CustomerProfileDto } from '../apiTypes';
+import { CustomerTags } from '../components/CustomerTags';
 import { AppHeader, Avatar, EmptyState, ErrorState, FilterTabs, IconButton, InfoRow, LoadingState, PrimaryButton, Reveal, Screen, SecondaryButton, SectionHeader, StatusBadge, Timeline } from '../components/ui';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { availableCommunicationTabs, CommunicationTab, filterCommunicationEntries, toTimelineItem } from '../domain/communicationTimeline';
@@ -28,6 +29,7 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [tab, setTab] = useState<CommunicationTab>('all');
+  const [audiences, setAudiences] = useState<AudienceCenterDto | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -38,6 +40,8 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
     finally { setLoading(false); }
   }, [route.params.customerId]);
   useEffect(() => { void load(); }, [load]);
+  const refreshTags = useCallback(() => { void customersApi.audiences().then(setAudiences).catch(() => setAudiences(null)); }, []);
+  useEffect(() => { refreshTags(); }, [refreshTags]);
 
   const tabs = useMemo(() => (profile ? availableCommunicationTabs(profile.communicationTimeline) : ['all' as const]), [profile]);
   const timelineItems = useMemo(() => {
@@ -95,6 +99,7 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
         </View>
       </View> : null}
 
+      {audiences ? <CustomerTags customerId={customer.id} data={audiences} onChanged={refreshTags} /> : null}
       {profile.communicationStatuses.length > 0 ? <View style={styles.statusRow}>{profile.communicationStatuses.map(status => <StatusBadge key={status} label={titleCase(status)} />)}</View> : null}
 
       {profile.assistantHighlight ? <View style={styles.assistantCard}>

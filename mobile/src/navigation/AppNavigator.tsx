@@ -28,11 +28,14 @@ import { AccountInformationScreen } from '../screens/AccountInformationScreen';
 import { AutomationScreen } from '../screens/AutomationScreen';
 import { TeamScreen } from '../screens/TeamScreen';
 import { TeamInviteScreen } from '../screens/TeamInviteScreen';
+import { AuthScreen } from '../screens/AuthScreen';
+import { FirstEntryScreen } from '../screens/FirstEntryScreen';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 import { useAuth } from '../state/AuthContext';
 import { ErrorState } from '../components/ui';
 import { usePreferences } from '../state/PreferencesContext';
+import { authenticationRoutes } from '../domain/authenticationFlow';
 
 const Root = createNativeStackNavigator<RootStackParamList>(); const Tabs = createBottomTabNavigator<MainTabParamList>();
 const icons: Record<keyof MainTabParamList, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
@@ -59,15 +62,17 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
 
 export function AppNavigator() {
   const { status, role, restoreError, restore } = useAuth(); const preferences = usePreferences();
+  const routes = authenticationRoutes(status, preferences.onboardingComplete);
   useEffect(() => { if (status === 'authenticated' && (role === 'ADMIN' || role === 'STAFF') && !preferences.onboardingComplete) preferences.completeOnboarding(); }, [preferences, role, status]);
-  if (status === 'restoring' || preferences.restoring) return <View style={styles.restoring}><ActivityIndicator color={colors.primary} /><Text style={styles.restoringText}>Restoring your workspace…</Text></View>;
-  if (status === 'restore-error') return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
+  if (routes.restoring || preferences.restoring) return <View style={styles.restoring}><ActivityIndicator color={colors.primary} /><Text style={styles.restoringText}>Restoring your workspace…</Text></View>;
+  if (routes.restoreError) return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
   return <Root.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, headerTitle: '', headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: colors.background } }}>
-    {status === 'anonymous' ? <>
-      <Root.Screen name="FirstEntry" component={PremiumFtueScreen} options={{ headerShown: false }} />
+    {routes.anonymous ? <>
+      <Root.Screen name="FirstEntry" component={FirstEntryScreen} options={{ headerShown: false }} />
+      <Root.Screen name="Login" component={AuthScreen} options={{ headerShown: false }} />
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
-    {status === 'authenticated' && !preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
+    {status === 'authenticated' && routes.onboarding ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
     {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}

@@ -7,6 +7,7 @@ import { requestGoogleIdToken } from '../services/googleAuth';
 import { requestAppleCredential } from '../services/appleAuth';
 import { unregisterCurrentPushToken } from '../services/pushNotifications';
 import { usePreferences } from './PreferencesContext';
+import { hasCompletedBusinessSetup } from '../domain/authenticationFlow';
 
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
@@ -31,9 +32,6 @@ const AuthContext = createContext<AuthValue | null>(null);
 // restore, since reconcileOnboarding() below re-derives completion from
 // this check and forces the wizard open again when it disagrees with the
 // already-completed preferences flag.
-const hasCompletedBusinessSetup = (business: BusinessDto | null) => Boolean(
-  business && business.name.trim() && business.phone && Array.isArray(business.defaultServices) && business.defaultServices.length > 0,
-);
 const unregisterPushBeforeLogout = () => Promise.race([
   unregisterCurrentPushToken(),
   new Promise<void>(resolve => setTimeout(resolve, 1500)),

@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, WeeklyOwnerReportDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, WeeklyOwnerReportDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -38,6 +38,7 @@ export const devicesApi = {
 };
 export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary'), attention: (category?: AttentionCategory, page = 1, pageSize = 25) => api.get<AttentionPageDto>(`/dashboard/attention${query({ category, page, pageSize })}`), insights: () => api.get<BusinessInsightsDto>('/dashboard/insights'), coaching: () => api.get<BusinessCoachingDto>('/dashboard/coaching') };
 export const weeklyReportsApi = { list: () => api.get<WeeklyOwnerReportDto[]>('/weekly-reports') };
+export const supportApi = { list: () => api.get<SupportTicketDto[]>('/support-tickets'), create: (body: { category: SupportTicketCategory; subject: string; message: string }) => api.post<SupportTicketDto>('/support-tickets', body) };
 export const paymentsApi = { connectStatus: () => api.get<{ connected: boolean; chargesEnabled: boolean; detailsSubmitted: boolean; payoutsEnabled: boolean }>('/payments/connect/status'), connectLink: () => api.post<{ url: string }>('/payments/connect/link', {}) };
 export const customersApi = {
   list: (search = '', page = 1, pageSize = 100) => api.get<CustomerListResponse>(`/customers${query({ search, page, pageSize })}`),

@@ -231,6 +231,22 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum SupportTicketCategory {
+  account
+  billing
+  booking
+  messaging
+  technical
+  other
+}
+
+enum SupportTicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
 enum SubscriptionProvider {
   APPLE
   GOOGLE
@@ -354,6 +370,7 @@ model User {
   passwordResets      PasswordResetToken[]
   deviceTokens        DeviceToken[]
   sentTeamInvitations TeamInvitation[]     @relation("TeamInvitationInviter")
+  supportTickets      SupportTicket[]
 
   @@map("users")
 }
@@ -539,6 +556,7 @@ model Business {
   publicBookingAccess PublicBookingAccess[]
   appointmentPaymentTransactions AppointmentPaymentTransaction[]
   weeklyOwnerReports WeeklyOwnerReport[]
+  supportTickets SupportTicket[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -559,6 +577,27 @@ model WeeklyOwnerReport {
   @@unique([businessId, weekKey])
   @@index([businessId, periodEnd])
   @@map("weekly_owner_reports")
+}
+
+model SupportTicket {
+  id                 String                @id @default(uuid())
+  businessId         String                @map("business_id")
+  createdByUserId    String                @map("created_by_user_id")
+  category           SupportTicketCategory
+  subject            String
+  message            String
+  status             SupportTicketStatus   @default(open)
+  expectedResponseAt DateTime               @map("expected_response_at")
+  resolvedAt         DateTime?              @map("resolved_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([status, expectedResponseAt])
+  @@map("support_tickets")
 }
 
 model BusinessMember {

@@ -1,21 +1,30 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { AppHeader, Screen } from '../components/ui';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { SupportTicketCategory, SupportTicketDto } from '../apiTypes';
+import { AppHeader, PrimaryButton, Screen, StatusBadge } from '../components/ui';
+import { ApiError } from '../services/api';
+import { supportApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
+import { formatDateTime, titleCase } from '../utils/format';
 
-const faqs = [
-  ['What is Chakusa?', 'Chakusa helps small businesses organize missed-call leads, customer follow-up, review requests, and comeback reminders.'],
-  ['How does missed-call recovery work?', 'Create a missed-call lead, prepare a message, then send it through your chosen phone messaging app.'],
-  ['How do leads work?', 'Leads move from New to Contacted and Booked, then to Won or Lost. Won and Lost are final states.'],
-  ['How do customer reminders work?', 'Comeback reminders identify customers due for follow-up. You prepare and send messages manually from the app.'],
-  ['How do review requests work?', 'Prepare a review request and share its secure feedback link. Customers can leave private feedback or independently open the Google review option.'],
-  ['What is the difference between Free and Pro?', 'Free includes the core workflow with usage limits. Pro is positioned at $29/month with expanded limits and features, but in-app purchasing is not available yet.'],
-  ['Why do I see usage limits?', 'Your current plan determines monthly or resource limits. Settings and the Pro screen show the authoritative usage returned by Chakusa.'],
-  ['How do I update business information?', 'Open Settings, then Business details to update supported business fields. Account name and email are separate and currently read-only.'],
-  ['How do notifications work?', 'Notification settings currently control how activity is presented on this device. Server-side delivery preferences are not available yet.'],
-  ['How do I log out?', 'Settings offers Log out for this device and Log out all devices to revoke every active session.'],
-  ['How do I delete my account?', 'Open Settings, then Delete Account. Chakusa requires password or linked-provider confirmation before deletion.'],
+const categories: SupportTicketCategory[] = ['account', 'billing', 'booking', 'messaging', 'technical', 'other'];
+const guidance = [
+  ['When will Chakusa respond?', 'Support cases show an expected response time. The current target is within 48 hours; describe urgent safety or account-security issues clearly in the subject.'],
+  ['How do subscription refunds work?', 'Apple or Google controls refunds for subscriptions bought through its store. Request the refund from the same store account used for the purchase. Deleting Chakusa does not cancel a store subscription.'],
+  ['How do customer-payment refunds work?', 'Customer appointment payments are separate from your Chakusa subscription. Refund them from the appointment payment record where available, or through the connected Stripe account.'],
+  ['What should I include?', 'Describe what you expected, what happened, and when it happened. Never include passwords, access tokens, full card numbers, or unnecessary private customer information.'],
 ] as const;
 
-export function HelpScreen() { return <Screen><AppHeader eyebrow="HELP" title="Help & FAQ" subtitle="Quick answers about using Chakusa." />{faqs.map(([question, answer]) => <View key={question} style={styles.card}><Text style={styles.question}>{question}</Text><Text style={styles.answer}>{answer}</Text></View>)}</Screen>; }
-const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.xs }, question: { ...typography.bodyStrong, color: colors.text }, answer: { ...typography.body, color: colors.textSecondary } });
-
+export function HelpScreen() {
+  const [tickets, setTickets] = useState<SupportTicketDto[]>([]); const [category, setCategory] = useState<SupportTicketCategory>('technical'); const [subject, setSubject] = useState(''); const [message, setMessage] = useState(''); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const load = async () => { try { setTickets(await supportApi.list()); setError(null); } catch { setError('Couldn’t load your support cases.'); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
+  const submit = async () => { if (saving || subject.trim().length < 3 || message.trim().length < 10) return; setSaving(true); setError(null); setNotice(null); try { const ticket = await supportApi.create({ category, subject: subject.trim(), message: message.trim() }); setTickets(current => [ticket, ...current]); setSubject(''); setMessage(''); setNotice('Support case created. Its expected response time is shown below.'); } catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to create the support case.'); } finally { setSaving(false); } };
+  return <Screen><AppHeader eyebrow="HELP" title="Help & support" subtitle="Guidance, refund information, and support cases in one place." />
+    <View style={styles.form}><Text style={styles.heading}>Create a support case</Text><Text style={styles.body}>Choose the closest category. Do not include passwords, tokens, or full payment-card details.</Text><View accessibilityRole="radiogroup" style={styles.choices}>{categories.map(item => <Pressable accessibilityRole="radio" accessibilityState={{ checked: category === item }} key={item} onPress={() => setCategory(item)} style={[styles.choice, category === item && styles.choiceActive]}><Text style={[styles.choiceText, category === item && styles.choiceTextActive]}>{titleCase(item)}</Text></Pressable>)}</View><Field label="Subject" value={subject} onChangeText={setSubject} /><Field label="What happened?" value={message} onChangeText={setMessage} multiline />{error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}<PrimaryButton fullWidth disabled={saving || subject.trim().length < 3 || message.trim().length < 10} label={saving ? 'Creating case…' : 'Create support case'} onPress={() => void submit()} /></View>
+    <View><Text style={styles.heading}>Your cases</Text>{loading ? <Text style={styles.body}>Loading support cases…</Text> : tickets.length ? tickets.map(ticket => <View key={ticket.id} style={styles.card}><View style={styles.top}><Text style={styles.question}>{ticket.subject}</Text><StatusBadge label={titleCase(ticket.status)} /></View><Text style={styles.answer}>{titleCase(ticket.category)} · Created {formatDateTime(ticket.createdAt)}</Text><Text style={styles.answer}>Expected response by {formatDateTime(ticket.expectedResponseAt)}</Text></View>) : <Text style={styles.body}>No support cases yet.</Text>}</View>
+    <View><Text style={styles.heading}>Guidance</Text>{guidance.map(([question, answer]) => <View key={question} style={styles.card}><Text style={styles.question}>{question}</Text><Text style={styles.answer}>{answer}</Text></View>)}</View>
+  </Screen>;
+}
+function Field({ label, multiline, ...props }: { label: string; value: string; onChangeText: (value: string) => void; multiline?: boolean }) { return <View><Text style={styles.label}>{label}</Text><TextInput {...props} multiline={multiline} textAlignVertical={multiline ? 'top' : 'center'} placeholderTextColor={colors.textSecondary} style={[styles.input, multiline && styles.multiline]} /></View>; }
+const styles = StyleSheet.create({ form: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, heading: { ...typography.subheading, color: colors.text, marginBottom: spacing.xs }, body: { ...typography.body, color: colors.textSecondary }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, choice: { minHeight: 42, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round }, choiceActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft }, choiceText: { ...typography.caption, color: colors.textSecondary }, choiceTextActive: { color: colors.primary, fontWeight: '700' }, label: { ...typography.caption, color: colors.text, marginBottom: spacing.xs }, input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, ...typography.body, color: colors.text }, multiline: { minHeight: 120, paddingTop: spacing.md }, card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.xs, marginBottom: spacing.sm }, top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, question: { ...typography.bodyStrong, color: colors.text, flex: 1 }, answer: { ...typography.body, color: colors.textSecondary }, error: { ...typography.caption, color: colors.negative }, notice: { ...typography.caption, color: colors.success } });

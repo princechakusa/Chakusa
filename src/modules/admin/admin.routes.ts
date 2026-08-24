@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminBusinessConfirmationSchema, adminCsrfHeaderSchema, adminLoginSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
+import { adminBusinessConfirmationSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
 import { resetBusinessOnboarding, revokeUserSessions } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
@@ -150,16 +150,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/auth/sessions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
-    reply.send({ items: await listOwnAdminSessions(request.admin!.userId) });
+    const items = await listOwnAdminSessions(request.admin!.userId);
+    reply.send({ items: items.map((session) => ({ ...session, current: session.id === request.admin!.sessionId })) });
   });
 
   fastify.delete("/auth/sessions/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    await fastify.requireAdminCsrf(request);
+    adminRevokeSessionSchema.parse(request.body);
     const { id } = adminSessionParamsSchema.parse(request.params);
     await revokeOwnAdminSession(request.admin!, id, auditContext(request));
     reply.status(204).send();
   });
 
   fastify.post("/auth/logout-all", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    await fastify.requireAdminCsrf(request);
+    const { confirmation } = adminUserConfirmationSchema.parse(request.body);
+    if (confirmation.toLowerCase() !== request.admin!.email.toLowerCase()) throw ApiError.badRequest("Enter your exact admin email to confirm secure logout everywhere");
     await revokeAllAdminSessions(request.admin!, auditContext(request));
     reply.header("set-cookie", clearRefreshCookie()).status(204).send();
   });

@@ -15,6 +15,7 @@ const navigation = [
   { to: "/communications", label: "Communications", icon: MessageSquareText, permission: "communication.read" },
   { to: "/support", label: "Support", icon: CircleHelp, permission: "support.read" },
   { to: "/audit", label: "Audit log", icon: FileClock, permission: "audit.read" },
+  { to: "/security", label: "Security", icon: ShieldCheck, permission: null },
 ];
 
 export default function Layout() {
@@ -27,7 +28,7 @@ export default function Layout() {
 
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("chakusa_admin_theme", theme); }, [theme]);
   useEffect(() => { setMenuOpen(false); setProfileOpen(false); }, [location.pathname]);
-  const visibleNavigation = useMemo(() => navigation.filter((item) => auth.hasPermission(item.permission)), [auth.admin]);
+  const visibleNavigation = useMemo(() => navigation.filter((item) => !item.permission || auth.hasPermission(item.permission)), [auth.admin]);
 
   return <div className="app-shell">
     <aside className={`sidebar ${menuOpen ? "open" : ""}`}>

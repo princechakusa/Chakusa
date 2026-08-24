@@ -62,4 +62,34 @@ describe("admin guarded actions", () => {
     expect(sessions.statusCode).toBe(403);
     expect(await prisma.adminAuditLog.count({ where: { action: { in: ["BUSINESS_ONBOARDING_RESET", "USER_SESSIONS_REVOKED"] } } })).toBe(0);
   });
+
+  it("identifies the current admin session and guards selected-session revocation", async () => {
+    const first = await admin();
+    const secondLogin = await app.inject({ method: "POST", url: "/admin/auth/login", headers: { origin: "http://localhost:5173" }, payload: { email: first.email, password: "admin-password-123" } });
+    const secondToken = secondLogin.json().accessToken as string;
+    const secondCsrf = secondLogin.json().csrfToken as string;
+    const listed = await app.inject({ method: "GET", url: "/admin/auth/sessions", headers: headers(secondToken) });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().items.filter((session: { current: boolean }) => session.current)).toHaveLength(1);
+    const other = listed.json().items.find((session: { current: boolean }) => !session.current);
+
+    const missingCsrf = await app.inject({ method: "DELETE", url: `/admin/auth/sessions/${other.id}`, headers: headers(secondToken), payload: { confirmation: "REVOKE" } });
+    expect(missingCsrf.statusCode).toBe(400);
+    const wrongConfirmation = await app.inject({ method: "DELETE", url: `/admin/auth/sessions/${other.id}`, headers: headers(secondToken, secondCsrf), payload: { confirmation: "wrong" } });
+    expect(wrongConfirmation.statusCode).toBe(400);
+    const revoked = await app.inject({ method: "DELETE", url: `/admin/auth/sessions/${other.id}`, headers: headers(secondToken, secondCsrf), payload: { confirmation: "REVOKE" } });
+    expect(revoked.statusCode).toBe(204);
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_SESSION_REVOKED" } })).not.toBeNull();
+  });
+
+  it("requires the exact admin email before securely logging out everywhere", async () => {
+    const current = await admin();
+    const wrong = await app.inject({ method: "POST", url: "/admin/auth/logout-all", headers: headers(current.token, current.csrf), payload: { confirmation: "wrong@example.com" } });
+    expect(wrong.statusCode).toBe(400);
+    expect(await prisma.authSession.count({ where: { userId: current.account.userId, scope: "ADMIN", revokedAt: null } })).toBe(1);
+    const response = await app.inject({ method: "POST", url: "/admin/auth/logout-all", headers: headers(current.token, current.csrf), payload: { confirmation: current.email } });
+    expect(response.statusCode).toBe(204);
+    expect(await prisma.authSession.count({ where: { userId: current.account.userId, scope: "ADMIN", revokedAt: null } })).toBe(0);
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_LOGOUT_ALL", targetId: current.account.userId } })).not.toBeNull();
+  });
 });

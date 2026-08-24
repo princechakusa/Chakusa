@@ -67,8 +67,9 @@ describe("admin security foundation", () => {
 
     const sessions = await app.inject({ method: "GET", url: "/admin/auth/sessions", headers: { authorization: `Bearer ${body.accessToken}` } });
     expect(Object.keys(sessions.json().items[0]).sort()).toEqual([
-      "createdAt", "expiresAt", "id", "ipAddress", "lastUsedAt", "status", "userAgent",
+      "createdAt", "current", "expiresAt", "id", "ipAddress", "lastUsedAt", "status", "userAgent",
     ].sort());
+    expect(sessions.json().items[0].current).toBe(true);
 
     const productEndpoint = await app.inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${body.accessToken}` } });
     expect(productEndpoint.statusCode).toBe(401);

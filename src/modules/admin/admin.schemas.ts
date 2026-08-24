@@ -16,3 +16,7 @@ export const adminBusinessConfirmationSchema = z.object({
 export const adminUserConfirmationSchema = z.object({
   confirmation: z.string().email(),
 });
+
+export const adminRevokeSessionSchema = z.object({
+  confirmation: z.literal("REVOKE"),
+});

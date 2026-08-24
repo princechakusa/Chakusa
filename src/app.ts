@@ -38,6 +38,10 @@ import type { AppleStoreClient } from "./lib/billing/appleAppStoreClient.js";
 import type { GooglePlayClient } from "./lib/billing/googlePlayClient.js";
 import { assertValidAppleRootCertificates } from "./lib/billing/jws.js";
 import type { MessagingProvider } from "./lib/messaging/messagingProvider.js";
+import type { StripePaymentProvider } from "./lib/payments/stripeProvider.js";
+import paymentRoutes from "./modules/payments/payments.routes.js";
+
+declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
 export interface BuildAppOptions {
   googleTokenVerifier?: GoogleTokenVerifier;
@@ -50,6 +54,7 @@ export interface BuildAppOptions {
   /** Test-only injection — see team.routes.ts's TeamRoutesOptions. */
   teamInvitationEmailSender?: TeamInvitationEmailSender;
   messagingProvider?: MessagingProvider;
+  stripePaymentProvider?: StripePaymentProvider;
   /**
    * Rate limiting is skipped by default in NODE_ENV=test so ordinary test
    * suites (which reuse one app instance across many requests in a single
@@ -87,6 +92,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
     // this limit.
     routerOptions: { maxParamLength: 200 },
   });
+
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (request, body, done) => { request.rawBody = Buffer.from(body); try { done(null, JSON.parse(request.rawBody.toString("utf8"))); } catch (error) { done(error as Error); } });
 
   await app.register(sensible);
   // corsAllowedOrigins is null (permissive `origin: true`) until
@@ -170,6 +178,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });
   await app.register(automationRoutes, { prefix: "/automation" });
+  await app.register(paymentRoutes, { prefix: "/payments", provider: options.stripePaymentProvider });
   await app.register(subscriptionRoutes, {
     prefix: "/subscription",
     appleStoreClient: options.appleStoreClient,
@@ -193,6 +202,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleStoreClient: options.appleStoreClient,
     googlePlayClient: options.googlePlayClient,
     messagingProvider: options.messagingProvider,
+    stripePaymentProvider: options.stripePaymentProvider,
   });
 
   return app;

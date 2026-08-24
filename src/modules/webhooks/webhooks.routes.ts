@@ -7,12 +7,15 @@ import { verifyGoogleRtdnAuthorization } from "./googleRtdnAuth.js";
 import { defaultTwilioProvider } from "../../lib/messaging/twilioProvider.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import { prisma } from "../../lib/prisma.js";
+import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
+import { applyStripeEvent } from "../payments/payments.service.js";
 
 export interface WebhookRoutesOptions {
   /** Test-only injection point — see subscription.routes.ts's SubscriptionRoutesOptions for the identical pattern. Defaults to the real store clients; never live in tests. */
   appleStoreClient?: AppleStoreClient;
   googlePlayClient?: GooglePlayClient;
   messagingProvider?: MessagingProvider;
+  stripePaymentProvider?: StripePaymentProvider;
 }
 
 /**
@@ -46,6 +49,7 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
   const appleStoreClient = options.appleStoreClient ?? realAppleStoreClient;
   const googlePlayClient = options.googlePlayClient ?? realGooglePlayClient;
   const messagingProvider = options.messagingProvider ?? defaultTwilioProvider;
+  const stripePaymentProvider = options.stripePaymentProvider ?? defaultStripePaymentProvider;
 
   fastify.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
     try { done(null, Object.fromEntries(new URLSearchParams(String(body)))); } catch (error) { done(error as Error); }
@@ -81,6 +85,15 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
       }
     }
     reply.type("text/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+  });
+
+  fastify.post("/stripe", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const signature = request.headers["stripe-signature"];
+    if (typeof signature !== "string" || !request.rawBody) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid Stripe webhook signature");
+    let event;
+    try { event = stripePaymentProvider.constructEvent(request.rawBody, signature); } catch { throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid Stripe webhook signature"); }
+    await applyStripeEvent(event);
+    reply.send({ received: true });
   });
 
   fastify.post(

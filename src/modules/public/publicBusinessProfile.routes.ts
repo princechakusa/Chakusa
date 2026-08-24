@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { ApiError } from "../../lib/errors.js";
 import { createPublicBookingSchema, publicAvailabilitySchema, reschedulePublicBookingSchema, submitPublicContactSchema } from "./public.schemas.js";
 import { cancelPublicBooking, confirmPublicBooking, createPublicBooking, publicAvailability, publicBookingCalendar, reschedulePublicBooking, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
+import { createAppointmentPaymentLink } from "../payments/payments.service.js";
+import { paymentLinkSchema } from "../payments/payments.schemas.js";
 
 /**
  * Unauthenticated, permanent-link routes for a business's public profile
@@ -59,5 +61,10 @@ export default async function publicBusinessProfileRoutes(fastify: FastifyInstan
   });
   fastify.get<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/calendar.ics", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
     const result = await publicBookingCalendar(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.header("content-type", "text/calendar; charset=utf-8").header("content-disposition", 'attachment; filename="appointment.ics"').send(result);
+  });
+  fastify.post<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/payment-link", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const appointment = await resolvePublicBooking(request.params.slug, request.params.token); if (!appointment) throw ApiError.notFound("This booking link is invalid or expired");
+    const transaction = await createAppointmentPaymentLink(appointment.businessId, appointment.id, paymentLinkSchema.parse(request.body).kind);
+    reply.status(201).send({ id: transaction.id, url: transaction.checkoutUrl, amount: transaction.amount, currency: transaction.currency });
   });
 }

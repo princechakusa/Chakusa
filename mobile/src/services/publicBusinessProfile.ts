@@ -13,7 +13,7 @@ export interface SubmitPublicContactInput {
 }
 export interface PublicAvailabilitySlot { startsAt: string; endsAt: string; members: { id: string; name: string }[]; }
 export interface CreatePublicBookingInput { serviceOfferingId: string; assignedMemberId: string; startsAt: string; name: string; phone: string; email?: string; notes?: string; }
-export interface PublicBookingDetails { id: string; serviceName: string; startsAt: string; endsAt: string; status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELED' | 'NO_SHOW'; business: { name: string; cancellationNoticeMinutes: number }; serviceOffering: { id: string; durationMinutes: number } | null; assignedMember: { id: string; user: { fullName: string } } | null; }
+export interface PublicBookingDetails { id: string; serviceName: string; startsAt: string; endsAt: string; status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELED' | 'NO_SHOW'; price: string | null; depositAmount: string | null; paidAmount: string; paymentStatus: 'unpaid' | 'partially_paid' | 'paid'; business: { name: string; cancellationNoticeMinutes: number }; serviceOffering: { id: string; durationMinutes: number } | null; assignedMember: { id: string; user: { fullName: string } } | null; }
 
 export const publicBusinessProfileApi = {
   get: (slug: string) => api.get<PublicBusinessProfileDetails>(pathFor(slug), 'none'),
@@ -26,4 +26,5 @@ export const publicBusinessProfileApi = {
   confirmBooking: (slug: string, token: string) => api.post<PublicBookingDetails>(`${pathFor(slug)}/bookings/${encodeURIComponent(token)}/confirm`, {}, 'none'),
   rescheduleBooking: (slug: string, token: string, input: { assignedMemberId: string; startsAt: string }) => api.post<PublicBookingDetails>(`${pathFor(slug)}/bookings/${encodeURIComponent(token)}/reschedule`, input, 'none'),
   calendarUrl: (slug: string, token: string) => `${API_URL}${pathFor(slug)}/bookings/${encodeURIComponent(token)}/calendar.ics`,
+  createPaymentLink: (slug: string, token: string, kind: 'deposit'|'balance'|'full') => api.post<{ id: string; url: string; amount: string; currency: string }>(`${pathFor(slug)}/bookings/${encodeURIComponent(token)}/payment-link`, { kind }, 'none'),
 };

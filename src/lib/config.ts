@@ -107,6 +107,13 @@ export const envSchema = z.object({
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
   TWILIO_STATUS_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   TWILIO_MONTHLY_MESSAGE_LIMIT: z.coerce.number().int().positive().default(1000),
+  STRIPE_PAYMENTS_ENABLED: booleanFlag,
+  STRIPE_SECRET_KEY: optionalSecret,
+  STRIPE_WEBHOOK_SECRET: optionalSecret,
+  STRIPE_CONNECT_RETURN_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  STRIPE_CONNECT_REFRESH_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  STRIPE_CHECKOUT_SUCCESS_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  STRIPE_CHECKOUT_CANCEL_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   // --- Apple billing: App Store Server API + Server Notifications V2 ---
   // Deliberately separate from APPLE_CLIENT_ID/APPLE_TEAM_ID/APPLE_KEY_ID/
   // APPLE_PRIVATE_KEY_BASE64 above (Sign in with Apple) even though both are
@@ -252,6 +259,10 @@ export const envSchema = z.object({
     if (!env.TWILIO_FROM_NUMBER && !env.TWILIO_MESSAGING_SERVICE_SID) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["TWILIO_FROM_NUMBER"], message: "Either TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID is required in production when TWILIO_ENABLED=true" });
     }
+  }
+  if (env.STRIPE_PAYMENTS_ENABLED) {
+    const stripeValues = [env.STRIPE_SECRET_KEY, env.STRIPE_WEBHOOK_SECRET, env.STRIPE_CONNECT_RETURN_URL, env.STRIPE_CONNECT_REFRESH_URL, env.STRIPE_CHECKOUT_SUCCESS_URL, env.STRIPE_CHECKOUT_CANCEL_URL];
+    if (!stripeValues.every(Boolean)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["STRIPE_SECRET_KEY"], message: "All Stripe payment secrets and redirect URLs are required in production when STRIPE_PAYMENTS_ENABLED=true" });
   }
   if (env.APPLE_BILLING_ENABLED) {
     const appleBillingValues = [env.APPLE_BUNDLE_ID, env.APPLE_BILLING_ISSUER_ID, env.APPLE_BILLING_KEY_ID, env.APPLE_BILLING_PRIVATE_KEY_BASE64, env.APPLE_PRO_MONTHLY_PRODUCT_ID, env.APPLE_ROOT_CERTIFICATES_BASE64];

@@ -111,6 +111,20 @@ enum LeadPaymentStatus {
   paid
 }
 
+enum AppointmentPaymentKind {
+  deposit
+  balance
+  full
+}
+
+enum AppointmentPaymentTransactionStatus {
+  pending
+  paid
+  failed
+  partially_refunded
+  refunded
+}
+
 enum MessageType {
   missed_call
   booking_confirmation
@@ -495,6 +509,7 @@ model Business {
   slotIntervalMinutes Int @default(15) @map("slot_interval_minutes")
   cancellationNoticeMinutes Int @default(1440) @map("cancellation_notice_minutes")
   defaultAppointmentReminderMinutes Int @default(1440) @map("default_appointment_reminder_minutes")
+  stripeAccountId  String?     @unique @map("stripe_account_id")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
@@ -519,6 +534,7 @@ model Business {
   serviceOfferings ServiceOffering[]
   bookingBlocks    BookingBlock[]
   publicBookingAccess PublicBookingAccess[]
+  appointmentPaymentTransactions AppointmentPaymentTransaction[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -660,6 +676,7 @@ model Appointment {
   assignedMember BusinessMember? @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
   serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
   publicAccess    PublicBookingAccess?
+  paymentTransactions AppointmentPaymentTransaction[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -686,6 +703,32 @@ model PublicBookingAccess {
 
   @@index([businessId])
   @@map("public_booking_access")
+}
+
+model AppointmentPaymentTransaction {
+  id                    String                              @id @default(uuid())
+  businessId            String                              @map("business_id")
+  appointmentId         String                              @map("appointment_id")
+  kind                  AppointmentPaymentKind
+  status                AppointmentPaymentTransactionStatus @default(pending)
+  amount                Decimal                             @db.Decimal(10, 2)
+  refundedAmount        Decimal                             @default(0) @db.Decimal(10, 2) @map("refunded_amount")
+  currency              String
+  stripeCheckoutSessionId String?                           @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId String?                             @unique @map("stripe_payment_intent_id")
+  checkoutUrl           String?                             @map("checkout_url")
+  failureCode           String?                             @map("failure_code")
+  paidAt                DateTime?                           @map("paid_at")
+  refundedAt            DateTime?                           @map("refunded_at")
+  createdAt             DateTime                            @default(now()) @map("created_at")
+  updatedAt             DateTime                            @updatedAt @map("updated_at")
+
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status, createdAt])
+  @@index([appointmentId, createdAt])
+  @@map("appointment_payment_transactions")
 }
 
 model ServiceOffering {

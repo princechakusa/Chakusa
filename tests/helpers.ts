@@ -21,6 +21,7 @@ export async function resetDatabase() {
     prisma.workerHeartbeat.deleteMany(),
     prisma.publicBookingAccess.deleteMany(),
     prisma.bookingBlock.deleteMany(),
+    prisma.appointmentPaymentTransaction.deleteMany(),
     prisma.appointment.deleteMany(),
     prisma.serviceMemberAssignment.deleteMany(),
     prisma.serviceOffering.deleteMany(),

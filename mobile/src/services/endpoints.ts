@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, WeeklyOwnerReportDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, WeeklyOwnerReportDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -31,6 +31,11 @@ export const businessApi = {
   patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes' | 'paymentRemindersEnabled'>> & { messagingConsentConfirmed?: boolean }) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
+};
+export const calendarApi = {
+  listSubscriptions: () => api.get<CalendarSubscriptionDto[]>('/calendar/subscriptions'),
+  createSubscription: (label?: string) => api.post<CalendarSubscriptionDto & { token: string; feedUrl: string }>('/calendar/subscriptions', label ? { label } : {}),
+  revokeSubscription: (id: string) => api.post<{ revoked: boolean }>(`/calendar/subscriptions/${id}/revoke`, {}),
 };
 export const devicesApi = {
   register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),

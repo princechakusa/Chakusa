@@ -148,6 +148,7 @@ export interface BusinessInsightsDto {
   windowStart: string;
 }
 export interface WeeklyOwnerReportDto { id: string; weekKey: string; periodStart: string; periodEnd: string; summary: { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number }; viewedAt: string | null; createdAt: string; }
+export interface CalendarSubscriptionDto { id: string; label: string; createdAt: string; revokedAt: string | null; lastAccessedAt: string | null; }
 export type SupportTicketCategory = 'account' | 'billing' | 'booking' | 'messaging' | 'technical' | 'other';
 export interface SupportTicketDto { id: string; category: SupportTicketCategory; subject: string; message: string; status: 'open' | 'in_progress' | 'resolved' | 'closed'; expectedResponseAt: string; resolvedAt: string | null; createdAt: string; updatedAt: string; }
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity' | 'payment_outstanding';

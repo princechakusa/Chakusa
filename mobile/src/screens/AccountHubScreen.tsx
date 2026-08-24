@@ -71,6 +71,7 @@ export function AccountHubScreen() {
       {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
       {canManageBusiness ? <MenuRow icon="calendar-outline" tone="green" title="Booking availability" detail="Hours, leave and blocked time" onPress={() => navigation.navigate('AvailabilitySettings')} /> : null}
       {canManageBusiness ? <MenuRow icon="cloud-upload-outline" tone="blue" title="Import appointments" detail="Preview and import an existing calendar CSV" onPress={() => navigation.navigate('AppointmentsImport')} /> : null}
+      {owner ? <MenuRow icon="calendar-outline" tone="green" title="External calendar" detail="Subscribe from Apple, Google, or Outlook" onPress={() => navigation.navigate('ExternalCalendar')} /> : null}
       <MenuRow icon="flash-outline" tone="amber" title="Automation" detail={features?.automation ? 'Manage active customer workflows' : 'Explore recovery workflows'} onPress={() => navigation.navigate('Automation')} last />
     </MenuSection>
 

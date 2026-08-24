@@ -238,7 +238,7 @@ export async function getCustomerProfile(businessId: string, customerId: string)
   await assertCustomerInBusiness(businessId, customerId);
   const now = new Date();
 
-  const [customer, leads, reviewRequests, feedback, reminders, activity, messages] = await Promise.all([
+  const [customer, leads, reviewRequests, feedback, reminders, activity, messages, appointments] = await Promise.all([
     prisma.customer.findFirst({ where: { id: customerId, businessId } }),
     prisma.lead.findMany({ where: { businessId, customerId }, orderBy: { createdAt: "desc" } }),
     prisma.reviewRequest.findMany({
@@ -253,6 +253,7 @@ export async function getCustomerProfile(businessId: string, customerId: string)
       take: 50,
     }),
     prisma.message.findMany({ where: { businessId, customerId }, orderBy: { createdAt: "desc" } }),
+    prisma.appointment.findMany({ where: { businessId, customerId }, orderBy: { startsAt: "desc" }, take: 100, include: { assignedMember: { include: { user: { select: { id: true, fullName: true, email: true } } } } } }),
   ]);
 
   const lifetimeValue = leads
@@ -293,6 +294,7 @@ export async function getCustomerProfile(businessId: string, customerId: string)
     reminders,
     activity,
     messages,
+    appointments,
     lifetimeValue,
     lifecycleStage,
     communicationStatuses,

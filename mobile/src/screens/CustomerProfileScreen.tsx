@@ -123,6 +123,8 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      <View><SectionHeader title="Appointments" action="Schedule" onAction={() => runQuickAction('schedule')} />{profile.appointments.length ? <View style={styles.appointmentList}>{profile.appointments.slice(0, 5).map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => navigation.navigate('AppointmentEditor', { appointmentId: item.id })} style={styles.appointmentRow}><View style={styles.activityIcon}><Text style={styles.appointmentDay}>{new Date(item.startsAt).getDate()}</Text></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{item.serviceName}</Text><Text style={styles.activityDetail}>{new Date(item.startsAt).toLocaleString()} · {titleCase(item.status)}</Text></View><StatusBadge label={titleCase(item.status)} /></Pressable>)}</View> : <Text style={styles.muted}>No appointments recorded for this customer.</Text>}</View>
+
       <View>
         <SectionHeader title="Communication timeline" />
         {tabs.length > 1 ? <FilterTabs options={tabs} value={tab} onChange={setTab} /> : null}
@@ -151,6 +153,7 @@ const styles = StyleSheet.create({
   assistantButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.round, borderWidth: 1, borderColor: colors.primary, marginTop: spacing.xxs },
   assistantButtonText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  appointmentList: { marginTop: spacing.sm }, appointmentRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }, appointmentDay: { ...typography.bodyStrong, color: colors.primary }, activityIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft }, activityCopy: { flex: 1 }, activityTitle: { ...typography.bodyStrong, color: colors.text }, activityDetail: { ...typography.caption, color: colors.textSecondary }, muted: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
   timeline: { marginTop: spacing.md },
   overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }, sheet: { maxHeight: '92%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }, sheetContent: { padding: spacing.xl, paddingBottom: 40, gap: spacing.md }, sheetTitle: { ...typography.heading, color: colors.text }, fieldLabel: { ...typography.caption, color: colors.text, marginBottom: spacing.xs }, input: { minHeight: 48, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, ...typography.body, color: colors.text }, error: { ...typography.caption, color: colors.negative }
 });

@@ -52,6 +52,8 @@ export const updateBusinessSchema = z.object({
   slotIntervalMinutes: z.number().int().min(5).max(120).optional(),
   cancellationNoticeMinutes: z.number().int().min(0).max(43_200).optional(),
   defaultAppointmentReminderMinutes: z.number().int().min(0).max(10_080).optional(),
+  messagingConsentConfirmed: z.boolean().optional(),
+  paymentRemindersEnabled: z.boolean().optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

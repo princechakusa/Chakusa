@@ -511,6 +511,8 @@ model Business {
   cancellationNoticeMinutes Int @default(1440) @map("cancellation_notice_minutes")
   defaultAppointmentReminderMinutes Int @default(1440) @map("default_appointment_reminder_minutes")
   stripeAccountId  String?     @unique @map("stripe_account_id")
+  messagingConsentConfirmedAt DateTime? @map("messaging_consent_confirmed_at")
+  paymentRemindersEnabled Boolean @default(false) @map("payment_reminders_enabled")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 

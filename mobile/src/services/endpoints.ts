@@ -28,7 +28,7 @@ export const authApi = {
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
   get: () => api.get<BusinessDto>('/business'),
-  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes'>>) => api.patch<BusinessDto>('/business', body),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes' | 'paymentRemindersEnabled'>> & { messagingConsentConfirmed?: boolean }) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
 };
@@ -38,6 +38,7 @@ export const devicesApi = {
 };
 export const dashboardApi = { summary: () => api.get<DashboardSummaryDto>('/dashboard/summary'), attention: (category?: AttentionCategory, page = 1, pageSize = 25) => api.get<AttentionPageDto>(`/dashboard/attention${query({ category, page, pageSize })}`), insights: () => api.get<BusinessInsightsDto>('/dashboard/insights'), coaching: () => api.get<BusinessCoachingDto>('/dashboard/coaching') };
 export const weeklyReportsApi = { list: () => api.get<WeeklyOwnerReportDto[]>('/weekly-reports') };
+export const paymentsApi = { connectStatus: () => api.get<{ connected: boolean; chargesEnabled: boolean; detailsSubmitted: boolean; payoutsEnabled: boolean }>('/payments/connect/status'), connectLink: () => api.post<{ url: string }>('/payments/connect/link', {}) };
 export const customersApi = {
   list: (search = '', page = 1, pageSize = 100) => api.get<CustomerListResponse>(`/customers${query({ search, page, pageSize })}`),
   create: (body: { name: string; phone?: string; email?: string; notes?: string }) => api.post<CustomerDto>('/customers', body),

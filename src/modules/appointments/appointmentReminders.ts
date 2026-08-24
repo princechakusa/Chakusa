@@ -66,6 +66,7 @@ export async function sendDueAppointmentPaymentReminders(provider?: MessagingPro
       price: { not: null },
       endsAt: { lte: new Date(now.getTime() - 24 * 60 * 60_000), gte: new Date(now.getTime() - 30 * 86_400_000) },
       paymentReminderSentAt: null,
+      business: { paymentRemindersEnabled: true, messagingConsentConfirmedAt: { not: null } },
       paymentTransactions: { some: { status: "pending", checkoutUrl: { not: null } } },
     },
     orderBy: { endsAt: "asc" },

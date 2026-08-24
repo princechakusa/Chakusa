@@ -3,21 +3,21 @@ import { computeSetupScore, SetupScoreBusiness } from './setupScore';
 
 const fullBusiness: SetupScoreBusiness = {
   name: 'Safi Salon', industry: 'salon', phone: '+263771234567', country: 'ZW',
-  googleReviewLink: 'https://g.page/r/safi', workingHours: { summary: 'Mon-Sat, 9-6' }, defaultServices: ['Haircut'],
+  googleReviewLink: 'https://g.page/r/safi', workingHours: { summary: 'Mon-Sat, 9-6' }, defaultServices: ['Haircut'], messagingConsentConfirmedAt: '2026-08-24T00:00:00.000Z',
 };
-const emptyBusiness: SetupScoreBusiness = { name: '', industry: null, phone: null, country: null, googleReviewLink: null, workingHours: null, defaultServices: [] };
+const emptyBusiness: SetupScoreBusiness = { name: '', industry: null, phone: null, country: null, googleReviewLink: null, workingHours: null, defaultServices: [], messagingConsentConfirmedAt: null };
 
 describe('setup score', () => {
   it('scores a fully-configured Pro business at 100%, including automation', () => {
     const result = computeSetupScore({ business: fullBusiness, automationAvailability: 'available', automationConfigured: true, pushEnabled: true });
     expect(result.score).toBe(100);
-    expect(result.total).toBe(9);
+    expect(result.total).toBe(10);
     expect(result.checklist.find(item => item.key === 'automation')?.complete).toBe(true);
   });
 
   it('excludes automation from the checklist entirely when the plan gates it, so Free can still reach 100%', () => {
     const result = computeSetupScore({ business: fullBusiness, automationAvailability: 'free-locked', automationConfigured: false, pushEnabled: true });
-    expect(result.total).toBe(8);
+    expect(result.total).toBe(9);
     expect(result.checklist.some(item => item.key === 'automation')).toBe(false);
     expect(result.score).toBe(100);
   });
@@ -32,14 +32,14 @@ describe('setup score', () => {
   it('treats a missing business as fully incomplete rather than throwing', () => {
     const result = computeSetupScore({ business: null, automationAvailability: 'loading', automationConfigured: false, pushEnabled: false });
     expect(result.score).toBe(0);
-    expect(result.total).toBe(8);
+    expect(result.total).toBe(9);
   });
 
   it('rounds partial completion to the nearest percent', () => {
     const result = computeSetupScore({ business: { ...emptyBusiness, name: 'Safi Salon' }, automationAvailability: 'subscription-unavailable', automationConfigured: false, pushEnabled: false });
     expect(result.complete).toBe(1);
-    expect(result.total).toBe(8);
-    expect(result.score).toBe(13);
+    expect(result.total).toBe(9);
+    expect(result.score).toBe(11);
   });
 
   it.each(['free-locked', 'subscription-unavailable', 'service-unavailable', 'loading'] as const)('excludes automation from the checklist for every non-available state (%s)', availability => {

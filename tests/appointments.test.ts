@@ -77,6 +77,7 @@ describe("appointments", () => {
   it("sends an explicitly requested customer confirmation at most once", async () => {
     const account = await fixture("confirmation@example.com");
     await prisma.subscription.update({ where: { businessId: account.businessId }, data: { plan: "PRO", status: "ACTIVE" } });
+    await prisma.business.update({ where: { id: account.businessId }, data: { messagingConsentConfirmedAt: new Date(), paymentRemindersEnabled: true } });
     await prisma.customer.update({ where: { id: account.customer.id }, data: { phone: "+15551234567", phoneE164: "+15551234567" } });
     const appointment = await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Haircut", startsAt: new Date("2026-09-01T09:00:00.000Z"), endsAt: new Date("2026-09-01T10:00:00.000Z") } });
     const calls: OutboundMessage[] = []; const provider: MessagingProvider = { id: "fake", supportsChannel: () => true, send: async message => { calls.push(message); return { accepted: true, providerMessageId: "confirmation-1", permanentFailure: false }; }, parseDeliveryWebhook: () => null, parseInboundWebhook: () => null, verifyWebhookSignature: () => false };
@@ -103,6 +104,7 @@ describe("appointments", () => {
   it("sends one secure outstanding-payment reminder and exposes payment history", async () => {
     const account = await fixture("payment-reminder@example.com");
     await prisma.subscription.update({ where: { businessId: account.businessId }, data: { plan: "PRO", status: "ACTIVE" } });
+    await prisma.business.update({ where: { id: account.businessId }, data: { messagingConsentConfirmedAt: new Date(), paymentRemindersEnabled: true } });
     await prisma.customer.update({ where: { id: account.customer.id }, data: { phone: "+15551234569", phoneE164: "+15551234569" } });
     const appointment = await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Color", startsAt: new Date("2026-08-30T07:00:00.000Z"), endsAt: new Date("2026-08-30T08:00:00.000Z"), status: "COMPLETED", price: 100, paidAmount: 25, paymentStatus: "partially_paid" } });
     await prisma.appointmentPaymentTransaction.create({ data: { businessId: account.businessId, appointmentId: appointment.id, kind: "balance", amount: 75, currency: "USD", checkoutUrl: "https://checkout.stripe.test/balance" } });

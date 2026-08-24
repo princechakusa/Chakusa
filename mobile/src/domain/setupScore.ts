@@ -1,7 +1,7 @@
 import { BusinessDto } from '../apiTypes';
 import { AutomationAvailability } from './automation';
 
-export type SetupScoreBusiness = Pick<BusinessDto, 'name' | 'industry' | 'phone' | 'country' | 'googleReviewLink' | 'workingHours' | 'defaultServices'>;
+export type SetupScoreBusiness = Pick<BusinessDto, 'name' | 'industry' | 'phone' | 'country' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'messagingConsentConfirmedAt'>;
 
 export interface SetupScoreInput {
   business: SetupScoreBusiness | null;
@@ -22,6 +22,7 @@ export function computeSetupScore(input: SetupScoreInput): SetupScoreResult {
     { key: 'services', label: 'Services', complete: Boolean(business?.defaultServices && business.defaultServices.length > 0) },
     { key: 'googleReview', label: 'Google review link', complete: Boolean(business?.googleReviewLink) },
     { key: 'workingHours', label: 'Working hours', complete: Boolean(business?.workingHours) },
+    { key: 'messagingConsent', label: 'Messaging responsibility', complete: Boolean(business?.messagingConsentConfirmedAt) },
     { key: 'notifications', label: 'Notifications enabled', complete: input.pushEnabled },
   ];
   // Automation is Pro-gated, so a business whose plan can't use it yet

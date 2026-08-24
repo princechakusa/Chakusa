@@ -90,6 +90,8 @@ export default async function businessRoutes(fastify: FastifyInstance) {
         slotIntervalMinutes: input.slotIntervalMinutes,
         cancellationNoticeMinutes: input.cancellationNoticeMinutes,
         defaultAppointmentReminderMinutes: input.defaultAppointmentReminderMinutes,
+        messagingConsentConfirmedAt: input.messagingConsentConfirmed === undefined ? undefined : input.messagingConsentConfirmed ? new Date() : null,
+        paymentRemindersEnabled: input.paymentRemindersEnabled,
       },
     });
 

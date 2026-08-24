@@ -54,6 +54,19 @@ describe("GET /dashboard/insights", () => {
     expect(currentMonthPoint.conversionRate).toBe(1);
   });
 
+  it("attributes collected appointment revenue to payment and booking sources", async () => {
+    const { token, businessId, userId } = await registerAccount(app, { email: "attribution@example.com" });
+    const customer = await prisma.customer.create({ data: { businessId, name: "Revenue Customer" } });
+    const publicAppointment = await prisma.appointment.create({ data: { businessId, customerId: customer.id, createdByUserId: userId, serviceName: "Public service", startsAt: new Date(), endsAt: new Date(Date.now() + 60_000), status: "COMPLETED", price: 100, paidAmount: 100, paymentStatus: "paid", paymentReminderSentAt: new Date(Date.now() - 60_000) } });
+    await prisma.publicBookingAccess.create({ data: { businessId, appointmentId: publicAppointment.id, tokenHash: "attribution-token", expiresAt: new Date(Date.now() + 86_400_000) } });
+    await prisma.appointmentPaymentTransaction.create({ data: { businessId, appointmentId: publicAppointment.id, kind: "full", status: "paid", amount: 100, currency: "USD", paidAt: new Date() } });
+    await prisma.appointment.create({ data: { businessId, customerId: customer.id, createdByUserId: userId, serviceName: "Staff service", startsAt: new Date(), endsAt: new Date(Date.now() + 60_000), status: "COMPLETED", price: 40, paidAmount: 40, paymentStatus: "paid" } });
+
+    const response = await app.inject({ method: "GET", url: "/dashboard/insights", headers: authHeader(token) });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().revenueAttribution).toEqual({ totalCollected: 140, stripeCollected: 100, manuallyRecorded: 40, publicBookingCollected: 100, staffBookingCollected: 40, collectedAfterPaymentReminder: 100 });
+  });
+
   it("ranks service performance by requests, revenue, and conversion rate", async () => {
     const { token, businessId } = await registerAccount(app);
     const customer = await prisma.customer.create({ data: { businessId, name: "Service Customer" } });

@@ -143,6 +143,7 @@ export interface BusinessInsightsDto {
   customerValue: CustomerValueAnalyticsDto;
   recoveryPerformance: RecoveryPerformanceDto;
   customerLifecycle: CustomerLifecycleBreakdownDto;
+  revenueAttribution: { totalCollected: number; stripeCollected: number; manuallyRecorded: number; publicBookingCollected: number; staffBookingCollected: number; collectedAfterPaymentReminder: number };
   generatedAt: string;
   windowStart: string;
 }

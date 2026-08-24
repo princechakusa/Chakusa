@@ -65,6 +65,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     customerLastActivityRows,
     missedCallsRecoveredCount,
     customerLeadStatusRows,
+    revenueAttributionRows,
   ] = await Promise.all([
     precomputedSummary ? Promise.resolve(precomputedSummary) : getDashboardSummary(businessId),
 
@@ -177,6 +178,31 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
       GROUP BY customer_id
       LIMIT ${CUSTOMER_CANDIDATE_LIMIT}
     `),
+    prisma.$queryRaw<{ total_collected: string | null; stripe_collected: string | null; manual_collected: string | null; public_booking_collected: string | null; staff_booking_collected: string | null; after_payment_reminder: string | null }[]>(Prisma.sql`
+      WITH stripe_by_appointment AS (
+        SELECT appointment_id,
+               SUM(t.amount - t.refunded_amount) FILTER (WHERE t.status IN ('paid', 'partially_refunded')) AS net_stripe,
+               SUM(amount - refunded_amount) FILTER (
+                 WHERE t.status IN ('paid', 'partially_refunded')
+                   AND paid_at IS NOT NULL
+                   AND paid_at >= a.payment_reminder_sent_at
+               ) AS after_reminder
+        FROM appointment_payment_transactions t
+        JOIN appointments a ON a.id = t.appointment_id
+        WHERE t.business_id = ${businessId}
+        GROUP BY appointment_id
+      )
+      SELECT COALESCE(SUM(a.paid_amount), 0) AS total_collected,
+             COALESCE(SUM(COALESCE(s.net_stripe, 0)), 0) AS stripe_collected,
+             COALESCE(SUM(GREATEST(a.paid_amount - COALESCE(s.net_stripe, 0), 0)), 0) AS manual_collected,
+             COALESCE(SUM(a.paid_amount) FILTER (WHERE p.id IS NOT NULL), 0) AS public_booking_collected,
+             COALESCE(SUM(a.paid_amount) FILTER (WHERE p.id IS NULL), 0) AS staff_booking_collected,
+             COALESCE(SUM(COALESCE(s.after_reminder, 0)), 0) AS after_payment_reminder
+      FROM appointments a
+      LEFT JOIN stripe_by_appointment s ON s.appointment_id = a.id
+      LEFT JOIN public_booking_access p ON p.appointment_id = a.id
+      WHERE a.business_id = ${businessId} AND a.status != 'CANCELED'
+    `),
   ]);
 
   const monthlyTrend = buildMonthlyTrend(months, {
@@ -241,6 +267,15 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     counts: tallyLifecycleStages(lifecycleStages),
     totalCustomers: lifecycleStages.length,
   };
+  const attribution = revenueAttributionRows[0];
+  const revenueAttribution = {
+    totalCollected: Number(attribution?.total_collected ?? 0),
+    stripeCollected: Number(attribution?.stripe_collected ?? 0),
+    manuallyRecorded: Number(attribution?.manual_collected ?? 0),
+    publicBookingCollected: Number(attribution?.public_booking_collected ?? 0),
+    staffBookingCollected: Number(attribution?.staff_booking_collected ?? 0),
+    collectedAfterPaymentReminder: Number(attribution?.after_payment_reminder ?? 0),
+  };
 
   return {
     monthlyTrend,
@@ -253,6 +288,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     },
     recoveryPerformance,
     customerLifecycle,
+    revenueAttribution,
     generatedAt: now,
     windowStart,
   };

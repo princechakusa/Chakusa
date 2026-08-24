@@ -5,14 +5,12 @@ import { BusinessGoal } from '../domain/onboarding';
 import { preferenceStorageKey, scopedPreferenceState } from '../domain/preferenceScope';
 
 export type { BusinessGoal };
-// Not synced to the backend — nothing consumes it yet beyond onboarding
-// itself. It exists so future personalization (e.g. nudging larger teams
-// toward the Business tier) has the signal available without requiring a
-// business-record schema change before there's a real feature behind it.
+// Retained only so preferences saved by the former team-size onboarding step
+// continue to deserialize safely. Current product decisions use real team data.
 export type TeamSize = 'just_me' | 'small' | 'medium' | 'large';
 export interface AttentionPreferences { missedCalls: boolean; reviews: boolean; comebacks: boolean; businessActivity: boolean; }
 export interface StoredPreferences { onboardingStep: number; onboardingComplete: boolean; goals: BusinessGoal[]; industry: string; teamSize: TeamSize | null; attention: AttentionPreferences; }
-interface PreferencesValue extends StoredPreferences { restoring: boolean; activateScope: (userId: string | null, onboardingComplete: boolean, industry?: string | null) => Promise<void>; setOnboardingStep: (step: number) => void; setGoals: (goals: BusinessGoal[]) => void; setIndustry: (industry: string) => void; setTeamSize: (teamSize: TeamSize) => void; setAttention: (attention: AttentionPreferences) => void; completeOnboarding: () => void; resetOnboarding: () => void; }
+interface PreferencesValue extends StoredPreferences { restoring: boolean; activateScope: (userId: string | null, onboardingComplete: boolean, industry?: string | null) => Promise<void>; setOnboardingStep: (step: number) => void; setGoals: (goals: BusinessGoal[]) => void; setIndustry: (industry: string) => void; setAttention: (attention: AttentionPreferences) => void; completeOnboarding: () => void; resetOnboarding: () => void; }
 const defaults: StoredPreferences = { onboardingStep: 0, onboardingComplete: false, goals: [], industry: '', teamSize: null, attention: { missedCalls: true, reviews: true, comebacks: true, businessActivity: true } };
 const PreferencesContext = createContext<PreferencesValue | null>(null);
 
@@ -28,7 +26,7 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
       const key = preferenceStorageKey(userId); setRestoring(true); const saved = await readPreferences(key);
       setActiveStorageKey(key); setPreferences(scopedPreferenceState(saved, userId, onboardingComplete, industry)); setRestoring(false);
     },
-    setOnboardingStep: onboardingStep => setPreferences(current => ({ ...current, onboardingStep })), setGoals: goals => setPreferences(current => ({ ...current, goals })), setIndustry: industry => setPreferences(current => ({ ...current, industry })), setTeamSize: teamSize => setPreferences(current => ({ ...current, teamSize })), setAttention: attention => setPreferences(current => ({ ...current, attention })), completeOnboarding: () => setPreferences(current => ({ ...current, onboardingStep: 0, onboardingComplete: true })), resetOnboarding: () => setPreferences(defaults) }), [activeStorageKey, preferences, restoring]);
+    setOnboardingStep: onboardingStep => setPreferences(current => ({ ...current, onboardingStep })), setGoals: goals => setPreferences(current => ({ ...current, goals })), setIndustry: industry => setPreferences(current => ({ ...current, industry })), setAttention: attention => setPreferences(current => ({ ...current, attention })), completeOnboarding: () => setPreferences(current => ({ ...current, onboardingStep: 0, onboardingComplete: true })), resetOnboarding: () => setPreferences(defaults) }), [activeStorageKey, preferences, restoring]);
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 }
 export function usePreferences() { const value = useContext(PreferencesContext); if (!value) throw new Error('usePreferences must be used within PreferencesProvider'); return value; }

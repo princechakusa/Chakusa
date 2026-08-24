@@ -13,6 +13,8 @@ export const EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_EMAIL_
 export const PASSWORD_RESET_EMAIL_ENABLED = EMAIL_ENABLED;
 export const AUTOMATION_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_AUTOMATION_ENABLED);
 export const BILLING_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_BILLING_ENABLED);
+export const SENTRY_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_SENTRY_ENABLED);
+export const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? '';
 
 export const EAS_PROJECT_ID = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() ?? '';
 export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() ?? '';

@@ -8,6 +8,7 @@
     "@react-navigation/bottom-tabs": "^7.18.16",
     "@react-navigation/native": "^7.3.16",
     "@react-navigation/native-stack": "^7.18.8",
+    "@sentry/react-native": "~7.11.0",
     "chakusa-call-detection": "file:./modules/chakusa-call-detection",
     "expo": "~57.0.16",
     "expo-apple-authentication": "~57.0.1",

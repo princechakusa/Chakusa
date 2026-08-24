@@ -90,6 +90,22 @@ describe("authentication foundation", () => {
     }
   });
 
+  it("updates the authenticated profile name", async () => {
+    const account = await registerAccount(app);
+    const response = await app.inject({ method: "PATCH", url: "/auth/profile", headers: authHeader(account.token), payload: { fullName: "Updated Owner" } });
+    expect(response.statusCode).toBe(200); expect(response.json().fullName).toBe("Updated Owner");
+  });
+
+  it("changes the password and revokes other device sessions", async () => {
+    const account = await registerAccount(app, { email: "password-change@example.com", password: "old-password" });
+    const second = await app.inject({ method: "POST", url: "/auth/login", payload: { email: "password-change@example.com", password: "old-password" } });
+    const changed = await app.inject({ method: "POST", url: "/auth/change-password", headers: authHeader(account.token), payload: { currentPassword: "old-password", newPassword: "new-password" } });
+    expect(changed.statusCode).toBe(204);
+    expect((await app.inject({ method: "GET", url: "/auth/me", headers: authHeader(account.token) })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: "/auth/me", headers: authHeader(second.json().accessToken) })).statusCode).toBe(401);
+    expect((await app.inject({ method: "POST", url: "/auth/login", payload: { email: "password-change@example.com", password: "new-password" } })).statusCode).toBe(200);
+  });
+
   it("returns the same forgot-password response for known and unknown emails", async () => {
     await registerAccount(app, { email: "forgot@example.com" });
     const known = await app.inject({ method: "POST", url: "/auth/forgot-password", payload: { email: "forgot@example.com" } });

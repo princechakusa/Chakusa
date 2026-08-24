@@ -20,6 +20,8 @@ interface AuthValue {
   resetPassword: (token: string, password: string) => Promise<string>; deleteAccount: (password: string) => Promise<void>;
   deleteAccountWithGoogle: () => Promise<boolean>;
   deleteAccountWithApple: () => Promise<boolean>;
+  updateProfile: (fullName: string) => Promise<void>;
+  changePassword: (currentPassword: string | undefined, newPassword: string) => Promise<void>;
   refreshBusiness: () => Promise<BusinessDto>;
 }
 const AuthContext = createContext<AuthValue | null>(null);
@@ -80,6 +82,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     logout: async () => { const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { await clearSession(); } },
     logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { await clearSession(); } },
     forgotPassword: async email => (await authApi.forgotPassword(email)).message,
+    updateProfile: async fullName => { const updated = await authApi.updateProfile(fullName); setUser(current => current ? { ...current, fullName: updated.fullName } : current); },
+    changePassword: async (currentPassword, newPassword) => { await authApi.changePassword({ currentPassword, newPassword }); setUser(current => current ? { ...current, hasPassword: true } : current); },
     resetPassword: async (token, password) => { const result = await authApi.resetPassword(token, password); await clearSession(); return result.message; },
     deleteAccount: async password => { await authApi.deleteAccount(password); preferencesRef.current.resetOnboarding(); await clearSession(); },
     deleteAccountWithGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.deleteAccountWithGoogle(idToken); preferencesRef.current.resetOnboarding(); await clearSession(); return true; },

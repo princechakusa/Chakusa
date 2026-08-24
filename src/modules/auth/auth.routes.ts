@@ -11,6 +11,8 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from "./auth.schemas.js";
 import {
   authenticateUser,
@@ -33,6 +35,8 @@ import {
   rotateRefreshToken,
   validateAppleChallenge,
   verifyAccountPassword,
+  updateUserProfile,
+  changeAccountPassword,
 } from "./auth.service.js";
 import { sendPasswordResetEmail } from "./passwordResetEmail.js";
 import { requireFreshGoogleIdentity, verifyGoogleIdToken, type GoogleTokenVerifier } from "./googleVerifier.js";
@@ -222,6 +226,17 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
       reply.status(204).send();
     },
   );
+
+  fastify.patch("/profile", { preHandler: fastify.authenticate }, async (request, reply) => {
+    const input = updateProfileSchema.parse(request.body);
+    reply.send(await updateUserProfile(request.user.userId, input.fullName));
+  });
+
+  fastify.post("/change-password", { preHandler: fastify.authenticate, config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } }, async (request, reply) => {
+    const input = changePasswordSchema.parse(request.body);
+    await changeAccountPassword(request.user.userId, request.user.sessionId, input.currentPassword, input.newPassword);
+    reply.status(204).send();
+  });
 
   fastify.post(
     "/forgot-password",

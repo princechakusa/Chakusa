@@ -385,6 +385,23 @@ export async function verifyAccountPassword(userId: string, password: string) {
   }
 }
 
+export async function updateUserProfile(userId: string, fullName: string) {
+  return prisma.user.update({ where: { id: userId }, data: { fullName }, select: { id: true, email: true, fullName: true } });
+}
+
+export async function changeAccountPassword(userId: string, sessionId: string, currentPassword: string | undefined, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Authentication session is invalid");
+  if (user.passwordHash && (!currentPassword || !await verifyPassword(user.passwordHash, currentPassword))) throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Current password is incorrect");
+  const currentSession = await prisma.authSession.findUnique({ where: { id: sessionId }, select: { familyId: true } });
+  if (!currentSession) throw ApiError.auth(401, "AUTH_SESSION_EXPIRED", "Authentication session expired");
+  const passwordHash = await hashPassword(newPassword);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+    prisma.authSession.updateMany({ where: { userId, familyId: { not: currentSession.familyId }, revokedAt: null }, data: { revokedAt: new Date(), revokeReason: "password_changed" } }),
+  ]);
+}
+
 export async function deleteAccountWithApple(userId: string, providerSubject: string, proof: AppleChallengeProof) {
   await prisma.$transaction(async (tx) => {
     await claimAppleChallenge(tx, proof, "APPLE_DELETE", userId);

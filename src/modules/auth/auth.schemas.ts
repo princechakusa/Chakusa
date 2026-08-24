@@ -33,6 +33,8 @@ export const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 export const logoutSchema = refreshSchema;
 export const forgotPasswordSchema = z.object({ email });
 export const resetPasswordSchema = z.object({ token: z.string().min(1), password });
+export const updateProfileSchema = z.object({ fullName: z.string().trim().min(1).max(120) });
+export const changePasswordSchema = z.object({ currentPassword: z.string().min(1).optional(), newPassword: password });
 export const deleteAccountSchema = z.union([
   z.object({ password: z.string().min(1) }),
   z.object({ googleIdToken: z.string().min(1).max(16_384) }),

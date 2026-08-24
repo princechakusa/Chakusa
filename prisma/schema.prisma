@@ -469,6 +469,7 @@ model Business {
   // a Google listing, a customer's phone) must keep resolving forever, so
   // nothing in this codebase ever updates this field after creation.
   publicSlug       String?     @unique @map("public_slug")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 

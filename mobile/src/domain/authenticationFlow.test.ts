@@ -10,6 +10,6 @@ describe('authentication flow', () => {
   it('preserves restore errors outside authenticated routes', () => expect(authenticationRoutes('restore-error', false)).toMatchObject({ restoreError: true, anonymous: false, onboarding: false, main: false }));
   it('keeps invitation registration token-scoped', () => expect(registrationInput({ email: ' invited@example.com ', password: 'secret', fullName: ' Invited User ', businessName: 'Ignored', defaultIndustry: 'salon', invitationToken: 'invite-token' })).toEqual({ email: 'invited@example.com', password: 'secret', fullName: 'Invited User', invitationToken: 'invite-token' }));
   it('builds new-owner registration details', () => expect(registrationInput({ email: ' owner@example.com ', password: 'secret', fullName: ' Owner ', businessName: ' Studio ', defaultIndustry: 'salon' })).toEqual({ email: 'owner@example.com', password: 'secret', fullName: 'Owner', businessName: 'Studio', industry: 'salon' }));
-  it('recognises an existing owner with completed business setup', () => expect(hasCompletedBusinessSetup({ name: 'Studio', phone: '+15551234567', defaultServices: ['Haircut'] } as never)).toBe(true));
-  it('keeps a new owner in onboarding until setup is complete', () => expect(hasCompletedBusinessSetup({ name: 'Studio', phone: null, defaultServices: [] } as never)).toBe(false));
+  it('recognises an explicitly completed business setup', () => expect(hasCompletedBusinessSetup({ onboardingCompletedAt: '2026-08-24T12:00:00.000Z' } as never)).toBe(true));
+  it('does not infer completion from partial business fields', () => expect(hasCompletedBusinessSetup({ name: 'Studio', phone: '+15551234567', defaultServices: ['Haircut'], onboardingCompletedAt: null } as never)).toBe(false));
 });

@@ -25,5 +25,5 @@ export function registrationInput(input: { email: string; password: string; full
 }
 
 export function hasCompletedBusinessSetup(business: BusinessDto | null) {
-  return Boolean(business && business.name.trim() && business.phone && Array.isArray(business.defaultServices) && business.defaultServices.length > 0);
+  return Boolean(business?.onboardingCompletedAt);
 }

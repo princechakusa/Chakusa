@@ -6,6 +6,7 @@ import { ApiError } from "../../lib/errors.js";
 import { toE164OrNull } from "../../lib/phone.js";
 import { generatePublicSlug } from "../../lib/publicSlug.js";
 import { updateBusinessSchema, createBusinessSchema } from "./business.schemas.js";
+import { completeBusinessOnboarding } from "./business.service.js";
 
 export default async function businessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -85,5 +86,10 @@ export default async function businessRoutes(fastify: FastifyInstance) {
     });
 
     reply.send(business);
+  });
+
+  fastify.post("/onboarding/complete", { preHandler: fastify.requireBusiness }, async (request, reply) => {
+    if (request.role !== "OWNER") throw ApiError.forbidden("Only the business owner can complete business setup");
+    reply.send(await completeBusinessOnboarding(request.businessId!));
   });
 }

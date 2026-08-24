@@ -298,7 +298,7 @@ export async function listAdminSubscriptions(query: AdminSubscriptionListQuery) 
       select: {
         id: true, plan: true, status: true, provider: true, environment: true, currentPeriodStart: true, currentPeriodEnd: true,
         cancelAtPeriodEnd: true, trialEndsAt: true, providerEventAt: true, createdAt: true, updatedAt: true,
-        business: { select: { id: true, name: true, country: true, currency: true, owner: { select: { fullName: true, email: true } } } },
+        business: { select: { id: true, name: true, country: true, currency: true, owner: { select: { fullName: true, email: true } }, billingEvents: { orderBy: { createdAt: "desc" }, take: 5, select: { provider: true, eventType: true, processedAt: true, createdAt: true } } } },
       },
     }),
     prisma.subscription.count({ where }),

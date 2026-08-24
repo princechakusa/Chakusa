@@ -1,28 +1,11 @@
 import { defineConfig } from "vitest/config";
-import { config as loadDotenv } from "dotenv";
-
-// Production Safety Phase 2.1: explicit, deterministic test-env loading —
-// do NOT rely on src/lib/config.ts's own `import "dotenv/config"` (which
-// loads the root .env, now the PRODUCTION Supabase connection) to pick the
-// right file by accident. dotenv only sets a variable if it isn't already
-// present in process.env, so loading .env.test here — with override:true,
-// and before anything else in this process touches DATABASE_URL — GUARANTEES
-// the test database wins: by the time config.ts's `dotenv/config` runs
-// later (as part of importing the app), DATABASE_URL/DIRECT_URL are already
-// set from .env.test, and dotenv's default non-overriding behavior leaves
-// them untouched. See tests/dbSafetyGuard.ts for the second, independent
-// layer of protection this does not replace.
-loadDotenv({ path: ".env.test", override: true });
+import { randomBytes } from "node:crypto";
 
 process.env.NODE_ENV = "test";
-// Required by config.ts unconditionally (no default, min 16 chars) — kept
-// out of .env.test deliberately, since that file's scope is the test
-// DATABASE_URL/DIRECT_URL only (see the safety guard's own doc comment).
-// This fallback means the test suite never depends on the root .env
-// having a JWT_SECRET at all, which matters now that the root .env is the
-// production Supabase config, not a full local dev file.
-process.env.JWT_SECRET ??= "test-only-jwt-secret-not-used-in-production-0000";
-process.env.PROVIDER_TOKEN_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
+// DATABASE_URL and DIRECT_URL must be supplied by the invoking process.
+// The test database safety guard rejects missing, remote, and non-test targets.
+process.env.JWT_SECRET ??= randomBytes(32).toString("hex");
+process.env.PROVIDER_TOKEN_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 // Fixed, non-functional test credentials so GOOGLE_AUTH_ENABLED /
 // APPLE_AUTH_ENABLED can be toggled per-test to prove the flag itself (not
 // just credential absence) gates provider auth. These are read once at

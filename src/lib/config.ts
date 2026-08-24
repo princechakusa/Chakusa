@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { z } from "zod";
 
 const optionalSecret = z.preprocess((value) => value === "" ? undefined : value, z.string().min(1).optional());

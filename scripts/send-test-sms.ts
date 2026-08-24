@@ -9,7 +9,7 @@
  * Usage:
  *   npm run send-test-sms -- +15551234567 "Test message from Chakusa"
  *
- * Requires (via .env or the environment — see src/lib/config.ts):
+ * Requires process-injected configuration (see docs/ENVIRONMENT_CONFIGURATION.md):
  *   TWILIO_ACCOUNT_SID
  *   TWILIO_AUTH_TOKEN
  *   TWILIO_FROM_NUMBER  (or TWILIO_MESSAGING_SERVICE_SID)

@@ -10,7 +10,7 @@ import { createSession } from "../src/modules/auth/auth.service.js";
 
 /**
  * Production Infrastructure Phase 2.2 — route-level behavior with email
- * delivery unconfigured. The test environment (.env.test / vitest.config.ts)
+ * delivery unconfigured. The test process environment and vitest.config.ts
  * never sets RESEND_API_KEY/EMAIL_FROM, so every test in this file already
  * runs under "email disabled" conditions exactly as a production deployment
  * with EMAIL_ENABLED=false would — no mocking or env manipulation needed to

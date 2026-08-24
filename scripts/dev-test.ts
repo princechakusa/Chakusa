@@ -1,23 +1,22 @@
 import { spawn } from "node:child_process";
-import { config as loadEnvironment } from "dotenv";
+import { randomBytes } from "node:crypto";
 import { assertLocalTestDatabaseTarget } from "../src/lib/localTestDatabaseGuard.js";
 
-const loaded = loadEnvironment({ path: ".env.test", override: true });
-if (loaded.error) {
-  console.error("Local test server refused to start: .env.test could not be loaded");
+if (!process.env.DATABASE_URL) {
+  console.error("Local test server refused to start: DATABASE_URL must be supplied by the process environment");
   process.exit(1);
 }
 
 const target = assertLocalTestDatabaseTarget(process.env);
 
-// Set every integration flag explicitly so dotenv/config in the real server
-// cannot inherit an enabled remote integration from the normal .env file.
+// Set every integration flag explicitly so a developer's process environment
+// cannot accidentally enable remote integrations against the local database.
 const childEnvironment: NodeJS.ProcessEnv = {
   ...process.env,
   NODE_ENV: "test",
   DATABASE_URL: process.env.DATABASE_URL,
   DIRECT_URL: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
-  JWT_SECRET: "chakusa-local-test-server-only-secret",
+  JWT_SECRET: randomBytes(32).toString("hex"),
   EMAIL_ENABLED: "false",
   GOOGLE_AUTH_ENABLED: "false",
   APPLE_AUTH_ENABLED: "false",

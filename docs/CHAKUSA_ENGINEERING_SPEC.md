@@ -251,7 +251,7 @@ Rendering (`src/lib/templateEngine.ts`) is pure string substitution — `{{var}}
 - Apple identity tokens are verified against Apple's JWKS for signature, issuer, App ID audience, expiry, verified email, stable `sub`, and the server-issued nonce. State and nonce challenges are hashed, expire after five minutes by default, and are transactionally single use.
 - Apple authorization codes are exchanged server-side. Apple refresh credentials are encrypted with AES-256-GCM before storage and are revoked before account deletion. Identity resolution uses `APPLE + sub`; email is never sufficient to merge accounts or memberships.
 - Apple's native name fields are accepted only after the token, challenge, and authorization code are verified. They populate a new user's display name once and are not identity claims.
-- JWT secret and database credentials live only in `.env` (gitignored), read via `src/lib/config.ts` (Zod-validated at boot — the process refuses to start with a missing/weak secret).
+- JWT secrets and database credentials are injected by the process or deployment secret manager and validated by `src/lib/config.ts`; repository environment files are forbidden.
 - All Prisma queries are parameterized by the client library (no raw SQL string concatenation anywhere in the codebase).
 - `business_id` is always server-resolved (§4) — the single most important tenant-isolation guarantee.
 - Rate limiting: 200 requests/minute per client globally via `@fastify/rate-limit`, with stricter per-route limits on authentication endpoints — `/auth/login` (10/15min), `/auth/register` (20/15min), `/auth/refresh` (30/15min), `/auth/google` (20/15min), `/auth/google/link` (10/15min), `/auth/apple*` (5–30/15min depending on sensitivity), and `/auth/forgot-password` (5/hour). All rate-limit rejections return `429 RATE_LIMITED` in the standard error format.
@@ -286,7 +286,7 @@ Run with `npm test`. Tests boot the real Fastify app against the local Postgres 
 
 ## 12. Environment Variables
 
-See `.env.example`:
+See `docs/ENVIRONMENT_CONFIGURATION.md`:
 
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — signing secret, min 16 chars (use a long random value in production)

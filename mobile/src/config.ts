@@ -4,8 +4,8 @@ import { normalizeApiUrl, publicFeatureEnabled } from './domain/mobileProduction
 
 const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
-// Required per build/environment. Local development uses mobile/.env; production
-// builds inject the Render URL through their environment, never a source fallback.
+// Required per build/environment through the process, EAS, or CI secret manager.
+// There is deliberately no repository file or source fallback.
 export const API_URL = configuredUrl;
 export const GOOGLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED);
 export const APPLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED);

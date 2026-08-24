@@ -17,7 +17,7 @@ function restError(statusCode: number, code: number, message: string) {
 
 // Sender config is injected explicitly rather than read from the real
 // config module (which has no Twilio credentials in the test environment
-// by design — see .env.example) so these tests are self-contained and
+// by design — see docs/ENVIRONMENT_CONFIGURATION.md) so these tests are self-contained and
 // never depend on ambient environment state.
 function makeProvider(client: TwilioRestClient) {
   return new TwilioMessagingProvider(client, { fromNumber: "+15005550006" });

@@ -16,11 +16,11 @@ Create an OAuth client of type **Web application**. This is the server audience 
 
 Set the same client ID in:
 
-```dotenv
-# Backend .env
+```text
+# Backend deployment environment
 GOOGLE_OAUTH_CLIENT_IDS=123456789-example.apps.googleusercontent.com
 
-# mobile/.env
+# EAS or mobile build environment
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com
 ```
 
@@ -30,9 +30,9 @@ Multiple trusted backend audiences may be comma-separated in `GOOGLE_OAUTH_CLIEN
 
 1. Create an OAuth client of type **iOS**.
 2. Set bundle ID to `com.chakusa.mobile`.
-3. Copy the iOS client ID into `mobile/.env`:
+3. Add the iOS client ID to the EAS or mobile build environment:
 
-```dotenv
+```text
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m.apps.googleusercontent.com
 ```
 
@@ -78,7 +78,7 @@ Do not run `prebuild --clean` when uncommitted native-directory customizations e
 ## 6. Manual test
 
 1. Add your Google account as an OAuth consent test user.
-2. Configure backend `.env`, mobile `.env`, and the iOS URL scheme above.
+2. Configure the backend deployment environment, mobile build environment, and the iOS URL scheme above.
 3. Start PostgreSQL and apply migrations with `npx prisma migrate deploy`.
 4. Start Fastify with `npm run dev`.
 5. Set `EXPO_PUBLIC_API_URL` to the computer's LAN HTTPS/HTTP development address reachable from the device.

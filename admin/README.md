@@ -11,6 +11,8 @@ npm run dev:test
 npm run admin:dev
 ```
 
+Supply backend configuration through the shell or an approved secret manager before starting. Repository `.env` files and templates are intentionally forbidden.
+
 The client is available at `http://localhost:5173` and expects the API at `http://localhost:4000`. Override the API origin with `VITE_API_URL`.
 
 ## Production build

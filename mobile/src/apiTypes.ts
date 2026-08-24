@@ -194,5 +194,5 @@ export interface SubscriptionStatusDto {
     openReminders: StandingUsageDto;
     customTemplates: { limitPerType: number | null; usageByType: Record<MessageType, number> };
   };
-  value: { recoveredRevenueThisMonth: number; completedAppointmentsThisMonth: number; scheduledAppointmentValue: number };
+  value: { recoveredRevenueThisMonth: number; completedAppointmentsThisMonth: number; scheduledAppointmentValue: number; customerMessagesSentThisMonth: number; reviewsReceivedThisMonth: number };
 }

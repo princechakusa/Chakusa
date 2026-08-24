@@ -60,7 +60,7 @@ export interface SubscriptionStatusResponse {
       usageByType: Record<MessageType, number>;
     };
   };
-  value: { recoveredRevenueThisMonth: number; completedAppointmentsThisMonth: number; scheduledAppointmentValue: number };
+  value: { recoveredRevenueThisMonth: number; completedAppointmentsThisMonth: number; scheduledAppointmentValue: number; customerMessagesSentThisMonth: number; reviewsReceivedThisMonth: number };
 }
 
 /**
@@ -97,7 +97,7 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
   const periodStart = startOfCurrentUtcMonth();
   const resetsAt = startOfNextUtcMonth().toISOString();
 
-  const [leadsCurrent, reviewRequestsCurrent, customersCurrent, openRemindersCurrent, templateCounts, recovered, completedAppointments, scheduledAppointments] = await Promise.all([
+  const [leadsCurrent, reviewRequestsCurrent, customersCurrent, openRemindersCurrent, templateCounts, recovered, completedAppointments, scheduledAppointments, customerMessagesSent, reviewsReceived] = await Promise.all([
     prisma.lead.count({ where: { businessId, createdAt: { gte: periodStart } } }),
     prisma.reviewRequest.count({ where: { businessId, createdAt: { gte: periodStart } } }),
     prisma.customer.count({ where: { businessId } }),
@@ -113,6 +113,8 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
     prisma.lead.aggregate({ where: { businessId, status: "won", wonAt: { gte: periodStart } }, _sum: { estimatedValue: true } }),
     prisma.appointment.count({ where: { businessId, status: "COMPLETED", startsAt: { gte: periodStart } } }),
     prisma.appointment.aggregate({ where: { businessId, status: { in: ["SCHEDULED", "CONFIRMED"] }, startsAt: { gte: new Date() } }, _sum: { price: true } }),
+    prisma.message.count({ where: { businessId, status: { in: ["sent", "delivered"] }, sentAt: { gte: periodStart } } }),
+    prisma.reviewRequest.count({ where: { businessId, status: "reviewed", updatedAt: { gte: periodStart } } }),
   ]);
 
   const usageByType = Object.fromEntries(TEMPLATE_TYPES.map((type) => [type, 0])) as Record<MessageType, number>;
@@ -148,7 +150,7 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       openReminders: { current: openRemindersCurrent, limit: limits.openReminders, period: null, resetsAt: null },
       customTemplates: { limitPerType: limits.customTemplatesPerType, usageByType },
     },
-    value: { recoveredRevenueThisMonth: Number(recovered._sum.estimatedValue ?? 0), completedAppointmentsThisMonth: completedAppointments, scheduledAppointmentValue: Number(scheduledAppointments._sum.price ?? 0) },
+    value: { recoveredRevenueThisMonth: Number(recovered._sum.estimatedValue ?? 0), completedAppointmentsThisMonth: completedAppointments, scheduledAppointmentValue: Number(scheduledAppointments._sum.price ?? 0), customerMessagesSentThisMonth: customerMessagesSent, reviewsReceivedThisMonth: reviewsReceived },
   };
 }
 

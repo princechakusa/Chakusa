@@ -37,7 +37,7 @@ describe("GET /subscription/status", () => {
       { businessId, createdByUserId: userId, serviceName: "Upcoming", startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 90_000_000), status: "CONFIRMED", price: 80 },
     ] });
     const response = await getStatus(app, token);
-    expect(response.json().value).toEqual({ recoveredRevenueThisMonth: 125, completedAppointmentsThisMonth: 1, scheduledAppointmentValue: 80 });
+    expect(response.json().value).toEqual({ recoveredRevenueThisMonth: 125, completedAppointmentsThisMonth: 1, scheduledAppointmentValue: 80, customerMessagesSentThisMonth: 0, reviewsReceivedThisMonth: 0 });
   });
 
   // ---------------------------------------------------------------------

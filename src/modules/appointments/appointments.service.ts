@@ -1,8 +1,10 @@
-import type { AppointmentStatus, Prisma } from "@prisma/client";
+import type { AppointmentStatus, Plan, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import type { CreateAppointmentInput, UpdateAppointmentInput } from "./appointments.schemas.js";
+import type { BulkImportAppointmentsInput } from "./appointments.schemas.js";
+import { createCustomer } from "../customers/customers.service.js";
 
 const include = { customer: { select: { id: true, name: true, phone: true, email: true } }, assignedMember: { include: { user: { select: { id: true, fullName: true, email: true } } } }, serviceOffering: true } as const;
 const blockingStatuses: AppointmentStatus[] = ["SCHEDULED", "CONFIRMED"];
@@ -29,4 +31,23 @@ export async function updateAppointmentPayment(businessId: string, actorId: stri
     await recordActivity({ businessId, actorId, eventType: "APPOINTMENT_UPDATED", entityType: "appointment", entityId: id, metadata: { paymentStatus, paidAmount } }, tx);
     return appointment;
   });
+}
+
+export async function bulkImportAppointments(businessId: string, actorId: string, plan: Plan, input: BulkImportAppointmentsInput) {
+  const created: { id: string; customerName: string; serviceName: string; startsAt: Date }[] = [];
+  const skipped: { customerName: string; serviceName: string; reason: "duplicate" }[] = [];
+  const failed: { customerName: string; serviceName: string; reason: string }[] = [];
+  for (const row of input.appointments) {
+    try {
+      const matches = [{ name: { equals: row.customerName, mode: "insensitive" as const } }, ...(row.customerEmail ? [{ email: { equals: row.customerEmail, mode: "insensitive" as const } }] : []), ...(row.customerPhone ? [{ phone: row.customerPhone }] : [])];
+      let customer = await prisma.customer.findFirst({ where: { businessId, OR: matches } });
+      if (!customer) customer = await createCustomer(businessId, actorId, { name: row.customerName, phone: row.customerPhone, email: row.customerEmail }, plan);
+      const startsAt = new Date(row.startsAt);
+      const duplicate = await prisma.appointment.findFirst({ where: { businessId, customerId: customer.id, serviceName: row.serviceName, startsAt }, select: { id: true } });
+      if (duplicate) { skipped.push({ customerName: row.customerName, serviceName: row.serviceName, reason: "duplicate" }); continue; }
+      const appointment = await createAppointment(businessId, actorId, { customerId: customer.id, serviceName: row.serviceName, startsAt: row.startsAt, endsAt: row.endsAt, price: row.price, notes: row.notes });
+      created.push({ id: appointment.id, customerName: row.customerName, serviceName: row.serviceName, startsAt: appointment.startsAt });
+    } catch (error) { failed.push({ customerName: row.customerName, serviceName: row.serviceName, reason: error instanceof Error ? error.message : "Could not import appointment" }); }
+  }
+  return { created, skipped, failed };
 }

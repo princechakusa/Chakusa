@@ -78,6 +78,7 @@ export const appointmentsApi = {
   transition: (id: string, status: import('../apiTypes').AppointmentStatus) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/status`, { status }),
   sendConfirmation: (id: string) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/send-confirmation`, {}),
   updatePayment: (id: string, paidAmount: number) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}/payment`, { paidAmount }),
+  bulkImport: (appointments: import('../domain/appointmentsImport').AppointmentImportRow[]) => api.post<{ created: { id: string }[]; skipped: { reason: string }[]; failed: { reason: string }[] }>('/appointments/bulk-import', { appointments }),
 };
 export interface ServiceOfferingInput { name: string; description?: string | null; category?: string | null; durationMinutes: number; preparationMinutes?: number; cleanupMinutes?: number; price?: number | null; depositAmount?: number | null; active?: boolean; publiclyBookable?: boolean; sortOrder?: number; memberIds?: string[]; }
 export const servicesApi = {

@@ -43,7 +43,7 @@ export function parseCustomerImportText(text: string): ParseCustomerImportResult
   return { rows, skippedLines };
 }
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const fields: string[] = []; let value = ''; let quoted = false;
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index];

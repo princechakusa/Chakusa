@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { appointmentListSchema, appointmentPaymentSchema, createAppointmentSchema, transitionAppointmentSchema, updateAppointmentSchema } from "./appointments.schemas.js";
-import { createAppointment, getAppointment, listAppointments, transitionAppointment, updateAppointment, updateAppointmentPayment } from "./appointments.service.js";
+import { appointmentListSchema, appointmentPaymentSchema, bulkImportAppointmentsSchema, createAppointmentSchema, transitionAppointmentSchema, updateAppointmentSchema } from "./appointments.schemas.js";
+import { bulkImportAppointments, createAppointment, getAppointment, listAppointments, transitionAppointment, updateAppointment, updateAppointmentPayment } from "./appointments.service.js";
 import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "./appointmentReminders.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
@@ -15,6 +15,7 @@ export default async function appointmentRoutes(fastify: FastifyInstance) {
     await sendAppointmentConfirmation(appointment.id).catch(error => request.log.error(error, "automatic appointment confirmation failed"));
     reply.status(201).send(appointment);
   });
+  fastify.post("/bulk-import", async (request, reply) => reply.status(201).send(await bulkImportAppointments(request.businessId!, request.user.userId, request.plan!, bulkImportAppointmentsSchema.parse(request.body))));
   fastify.get("/:id", async (request, reply) => reply.send(await getAppointment(request.businessId!, idParams.parse(request.params).id)));
   fastify.patch("/:id", async (request, reply) => {
     const id = idParams.parse(request.params).id;

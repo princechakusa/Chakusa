@@ -64,6 +64,17 @@ describe("appointments", () => {
     expect((await app.inject({ method: "PATCH", url: `/appointments/${created.json().id}/payment`, headers, payload: { paidAmount: 101 } })).statusCode).toBe(400);
   });
 
+  it("imports appointments with customer matching, duplicate protection, and no outbound messages", async () => {
+    const account = await registerAccount(app, { email: "appointment-import@example.com" }); const headers = authHeader(account.token);
+    const payload = { appointments: [{ customerName: "Imported Customer", customerPhone: "+15551230001", serviceName: "Imported Service", startsAt: "2026-09-05T09:00:00.000Z", endsAt: "2026-09-05T10:00:00.000Z", price: 45 }] };
+    const first = await app.inject({ method: "POST", url: "/appointments/bulk-import", headers, payload });
+    expect(first.statusCode).toBe(201); expect(first.json()).toMatchObject({ created: [{ customerName: "Imported Customer", serviceName: "Imported Service" }], skipped: [], failed: [] });
+    const second = await app.inject({ method: "POST", url: "/appointments/bulk-import", headers, payload });
+    expect(second.json().skipped).toHaveLength(1);
+    expect(await prisma.customer.count({ where: { businessId: account.businessId } })).toBe(1);
+    expect(await prisma.message.count({ where: { businessId: account.businessId } })).toBe(0);
+  });
+
   it("delivers an upcoming owner reminder at most once", async () => {
     const account = await fixture(); const now = new Date("2026-09-01T08:00:00.000Z");
     await prisma.deviceToken.create({ data: { userId: account.userId, token: "ExponentPushToken[appointment-reminder]", platform: "ios", provider: "expo" } });

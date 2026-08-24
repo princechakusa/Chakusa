@@ -70,6 +70,7 @@ export function AccountHubScreen() {
       <MenuRow icon="chatbubble-ellipses-outline" tone="green" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
       {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
       {canManageBusiness ? <MenuRow icon="calendar-outline" tone="green" title="Booking availability" detail="Hours, leave and blocked time" onPress={() => navigation.navigate('AvailabilitySettings')} /> : null}
+      {canManageBusiness ? <MenuRow icon="cloud-upload-outline" tone="blue" title="Import appointments" detail="Preview and import an existing calendar CSV" onPress={() => navigation.navigate('AppointmentsImport')} /> : null}
       <MenuRow icon="flash-outline" tone="amber" title="Automation" detail={features?.automation ? 'Manage active customer workflows' : 'Explore recovery workflows'} onPress={() => navigation.navigate('Automation')} last />
     </MenuSection>
 

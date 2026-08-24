@@ -37,6 +37,7 @@ import type { AppleCodeExchanger, AppleCredentialRevoker, AppleTokenVerifier } f
 import type { AppleStoreClient } from "./lib/billing/appleAppStoreClient.js";
 import type { GooglePlayClient } from "./lib/billing/googlePlayClient.js";
 import { assertValidAppleRootCertificates } from "./lib/billing/jws.js";
+import type { MessagingProvider } from "./lib/messaging/messagingProvider.js";
 
 export interface BuildAppOptions {
   googleTokenVerifier?: GoogleTokenVerifier;
@@ -48,6 +49,7 @@ export interface BuildAppOptions {
   googlePlayClient?: GooglePlayClient;
   /** Test-only injection — see team.routes.ts's TeamRoutesOptions. */
   teamInvitationEmailSender?: TeamInvitationEmailSender;
+  messagingProvider?: MessagingProvider;
   /**
    * Rate limiting is skipped by default in NODE_ENV=test so ordinary test
    * suites (which reuse one app instance across many requests in a single
@@ -190,6 +192,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     prefix: "/webhooks",
     appleStoreClient: options.appleStoreClient,
     googlePlayClient: options.googlePlayClient,
+    messagingProvider: options.messagingProvider,
   });
 
   return app;

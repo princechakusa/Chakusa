@@ -151,6 +151,8 @@ enum MessageStatus {
   draft
   copied
   sent
+  delivered
+  undelivered
   failed
 }
 
@@ -845,6 +847,8 @@ model Message {
   // and any future non-provider message types are unaffected.
   provider          String?        @map("provider")
   providerMessageId String?        @map("provider_message_id")
+  providerErrorCode String?        @map("provider_error_code")
+  deliveredAt       DateTime?      @map("delivered_at")
   // Set only for messages created by the automation executor — the exact
   // AutomationRun this send belongs to. This is what makes
   // executeAutomationRun idempotent regardless of how many times it's
@@ -870,6 +874,7 @@ model Message {
   @@unique([automationRunId])
   @@index([businessId])
   @@index([businessId, createdAt])
+  @@index([businessId, status, createdAt])
   @@index([customerId])
   @@index([leadId])
   @@index([providerMessageId])

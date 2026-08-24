@@ -6,6 +6,7 @@ import { renderCustomerRetentionMessage, renderLeadFollowUpMessage, renderLeadSt
 import { DEFAULT_LEAD_FOLLOW_UP_STATUSES } from "./scheduler.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
 import type { MessagingProvider } from "../messaging/messagingProvider.js";
+import { messagingBudgetAvailable } from "../messaging/messagingBudget.js";
 import type { AutomationRule, AutomationRun, Customer, Lead, LeadStatus, MessageType } from "@prisma/client";
 
 /** Total send attempts allowed for one run before giving up (bounded, not unlimited). */
@@ -253,7 +254,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
       await prisma.automationRun.updateMany({
         where: { id: run.id, status: "RUNNING" },
         data: {
-          status: existingMessage.status === "sent" ? "COMPLETED" : "FAILED",
+          status: ["sent", "delivered"].includes(existingMessage.status) ? "COMPLETED" : "FAILED",
           completedAt: new Date(),
           leaseExpiresAt: null,
         },
@@ -271,6 +272,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
     if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) {
       return cancelRun(run.id, "Business is no longer entitled to automation");
     }
+    if (!(await messagingBudgetAvailable(run.businessId)).available) return cancelRun(run.id, "Monthly messaging safety limit reached");
 
     const resolved = await resolveRunContext(run, rule);
     if ("cancelReason" in resolved) return cancelRun(run.id, resolved.cancelReason);

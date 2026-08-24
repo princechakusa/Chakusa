@@ -123,4 +123,11 @@ describe("TwilioMessagingProvider", () => {
     expect(result.errorCode).toBe("PROVIDER_NOT_CONFIGURED");
     expect(result.permanentFailure).toBe(true);
   });
+
+  it("normalizes delivery callbacks and inbound replies", () => {
+    const provider = makeProvider({ messages: { create: async () => ({ sid: "SM1", status: "queued" }) } });
+    expect(provider.parseDeliveryWebhook({ MessageSid: "SM123", MessageStatus: "delivered" })).toMatchObject({ providerMessageId: "SM123", status: "delivered" });
+    expect(provider.parseDeliveryWebhook({ MessageSid: "SM123", MessageStatus: "undelivered", ErrorCode: "30005" })).toMatchObject({ status: "undelivered", errorCode: "30005" });
+    expect(provider.parseInboundWebhook({ From: "+15551234567", To: "+15005550006", Body: "STOP" })).toMatchObject({ from: "+15551234567", body: "STOP", channel: "sms" });
+  });
 });

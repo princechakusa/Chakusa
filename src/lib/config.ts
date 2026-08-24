@@ -105,6 +105,8 @@ export const envSchema = z.object({
   TWILIO_AUTH_TOKEN: optionalSecret,
   TWILIO_FROM_NUMBER: optionalSecret,
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
+  TWILIO_STATUS_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  TWILIO_MONTHLY_MESSAGE_LIMIT: z.coerce.number().int().positive().default(1000),
   // --- Apple billing: App Store Server API + Server Notifications V2 ---
   // Deliberately separate from APPLE_CLIENT_ID/APPLE_TEAM_ID/APPLE_KEY_ID/
   // APPLE_PRIVATE_KEY_BASE64 above (Sign in with Apple) even though both are

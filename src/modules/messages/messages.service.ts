@@ -7,6 +7,7 @@ import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import type { SendMessageInput } from "./messages.schemas.js";
 import type { Plan, SubscriptionStatus } from "@prisma/client";
+import { messagingBudgetAvailable } from "../../lib/messaging/messagingBudget.js";
 
 /**
  * Explicitly, humanly initiated SMS send — the only way an outbound
@@ -32,6 +33,7 @@ export async function sendMessage(
   // billable messages just because Subscription.plan still reads "PRO" —
   // see the P0 audit fix in entitlements.ts.
   assertFeatureAvailable(plan, status, "OUTBOUND_MESSAGING");
+  if (!(await messagingBudgetAvailable(businessId)).available) throw ApiError.forbidden("The monthly messaging safety limit has been reached");
 
   const customer = await prisma.customer.findFirst({ where: { id: input.customerId, businessId } });
   if (!customer) {

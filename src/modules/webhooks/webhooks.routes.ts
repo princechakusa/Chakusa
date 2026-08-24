@@ -4,11 +4,15 @@ import { handleAppleNotification, handleGoogleNotification, type GoogleRtdnEnvel
 import { realAppleStoreClient, type AppleStoreClient } from "../../lib/billing/appleAppStoreClient.js";
 import { realGooglePlayClient, type GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
 import { verifyGoogleRtdnAuthorization } from "./googleRtdnAuth.js";
+import { defaultTwilioProvider } from "../../lib/messaging/twilioProvider.js";
+import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
+import { prisma } from "../../lib/prisma.js";
 
 export interface WebhookRoutesOptions {
   /** Test-only injection point — see subscription.routes.ts's SubscriptionRoutesOptions for the identical pattern. Defaults to the real store clients; never live in tests. */
   appleStoreClient?: AppleStoreClient;
   googlePlayClient?: GooglePlayClient;
+  messagingProvider?: MessagingProvider;
 }
 
 /**
@@ -41,6 +45,43 @@ export interface WebhookRoutesOptions {
 export default async function webhookRoutes(fastify: FastifyInstance, options: WebhookRoutesOptions = {}) {
   const appleStoreClient = options.appleStoreClient ?? realAppleStoreClient;
   const googlePlayClient = options.googlePlayClient ?? realGooglePlayClient;
+  const messagingProvider = options.messagingProvider ?? defaultTwilioProvider;
+
+  fastify.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
+    try { done(null, Object.fromEntries(new URLSearchParams(String(body)))); } catch (error) { done(error as Error); }
+  });
+
+  const webhookContext = (request: { headers: Record<string, string | string[] | undefined>; protocol: string; hostname: string; url: string }) => {
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(request.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(",") : value);
+    return { headers, url: `${request.protocol}://${request.hostname}${request.url}` };
+  };
+
+  fastify.post("/twilio/status", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const context = webhookContext(request);
+    if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
+    const event = messagingProvider.parseDeliveryWebhook(request.body, context.headers);
+    if (!event) throw ApiError.badRequest("Invalid delivery event");
+    const status = event.status === "delivered" ? "delivered" : event.status === "undelivered" ? "undelivered" : event.status === "failed" ? "failed" : "sent";
+    await prisma.message.updateMany({ where: { providerMessageId: event.providerMessageId }, data: { status, providerErrorCode: event.errorCode ?? null, deliveredAt: event.status === "delivered" ? event.occurredAt : null } });
+    reply.send({ received: true });
+  });
+
+  fastify.post("/twilio/inbound", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const context = webhookContext(request);
+    if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
+    const event = messagingProvider.parseInboundWebhook(request.body, context.headers);
+    if (!event) throw ApiError.badRequest("Invalid inbound event");
+    if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(event.body.trim().toUpperCase())) {
+      const phone = event.from.replace(/^whatsapp:/, "");
+      const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { businessId: true } });
+      for (const { businessId } of customers) {
+        const channel = event.channel === "whatsapp" ? "WHATSAPP" : "SMS";
+        await prisma.customerOptOut.upsert({ where: { businessId_phone_channel: { businessId, phone, channel } }, create: { businessId, phone, channel, source: "provider_webhook" }, update: { source: "provider_webhook" } });
+      }
+    }
+    reply.type("text/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+  });
 
   fastify.post(
     "/apple/subscriptions",

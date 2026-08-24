@@ -102,5 +102,5 @@ export interface MessagingProvider {
   parseInboundWebhook(payload: unknown, headers: Headers): InboundEvent | null;
 
   /** Verifies a webhook request genuinely came from this provider before any payload is trusted. */
-  verifyWebhookSignature(payload: unknown, headers: Headers): boolean;
+  verifyWebhookSignature(payload: unknown, headers: Headers, url?: string): boolean;
 }

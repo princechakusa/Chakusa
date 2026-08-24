@@ -24,6 +24,7 @@ export interface TwilioRestClient {
       body: string;
       from?: string;
       messagingServiceSid?: string;
+      statusCallback?: string;
     }): Promise<{ sid: string; status: string }>;
   };
 }
@@ -117,6 +118,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
         ...(this.sender.messagingServiceSid
           ? { messagingServiceSid: this.sender.messagingServiceSid }
           : { from: this.sender.fromNumber }),
+        ...(config.TWILIO_STATUS_CALLBACK_URL ? { statusCallback: config.TWILIO_STATUS_CALLBACK_URL } : {}),
       });
 
       return { accepted: true, providerMessageId: result.sid, permanentFailure: false };
@@ -125,23 +127,31 @@ export class TwilioMessagingProvider implements MessagingProvider {
     }
   }
 
-  /**
-   * Not implemented in this phase — Phase 2 proves the outbound send path
-   * only. Delivery-status and inbound (reply/STOP) webhook handling are
-   * explicitly deferred to a dedicated webhook phase; these return null
-   * rather than partially/incorrectly parsing a payload nothing calls them
-   * with yet.
-   */
-  parseDeliveryWebhook(): DeliveryEvent | null {
-    return null;
+  parseDeliveryWebhook(payload: unknown): DeliveryEvent | null {
+    if (!payload || typeof payload !== "object") return null;
+    const body = payload as Record<string, unknown>;
+    const providerMessageId = typeof body.MessageSid === "string" ? body.MessageSid : null;
+    const rawStatus = typeof body.MessageStatus === "string" ? body.MessageStatus.toLowerCase() : null;
+    if (!providerMessageId || !rawStatus) return null;
+    const statuses: Record<string, DeliveryEvent["status"]> = { accepted: "queued", queued: "queued", sending: "sent", sent: "sent", delivered: "delivered", undelivered: "undelivered", failed: "failed" };
+    const status = statuses[rawStatus];
+    if (!status) return null;
+    return { providerMessageId, status, errorCode: typeof body.ErrorCode === "string" && body.ErrorCode ? body.ErrorCode : undefined, occurredAt: new Date() };
   }
 
-  parseInboundWebhook(): InboundEvent | null {
-    return null;
+  parseInboundWebhook(payload: unknown): InboundEvent | null {
+    if (!payload || typeof payload !== "object") return null;
+    const body = payload as Record<string, unknown>;
+    if (typeof body.From !== "string" || typeof body.To !== "string" || typeof body.Body !== "string") return null;
+    return { providerMessageId: typeof body.OriginalRepliedMessageSid === "string" ? body.OriginalRepliedMessageSid : undefined, from: body.From, to: body.To, body: body.Body, channel: body.From.startsWith("whatsapp:") ? "whatsapp" : "sms", receivedAt: new Date() };
   }
 
-  verifyWebhookSignature(): boolean {
-    return false;
+  verifyWebhookSignature(payload: unknown, headers: Headers, url?: string): boolean {
+    if (!url || !payload || typeof payload !== "object" || !config.TWILIO_AUTH_TOKEN) return false;
+    const signature = headers.get("x-twilio-signature");
+    if (!signature) return false;
+    const params = Object.fromEntries(Object.entries(payload as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+    return twilio.validateRequest(config.TWILIO_AUTH_TOKEN, signature, url, params);
   }
 }
 

@@ -6,6 +6,7 @@ import { parsePhoneNumber } from "../../lib/phone.js";
 import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import type { MessageType } from "@prisma/client";
+import { messagingBudgetAvailable } from "../../lib/messaging/messagingBudget.js";
 
 type AppointmentMessageKind = "confirmation" | "reminder" | "same_day" | "rescheduled" | "canceled" | "follow_up";
 const fields: Record<AppointmentMessageKind, "confirmationSentAt" | "customerReminderSentAt" | "sameDayReminderSentAt" | "rescheduleConfirmationSentAt" | "cancellationConfirmationSentAt" | "followUpSentAt"> = { confirmation: "confirmationSentAt", reminder: "customerReminderSentAt", same_day: "sameDayReminderSentAt", rescheduled: "rescheduleConfirmationSentAt", canceled: "cancellationConfirmationSentAt", follow_up: "followUpSentAt" };
@@ -14,6 +15,7 @@ const messageTypes: Record<AppointmentMessageKind, MessageType> = { confirmation
 export async function sendCustomerAppointmentMessage(appointmentId: string, kind: AppointmentMessageKind, provider?: MessagingProvider) {
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } } } });
   if (!appointment?.customer?.phoneE164 || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
+  if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
   const field = fields[kind];
   if (appointment[field]) return false;
   const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });

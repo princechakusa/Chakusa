@@ -198,6 +198,43 @@ export async function getAdminAnalytics(query: AdminAnalyticsQuery) {
   return { window: { days: query.days, startsAt: start, generatedAt: now }, series: days, breakdowns: { countries: [...countries].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count), industries: [...industries].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count), automation: automation.map((row) => ({ key: row.status, count: row._count._all })), subscriptions: subscriptions.map((row) => ({ key: `${row.plan}_${row.status}`, count: row._count._all })), activeBusinesses: activeBusinessIds.size }, totals: { businesses: businesses.length, customers: customers.length, leads: leads.length, recoveredLeads: leads.filter((lead) => lead.status === "won").length, recoveredRevenue: leads.filter((lead) => lead.status === "won").reduce((sum, lead) => sum + Number(lead.estimatedValue ?? 0), 0), reviews: reviews.length } };
 }
 
+/** Commercial-beta cohort view composed from existing business-owned tables. */
+export async function getAdminBetaAnalytics() {
+  const now = new Date();
+  const day = new Date(now.getTime() - 86_400_000);
+  const week = new Date(now.getTime() - 7 * 86_400_000);
+  const month = new Date(now.getTime() - 30 * 86_400_000);
+  const [cohort, activeDaily, activeWeekly, activeMonthly, lifecycle] = await Promise.all([
+    prisma.$queryRaw<{ total: bigint; active: bigint; onboarding: bigint; services: bigint; customers: bigint; bookings: bigint; completed: bigint; payments: bigint; automation: bigint; review_requests: bigint; reviews: bigint; weekly_reports: bigint }[]>(Prisma.sql`
+      SELECT COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE platform_status = 'ACTIVE') AS active,
+        COUNT(*) FILTER (WHERE onboarding_completed_at IS NOT NULL) AS onboarding,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM service_offerings s WHERE s.business_id = b.id)) AS services,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM customers c WHERE c.business_id = b.id)) AS customers,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.business_id = b.id)) AS bookings,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.business_id = b.id AND a.status = 'COMPLETED')) AS completed,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM appointment_payment_transactions p WHERE p.business_id = b.id AND p.status IN ('paid','partially_refunded'))) AS payments,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM automation_runs r WHERE r.business_id = b.id AND r.status = 'COMPLETED')) AS automation,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM review_requests rr WHERE rr.business_id = b.id)) AS review_requests,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM feedback f WHERE f.business_id = b.id)) AS reviews,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM weekly_owner_reports w WHERE w.business_id = b.id)) AS weekly_reports
+      FROM businesses b
+    `),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${day}`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${week}`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${month}`),
+    prisma.$queryRaw<{ trialing: bigint; active: bigint; expired: bigint; canceled: bigint; grace: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'TRIALING') AS trialing, COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active, COUNT(*) FILTER (WHERE status = 'EXPIRED') AS expired, COUNT(*) FILTER (WHERE status = 'CANCELED') AS canceled, COUNT(*) FILTER (WHERE status = 'GRACE_PERIOD') AS grace FROM subscriptions`),
+  ]);
+  const row = cohort[0];
+  const total = Number(row?.total ?? 0);
+  return {
+    generatedAt: now,
+    businesses: { totalBeta: total, active: Number(row?.active ?? 0), dailyActive: Number(activeDaily[0]?.count ?? 0), weeklyActive: Number(activeWeekly[0]?.count ?? 0), monthlyActive: Number(activeMonthly[0]?.count ?? 0), inactive: Math.max(0, total - Number(activeMonthly[0]?.count ?? 0)) },
+    activation: { onboardingCompleted: Number(row?.onboarding ?? 0), firstService: Number(row?.services ?? 0), firstCustomer: Number(row?.customers ?? 0), firstBooking: Number(row?.bookings ?? 0), firstAppointmentCompleted: Number(row?.completed ?? 0), firstPaymentCollected: Number(row?.payments ?? 0), firstAutomationExecuted: Number(row?.automation ?? 0), firstReviewRequested: Number(row?.review_requests ?? 0), firstReviewReceived: Number(row?.reviews ?? 0), firstWeeklyReportGenerated: Number(row?.weekly_reports ?? 0) },
+    commercial: { trialing: Number(lifecycle[0]?.trialing ?? 0), active: Number(lifecycle[0]?.active ?? 0), gracePeriod: Number(lifecycle[0]?.grace ?? 0), expired: Number(lifecycle[0]?.expired ?? 0), canceled: Number(lifecycle[0]?.canceled ?? 0), trialToPaidConversion: null, churn: null, reactivations: null },
+  };
+}
+
 export async function listAdminBusinesses(query: AdminBusinessListQuery) {
   const where: Prisma.BusinessWhereInput = {
     ...(query.search ? { OR: [

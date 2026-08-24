@@ -18,6 +18,7 @@ import {
 import {
   getAdminBusiness,
   getAdminAnalytics,
+  getAdminBetaAnalytics,
   getAdminCommunicationOverview,
   getAdminDashboard,
   getAdminUser,
@@ -182,6 +183,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/analytics", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "platform.read");
     reply.send(await getAdminAnalytics(adminAnalyticsQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/beta", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "platform.read");
+    reply.send(await getAdminBetaAnalytics());
   });
 
   fastify.get("/businesses", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

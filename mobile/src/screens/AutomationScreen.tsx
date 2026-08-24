@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
 import { AppHeader, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
+import { LifecycleAutomationCards } from '../components/LifecycleAutomationCards';
 import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, automationStatusCopy, delayLabel, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
 import { EngineItem, recoveryEngineStatus } from '../domain/recoveryEngineStatus';
@@ -14,6 +15,7 @@ import { enableCallDetection, enableContactCoverage, getCallDetectionAvailabilit
 import { automationApi } from '../services/endpoints';
 import { getPushPermissionStatus, registerCurrentDeviceForPush } from '../services/pushNotifications';
 import { usePlanExperience } from '../state/PlanExperienceContext';
+import { useAuth } from '../state/AuthContext';
 import { AUTOMATION_ENABLED } from '../config';
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
@@ -23,6 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Automation'>;
 const HISTORY_PAGE_SIZE = 25;
 
 export function AutomationScreen({ navigation }: Props) {
+  const { business } = useAuth();
   const { plan, status, features, loading: planLoading, error: planError, refresh: refreshPlan, handleEntitlementError } = usePlanExperience();
   const [rules, setRules] = useState<AutomationRuleDto[]>([]);
   const [rulesLoaded, setRulesLoaded] = useState(false);
@@ -36,6 +39,7 @@ export function AutomationScreen({ navigation }: Props) {
   const [moreLoading, setMoreLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [mutation, setMutation] = useState<'create'|'delay'|'toggle'|null>(null);
+  const [lifecycleMutation, setLifecycleMutation] = useState<string | null>(null);
   const [selectedDelay, setSelectedDelay] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [callDetectionAvail, setCallDetectionAvail] = useState<CallDetectionAvailability>('unsupported');
@@ -121,6 +125,13 @@ export function AutomationScreen({ navigation }: Props) {
   });
   const toggle = (enabled: boolean) => { if (!rule || availability !== 'available') return; void mutate('toggle', () => enabled ? automationApi.enableRule(rule.id) : automationApi.disableRule(rule.id)); };
   const saveDelay = () => { if (!rule || selectedDelay === null || selectedDelay === rule.delaySeconds || availability !== 'available') return; void mutate('delay', () => automationApi.updateRule(rule.id, { delaySeconds: selectedDelay })); };
+  const mutateLifecycle = (key: string, operation: () => Promise<unknown>) => {
+    if (lifecycleMutation || mutation) return;
+    setLifecycleMutation(key); setRuleError(null); setNotice(null);
+    void operation().then(async () => { await refreshAll(); setNotice('Lifecycle automation updated.'); }).catch(caught => {
+      if (!handleEntitlementError(caught)) setRuleError(caught instanceof ApiError && caught.kind === 'network' ? 'Couldn’t reach Chakusa. Your lifecycle automation was not changed.' : 'Chakusa couldn’t update this lifecycle automation. Please refresh and try again.');
+    }).finally(() => setLifecycleMutation(null));
+  };
 
   const handleEngineAction = async (key: EngineItem['key']) => {
     if (engineWorking) return;
@@ -170,13 +181,14 @@ export function AutomationScreen({ navigation }: Props) {
     {rulesLoaded && availability === 'service-unavailable' ? <Locked title="Automation is preparing for launch" body="Automation history remains available, but automatic messages are not running in production yet." action="View plan" onPress={() => navigation.navigate('Pro')} /> : null}
     {rulesLoaded && availability === 'available' && !rule ? <View style={styles.card}><Text style={styles.heading}>Set up missed-call follow-up</Text><Text style={styles.body}>Choose when Chakusa should send the SMS. The rule is created off, so you can review it before enabling real messages.</Text><DelayPicker value={selectedDelay} disabled={Boolean(mutation)} onChange={setSelectedDelay} /><PrimaryButton fullWidth disabled={selectedDelay === null || Boolean(mutation)} label={mutation === 'create' ? 'Setting up…' : 'Set up follow-up'} onPress={() => void create()} /></View> : null}
     {rulesLoaded && rule && availability !== 'service-unavailable' ? <><View style={styles.card}><View style={styles.statusRow}><View style={styles.copy}><Text style={styles.heading}>Automatic SMS follow-up</Text><StatusBadge label={automationStatusCopy(rule.enabled)} /></View><Switch accessibilityLabel="Automatic missed-call SMS follow-up" accessibilityHint="Turns real automatic customer messages on or off" accessibilityState={{ disabled: availability !== 'available' || Boolean(mutation) }} disabled={availability !== 'available' || Boolean(mutation)} value={rule.enabled} onValueChange={toggle} trackColor={{ false: colors.border, true: colors.success }} thumbColor={colors.surface} /></View><InfoRow label="When" value="New missed-call lead" /><InfoRow label="Channel" value="SMS" /><InfoRow label="Delay" value={delayLabel(rule.delaySeconds)} /></View><View style={styles.card}><Text style={styles.heading}>Delay</Text><DelayPicker value={selectedDelay} disabled={availability !== 'available' || Boolean(mutation)} onChange={setSelectedDelay} /><PrimaryButton fullWidth disabled={availability !== 'available' || selectedDelay === null || selectedDelay === rule.delaySeconds || Boolean(mutation)} label={mutation === 'delay' ? 'Saving…' : 'Save delay'} onPress={saveDelay} /></View></> : null}
-    {rulesLoaded ? <View style={styles.card}><Text style={styles.heading}>Message</Text><Text style={styles.body}>Chakusa uses your current missed-call follow-up template. Template selection is not part of this automation rule.</Text><SecondaryButton fullWidth label="View message templates" onPress={() => navigation.navigate('Templates')} /></View> : null}
+    {rulesLoaded ? <LifecycleAutomationCards rules={rules} availability={availability} reminderDays={business?.reminderDays} working={lifecycleMutation} onWork={mutateLifecycle} /> : null}
+    {rulesLoaded ? <View style={styles.card}><Text style={styles.heading}>Message</Text><Text style={styles.body}>Chakusa uses the matching lead follow-up or comeback template for each automation. Review your templates before enabling real messages.</Text><SecondaryButton fullWidth label="View message templates" onPress={() => navigation.navigate('Templates')} /></View> : null}
     {status === 'GRACE_PERIOD' && availability === 'available' ? <Text style={styles.notice}>Automation remains available during your current payment grace period.</Text> : null}
     <View style={styles.safety}><Text style={styles.safetyTitle}>Before you turn it on</Text><Text style={styles.safetyText}>Automation sends real customer SMS messages. Your business is responsible for appropriate consent. Chakusa applies supported opt-out checks, and you can disable this rule here.</Text></View>
     <View style={styles.card}><Text style={styles.heading}>Recent activity</Text>
       {!historyLoaded && historyLoading ? <LoadingState label="Loading automation activity…" /> : null}
       {historyLoaded && historyError && runs.length === 0 ? <ErrorState message="Couldn’t load automation activity." onRetry={() => void refreshHistory()} /> : null}
-      {historyLoaded && !historyError && runTotal === 0 ? <View><Text style={styles.emptyTitle}>No automation activity yet</Text><Text style={styles.body}>{availability === 'free-locked' ? 'Activity from automation will appear here if you upgrade and turn it on.' : 'Your missed-call follow-ups will appear here after automation starts running.'}</Text></View> : null}
+      {historyLoaded && !historyError && runTotal === 0 ? <View><Text style={styles.emptyTitle}>No automation activity yet</Text><Text style={styles.body}>{availability === 'free-locked' ? 'Activity from automation will appear here if you upgrade and turn it on.' : 'Automatic lead follow-ups and customer win-back messages will appear here after they start running.'}</Text></View> : null}
       {runs.map(item => <HistoryRow key={item.id} item={item} onPress={item.lead ? () => navigation.navigate('LeadDetail', { leadId: item.lead!.id }) : item.customer ? () => navigation.navigate('CustomerProfile', { customerId: item.customer!.id }) : undefined} />)}
       {runs.length > 0 && historyError ? <Text accessibilityRole="alert" style={styles.error}>{historyError} Existing activity is still shown.</Text> : null}
       {shouldLoadMoreHistory(runs.length, runTotal) ? <SecondaryButton fullWidth disabled={moreLoading} label={moreLoading ? 'Loading more…' : 'Load more'} onPress={() => void loadMore()} /> : null}

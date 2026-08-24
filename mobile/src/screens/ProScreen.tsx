@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { BILLING_ENABLED, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
 import { canSubscribe, isEntitledStatus, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
@@ -14,7 +14,15 @@ import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { formatMoney } from '../utils/format';
 
-const benefits = ['Automatic missed-call follow-up', 'Chakusa outbound SMS', 'Unlimited normal customer, lead, review, and reminder limits', 'Unlimited custom templates', 'Advanced analytics and available Pro features'];
+const benefits = [
+  ...(Platform.OS === 'android' ? ['Automatic missed-call follow-up'] : []),
+  'Automatic follow-up for leads that go quiet',
+  'Automatic win-back messages for dormant customers',
+  'Chakusa outbound SMS',
+  'Unlimited normal customer, lead, review, and reminder limits',
+  'Unlimited custom templates',
+  'Advanced analytics and extended history',
+];
 const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
 
 export function ProScreen() {
@@ -35,7 +43,7 @@ export function ProScreen() {
       {billing.message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{billing.message}</Text> : null}{billing.error ? <Text accessibilityRole="alert" style={styles.error}>{billing.error}</Text> : null}
       <View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text></View>
     </View> : null}
-    <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic missed-call SMS follow-up once Pro is active.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
+    <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic lead follow-up and customer win-back SMS once Pro is active{Platform.OS === 'android' ? ', including missed-call recovery' : ''}.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
     <Text style={styles.footnote}>Approximately US$29/month is Chakusa’s informational product direction. Your store’s localized price above is the purchase authority.</Text>
   </Screen>;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
-import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationStatusCopy, canChangeAutomation, delayLabel, delaySecondsForSelection, historyIsReadable, isDuplicateAutomationRuleConflict, isTerminalRunStatus, missedCallRules, replaceHistoryPage, runStatusCopy, safeAutomationFailureCopy, shouldLoadMoreHistory } from './automation';
+import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationStatusCopy, canChangeAutomation, delayLabel, delaySecondsForSelection, historyIsReadable, isDuplicateAutomationRuleConflict, isTerminalRunStatus, lifecycleAutomationDefinitions, lifecycleRule, missedCallRules, replaceHistoryPage, runStatusCopy, safeAutomationFailureCopy, shouldLoadMoreHistory } from './automation';
 const rule = { id: 'rule', businessId: 'business', name: 'Missed-call follow-up', enabled: false, triggerType: 'LEAD_CREATED', channel: 'SMS', delaySeconds: 60, config: {}, createdAt: '', updatedAt: '' } satisfies AutomationRuleDto;
 const run = (id: string) => ({ id, status: 'COMPLETED', scheduledFor: '', startedAt: null, completedAt: '', triggerType: 'LEAD_CREATED', channel: 'SMS', customer: null, lead: null, reason: null }) satisfies AutomationRunHistoryItemDto;
 describe('automation product rules', () => {
@@ -31,5 +31,16 @@ describe('automation product rules', () => {
   it('uses safe failure copy without exposing backend text', () => expect(safeAutomationFailureCopy()).toBe('Chakusa could not complete this follow-up.'));
   it('allows only real state changes for entitled rules', () => { expect(canChangeAutomation('available', rule, true)).toBe(true); expect(canChangeAutomation('free-locked', rule, true)).toBe(false); expect(canChangeAutomation('available', { ...rule, enabled: true }, true)).toBe(false); });
   it('selects only missed-call SMS rules', () => expect(missedCallRules([rule, { ...rule, id: 'other', triggerType: 'LEAD_FOLLOW_UP' }])).toEqual([rule]));
+  it('defines the existing lifecycle engines with deterministic repository inputs', () => {
+    const definitions = lifecycleAutomationDefinitions(30);
+    expect(definitions.map(item => item.triggerType)).toEqual(['LEAD_FOLLOW_UP', 'CUSTOMER_RETENTION']);
+    expect(definitions[0].delaySeconds).toBe(86_400);
+    expect(definitions[1].config).toEqual({ minDaysSinceVisit: 30 });
+  });
+  it('selects a lifecycle SMS rule by trigger', () => {
+    const followUp = { ...rule, id: 'follow-up', triggerType: 'LEAD_FOLLOW_UP' as const };
+    expect(lifecycleRule([rule, followUp], 'LEAD_FOLLOW_UP')).toEqual(followUp);
+    expect(lifecycleRule([rule], 'CUSTOMER_RETENTION')).toBeNull();
+  });
   it('keeps the supported delay set exact', () => expect(AUTOMATION_DELAYS).toEqual([0,60,120,300,600,900,1800]));
 });

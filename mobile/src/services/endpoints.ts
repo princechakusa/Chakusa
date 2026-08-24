@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationRuleDto, AutomationRunHistoryDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -84,8 +84,8 @@ export const subscriptionApi = {
 export const automationApi = {
   listRules: () => api.get<AutomationRuleDto[]>('/automation/rules'),
   listRuns: (page = 1, pageSize = 25) => api.get<AutomationRunHistoryDto>(`/automation/runs${query({ page, pageSize })}`),
-  createRule: (body: { name: string; enabled: boolean; triggerType: 'LEAD_CREATED'; channel: 'SMS'; delaySeconds: number; config: Record<string, unknown> }) => api.post<AutomationRuleDto>('/automation/rules', body),
-  updateRule: (id: string, body: { delaySeconds: number }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
+  createRule: (body: { name: string; enabled: boolean; triggerType: AutomationTriggerType; channel: AutomationChannel; delaySeconds: number; config: Record<string, unknown> }) => api.post<AutomationRuleDto>('/automation/rules', body),
+  updateRule: (id: string, body: { name?: string; channel?: AutomationChannel; delaySeconds?: number; config?: Record<string, unknown> }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
   enableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/enable`),
   disableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/disable`),
 };

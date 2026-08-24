@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, CustomerLifecycleStage, ServicePerformanceRowDto } from '../apiTypes';
+import { AttentionCategory, BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, CustomerLifecycleStage, ServicePerformanceRowDto, ValueCenterDto } from '../apiTypes';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader, StatusBadge } from '../components/ui';
 import { ApiError } from '../services/api';
 import { dashboardApi } from '../services/endpoints';
@@ -51,15 +51,17 @@ const LIFECYCLE_STAGE_LABELS: [CustomerLifecycleStage, string][] = [
 export function InsightsScreen({ navigation }: Props) {
   const [insights, setInsights] = useState<BusinessInsightsDto | null>(null);
   const [coaching, setCoaching] = useState<CoachingInsightDto[] | null>(null);
+  const [value, setValue] = useState<ValueCenterDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [insightsResult, coachingResult] = await Promise.all([dashboardApi.insights(), dashboardApi.coaching()]);
+      const [insightsResult, coachingResult, valueResult] = await Promise.all([dashboardApi.insights(), dashboardApi.coaching(), dashboardApi.value()]);
       setInsights(insightsResult);
       setCoaching(coachingResult.insights);
+      setValue(valueResult);
     } catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to load business insights.'); }
     finally { setLoading(false); }
   }, []);
@@ -75,6 +77,8 @@ export function InsightsScreen({ navigation }: Props) {
 
   return <Screen>
     <AppHeader eyebrow="GROWTH" title="Business Insights" subtitle="How your business is performing, in your own numbers" />
+
+    {value ? <ValueCreated value={value} currency={undefined} navigation={navigation} /> : null}
 
     {coaching && coaching.length > 0 ? <View>
       <SectionHeader title="Coaching" />
@@ -150,6 +154,27 @@ export function InsightsScreen({ navigation }: Props) {
       </View>
     </View>
   </Screen>;
+}
+
+function ValueCreated({ value, currency, navigation }: { value: ValueCenterDto; currency?: string; navigation: Navigator }) {
+  const money = (amount: number | null) => amount == null ? 'Unknown' : formatMoney(amount, currency);
+  return <View>
+    <SectionHeader title="Value created" />
+    <Text style={styles.caption}>Recorded outcomes from Chakusa activity. Unknown means the current data does not support attribution.</Text>
+    <View style={styles.metricGrid}>
+      <MetricCard label="Revenue collected" value={money(value.valueCreated.revenue.collected)} />
+      <MetricCard label="Revenue recovered" value={money(value.valueCreated.revenue.recovered)} />
+      <MetricCard label="Outstanding revenue" value={money(value.valueCreated.revenue.outstanding)} />
+      <MetricCard label="Customers returned" value={String(value.valueCreated.customers.recovered)} />
+      <MetricCard label="Appointments completed" value={String(value.valueCreated.appointments.completed)} />
+      <MetricCard label="Reviews received" value={String(value.valueCreated.reputation.received)} />
+    </View>
+    <View style={styles.subsection}>
+      <Text style={styles.subsectionTitle}>Automation ROI funnel</Text>
+      {value.automationRoi.length === 0 ? <Text style={styles.muted}>No automation runs have been recorded yet.</Text> : value.automationRoi.map(row => <View key={row.triggerType} style={styles.rankRow}><Text style={styles.rankLabel}>{titleCase(row.triggerType.replaceAll('_', ' '))}</Text><Text style={styles.rankValue}>{row.scheduled} scheduled · {row.sent} sent · {row.delivered} delivered</Text></View>)}
+    </View>
+      {value.opportunities.length > 0 ? <View style={styles.subsection}><Text style={styles.subsectionTitle}>Top opportunities</Text>{value.opportunities.slice(0, 4).map(item => <Pressable key={item.key} accessibilityRole="button" onPress={() => { if (item.action.kind === 'attention' && item.action.category) navigation.navigate('AttentionCenter', { category: item.action.category as AttentionCategory }); else if (item.action.kind === 'comeback') navigation.navigate('Comeback'); else if (item.action.audienceKey === 'dormant') navigation.navigate('Comeback'); }} style={styles.row}><View style={styles.rowCopy}><Text style={styles.rowTitle}>{item.suggestedAction}</Text><Text style={styles.rowDetail}>{item.count} item{item.count === 1 ? '' : 's'} · {item.businessImpact == null ? 'Impact unknown' : `${money(item.businessImpact)} recorded impact`}</Text></View><StatusBadge label={titleCase(item.priority)} /></Pressable>)}</View> : null}
+  </View>;
 }
 
 function ServiceList({ title, rows, metric }: { title: string; rows: ServicePerformanceRowDto[]; metric: 'requests' | 'revenue' | 'conversion' }) {

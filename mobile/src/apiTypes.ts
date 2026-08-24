@@ -174,6 +174,18 @@ export interface CoachingInsightDto {
   priority: CoachingPriority;
 }
 export interface BusinessCoachingDto { insights: CoachingInsightDto[]; generatedAt: string; }
+export interface ValueCenterDto {
+  valueCreated: {
+    revenue: { collected: number; recovered: number; outstanding: number; potential: number | null };
+    customers: { total: number; new: number; recovered: number; retained: number; dormant: number; dormantReturned: number | null };
+    appointments: { booked: number; completed: number; cancelled: number | null; noShows: number | null; noShowsRecovered: number | null };
+    reputation: { requests: number; received: number; averageRating: number | null };
+    automation: { messagesSent: number; automationsCompleted: number; followUpsCompleted: number; reminderSuccess: number | null };
+  };
+  automationRoi: Array<{ triggerType: string; scheduled: number; sent: number; delivered: number; opened: number | null; replied: number | null; booked: number | null; paid: number | null; revenue: number | null }>;
+  opportunities: Array<{ key: string; priority: 'high' | 'medium'; count: number; businessImpact: number | null; suggestedAction: string; action: { kind: 'attention' | 'audience' | 'comeback'; category?: string; audienceKey?: string } }>;
+  generatedAt: string;
+}
 export interface AttentionPageDto { items: AttentionItemDto[]; total: number; page: number; pageSize: number; category: AttentionCategory | null; countsByCategory?: Record<AttentionCategory, number>; }
 
 export interface ApiErrorBody { error: { code: 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | string; message: string; details?: unknown }; }

@@ -4,6 +4,7 @@ import { listAttentionItems } from "./attentionCenter.service.js";
 import { getBusinessInsights } from "./insights.service.js";
 import { getBusinessCoaching } from "./coaching.service.js";
 import { listAttentionItemsQuerySchema } from "./dashboard.schemas.js";
+import { getValueCenter } from "./valueCenter.service.js";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -36,5 +37,11 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
   // businessCoaching.ts and coaching.service.ts.
   fastify.get("/coaching", async (request, reply) => {
     reply.send(await getBusinessCoaching(request.businessId!));
+  });
+
+  // Owner Value & Automation ROI is an additive read model composed from
+  // the existing summary, insights, audiences, and automation records.
+  fastify.get("/value", async (request, reply) => {
+    reply.send(await getValueCenter(request.businessId!));
   });
 }

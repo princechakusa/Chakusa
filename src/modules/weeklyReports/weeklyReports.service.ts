@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { sendPushToUser } from "../../lib/push/pushService.js";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
+import { sendWeeklyOwnerReportEmail } from "./weeklyReportEmail.js";
 
 const DAY_MS = 86_400_000;
 export interface WeeklyReportSummary { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number; }
@@ -30,7 +31,7 @@ export async function buildWeeklyReportSummary(businessId: string, periodStart: 
 }
 
 export async function generateDueWeeklyOwnerReports(now = new Date(), batchSize = 50, pushProvider?: PushProvider) {
-  const businesses = await prisma.business.findMany({ where: { platformStatus: "ACTIVE" }, select: { id: true, ownerId: true, name: true, timezone: true }, take: batchSize, orderBy: { createdAt: "asc" } });
+  const businesses = await prisma.business.findMany({ where: { platformStatus: "ACTIVE" }, select: { id: true, ownerId: true, name: true, timezone: true, owner: { select: { email: true } } }, take: batchSize, orderBy: { createdAt: "asc" } });
   let generated = 0;
   for (const business of businesses) {
     const week = localWeek(now, business.timezone || "UTC");
@@ -42,6 +43,7 @@ export async function generateDueWeeklyOwnerReports(now = new Date(), batchSize 
     // In-app report delivery is durable in WeeklyOwnerReport; push is a
     // best-effort wake-up that never prevents the report from being stored.
     await sendPushToUser(business.ownerId, { title: `${business.name} weekly report`, body: `${summary.appointmentsBooked} bookings, ${summary.appointmentsCompleted} completed, and ${summary.customerMessagesSent} customer messages this week.`, data: { type: "weekly_owner_report", weekKey: week.weekKey } }, pushProvider).catch(() => undefined);
+    await sendWeeklyOwnerReportEmail(business.owner.email, business.name, week.weekKey, summary);
     generated += 1;
   }
   return { generated };

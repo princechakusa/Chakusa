@@ -51,6 +51,7 @@ export async function resetDatabase() {
     prisma.authChallenge.deleteMany(),
     prisma.authIdentity.deleteMany(),
     prisma.adminMembership.deleteMany(),
+    prisma.platformSetting.deleteMany(),
     prisma.subscription.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),

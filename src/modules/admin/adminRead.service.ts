@@ -4,6 +4,7 @@ import { workerHeartbeatHealthy } from "../../worker/workerHeartbeat.js";
 import { ApiError } from "../../lib/errors.js";
 import type {
   AdminAuditListQuery,
+  AdminAnalyticsQuery,
   AdminAutomationListQuery,
   AdminBusinessListQuery,
   AdminCommunicationListQuery,
@@ -170,6 +171,31 @@ export async function getAdminDashboard(query: AdminDashboardQuery) {
       dormantBusinesses: "Canonical platform dormancy definition has not been approved",
     },
   };
+}
+
+export async function getAdminAnalytics(query: AdminAnalyticsQuery) {
+  const now = new Date();
+  const start = startOfUtcDay(new Date(now.getTime() - (query.days - 1) * 86_400_000));
+  const [businesses, customers, leads, automation, subscriptions, reviews, activity] = await Promise.all([
+    prisma.business.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true, country: true, industry: true, platformStatus: true } }),
+    prisma.customer.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
+    prisma.lead.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true, status: true, estimatedValue: true } }),
+    prisma.automationRun.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.subscription.groupBy({ by: ["plan", "status"], _count: { _all: true } }),
+    prisma.reviewRequest.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true, status: true } }),
+    prisma.activityEvent.findMany({ where: { createdAt: { gte: start } }, select: { businessId: true, createdAt: true } }),
+  ]);
+  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+  const days = Array.from({ length: query.days }, (_, index) => { const date = new Date(start.getTime() + index * 86_400_000); return { date: dayKey(date), businesses: 0, customers: 0, leads: 0, recoveredLeads: 0, recoveredRevenue: 0, reviews: 0 }; });
+  const byDay = new Map(days.map((day) => [day.date, day]));
+  for (const row of businesses) byDay.get(dayKey(row.createdAt))!.businesses += 1;
+  for (const row of customers) byDay.get(dayKey(row.createdAt))!.customers += 1;
+  for (const row of leads) { const day = byDay.get(dayKey(row.createdAt)); if (!day) continue; day.leads += 1; if (row.status === "won") { day.recoveredLeads += 1; day.recoveredRevenue += Number(row.estimatedValue ?? 0); } }
+  for (const row of reviews) if (row.status === "reviewed" || row.status === "feedback_received") byDay.get(dayKey(row.createdAt))!.reviews += 1;
+  const countries = new Map<string, number>(); const industries = new Map<string, number>();
+  for (const row of businesses) { countries.set(row.country ?? "Unknown", (countries.get(row.country ?? "Unknown") ?? 0) + 1); industries.set(row.industry ?? "Unspecified", (industries.get(row.industry ?? "Unspecified") ?? 0) + 1); }
+  const activeBusinessIds = new Set(activity.map((row) => row.businessId));
+  return { window: { days: query.days, startsAt: start, generatedAt: now }, series: days, breakdowns: { countries: [...countries].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count), industries: [...industries].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count), automation: automation.map((row) => ({ key: row.status, count: row._count._all })), subscriptions: subscriptions.map((row) => ({ key: `${row.plan}_${row.status}`, count: row._count._all })), activeBusinesses: activeBusinessIds.size }, totals: { businesses: businesses.length, customers: customers.length, leads: leads.length, recoveredLeads: leads.filter((lead) => lead.status === "won").length, recoveredRevenue: leads.filter((lead) => lead.status === "won").reduce((sum, lead) => sum + Number(lead.estimatedValue ?? 0), 0), reviews: reviews.length } };
 }
 
 export async function listAdminBusinesses(query: AdminBusinessListQuery) {

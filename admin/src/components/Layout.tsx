@@ -8,6 +8,7 @@ import { useAuth } from "../auth";
 
 const navigation = [
   { to: "/", label: "Overview", icon: LayoutDashboard, permission: "platform.read" },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, permission: "platform.read" },
   { to: "/businesses", label: "Businesses", icon: Building2, permission: "business.read" },
   { to: "/users", label: "Users", icon: Users, permission: "user.read" },
   { to: "/subscriptions", label: "Subscriptions", icon: CreditCard, permission: "subscription.read" },

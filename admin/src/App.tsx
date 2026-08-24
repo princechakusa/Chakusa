@@ -6,6 +6,7 @@ import { LoadingState } from "./components/ui";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const BusinessesPage = lazy(() => import("./pages/BusinessesPage"));
 const BusinessDetailPage = lazy(() => import("./pages/BusinessDetailPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
@@ -32,6 +33,7 @@ export default function App() {
     <Route path="/login" element={<LoginPage />} />
     <Route element={<ProtectedLayout />}>
       <Route index element={<DashboardPage />} />
+      <Route path="analytics" element={<AnalyticsPage />} />
       <Route path="businesses" element={<BusinessesPage />} />
       <Route path="businesses/:id" element={<BusinessDetailPage />} />
       <Route path="users" element={<UsersPage />} />

@@ -260,4 +260,13 @@ describe("admin guarded actions", () => {
     const denied = await app.inject({ method: "PATCH", url: "/admin/settings", headers: headers(readOnly.token, readOnly.csrf), payload: { key: "automation_enabled", enabled: true } });
     expect(denied.statusCode).toBe(403);
   });
+
+  it("returns server-derived analytics within the requested time window", async () => {
+    const readOnly = await admin("READ_ONLY");
+    const response = await app.inject({ method: "GET", url: "/admin/analytics?days=30", headers: headers(readOnly.token) });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().series).toHaveLength(30);
+    expect(response.json()).toHaveProperty("breakdowns.countries");
+    expect(response.json()).toHaveProperty("breakdowns.industries");
+  });
 });

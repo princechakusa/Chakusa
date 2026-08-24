@@ -5,6 +5,7 @@ import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySc
 import { deleteBusiness, grantAdminAccess, listAdminPlatformSettings, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateAdminPlatformSetting, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
+  adminAnalyticsQuerySchema,
   adminAutomationListQuerySchema,
   adminBusinessListQuerySchema,
   adminCommunicationListQuerySchema,
@@ -16,6 +17,7 @@ import {
 } from "./adminRead.schemas.js";
 import {
   getAdminBusiness,
+  getAdminAnalytics,
   getAdminCommunicationOverview,
   getAdminDashboard,
   getAdminUser,
@@ -175,6 +177,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/dashboard", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "platform.read");
     reply.send(await getAdminDashboard(adminDashboardQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/analytics", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "platform.read");
+    reply.send(await getAdminAnalytics(adminAnalyticsQuerySchema.parse(request.query)));
   });
 
   fastify.get("/businesses", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

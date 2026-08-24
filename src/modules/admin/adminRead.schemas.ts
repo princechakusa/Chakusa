@@ -9,6 +9,10 @@ export const adminDashboardQuerySchema = z.object({
   days: z.coerce.number().int().min(7).max(365).default(30),
 });
 
+export const adminAnalyticsQuerySchema = z.object({
+  days: z.coerce.number().int().min(7).max(365).default(90),
+});
+
 export const adminBusinessListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   plan: z.enum(["FREE", "PRO", "BUSINESS"]).optional(),
@@ -60,6 +64,7 @@ export const adminAuditListQuerySchema = z.object({
 export const adminIdParamsSchema = z.object({ id: z.string().uuid() });
 
 export type AdminDashboardQuery = z.infer<typeof adminDashboardQuerySchema>;
+export type AdminAnalyticsQuery = z.infer<typeof adminAnalyticsQuerySchema>;
 export type AdminBusinessListQuery = z.infer<typeof adminBusinessListQuerySchema>;
 export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 export type AdminSubscriptionListQuery = z.infer<typeof adminSubscriptionListQuerySchema>;

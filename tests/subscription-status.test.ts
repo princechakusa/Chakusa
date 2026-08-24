@@ -29,6 +29,17 @@ describe("GET /subscription/status", () => {
     await prisma.$disconnect();
   });
 
+  it("returns deterministic subscription value from real leads and appointments", async () => {
+    const { token, businessId, userId } = await registerAccount(app);
+    await prisma.lead.create({ data: { businessId, status: "won", estimatedValue: 125, wonAt: new Date() } });
+    await prisma.appointment.createMany({ data: [
+      { businessId, createdByUserId: userId, serviceName: "Completed", startsAt: new Date(), endsAt: new Date(Date.now() + 3_600_000), status: "COMPLETED", price: 50 },
+      { businessId, createdByUserId: userId, serviceName: "Upcoming", startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 90_000_000), status: "CONFIRMED", price: 80 },
+    ] });
+    const response = await getStatus(app, token);
+    expect(response.json().value).toEqual({ recoveredRevenueThisMonth: 125, completedAppointmentsThisMonth: 1, scheduledAppointmentValue: 80 });
+  });
+
   // ---------------------------------------------------------------------
   // Plan / status
   // ---------------------------------------------------------------------

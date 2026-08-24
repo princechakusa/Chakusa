@@ -632,9 +632,14 @@ model Appointment {
   endsAt           DateTime          @map("ends_at")
   status           AppointmentStatus @default(SCHEDULED)
   price            Decimal?          @db.Decimal(10, 2)
+  depositAmount    Decimal?          @db.Decimal(10, 2) @map("deposit_amount")
+  paidAmount       Decimal           @default(0) @db.Decimal(10, 2) @map("paid_amount")
+  paymentStatus    LeadPaymentStatus @default(unpaid) @map("payment_status")
   notes            String?
   reminderMinutes  Int?              @map("reminder_minutes")
   reminderSentAt   DateTime?         @map("reminder_sent_at")
+  confirmationSentAt DateTime?       @map("confirmation_sent_at")
+  customerReminderSentAt DateTime?   @map("customer_reminder_sent_at")
   createdByUserId  String            @map("created_by_user_id")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
@@ -650,6 +655,8 @@ model Appointment {
   @@index([customerId, startsAt])
   @@index([assignedMemberId, startsAt])
   @@index([serviceOfferingId, startsAt])
+  @@index([status, startsAt, customerReminderSentAt])
+  @@index([businessId, paymentStatus, startsAt])
   @@map("appointments")
 }
 

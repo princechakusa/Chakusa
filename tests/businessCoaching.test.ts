@@ -94,7 +94,7 @@ describe("generateBusinessCoaching", () => {
 
   it("generates a critical outstanding_revenue insight when over half of recovered revenue is unpaid", () => {
     const input = baseInput();
-    input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 600 };
+    input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 600, appointmentCollected: 0, appointmentOutstanding: 0 };
     addAudience(input, "outstanding_payments", { totalCustomers: 2, outstandingPayments: 600 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
@@ -105,7 +105,7 @@ describe("generateBusinessCoaching", () => {
 
   it("generates a high (not critical) outstanding_revenue insight when under half is unpaid", () => {
     const input = baseInput();
-    input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 100 };
+    input.summary.recoveredRevenue = { total: 1000, missedCall: 0, comebackCompletedCount: 0, outstanding: 100, appointmentCollected: 0, appointmentOutstanding: 0 };
     addAudience(input, "outstanding_payments", { outstandingPayments: 100 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
@@ -258,7 +258,7 @@ describe("generateBusinessCoaching", () => {
 
   it("sorts insights critical-first, deterministically", () => {
     const input = baseInput();
-    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 }; // critical
+    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60, appointmentCollected: 0, appointmentOutstanding: 0 }; // critical
     addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
     input.summary.customerIntelligence.needingFollowUpTotalCount = 1; // high
     input.summary.customerIntelligence.needingFollowUp = [{ customerId: "a", customerName: "Jane", reason: "new_lead" }];
@@ -272,7 +272,7 @@ describe("generateBusinessCoaching", () => {
 
   it("produces byte-identical output for the same input twice — no randomness", () => {
     const input = baseInput();
-    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 };
+    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60, appointmentCollected: 0, appointmentOutstanding: 0 };
     addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
 
     expect(generateBusinessCoaching(input)).toEqual(generateBusinessCoaching(input));
@@ -280,7 +280,7 @@ describe("generateBusinessCoaching", () => {
 
   it("never mentions the Recovery Engine — that state is on-device and never reported to the backend", () => {
     const input = baseInput();
-    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60 };
+    input.summary.recoveredRevenue = { total: 100, missedCall: 0, comebackCompletedCount: 0, outstanding: 60, appointmentCollected: 0, appointmentOutstanding: 0 };
     addAudience(input, "outstanding_payments", { outstandingPayments: 60 });
     input.summary.customerIntelligence.needingFollowUpTotalCount = 5;
     input.summary.businessHealth = { score: 20, label: "at_risk", factors: [{ key: "contactRate", label: "x", value: 20, included: true }] };

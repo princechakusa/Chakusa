@@ -75,6 +75,7 @@ export async function getDashboardSummary(businessId: string) {
     missedCallRecoveredAggregate,
     comebackWonReminders,
     outstandingRevenueRows,
+    appointmentPaymentRows,
     business,
     totalCustomers,
     newCustomersThisPeriod,
@@ -136,6 +137,12 @@ export async function getDashboardSummary(businessId: string) {
         AND payment_status != 'paid'
         AND estimated_value IS NOT NULL
     `),
+    prisma.$queryRaw<{ collected: string | null; outstanding: string | null }[]>(Prisma.sql`
+      SELECT SUM(paid_amount) AS collected,
+             SUM(GREATEST(COALESCE(price, 0) - paid_amount, 0)) AS outstanding
+      FROM appointments
+      WHERE business_id = ${businessId} AND status != 'CANCELED'
+    `),
     prisma.business.findUnique({
       where: { id: businessId },
       select: { industry: true, phone: true, description: true, defaultServices: true, workingHours: true, googleReviewLink: true },
@@ -175,6 +182,8 @@ export async function getDashboardSummary(businessId: string) {
   const totalRecoveredRevenue = Number(totalRecoveredAggregate._sum.estimatedValue ?? 0);
   const missedCallRecoveredRevenue = Number(missedCallRecoveredAggregate._sum.estimatedValue ?? 0);
   const outstandingRevenue = Number(outstandingRevenueRows[0]?.outstanding ?? 0);
+  const appointmentCollected = Number(appointmentPaymentRows[0]?.collected ?? 0);
+  const appointmentOutstanding = Number(appointmentPaymentRows[0]?.outstanding ?? 0);
 
   const workingHoursSummary = (() => {
     const summary = (business?.workingHours as Record<string, unknown> | null)?.summary;
@@ -259,6 +268,8 @@ export async function getDashboardSummary(businessId: string) {
       // businesses that never use payment tracking, so this is purely
       // additive to existing dashboard consumers.
       outstanding: outstandingRevenue,
+      appointmentCollected,
+      appointmentOutstanding,
     },
     leads: {
       missedCalls: totalMissedCalls,

@@ -28,7 +28,7 @@ export const authApi = {
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
   get: () => api.get<BusinessDto>('/business'),
-  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes'>>) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
 };
@@ -74,6 +74,8 @@ export const appointmentsApi = {
   create: (body: { customerId?: string; assignedMemberId?: string; serviceOfferingId?: string; serviceName: string; startsAt: string; endsAt: string; price?: number; notes?: string; reminderMinutes?: number | null }) => api.post<import('../apiTypes').AppointmentDto>('/appointments', body),
   patch: (id: string, body: Partial<Pick<import('../apiTypes').AppointmentDto, 'customerId' | 'assignedMemberId' | 'serviceOfferingId' | 'serviceName' | 'startsAt' | 'endsAt' | 'price' | 'notes' | 'reminderMinutes'>>) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}`, body),
   transition: (id: string, status: import('../apiTypes').AppointmentStatus) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/status`, { status }),
+  sendConfirmation: (id: string) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/send-confirmation`, {}),
+  updatePayment: (id: string, paidAmount: number) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}/payment`, { paidAmount }),
 };
 export interface ServiceOfferingInput { name: string; description?: string | null; durationMinutes: number; preparationMinutes?: number; cleanupMinutes?: number; price?: number | null; depositAmount?: number | null; active?: boolean; publiclyBookable?: boolean; sortOrder?: number; memberIds?: string[]; }
 export const servicesApi = {
@@ -83,8 +85,12 @@ export const servicesApi = {
   archive: (id: string) => api.delete<ServiceOfferingDto>(`/services/${id}`),
 };
 export interface AvailabilitySlotDto { startsAt: string; endsAt: string; members: { id: string; name: string }[]; }
+export interface BookingBlockDto { id: string; assignedMemberId: string | null; startsAt: string; endsAt: string; reason: string | null; }
 export const availabilityApi = {
   list: (serviceOfferingId: string, from: string, to: string, memberId?: string) => api.get<AvailabilitySlotDto[]>(`/availability${query({ serviceOfferingId, from, to, memberId })}`),
+  blocks: (from: string, to: string) => api.get<BookingBlockDto[]>(`/availability/blocks${query({ from, to })}`),
+  createBlock: (body: { assignedMemberId?: string | null; startsAt: string; endsAt: string; reason?: string | null }) => api.post<BookingBlockDto>('/availability/blocks', body),
+  deleteBlock: (id: string) => api.delete<void>(`/availability/blocks/${id}`),
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export const subscriptionApi = {

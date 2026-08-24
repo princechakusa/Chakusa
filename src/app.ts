@@ -17,6 +17,7 @@ import reviewRequestRoutes from "./modules/reviews/reviews.routes.js";
 import feedbackRoutes from "./modules/feedback/feedback.routes.js";
 import reminderRoutes from "./modules/reminders/reminders.routes.js";
 import appointmentRoutes from "./modules/appointments/appointments.routes.js";
+import { readWorkerHeartbeat, workerHeartbeatHealthy } from './worker/workerHeartbeat.js';
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import deviceRoutes from "./modules/devices/devices.routes.js";
 import messageRoutes from "./modules/messages/messages.routes.js";
@@ -121,6 +122,18 @@ export async function buildApp(options: BuildAppOptions = {}) {
     } catch {
       reply.code(503);
       return { status: "unavailable" };
+    }
+  });
+
+  app.get('/health/worker', async (_request, reply) => {
+    try {
+      const heartbeat = await readWorkerHeartbeat();
+      const healthy = workerHeartbeatHealthy(heartbeat?.lastSuccessAt ?? null);
+      if (!healthy) reply.code(503);
+      return { status: healthy ? 'ok' : 'unavailable', lastSuccessAt: heartbeat?.lastSuccessAt ?? null };
+    } catch {
+      reply.code(503);
+      return { status: 'unavailable', lastSuccessAt: null };
     }
   });
 

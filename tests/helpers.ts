@@ -18,6 +18,7 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
 export async function resetDatabase() {
   assertDestructiveTestDatabaseAccessAllowed();
   await prisma.$transaction([
+    prisma.workerHeartbeat.deleteMany(),
     prisma.billingEvent.deleteMany(),
     prisma.teamInvitation.deleteMany(),
     prisma.activityEvent.deleteMany(),

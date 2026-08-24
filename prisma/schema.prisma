@@ -1150,3 +1150,16 @@ model AutomationRun {
   @@index([status, scheduledFor])
   @@map("automation_runs")
 }
+
+// Singleton liveness record written only by the background worker after a
+// successful automation/reminder polling cycle. The HTTP service reads it
+// through /health/worker so deployment checks can distinguish "API is up"
+// from "scheduled work is actually being processed."
+model WorkerHeartbeat {
+  id             String   @id
+  startedAt      DateTime @map("started_at")
+  lastSuccessAt  DateTime @map("last_success_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("worker_heartbeats")
+}

@@ -3,6 +3,7 @@ import { sweepLifecycleAutomations } from "../lib/automation/scheduler.js";
 import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
 import { sendDueAppointmentReminders } from "../modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../lib/push/pushProvider.js";
+import { recordWorkerHeartbeat } from './workerHeartbeat.js';
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -49,12 +50,14 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
   let lifecycleTimer: NodeJS.Timeout | undefined;
+  const startedAt = new Date();
 
   const tick = async () => {
     if (stopped) return;
     try {
       await processDueAutomationRuns(options.provider, batchSize);
       await sendDueAppointmentReminders(options.appointmentPushProvider, batchSize);
+      await recordWorkerHeartbeat(startedAt);
     } catch (error) {
       options.onError?.(error);
     }

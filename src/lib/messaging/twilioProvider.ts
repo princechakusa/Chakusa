@@ -37,6 +37,7 @@ export interface TwilioRestClient {
  */
 export interface TwilioSenderConfig {
   fromNumber?: string;
+  whatsappFrom?: string;
   messagingServiceSid?: string;
 }
 
@@ -90,14 +91,14 @@ export class TwilioMessagingProvider implements MessagingProvider {
 
   constructor(client?: TwilioRestClient, sender?: TwilioSenderConfig) {
     this.client = client ?? twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
-    this.sender = sender ?? { fromNumber: config.TWILIO_FROM_NUMBER, messagingServiceSid: config.TWILIO_MESSAGING_SERVICE_SID };
+    this.sender = sender ?? { fromNumber: config.TWILIO_FROM_NUMBER, whatsappFrom: config.TWILIO_WHATSAPP_FROM, messagingServiceSid: config.TWILIO_MESSAGING_SERVICE_SID };
   }
 
   supportsChannel(channel: MessagingChannel): boolean {
     // WhatsApp via Twilio is a materially different integration (different
     // sender address format, template-based pricing, separate opt-in
     // rules) — deliberately out of scope for this phase.
-    return channel === "sms";
+    return channel === "sms" ? Boolean(this.sender.fromNumber || this.sender.messagingServiceSid) : Boolean(this.sender.whatsappFrom);
   }
 
   async send(message: OutboundMessage): Promise<SendResult> {
@@ -105,7 +106,7 @@ export class TwilioMessagingProvider implements MessagingProvider {
       return { accepted: false, errorCode: "UNSUPPORTED_CHANNEL", permanentFailure: true };
     }
 
-    if (!this.sender.fromNumber && !this.sender.messagingServiceSid) {
+    if (!this.sender.fromNumber && !this.sender.whatsappFrom && !this.sender.messagingServiceSid) {
       // Configuration error, never reaches Twilio at all — retrying the
       // same request cannot succeed without an operator fixing config.
       return { accepted: false, errorCode: "PROVIDER_NOT_CONFIGURED", permanentFailure: true };
@@ -113,9 +114,11 @@ export class TwilioMessagingProvider implements MessagingProvider {
 
     try {
       const result = await this.client.messages.create({
-        to: message.to,
+        to: message.channel === "whatsapp" && !message.to.startsWith("whatsapp:") ? `whatsapp:${message.to}` : message.to,
         body: message.body,
-        ...(this.sender.messagingServiceSid
+        ...(message.channel === "whatsapp"
+          ? { from: this.sender.whatsappFrom }
+          : this.sender.messagingServiceSid
           ? { messagingServiceSid: this.sender.messagingServiceSid }
           : { from: this.sender.fromNumber }),
         ...(config.TWILIO_STATUS_CALLBACK_URL ? { statusCallback: config.TWILIO_STATUS_CALLBACK_URL } : {}),

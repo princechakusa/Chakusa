@@ -103,6 +103,7 @@ export const envSchema = z.object({
   TWILIO_ACCOUNT_SID: optionalSecret,
   TWILIO_AUTH_TOKEN: optionalSecret,
   TWILIO_FROM_NUMBER: optionalSecret,
+  TWILIO_WHATSAPP_FROM: optionalSecret,
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
   TWILIO_STATUS_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   TWILIO_MONTHLY_MESSAGE_LIMIT: z.coerce.number().int().positive().default(1000),

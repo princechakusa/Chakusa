@@ -142,7 +142,7 @@ async function resolveRunContext(
     if (!supportsLeadCreatedAutomation(lead.source)) return { cancelReason: "Lead's source no longer supports automated follow-up" };
     if (lead.status !== "new") return { cancelReason: `Lead has already been actioned (status: ${lead.status})` };
 
-    const customer = await resolveCustomer(run);
+    const customer = await resolveCustomer(run, rule.channel);
     if ("cancelReason" in customer) return customer;
 
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
@@ -159,7 +159,7 @@ async function resolveRunContext(
     const allowedStatuses = config?.leadStatuses && config.leadStatuses.length > 0 ? config.leadStatuses : DEFAULT_LEAD_FOLLOW_UP_STATUSES;
     if (!allowedStatuses.includes(lead.status)) return { cancelReason: `Lead status changed since scheduling (now: ${lead.status})` };
 
-    const customer = await resolveCustomer(run);
+    const customer = await resolveCustomer(run, rule.channel);
     if ("cancelReason" in customer) return customer;
 
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
@@ -174,7 +174,7 @@ async function resolveRunContext(
     if (reviewRequest.status !== "sent" && reviewRequest.status !== "opened") return { cancelReason: `Review request is already resolved (status: ${reviewRequest.status})` };
     if (reviewRequest.publicTokenConsumedAt) return { cancelReason: "Review request has already received a response" };
 
-    const customer = await resolveCustomer(run);
+    const customer = await resolveCustomer(run, rule.channel);
     if ("cancelReason" in customer) return customer;
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
     const reviewLink = buildPublicReviewUrl((await generatePublicReviewLink(run.businessId, reviewRequest.id)).token);
@@ -184,7 +184,7 @@ async function resolveRunContext(
 
   // CUSTOMER_RETENTION — no lead is involved; the win-back attempt concerns
   // the customer relationship as a whole, not any one job.
-  const customer = await resolveCustomer(run);
+  const customer = await resolveCustomer(run, rule.channel);
   if ("cancelReason" in customer) return customer;
 
   const mostRecentLead = await prisma.lead.findFirst({
@@ -202,16 +202,16 @@ async function resolveRunContext(
 }
 
 /** Shared customer/phone/opt-out resolution every trigger type needs identically. */
-async function resolveCustomer(run: AutomationRun): Promise<{ customer: Customer; phone: string } | { cancelReason: string }> {
+async function resolveCustomer(run: AutomationRun, channel: "SMS" | "WHATSAPP" = "SMS"): Promise<{ customer: Customer; phone: string } | { cancelReason: string }> {
   if (!run.customerId) return { cancelReason: "Run has no associated customer" };
   const customer = await prisma.customer.findFirst({ where: { id: run.customerId, businessId: run.businessId } });
   if (!customer) return { cancelReason: "Customer no longer exists" };
   if (!customer.phoneE164) return { cancelReason: "Customer has no valid E.164 phone number" };
 
   const optOut = await prisma.customerOptOut.findFirst({
-    where: { businessId: run.businessId, phone: customer.phoneE164, channel: { in: ["SMS", "ALL"] } },
+    where: { businessId: run.businessId, phone: customer.phoneE164, channel: { in: [channel, "ALL"] } },
   });
-  if (optOut) return { cancelReason: "Customer has opted out of SMS" };
+  if (optOut) return { cancelReason: `Customer has opted out of ${channel}` };
 
   return { customer, phone: customer.phoneE164 };
 }
@@ -299,8 +299,9 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
     const { lead, customer, phone, body, messageType } = resolved;
     const countryCode = parsePhoneNumber(phone).country ?? "ZZ";
 
+    const channel = rule.channel === "WHATSAPP" ? "whatsapp" : "sms";
     const result = await sendOutboundMessage(
-      { to: phone, channel: "sms", body, countryCode, idempotencyKey: run.id },
+      { to: phone, channel, body, countryCode, idempotencyKey: run.id },
       provider,
     );
 
@@ -316,7 +317,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
             leadId: lead?.id ?? null,
             automationRunId: run.id,
             messageType,
-            channel: "sms",
+            channel,
             body,
             status: "sent",
             sentAt: new Date(),

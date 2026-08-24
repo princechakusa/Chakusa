@@ -147,6 +147,7 @@ export interface BusinessInsightsDto {
   generatedAt: string;
   windowStart: string;
 }
+export interface WeeklyOwnerReportDto { id: string; weekKey: string; periodStart: string; periodEnd: string; summary: { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number }; viewedAt: string | null; createdAt: string; }
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity' | 'payment_outstanding';
 export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; customerPhone: string | null; detail: string | null; occurredAt: string; message: string | null; amount: number | null; }
 

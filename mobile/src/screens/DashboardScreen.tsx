@@ -4,7 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Reveal, Screen, SectionHeader, StatusBadge } from '../components/ui';
-import { AppointmentDto, AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey } from '../apiTypes';
+import { AppointmentDto, AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey, WeeklyOwnerReportDto } from '../apiTypes';
 import { DashboardAudienceSummary } from '../components/DashboardAudienceSummary';
 import { ActivationJourneyCard } from '../components/ActivationJourneyCard';
 import { ValueProofCard } from '../components/ValueProofCard';
@@ -19,7 +19,7 @@ import { endOfDay, startOfDay } from '../domain/calendar';
 import { activationJourney } from '../domain/activationJourney';
 import { computeSetupScore } from '../domain/setupScore';
 import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
-import { appointmentsApi, automationApi, customersApi } from '../services/endpoints';
+import { appointmentsApi, automationApi, customersApi, weeklyReportsApi } from '../services/endpoints';
 import { getSeenMilestones, markMilestonesSeen } from '../services/milestoneStorage';
 import { getPushPermissionStatus } from '../services/pushNotifications';
 import { useAppState } from '../state/AppContext';
@@ -43,12 +43,14 @@ export function DashboardScreen() {
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [audiences, setAudiences] = useState<AudienceCenterDto | null>(null);
   const [todayAppointments, setTodayAppointments] = useState<AppointmentDto[]>([]);
+  const [weeklyReport, setWeeklyReport] = useState<WeeklyOwnerReportDto | null>(null);
   const loadAudiences = useCallback(async () => {
     try { setAudiences(await customersApi.audiences()); }
     catch { setAudiences(null); }
   }, []);
   const loadAppointments = useCallback(async () => { const now = new Date(); try { setTodayAppointments(await appointmentsApi.list(startOfDay(now).toISOString(), endOfDay(now).toISOString())); } catch { setTodayAppointments([]); } }, []);
-  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments()]); }, [loadAppointments, loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews]);
+  const loadWeeklyReport = useCallback(async () => { try { setWeeklyReport((await weeklyReportsApi.list())[0] ?? null); } catch { setWeeklyReport(null); } }, []);
+  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments(), loadWeeklyReport()]); }, [loadAppointments, loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews, loadWeeklyReport]);
   useEffect(() => {
     let active = true;
     void Promise.all([getCallDetectionAvailability(), getContactsPermissionStatus(), getPushPermissionStatus(), automationApi.listRules().catch(() => [])]).then(([detection, contacts, push, rules]) => {
@@ -96,7 +98,7 @@ export function DashboardScreen() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
   const activation = activationJourney(dashboard);
-  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments()]);
+  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments(), loadWeeklyReport()]);
   const openAudience = (audienceKey: SmartAudienceKey) => {
     const destination = audienceCoachingDestination(audienceKey);
     navigation.navigate(destination.screen, destination.params);
@@ -110,6 +112,7 @@ export function DashboardScreen() {
     <ActivationJourneyCard journey={activation} onContinue={() => { if (activation.next) navigation.navigate('Main', { screen: activation.next.destination }); }} />
     {subscription?.value ? <ValueProofCard value={subscription.value} currency={business?.currency} free={plan === 'FREE'} onPress={() => navigation.navigate(plan === 'FREE' ? 'Pro' : 'Insights')} /> : null}
     {business?.publicSlug ? <PublicProfileGrowthCard businessName={business.name} slug={business.publicSlug} /> : null}
+    {weeklyReport ? <View><SectionHeader title="Your weekly report" /><View style={styles.breakdown}><Row label="Appointments completed" value={String(weeklyReport.summary.appointmentsCompleted)} /><Row label="Revenue collected" value={formatMoney(weeklyReport.summary.collectedRevenue, business?.currency ?? undefined)} /><Row label="New customers" value={String(weeklyReport.summary.newCustomers)} /><Row label="Customers messaged" value={String(weeklyReport.summary.customerMessagesSent)} last /></View></View> : null}
 
     {setup.score < 100 ? <Pressable accessibilityRole="button" accessibilityLabel="Business setup progress" onPress={() => navigation.navigate('BusinessSettings')} style={styles.engineSummary}>
       <View style={[styles.engineSummaryIcon, { backgroundColor: colors.attention }]}><Ionicons name="clipboard-outline" size={20} color={colors.surface} /></View>

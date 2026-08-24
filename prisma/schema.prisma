@@ -536,9 +536,27 @@ model Business {
   bookingBlocks    BookingBlock[]
   publicBookingAccess PublicBookingAccess[]
   appointmentPaymentTransactions AppointmentPaymentTransaction[]
+  weeklyOwnerReports WeeklyOwnerReport[]
 
   @@index([ownerId])
   @@map("businesses")
+}
+
+model WeeklyOwnerReport {
+  id          String   @id @default(uuid())
+  businessId  String   @map("business_id")
+  weekKey     String   @map("week_key")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  summary     Json
+  viewedAt    DateTime? @map("viewed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, weekKey])
+  @@index([businessId, periodEnd])
+  @@map("weekly_owner_reports")
 }
 
 model BusinessMember {

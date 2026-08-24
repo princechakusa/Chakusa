@@ -4,6 +4,7 @@ import { processDueAutomationRuns } from '../lib/automation/executor.js';
 import { sweepLifecycleAutomations } from '../lib/automation/scheduler.js';
 import { sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from '../modules/appointments/appointmentReminders.js';
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
+import { generateDueWeeklyOwnerReports } from '../modules/weeklyReports/weeklyReports.service.js';
 
 let inFlight: Promise<{ processed: number; recovered: number; remindersSent: number; customerMessagesSent: number; paymentRemindersSent: number }> | null = null;
 const triggerStartedAt = new Date();
@@ -26,6 +27,7 @@ export function runTriggeredScheduledWork() {
     const remindersSent = await sendDueAppointmentReminders(undefined, 50);
     const customerMessagesSent = await sendDueCustomerAppointmentMessages(undefined, 50);
     const paymentRemindersSent = await sendDueAppointmentPaymentReminders(undefined, 50);
+    await generateDueWeeklyOwnerReports(new Date(), 50);
     await recordWorkerHeartbeat(triggerStartedAt);
     return { ...automation, remindersSent, customerMessagesSent, paymentRemindersSent };
   })();

@@ -4,6 +4,7 @@ import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
 import { sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../lib/push/pushProvider.js";
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
+import { generateDueWeeklyOwnerReports } from "../modules/weeklyReports/weeklyReports.service.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -76,6 +77,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     if (stopped) return;
     try {
       await sweepLifecycleAutomations();
+      await generateDueWeeklyOwnerReports();
     } catch (error) {
       options.onError?.(error);
     }

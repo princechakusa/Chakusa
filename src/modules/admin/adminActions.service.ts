@@ -21,6 +21,78 @@ export async function resetBusinessOnboarding(
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+export async function verifyBusiness(actor: AdminAuditActor, businessId: string, confirmation: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const business = await tx.business.findUnique({ where: { id: businessId }, select: { id: true, name: true, verifiedAt: true, platformStatus: true } });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (confirmation !== business.name) throw ApiError.badRequest("Enter the exact business name to confirm verification");
+    if (business.verifiedAt) throw ApiError.conflict("Business is already verified");
+    const updated = await tx.business.update({ where: { id: business.id }, data: { verifiedAt: new Date() }, select: { id: true, name: true, verifiedAt: true, platformStatus: true } });
+    await recordAdminAudit({ actor, action: "BUSINESS_VERIFIED", targetType: "business", targetId: business.id, oldValue: { verifiedAt: null }, newValue: { verifiedAt: updated.verifiedAt }, context }, tx);
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function suspendBusiness(actor: AdminAuditActor, businessId: string, confirmation: string, reason: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const business = await tx.business.findUnique({ where: { id: businessId }, select: { id: true, name: true, platformStatus: true, suspendedAt: true, suspensionReason: true } });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (confirmation !== business.name) throw ApiError.badRequest("Enter the exact business name to confirm suspension");
+    if (business.platformStatus === "SUSPENDED") throw ApiError.conflict("Business is already suspended");
+    const suspendedAt = new Date();
+    const updated = await tx.business.update({ where: { id: business.id }, data: { platformStatus: "SUSPENDED", suspendedAt, suspensionReason: reason }, select: { id: true, name: true, platformStatus: true, suspendedAt: true, suspensionReason: true, verifiedAt: true } });
+    const canceled = await tx.automationRun.updateMany({ where: { businessId: business.id, status: "PENDING" }, data: { status: "CANCELLED", completedAt: suspendedAt, errorMessage: "Cancelled by platform suspension" } });
+    await recordAdminAudit({ actor, action: "BUSINESS_SUSPENDED", targetType: "business", targetId: business.id, oldValue: { platformStatus: business.platformStatus }, newValue: { platformStatus: updated.platformStatus, suspendedAt, reason, canceledAutomationRuns: canceled.count }, context }, tx);
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function reactivateBusiness(actor: AdminAuditActor, businessId: string, confirmation: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const business = await tx.business.findUnique({ where: { id: businessId }, select: { id: true, name: true, platformStatus: true, suspendedAt: true, suspensionReason: true } });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (confirmation !== business.name) throw ApiError.badRequest("Enter the exact business name to confirm reactivation");
+    if (business.platformStatus === "ACTIVE") throw ApiError.conflict("Business is already active");
+    const updated = await tx.business.update({ where: { id: business.id }, data: { platformStatus: "ACTIVE", suspendedAt: null, suspensionReason: null }, select: { id: true, name: true, platformStatus: true, suspendedAt: true, suspensionReason: true, verifiedAt: true } });
+    await recordAdminAudit({ actor, action: "BUSINESS_REACTIVATED", targetType: "business", targetId: business.id, oldValue: { platformStatus: business.platformStatus, suspendedAt: business.suspendedAt, reason: business.suspensionReason }, newValue: { platformStatus: updated.platformStatus }, context }, tx);
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function deleteBusiness(actor: AdminAuditActor, businessId: string, confirmation: string, reason: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const business = await tx.business.findUnique({
+      where: { id: businessId },
+      select: {
+        id: true,
+        name: true,
+        platformStatus: true,
+        members: { select: { userId: true } },
+        _count: { select: { members: true, customers: true, leads: true, messages: true, appointments: true } },
+      },
+    });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (confirmation !== business.name) throw ApiError.badRequest("Enter the exact business name to confirm deletion");
+    if (business.platformStatus !== "SUSPENDED") throw ApiError.conflict("Suspend the business before deleting it");
+
+    const revoked = await tx.authSession.updateMany({
+      where: { userId: { in: business.members.map((member) => member.userId) }, scope: "PRODUCT", revokedAt: null },
+      data: { revokedAt: new Date(), revokeReason: "business_deleted" },
+    });
+    await tx.business.delete({ where: { id: business.id } });
+    await recordAdminAudit({
+      actor,
+      action: "BUSINESS_DELETED",
+      targetType: "business",
+      targetId: business.id,
+      oldValue: { name: business.name, platformStatus: business.platformStatus, recordCounts: business._count },
+      newValue: { deleted: true, reason, revokedProductSessionCount: revoked.count },
+      context,
+    }, tx);
+    return { id: business.id, deleted: true as const };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 export async function revokeUserSessions(
   actor: AdminAuditActor,
   userId: string,

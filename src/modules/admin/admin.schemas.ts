@@ -13,6 +13,14 @@ export const adminBusinessConfirmationSchema = z.object({
   confirmation: z.string().min(1).max(200),
 });
 
+export const adminBusinessSuspensionSchema = adminBusinessConfirmationSchema.extend({
+  reason: z.string().trim().min(10).max(500),
+});
+
+export const adminBusinessDeletionSchema = adminBusinessConfirmationSchema.extend({
+  reason: z.string().trim().min(10).max(500),
+});
+
 export const adminUserConfirmationSchema = z.object({
   confirmation: z.string().email(),
 });

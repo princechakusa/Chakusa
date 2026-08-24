@@ -52,7 +52,7 @@ export const LEASE_DURATION_SECONDS = 300;
  */
 export async function claimDueAutomationRuns(limit = 20, now: Date = new Date()): Promise<AutomationRun[]> {
   const due = await prisma.automationRun.findMany({
-    where: { status: "PENDING", scheduledFor: { lte: now } },
+    where: { status: "PENDING", scheduledFor: { lte: now }, business: { platformStatus: "ACTIVE" } },
     orderBy: { scheduledFor: "asc" },
     take: limit,
   });
@@ -281,6 +281,9 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
 
     const rule = await prisma.automationRule.findFirst({ where: { id: run.automationRuleId, businessId: run.businessId } });
     if (!rule || !rule.enabled) return cancelRun(run.id, "Automation rule no longer exists or is disabled");
+
+    const business = await prisma.business.findUnique({ where: { id: run.businessId }, select: { platformStatus: true } });
+    if (!business || business.platformStatus !== "ACTIVE") return cancelRun(run.id, "Business is suspended by Chakusa administration");
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: run.businessId },

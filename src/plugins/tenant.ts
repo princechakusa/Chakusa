@@ -49,6 +49,7 @@ export default fp(async function tenantPlugin(fastify: FastifyInstance) {
     const membership = await prisma.businessMember.findFirst({
       where: { userId },
       orderBy: { createdAt: "asc" },
+      include: { business: { select: { platformStatus: true } } },
     });
 
     if (!membership) {
@@ -56,6 +57,9 @@ export default fp(async function tenantPlugin(fastify: FastifyInstance) {
     }
 
     request.businessId = membership.businessId;
+    if (membership.business.platformStatus !== "ACTIVE") {
+      throw ApiError.forbidden("This business is currently suspended by Chakusa administration");
+    }
 
     // Resolved once per request here, rather than re-queried by every
     // service that needs plan/entitlement information downstream.

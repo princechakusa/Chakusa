@@ -176,4 +176,36 @@ describe("admin guarded actions", () => {
     expect(revoke.statusCode).toBe(409);
     expect(await prisma.adminMembership.findUnique({ where: { userId: current.account.userId } })).toMatchObject({ role: "SUPER_ADMIN", status: "ACTIVE" });
   });
+
+  it("audits and enforces the business lifecycle", async () => {
+    const operations = await admin("OPERATIONS");
+    const name = "OPERATIONS Console";
+    const verified = await app.inject({ method: "POST", url: `/admin/businesses/${operations.account.businessId}/verify`, headers: headers(operations.token, operations.csrf), payload: { confirmation: name } });
+    expect(verified.statusCode).toBe(200);
+    expect((await prisma.business.findUniqueOrThrow({ where: { id: operations.account.businessId } })).verifiedAt).not.toBeNull();
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "BUSINESS_VERIFIED", targetId: operations.account.businessId } })).not.toBeNull();
+    const suspended = await app.inject({ method: "POST", url: `/admin/businesses/${operations.account.businessId}/suspend`, headers: headers(operations.token, operations.csrf), payload: { confirmation: name, reason: "Operational review requires temporary access pause" } });
+    expect(suspended.statusCode).toBe(200);
+    expect((await prisma.business.findUniqueOrThrow({ where: { id: operations.account.businessId } })).platformStatus).toBe("SUSPENDED");
+    const productAccess = await app.inject({ method: "GET", url: "/business", headers: { authorization: `Bearer ${operations.account.accessToken}` } });
+    expect(productAccess.statusCode).toBe(403);
+    const reactivated = await app.inject({ method: "POST", url: `/admin/businesses/${operations.account.businessId}/reactivate`, headers: headers(operations.token, operations.csrf), payload: { confirmation: name } });
+    expect(reactivated.statusCode).toBe(200);
+    expect((await prisma.business.findUniqueOrThrow({ where: { id: operations.account.businessId } })).platformStatus).toBe("ACTIVE");
+    expect(await prisma.adminAuditLog.count({ where: { action: { in: ["BUSINESS_VERIFIED", "BUSINESS_SUSPENDED", "BUSINESS_REACTIVATED"] }, targetId: operations.account.businessId } })).toBe(3);
+  });
+
+  it("only permits permanent deletion of suspended businesses and preserves the audit ledger", async () => {
+    const superAdmin = await admin("SUPER_ADMIN");
+    const target = await registerAccount(app, { email: "delete-target@example.com", businessName: "Delete Target" });
+    const activeDelete = await app.inject({ method: "DELETE", url: `/admin/businesses/${target.businessId}`, headers: headers(superAdmin.token, superAdmin.csrf), payload: { confirmation: "Delete Target", reason: "Permanent removal requested after account closure" } });
+    expect(activeDelete.statusCode).toBe(409);
+    const suspended = await app.inject({ method: "POST", url: `/admin/businesses/${target.businessId}/suspend`, headers: headers(superAdmin.token, superAdmin.csrf), payload: { confirmation: "Delete Target", reason: "Permanent removal requested after account closure" } });
+    expect(suspended.statusCode).toBe(200);
+    const deleted = await app.inject({ method: "DELETE", url: `/admin/businesses/${target.businessId}`, headers: headers(superAdmin.token, superAdmin.csrf), payload: { confirmation: "Delete Target", reason: "Permanent removal requested after account closure" } });
+    expect(deleted.statusCode).toBe(200);
+    expect(await prisma.business.findUnique({ where: { id: target.businessId } })).toBeNull();
+    expect(await prisma.user.findUnique({ where: { id: target.userId } })).not.toBeNull();
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "BUSINESS_DELETED", targetId: target.businessId } })).not.toBeNull();
+  });
 });

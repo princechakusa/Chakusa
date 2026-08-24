@@ -30,7 +30,7 @@ export interface PublicBusinessProfile {
 }
 
 export async function resolvePublicBusinessProfile(slug: string): Promise<PublicBusinessProfile | null> {
-  const business = await prisma.business.findUnique({ where: { publicSlug: slug }, include: { serviceOfferings: { where: { active: true, publiclyBookable: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] } } });
+  const business = await prisma.business.findFirst({ where: { publicSlug: slug, platformStatus: "ACTIVE" }, include: { serviceOfferings: { where: { active: true, publiclyBookable: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] } } });
   if (!business) return null;
 
   return serializePublicBusinessProfile(business);
@@ -51,7 +51,7 @@ function serializePublicBusinessProfile(business: Business & { serviceOfferings:
 }
 
 export async function publicAvailability(slug: string, serviceOfferingId: string, from: string, to: string) {
-  const business = await prisma.business.findUnique({ where: { publicSlug: slug }, select: { id: true } });
+  const business = await prisma.business.findFirst({ where: { publicSlug: slug, platformStatus: "ACTIVE" }, select: { id: true } });
   if (!business) return null;
   const service = await prisma.serviceOffering.findFirst({ where: { id: serviceOfferingId, businessId: business.id, active: true, publiclyBookable: true }, select: { id: true } });
   if (!service) throw ApiError.notFound("This service is not available for online booking");
@@ -59,7 +59,7 @@ export async function publicAvailability(slug: string, serviceOfferingId: string
 }
 
 export async function createPublicBooking(slug: string, input: CreatePublicBookingInput) {
-  const business = await prisma.business.findUnique({ where: { publicSlug: slug }, select: { id: true, ownerId: true, name: true, defaultAppointmentReminderMinutes: true } });
+  const business = await prisma.business.findFirst({ where: { publicSlug: slug, platformStatus: "ACTIVE" }, select: { id: true, ownerId: true, name: true, defaultAppointmentReminderMinutes: true } });
   if (!business) return null;
   const offering = await prisma.serviceOffering.findFirst({ where: { id: input.serviceOfferingId, businessId: business.id, active: true, publiclyBookable: true } });
   if (!offering) throw ApiError.notFound("This service is not available for online booking");
@@ -75,7 +75,7 @@ export async function createPublicBooking(slug: string, input: CreatePublicBooki
 
 export async function resolvePublicBooking(slug: string, rawToken: string) {
   const tokenId = parseOpaqueToken(rawToken); if (!tokenId) return null;
-  const access = await prisma.publicBookingAccess.findFirst({ where: { id: tokenId, business: { publicSlug: slug }, expiresAt: { gt: new Date() } }, include: { appointment: { include: { serviceOffering: true, assignedMember: { include: { user: { select: { fullName: true } } } }, business: { select: { name: true, cancellationNoticeMinutes: true } } } } } });
+  const access = await prisma.publicBookingAccess.findFirst({ where: { id: tokenId, business: { publicSlug: slug, platformStatus: "ACTIVE" }, expiresAt: { gt: new Date() } }, include: { appointment: { include: { business: { select: { name: true, cancellationNoticeMinutes: true } }, serviceOffering: true, assignedMember: { include: { user: { select: { fullName: true } } } } } } } });
   if (!access || !tokenHashMatches(rawToken, access.tokenHash)) return null;
   return access.appointment;
 }
@@ -134,7 +134,7 @@ export async function submitPublicContactForm(
   slug: string,
   input: SubmitPublicContactInput,
 ): Promise<{ businessName: string } | null> {
-  const business = await prisma.business.findUnique({ where: { publicSlug: slug } });
+  const business = await prisma.business.findFirst({ where: { publicSlug: slug, platformStatus: "ACTIVE" } });
   if (!business) return null;
 
   const subscription = await prisma.subscription.findUnique({

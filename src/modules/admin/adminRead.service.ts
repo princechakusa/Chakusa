@@ -185,7 +185,8 @@ export async function listAdminBusinesses(query: AdminBusinessListQuery) {
     ...(query.plan || query.subscriptionStatus ? { subscription: { is: {
       ...(query.plan ? { plan: query.plan } : {}),
       ...(query.subscriptionStatus ? { status: query.subscriptionStatus } : {}),
-    } } } : {}),
+      } } } : {}),
+    ...(query.platformStatus ? { platformStatus: query.platformStatus } : {}),
   };
   const orderBy: Prisma.BusinessOrderByWithRelationInput = query.sort === "name" ? { name: "asc" } : { createdAt: query.sort === "oldest" ? "asc" : "desc" };
   const [rows, total] = await Promise.all([
@@ -194,7 +195,7 @@ export async function listAdminBusinesses(query: AdminBusinessListQuery) {
       orderBy,
       ...pageArgs(query.page, query.pageSize),
       select: {
-        id: true, name: true, industry: true, country: true, timezone: true, onboardingCompletedAt: true, createdAt: true,
+        id: true, name: true, industry: true, country: true, timezone: true, onboardingCompletedAt: true, platformStatus: true, verifiedAt: true, createdAt: true,
         owner: { select: { id: true, fullName: true, email: true } },
         subscription: { select: { plan: true, status: true, currentPeriodEnd: true, trialEndsAt: true } },
         activityEvents: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
@@ -211,7 +212,7 @@ export async function getAdminBusiness(id: string) {
     where: { id },
     select: {
       id: true, name: true, industry: true, phone: true, country: true, timezone: true, currency: true, description: true,
-      publicSlug: true, onboardingCompletedAt: true, createdAt: true, updatedAt: true,
+      publicSlug: true, onboardingCompletedAt: true, platformStatus: true, verifiedAt: true, suspendedAt: true, suspensionReason: true, createdAt: true, updatedAt: true,
       owner: { select: { id: true, fullName: true, email: true, emailVerifiedAt: true, createdAt: true } },
       subscription: { select: { plan: true, status: true, provider: true, currentPeriodStart: true, currentPeriodEnd: true, cancelAtPeriodEnd: true, trialEndsAt: true, createdAt: true, updatedAt: true } },
       members: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, status: true, createdAt: true, user: { select: { id: true, fullName: true, email: true } } } },

@@ -29,6 +29,8 @@ export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead)
     if (!supportsLeadCreatedAutomation(lead.source)) return;
     if (!lead.customerId) return; // nothing to eventually send to — no point scheduling.
 
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { platformStatus: true } });
+    if (!business || business.platformStatus !== "ACTIVE") return;
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
       select: { plan: true, status: true },
@@ -97,7 +99,7 @@ function leadFollowUpTimestampFilter(status: LeadStatus, cutoff: Date): Prisma.L
  * blunt "last updated" proxy, since Lead already records these precisely.
  */
 export async function sweepLeadFollowUps(now: Date = new Date()): Promise<void> {
-  const rules = await prisma.automationRule.findMany({ where: { triggerType: "LEAD_FOLLOW_UP", enabled: true, channel: "SMS" } });
+  const rules = await prisma.automationRule.findMany({ where: { triggerType: "LEAD_FOLLOW_UP", enabled: true, channel: "SMS", business: { platformStatus: "ACTIVE" } } });
 
   for (const rule of rules) {
     try {
@@ -144,7 +146,7 @@ export async function sweepLeadFollowUps(now: Date = new Date()): Promise<void> 
  * relationship as a whole, not any one lead.
  */
 export async function sweepCustomerRetention(now: Date = new Date()): Promise<void> {
-  const rules = await prisma.automationRule.findMany({ where: { triggerType: "CUSTOMER_RETENTION", enabled: true, channel: "SMS" } });
+  const rules = await prisma.automationRule.findMany({ where: { triggerType: "CUSTOMER_RETENTION", enabled: true, channel: "SMS", business: { platformStatus: "ACTIVE" } } });
 
   for (const rule of rules) {
     try {
@@ -187,7 +189,7 @@ export async function sweepCustomerRetention(now: Date = new Date()): Promise<vo
 
 /** Schedules one reminder for a sent/opened review request that remains unfinished. */
 export async function sweepReviewRequestFollowUps(now: Date = new Date()): Promise<void> {
-  const rules = await prisma.automationRule.findMany({ where: { triggerType: "REVIEW_REQUEST_FOLLOW_UP", enabled: true, channel: "SMS" } });
+  const rules = await prisma.automationRule.findMany({ where: { triggerType: "REVIEW_REQUEST_FOLLOW_UP", enabled: true, channel: "SMS", business: { platformStatus: "ACTIVE" } } });
   for (const rule of rules) {
     try {
       const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: { plan: true, status: true } });

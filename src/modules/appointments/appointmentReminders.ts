@@ -14,7 +14,7 @@ const messageTypes: Record<AppointmentMessageKind, MessageType> = { confirmation
 
 export async function sendCustomerAppointmentMessage(appointmentId: string, kind: AppointmentMessageKind, provider?: MessagingProvider) {
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } }, paymentTransactions: { where: { status: "pending", checkoutUrl: { not: null } }, orderBy: { createdAt: "desc" }, take: 1 } } });
-  if (!appointment?.customer?.phoneE164 || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
+  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
   if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
   const field = fields[kind];
   if (appointment[field]) return false;
@@ -41,7 +41,7 @@ export const sendAppointmentConfirmation = (appointmentId: string, provider?: Me
 function localDate(value: Date, timeZone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 export async function sendDueCustomerAppointmentMessages(provider?: MessagingProvider, batchSize = 50, now = new Date()) {
   const appointments = await prisma.appointment.findMany({
-    where: { OR: [
+    where: { business: { platformStatus: "ACTIVE" }, OR: [
       { status: { in: ["SCHEDULED", "CONFIRMED"] }, startsAt: { gt: now, lte: new Date(now.getTime() + 7 * 86_400_000) }, OR: [{ customerReminderSentAt: null }, { sameDayReminderSentAt: null }] },
       { status: "COMPLETED", endsAt: { lte: new Date(now.getTime() - 2 * 60 * 60_000), gte: new Date(now.getTime() - 7 * 86_400_000) }, followUpSentAt: null },
     ] },
@@ -66,7 +66,7 @@ export async function sendDueAppointmentPaymentReminders(provider?: MessagingPro
       price: { not: null },
       endsAt: { lte: new Date(now.getTime() - 24 * 60 * 60_000), gte: new Date(now.getTime() - 30 * 86_400_000) },
       paymentReminderSentAt: null,
-      business: { paymentRemindersEnabled: true, messagingConsentConfirmedAt: { not: null } },
+      business: { platformStatus: "ACTIVE", paymentRemindersEnabled: true, messagingConsentConfirmedAt: { not: null } },
       paymentTransactions: { some: { status: "pending", checkoutUrl: { not: null } } },
     },
     orderBy: { endsAt: "asc" },
@@ -80,11 +80,12 @@ export async function sendDueAppointmentPaymentReminders(provider?: MessagingPro
 
 export async function sendDueAppointmentReminders(provider?: PushProvider, batchSize = 50, now = new Date()) {
   const due = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM appointments
-    WHERE reminder_minutes IS NOT NULL AND reminder_sent_at IS NULL
-      AND status IN ('SCHEDULED', 'CONFIRMED') AND starts_at > ${now}
-      AND starts_at <= ${now} + reminder_minutes * INTERVAL '1 minute'
-    ORDER BY starts_at ASC LIMIT ${batchSize}
+    SELECT a.id FROM appointments a
+    INNER JOIN businesses b ON b.id = a.business_id
+    WHERE b.platform_status = 'ACTIVE' AND a.reminder_minutes IS NOT NULL AND a.reminder_sent_at IS NULL
+      AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.starts_at > ${now}
+      AND a.starts_at <= ${now} + a.reminder_minutes * INTERVAL '1 minute'
+    ORDER BY a.starts_at ASC LIMIT ${batchSize}
   `;
   let sent = 0;
   for (const { id } of due) {

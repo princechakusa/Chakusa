@@ -31,6 +31,7 @@ export async function resolvePublicReviewToken(rawToken: string): Promise<Resolv
     include: { business: true },
   });
   if (!reviewRequest || !reviewRequest.publicTokenHash) return null;
+  if (reviewRequest.business.platformStatus !== "ACTIVE") return null;
   if (!tokenHashMatches(rawToken, reviewRequest.publicTokenHash)) return null;
 
   if (reviewRequest.publicTokenExpiresAt && reviewRequest.publicTokenExpiresAt <= new Date()) {

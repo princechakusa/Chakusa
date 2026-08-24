@@ -40,6 +40,11 @@ enum BusinessRole {
   STAFF
 }
 
+enum BusinessPlatformStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum AdminRole {
   SUPER_ADMIN
   PLATFORM_ADMIN
@@ -594,6 +599,10 @@ model Business {
   // nothing in this codebase ever updates this field after creation.
   publicSlug                        String?     @unique @map("public_slug")
   onboardingCompletedAt             DateTime?   @map("onboarding_completed_at")
+  platformStatus                    BusinessPlatformStatus @default(ACTIVE) @map("platform_status")
+  verifiedAt                        DateTime?   @map("verified_at")
+  suspendedAt                       DateTime?   @map("suspended_at")
+  suspensionReason                  String?     @map("suspension_reason")
   bookingMinNoticeMinutes           Int         @default(60) @map("booking_min_notice_minutes")
   bookingWindowDays                 Int         @default(90) @map("booking_window_days")
   slotIntervalMinutes               Int         @default(15) @map("slot_interval_minutes")
@@ -632,6 +641,7 @@ model Business {
 
   @@index([ownerId])
   @@index([createdAt])
+  @@index([platformStatus, createdAt])
   @@map("businesses")
 }
 

@@ -28,7 +28,7 @@ export async function buildWeeklyReportSummary(businessId: string, periodStart: 
 }
 
 export async function generateDueWeeklyOwnerReports(now = new Date(), batchSize = 50) {
-  const businesses = await prisma.business.findMany({ select: { id: true, timezone: true }, take: batchSize, orderBy: { createdAt: "asc" } });
+  const businesses = await prisma.business.findMany({ where: { platformStatus: "ACTIVE" }, select: { id: true, timezone: true }, take: batchSize, orderBy: { createdAt: "asc" } });
   let generated = 0;
   for (const business of businesses) {
     const week = localWeek(now, business.timezone || "UTC");

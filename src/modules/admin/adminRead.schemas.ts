@@ -13,6 +13,7 @@ export const adminBusinessListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   plan: z.enum(["FREE", "PRO", "BUSINESS"]).optional(),
   subscriptionStatus: z.enum(["ACTIVE", "TRIALING", "GRACE_PERIOD", "EXPIRED", "CANCELED"]).optional(),
+  platformStatus: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
   sort: z.enum(["newest", "oldest", "name"]).default("newest"),
   ...pagination,
 });

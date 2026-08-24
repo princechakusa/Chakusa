@@ -2,9 +2,9 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { requireOwner } from "../../lib/authorization.js";
-import { createInvitationSchema, changeMemberRoleSchema } from "./team.schemas.js";
+import { createInvitationSchema, changeMemberRoleSchema, transferOwnershipSchema } from "./team.schemas.js";
 import { createInvitation, listInvitations, revokeInvitation } from "./teamInvitations.service.js";
-import { listMembers, changeMemberRole, removeMember, reactivateMember, getSeatSummary } from "./teamMembers.service.js";
+import { listMembers, changeMemberRole, removeMember, reactivateMember, getSeatSummary, transferOwnership } from "./teamMembers.service.js";
 import { sendTeamInvitationEmail, type TeamInvitationEmailSender } from "./teamInvitationEmail.js";
 
 export interface TeamRoutesOptions {
@@ -63,6 +63,12 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
   fastify.post<{ Params: { id: string } }>("/members/:id/reactivate", async (request, reply) => {
     requireOwner(request);
     reply.send(await reactivateMember(request.businessId!, request.plan!, request.user.userId, request.params.id));
+  });
+
+  fastify.post("/ownership-transfer", async (request, reply) => {
+    requireOwner(request);
+    const input = transferOwnershipSchema.parse(request.body);
+    reply.send(await transferOwnership(request.businessId!, request.user.userId, input));
   });
 
   fastify.get("/invitations", async (request, reply) => {

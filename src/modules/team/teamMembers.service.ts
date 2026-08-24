@@ -3,7 +3,7 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { getPlanLimits, withLimitCheck } from "../../lib/entitlements.js";
 import type { BusinessRole, Plan } from "@prisma/client";
-import type { ChangeMemberRoleInput } from "./team.schemas.js";
+import type { ChangeMemberRoleInput, TransferOwnershipInput } from "./team.schemas.js";
 
 /** Safe fields only — never authentication internals (passwordHash, sessions, identities). See the Business Phase 1 report's "member list endpoint" section. */
 export async function listMembers(businessId: string) {
@@ -145,6 +145,29 @@ export async function getSeatSummary(businessId: string, plan: Plan) {
   const limit = getPlanLimits(plan).staffSeats;
   const remaining = limit === null ? null : Math.max(limit - current, 0);
   return { activeMembers, pendingReservations, current, limit, remaining };
+}
+
+export async function transferOwnership(businessId: string, actorUserId: string, input: TransferOwnershipInput) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`ownership:${businessId}`}))`;
+    const business = await tx.business.findUnique({ where: { id: businessId }, select: { name: true, ownerId: true } });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (business.ownerId !== actorUserId) throw ApiError.forbidden("Only the current business owner can transfer ownership");
+    if (business.name.trim() !== input.businessName.trim()) throw ApiError.badRequest("Enter the exact business name to confirm ownership transfer");
+
+    const target = await tx.businessMember.findFirst({ where: { id: input.memberId, businessId, status: "ACTIVE", role: { not: "OWNER" } } });
+    if (!target) throw ApiError.notFound("Choose an active team member to become owner");
+    const otherOwnedBusiness = await tx.business.findFirst({ where: { ownerId: target.userId, id: { not: businessId } }, select: { id: true } });
+    if (otherOwnedBusiness) throw ApiError.conflict("This team member already owns another business");
+    const currentOwner = await tx.businessMember.findFirst({ where: { businessId, userId: actorUserId, role: "OWNER" } });
+    if (!currentOwner) throw ApiError.conflict("The current owner membership is unavailable");
+
+    await tx.businessMember.update({ where: { id: currentOwner.id }, data: { role: "ADMIN", status: "ACTIVE" } });
+    await tx.businessMember.update({ where: { id: target.id }, data: { role: "OWNER" } });
+    await tx.business.update({ where: { id: businessId }, data: { ownerId: target.userId } });
+    await recordActivity({ businessId, actorId: actorUserId, eventType: "TEAM_MEMBER_ROLE_CHANGED", entityType: "business_member", entityId: target.id, metadata: { ownershipTransferred: true, fromUserId: actorUserId, toUserId: target.userId } }, tx);
+    return { businessId, previousOwnerUserId: actorUserId, ownerUserId: target.userId };
+  }, { isolationLevel: "Serializable" });
 }
 
 export type { BusinessRole };

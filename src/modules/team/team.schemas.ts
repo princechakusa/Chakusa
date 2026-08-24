@@ -15,3 +15,9 @@ export const changeMemberRoleSchema = z.object({
   role: invitableRoleEnum,
 });
 export type ChangeMemberRoleInput = z.infer<typeof changeMemberRoleSchema>;
+
+export const transferOwnershipSchema = z.object({
+  memberId: z.string().uuid(),
+  businessName: z.string().trim().min(1).max(200),
+});
+export type TransferOwnershipInput = z.infer<typeof transferOwnershipSchema>;

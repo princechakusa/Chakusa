@@ -100,6 +100,7 @@ export const teamApi = {
   changeRole: (id: string, role: 'ADMIN' | 'STAFF') => api.patch<TeamMemberDto>(`/team/members/${id}`, { role }),
   removeMember: (id: string) => api.delete<TeamMemberDto>(`/team/members/${id}`),
   reactivateMember: (id: string) => api.post<TeamMemberDto>(`/team/members/${id}/reactivate`),
+  transferOwnership: (memberId: string, businessName: string) => api.post<{ businessId: string; previousOwnerUserId: string; ownerUserId: string }>('/team/ownership-transfer', { memberId, businessName }),
 };
 export const publicTeamInvitesApi = {
   get: (token: string) => api.get<PublicTeamInvitationDto>(`/public/team-invites/${encodeURIComponent(token)}`, 'none'),

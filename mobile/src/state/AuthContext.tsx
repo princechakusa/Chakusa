@@ -46,22 +46,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [business, setBusiness] = useState<BusinessDto | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const clearSession = useCallback(async () => {
-    await clearStoredSession(); setUser(null); setBusiness(null); setRole(null); setStatus('anonymous');
-  }, []);
-  const reconcileOnboarding = useCallback((nextBusiness: BusinessDto | null) => {
-    const current = preferencesRef.current;
-    if (hasCompletedBusinessSetup(nextBusiness)) {
-      if (!current.onboardingComplete) current.completeOnboarding();
-    } else if (current.onboardingComplete) {
-      current.resetOnboarding();
-      current.setOnboardingStep(2);
-    }
+    await clearStoredSession(); await preferencesRef.current.activateScope(null, false); setUser(null); setBusiness(null); setRole(null); setStatus('anonymous');
   }, []);
   const applySession = useCallback(async (response: AuthResponse) => {
-    reconcileOnboarding(response.business);
+    await preferencesRef.current.activateScope(response.user.id, hasCompletedBusinessSetup(response.business), response.business?.industry);
     await storeSession({ accessToken: response.accessToken, refreshToken: response.refreshToken });
     setUser(response.user); setBusiness(response.business); setRole(response.role ?? null); setStatus('authenticated');
-  }, [reconcileOnboarding]);
+  }, []);
 
   useEffect(() => { preferencesRef.current = preferences; }, [preferences]);
   useEffect(() => { setUnauthorizedHandler(clearSession); return () => setUnauthorizedHandler(undefined); }, [clearSession]);
@@ -69,12 +60,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setStatus('restoring'); setRestoreError(null);
     if (!await getStoredSession()) { setStatus('anonymous'); return; }
     try {
-      const me = await authApi.me(); reconcileOnboarding(me.business); setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
+      const me = await authApi.me(); await preferencesRef.current.activateScope(me.user.id, hasCompletedBusinessSetup(me.business), me.business?.industry); setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
     } catch (error) {
       if (error instanceof ApiError && error.kind === 'unauthorized') return;
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.'); setStatus('restore-error');
     }
-  }, [reconcileOnboarding]);
+  }, []);
   useEffect(() => { void restore(); }, [restore]);
 
   const value = useMemo<AuthValue>(() => ({

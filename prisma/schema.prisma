@@ -132,6 +132,11 @@ enum MessageType {
   // usually already been contacted once, so "sorry we missed your call"
   // is no longer accurate — this is a "still interested?" check-in.
   lead_follow_up
+  appointment_reminder
+  appointment_same_day_reminder
+  appointment_rescheduled
+  appointment_canceled
+  appointment_follow_up
 }
 
 enum MessageChannel {
@@ -640,6 +645,10 @@ model Appointment {
   reminderSentAt   DateTime?         @map("reminder_sent_at")
   confirmationSentAt DateTime?       @map("confirmation_sent_at")
   customerReminderSentAt DateTime?   @map("customer_reminder_sent_at")
+  sameDayReminderSentAt DateTime?    @map("same_day_reminder_sent_at")
+  rescheduleConfirmationSentAt DateTime? @map("reschedule_confirmation_sent_at")
+  cancellationConfirmationSentAt DateTime? @map("cancellation_confirmation_sent_at")
+  followUpSentAt DateTime?           @map("follow_up_sent_at")
   createdByUserId  String            @map("created_by_user_id")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
@@ -656,6 +665,8 @@ model Appointment {
   @@index([assignedMemberId, startsAt])
   @@index([serviceOfferingId, startsAt])
   @@index([status, startsAt, customerReminderSentAt])
+  @@index([status, startsAt, sameDayReminderSentAt])
+  @@index([status, endsAt, followUpSentAt])
   @@index([businessId, paymentStatus, startsAt])
   @@map("appointments")
 }

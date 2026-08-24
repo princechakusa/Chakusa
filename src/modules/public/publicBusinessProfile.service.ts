@@ -9,6 +9,7 @@ import { calculateAvailability } from "../availability/availability.service.js";
 import { createAppointment, transitionAppointment, updateAppointment } from "../appointments/appointments.service.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
 import { ApiError } from "../../lib/errors.js";
+import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "../appointments/appointmentReminders.js";
 
 /**
  * Only what a prospective customer needs to decide to reach out — never the
@@ -68,6 +69,7 @@ export async function createPublicBooking(slug: string, input: CreatePublicBooki
   const appointment = await createAppointment(business.id, business.ownerId, { customerId: customer.id, assignedMemberId: input.assignedMemberId, serviceOfferingId: offering.id, serviceName: offering.name, startsAt: input.startsAt, endsAt, notes: input.notes, reminderMinutes: business.defaultAppointmentReminderMinutes });
   const token = generateOpaqueToken();
   await prisma.publicBookingAccess.create({ data: { id: token.id, businessId: business.id, appointmentId: appointment.id, tokenHash: token.hash, expiresAt: new Date(appointment.endsAt.getTime() + 365 * 86_400_000) } });
+  await sendAppointmentConfirmation(appointment.id).catch(error => console.error("[appointments] automatic booking confirmation failed", error));
   return { businessName: business.name, appointment, managementToken: token.raw };
 }
 
@@ -83,7 +85,9 @@ export async function cancelPublicBooking(slug: string, rawToken: string) {
   if (!["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw ApiError.conflict("This booking can no longer be canceled");
   const cutoff = appointment.startsAt.getTime() - appointment.business.cancellationNoticeMinutes * 60_000;
   if (Date.now() > cutoff) throw ApiError.conflict("This booking is inside the cancellation window. Contact the business for help.");
-  return transitionAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, "CANCELED");
+  const canceled = await transitionAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, "CANCELED");
+  await sendCustomerAppointmentMessage(appointment.id, "canceled").catch(error => console.error("[appointments] automatic cancellation confirmation failed", error));
+  return canceled;
 }
 
 export async function confirmPublicBooking(slug: string, rawToken: string) {
@@ -99,7 +103,10 @@ export async function reschedulePublicBooking(slug: string, rawToken: string, in
   if (!appointment.serviceOffering) throw ApiError.conflict("Contact the business to reschedule this appointment");
   const startsAt = new Date(input.startsAt);
   const endsAt = new Date(startsAt.getTime() + appointment.serviceOffering.durationMinutes * 60_000);
-  return updateAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, { assignedMemberId: input.assignedMemberId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
+  const updated = await updateAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, { assignedMemberId: input.assignedMemberId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
+  await prisma.appointment.update({ where: { id: appointment.id }, data: { rescheduleConfirmationSentAt: null, customerReminderSentAt: null, sameDayReminderSentAt: null } });
+  await sendCustomerAppointmentMessage(appointment.id, "rescheduled").catch(error => console.error("[appointments] automatic reschedule confirmation failed", error));
+  return updated;
 }
 
 function icsEscape(value: string) { return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;"); }

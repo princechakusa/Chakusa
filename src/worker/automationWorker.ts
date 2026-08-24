@@ -1,7 +1,7 @@
 import { processDueAutomationRuns } from "../lib/automation/executor.js";
 import { sweepLifecycleAutomations } from "../lib/automation/scheduler.js";
 import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
-import { sendDueAppointmentReminders } from "../modules/appointments/appointmentReminders.js";
+import { sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../lib/push/pushProvider.js";
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
 
@@ -20,6 +20,7 @@ export interface AutomationWorkerOptions {
   batchSize?: number;
   provider?: MessagingProvider;
   appointmentPushProvider?: PushProvider;
+  appointmentMessagingProvider?: MessagingProvider;
   onError?: (error: unknown) => void;
 }
 
@@ -57,6 +58,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     try {
       await processDueAutomationRuns(options.provider, batchSize);
       await sendDueAppointmentReminders(options.appointmentPushProvider, batchSize);
+      await sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize);
       await recordWorkerHeartbeat(startedAt);
     } catch (error) {
       options.onError?.(error);

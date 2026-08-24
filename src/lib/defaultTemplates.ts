@@ -12,6 +12,16 @@ export const DEFAULT_TEMPLATE_BODIES: Record<MessageType, string> = {
   comeback_reminder:
     "Hi {{customer_name}}, it's been a while since your last {{service_name}} at {{business_name}}. Ready to book again?",
   custom: "Hi {{customer_name}}, this is {{business_name}}.",
+  appointment_reminder:
+    "Hi {{customer_name}}, a reminder that your {{service_name}} appointment at {{business_name}} is on {{booking_time}}.",
+  appointment_same_day_reminder:
+    "Hi {{customer_name}}, your {{service_name}} appointment at {{business_name}} is today at {{booking_time}}.",
+  appointment_rescheduled:
+    "Hi {{customer_name}}, your {{service_name}} appointment at {{business_name}} has moved to {{booking_time}}.",
+  appointment_canceled:
+    "Hi {{customer_name}}, your {{service_name}} appointment at {{business_name}} on {{booking_time}} has been canceled.",
+  appointment_follow_up:
+    "Hi {{customer_name}}, thank you for visiting {{business_name}} for your {{service_name}}. We hope to see you again.",
   public_profile_inquiry:
     "Hi {{customer_name}}, thanks for reaching out to {{business_name}} about your {{service_name}}! We'll get back to you shortly — feel free to call us at {{phone_number}} in the meantime.",
   lead_follow_up:

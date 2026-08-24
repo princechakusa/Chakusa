@@ -5,11 +5,16 @@ import { isEntitled } from "../../lib/entitlements.js";
 import { parsePhoneNumber } from "../../lib/phone.js";
 import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
+import type { MessageType } from "@prisma/client";
 
-async function sendCustomerAppointmentMessage(appointmentId: string, kind: "confirmation" | "reminder", provider?: MessagingProvider) {
+type AppointmentMessageKind = "confirmation" | "reminder" | "same_day" | "rescheduled" | "canceled" | "follow_up";
+const fields: Record<AppointmentMessageKind, "confirmationSentAt" | "customerReminderSentAt" | "sameDayReminderSentAt" | "rescheduleConfirmationSentAt" | "cancellationConfirmationSentAt" | "followUpSentAt"> = { confirmation: "confirmationSentAt", reminder: "customerReminderSentAt", same_day: "sameDayReminderSentAt", rescheduled: "rescheduleConfirmationSentAt", canceled: "cancellationConfirmationSentAt", follow_up: "followUpSentAt" };
+const messageTypes: Record<AppointmentMessageKind, MessageType> = { confirmation: "booking_confirmation", reminder: "appointment_reminder", same_day: "appointment_same_day_reminder", rescheduled: "appointment_rescheduled", canceled: "appointment_canceled", follow_up: "appointment_follow_up" };
+
+export async function sendCustomerAppointmentMessage(appointmentId: string, kind: AppointmentMessageKind, provider?: MessagingProvider) {
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } } } });
   if (!appointment?.customer?.phoneE164 || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
-  const field = kind === "confirmation" ? "confirmationSentAt" : "customerReminderSentAt";
+  const field = fields[kind];
   if (appointment[field]) return false;
   const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });
   if (optedOut) return false;
@@ -17,16 +22,35 @@ async function sendCustomerAppointmentMessage(appointmentId: string, kind: "conf
   const claimed = await prisma.appointment.updateMany({ where: { id: appointment.id, [field]: null }, data: { [field]: claimedAt } });
   if (claimed.count !== 1) return false;
   const when = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone: appointment.business.timezone || "UTC" }).format(appointment.startsAt);
-  const body = kind === "confirmation" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is booked for ${when}.` : `${appointment.business.name}: reminder that your ${appointment.serviceName} appointment is at ${when}.`;
+  const body = kind === "confirmation" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is booked for ${when}.` : kind === "same_day" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is today at ${when}.` : kind === "rescheduled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment was moved to ${when}.` : kind === "canceled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment for ${when} was canceled.` : kind === "follow_up" ? `${appointment.business.name}: thank you for your visit. We hope you enjoyed your ${appointment.serviceName} appointment.` : `${appointment.business.name}: reminder that your ${appointment.serviceName} appointment is at ${when}.`;
   try {
     const result = await sendOutboundMessage({ to: appointment.customer.phoneE164, channel: "sms", body, countryCode: parsePhoneNumber(appointment.customer.phoneE164).country ?? "ZZ", idempotencyKey: `appointment:${kind}:${appointment.id}` }, provider);
-    await prisma.message.create({ data: { businessId: appointment.businessId, customerId: appointment.customer.id, messageType: "booking_confirmation", channel: "sms", body, status: result.accepted ? "sent" : "failed", sentAt: result.accepted ? new Date() : null, provider: "twilio", providerMessageId: result.providerMessageId } });
+    await prisma.message.create({ data: { businessId: appointment.businessId, customerId: appointment.customer.id, messageType: messageTypes[kind], channel: "sms", body, status: result.accepted ? "sent" : "failed", sentAt: result.accepted ? new Date() : null, provider: provider?.id ?? "twilio", providerMessageId: result.providerMessageId } });
     if (!result.accepted) await prisma.appointment.updateMany({ where: { id: appointment.id, [field]: claimedAt }, data: { [field]: null } });
     return result.accepted;
   } catch (error) { await prisma.appointment.updateMany({ where: { id: appointment.id, [field]: claimedAt }, data: { [field]: null } }); throw error; }
 }
 
 export const sendAppointmentConfirmation = (appointmentId: string, provider?: MessagingProvider) => sendCustomerAppointmentMessage(appointmentId, "confirmation", provider);
+
+function localDate(value: Date, timeZone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
+export async function sendDueCustomerAppointmentMessages(provider?: MessagingProvider, batchSize = 50, now = new Date()) {
+  const appointments = await prisma.appointment.findMany({
+    where: { OR: [
+      { status: { in: ["SCHEDULED", "CONFIRMED"] }, startsAt: { gt: now, lte: new Date(now.getTime() + 7 * 86_400_000) }, OR: [{ customerReminderSentAt: null }, { sameDayReminderSentAt: null }] },
+      { status: "COMPLETED", endsAt: { lte: new Date(now.getTime() - 2 * 60 * 60_000), gte: new Date(now.getTime() - 7 * 86_400_000) }, followUpSentAt: null },
+    ] },
+    include: { business: { select: { timezone: true } } }, orderBy: { startsAt: "asc" }, take: batchSize,
+  });
+  let sent = 0;
+  for (const appointment of appointments) {
+    if (appointment.status === "COMPLETED") { if (await sendCustomerAppointmentMessage(appointment.id, "follow_up", provider)) sent += 1; continue; }
+    const reminderAt = new Date(appointment.startsAt.getTime() - (appointment.reminderMinutes ?? 1440) * 60_000);
+    if (!appointment.customerReminderSentAt && reminderAt <= now && await sendCustomerAppointmentMessage(appointment.id, "reminder", provider)) sent += 1;
+    if (!appointment.sameDayReminderSentAt && localDate(appointment.startsAt, appointment.business.timezone || "UTC") === localDate(now, appointment.business.timezone || "UTC") && await sendCustomerAppointmentMessage(appointment.id, "same_day", provider)) sent += 1;
+  }
+  return sent;
+}
 
 export async function sendDueAppointmentReminders(provider?: PushProvider, batchSize = 50, now = new Date()) {
   const due = await prisma.$queryRaw<{ id: string }[]>`

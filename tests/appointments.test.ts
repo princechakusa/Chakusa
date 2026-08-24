@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../src/lib/prisma.js";
 import { authHeader, createTestApp, registerAccount, resetDatabase } from "./helpers.js";
-import { sendAppointmentConfirmation, sendDueAppointmentReminders } from "../src/modules/appointments/appointmentReminders.js";
+import { sendAppointmentConfirmation, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../src/modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../src/lib/push/pushProvider.js";
 import type { MessagingProvider, OutboundMessage } from "../src/lib/messaging/messagingProvider.js";
 
@@ -84,5 +84,19 @@ describe("appointments", () => {
     expect(await sendAppointmentConfirmation(appointment.id, provider)).toBe(false);
     expect(calls).toHaveLength(1);
     expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appointment.id } })).confirmationSentAt).not.toBeNull();
+  });
+
+  it("sends upcoming, same-day, and post-appointment customer messages once", async () => {
+    const account = await fixture("appointment-lifecycle@example.com");
+    await prisma.subscription.update({ where: { businessId: account.businessId }, data: { plan: "PRO", status: "ACTIVE" } });
+    await prisma.business.update({ where: { id: account.businessId }, data: { timezone: "UTC" } });
+    await prisma.customer.update({ where: { id: account.customer.id }, data: { phone: "+15551234568", phoneE164: "+15551234568" } });
+    await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Haircut", startsAt: new Date("2026-09-01T09:00:00.000Z"), endsAt: new Date("2026-09-01T10:00:00.000Z"), reminderMinutes: 60 } });
+    await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Completed visit", startsAt: new Date("2026-08-31T07:00:00.000Z"), endsAt: new Date("2026-08-31T08:00:00.000Z"), status: "COMPLETED" } });
+    const calls: OutboundMessage[] = []; const provider: MessagingProvider = { id: "fake", supportsChannel: () => true, send: async message => { calls.push(message); return { accepted: true, providerMessageId: `message-${calls.length}`, permanentFailure: false }; }, parseDeliveryWebhook: () => null, parseInboundWebhook: () => null, verifyWebhookSignature: () => false };
+    const now = new Date("2026-09-01T08:00:00.000Z");
+    expect(await sendDueCustomerAppointmentMessages(provider, 10, now)).toBe(3);
+    expect(await sendDueCustomerAppointmentMessages(provider, 10, now)).toBe(0);
+    expect(calls.map(call => call.body)).toEqual(expect.arrayContaining([expect.stringContaining("reminder"), expect.stringContaining("today"), expect.stringContaining("thank you")]));
   });
 });

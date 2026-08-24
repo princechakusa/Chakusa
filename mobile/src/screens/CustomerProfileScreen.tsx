@@ -78,9 +78,10 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
   const showRequestReview = !profile.communicationStatuses.includes('waiting_for_review');
   const showCreateReminder = !profile.communicationStatuses.includes('reminder_scheduled');
 
-  const runQuickAction = (kind: 'call' | 'whatsapp' | 'requestReview' | 'createReminder' | 'recordPayment') => {
+  const runQuickAction = (kind: 'call' | 'whatsapp' | 'schedule' | 'requestReview' | 'createReminder' | 'recordPayment') => {
     if (kind === 'call' && customer.phone) void openCall(customer.phone);
     else if (kind === 'whatsapp' && customer.phone) void openWhatsApp(customer.phone, greeting);
+    else if (kind === 'schedule') navigation.navigate('AppointmentEditor');
     else if (kind === 'requestReview') navigation.navigate('Main', { screen: 'Reviews', params: { presetCustomerId: customer.id } });
     else if (kind === 'createReminder') navigation.navigate('Comeback', { presetCustomerId: customer.id });
     else if (kind === 'recordPayment' && outstandingLead) navigation.navigate('LeadDetail', { leadId: outstandingLead.id });
@@ -113,6 +114,7 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
       <View>
         <SectionHeader title="Quick actions" />
         <View style={styles.quickActions}>
+          <SecondaryButton compact icon="calendar-outline" label="Schedule" onPress={() => runQuickAction('schedule')} />
           {customer.phone ? <SecondaryButton compact icon="call-outline" label="Call" onPress={() => runQuickAction('call')} /> : null}
           {customer.phone ? <SecondaryButton compact icon="logo-whatsapp" label="WhatsApp" onPress={() => runQuickAction('whatsapp')} /> : null}
           {showRequestReview ? <SecondaryButton compact icon="star-outline" label="Request review" onPress={() => runQuickAction('requestReview')} /> : null}

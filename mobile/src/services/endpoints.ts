@@ -65,6 +65,13 @@ export const remindersApi = {
   bulkGenerateMessages: () => api.post<{ id: string; customerName: string | null; message: string }[]>('/reminders/bulk-generate-messages'),
   bulkSend: () => api.post<{ sentCount: number; failedCount: number; skippedCount: number; results: { id: string; customerName: string | null; outcome: 'sent' | 'failed' | 'skipped'; reason?: string }[] }>('/reminders/bulk-send'),
 };
+export const appointmentsApi = {
+  list: (from: string, to: string, customerId?: string) => api.get<import('../apiTypes').AppointmentDto[]>(`/appointments${query({ from, to, customerId })}`),
+  get: (id: string) => api.get<import('../apiTypes').AppointmentDto>(`/appointments/${id}`),
+  create: (body: { customerId?: string; assignedMemberId?: string; serviceName: string; startsAt: string; endsAt: string; price?: number; notes?: string; reminderMinutes?: number | null }) => api.post<import('../apiTypes').AppointmentDto>('/appointments', body),
+  patch: (id: string, body: Partial<Pick<import('../apiTypes').AppointmentDto, 'customerId' | 'assignedMemberId' | 'serviceName' | 'startsAt' | 'endsAt' | 'price' | 'notes' | 'reminderMinutes'>>) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}`, body),
+  transition: (id: string, status: import('../apiTypes').AppointmentStatus) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/status`, { status }),
+};
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export const subscriptionApi = {
   getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),

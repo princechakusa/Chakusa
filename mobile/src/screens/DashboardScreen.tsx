@@ -4,7 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Reveal, Screen, SectionHeader, StatusBadge } from '../components/ui';
-import { AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey } from '../apiTypes';
+import { AppointmentDto, AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey } from '../apiTypes';
 import { DashboardAudienceSummary } from '../components/DashboardAudienceSummary';
 import { AUTOMATION_ENABLED } from '../config';
 import { automationAvailability, missedCallRules } from '../domain/automation';
@@ -12,9 +12,10 @@ import { CallDetectionAvailability } from '../domain/callDetection';
 import { dashboardMilestones, Milestone, milestoneCopy, recoveryEngineReadyMilestone, unseenMilestones } from '../domain/milestones';
 import { recoveryEngineStatus } from '../domain/recoveryEngineStatus';
 import { audienceCoachingDestination } from '../domain/coachingNavigation';
+import { endOfDay, startOfDay } from '../domain/calendar';
 import { computeSetupScore } from '../domain/setupScore';
 import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
-import { automationApi, customersApi } from '../services/endpoints';
+import { appointmentsApi, automationApi, customersApi } from '../services/endpoints';
 import { getSeenMilestones, markMilestonesSeen } from '../services/milestoneStorage';
 import { getPushPermissionStatus } from '../services/pushNotifications';
 import { useAppState } from '../state/AppContext';
@@ -37,11 +38,13 @@ export function DashboardScreen() {
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [audiences, setAudiences] = useState<AudienceCenterDto | null>(null);
+  const [todayAppointments, setTodayAppointments] = useState<AppointmentDto[]>([]);
   const loadAudiences = useCallback(async () => {
     try { setAudiences(await customersApi.audiences()); }
     catch { setAudiences(null); }
   }, []);
-  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences()]); }, [loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews]);
+  const loadAppointments = useCallback(async () => { const now = new Date(); try { setTodayAppointments(await appointmentsApi.list(startOfDay(now).toISOString(), endOfDay(now).toISOString())); } catch { setTodayAppointments([]); } }, []);
+  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments()]); }, [loadAppointments, loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews]);
   useEffect(() => {
     let active = true;
     void Promise.all([getCallDetectionAvailability(), getContactsPermissionStatus(), getPushPermissionStatus(), automationApi.listRules().catch(() => [])]).then(([detection, contacts, push, rules]) => {
@@ -88,14 +91,14 @@ export function DashboardScreen() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
-  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences()]);
+  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments()]);
   const openAudience = (audienceKey: SmartAudienceKey) => {
     const destination = audienceCoachingDestination(audienceKey);
     navigation.navigate(destination.screen, destination.params);
   };
 
   return <Screen>
-    <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'Your customer recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open Attention Center" onPress={() => navigation.navigate('AttentionCenter')} style={styles.attentionButton}><Ionicons name="notifications-outline" size={23} color={colors.text} />{attentionCount ? <View style={styles.count}><Text style={styles.countText}>{attentionCount > 9 ? '9+' : attentionCount}</Text></View> : null}</Pressable>} />
+    <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={todayAppointments.length ? `${todayAppointments.length} appointment${todayAppointments.length === 1 ? '' : 's'} today · ${attentionCount} item${attentionCount === 1 ? '' : 's'} need attention` : attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'No appointments today · Your recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open calendar" onPress={() => navigation.navigate('Main', { screen: 'Calendar' })} style={styles.attentionButton}><Ionicons name="calendar-outline" size={23} color={colors.text} />{todayAppointments.length ? <View style={styles.count}><Text style={styles.countText}>{todayAppointments.length > 9 ? '9+' : todayAppointments.length}</Text></View> : null}</Pressable>} />
 
     {milestone ? <Reveal><View accessibilityRole="alert" style={styles.milestone}><Ionicons name="sparkles" size={22} color={colors.surface} /><View style={styles.milestoneCopy}><Text style={styles.milestoneTitle}>{milestone.title}</Text><Text style={styles.milestoneMessage}>{milestone.message}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} onPress={() => setMilestone(null)}><Ionicons name="close" size={20} color={colors.surface} /></Pressable></View></Reveal> : null}
 

@@ -619,8 +619,8 @@ export async function revokeSessionFamily(rawToken: string, userId?: string) {
   });
 }
 
-export async function revokeAllSessions(userId: string, reason = "logout_all") {
-  await prisma.authSession.updateMany({
+export async function revokeAllSessions(userId: string, reason = "logout_all", db: DatabaseClient = prisma) {
+  return db.authSession.updateMany({
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date(), revokeReason: reason },
   });

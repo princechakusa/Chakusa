@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronLeft, ChevronRight, LoaderCircle, Search, X } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, LoaderCircle, Search, ShieldAlert, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function StatusBadge({ value }: { value: string | null | undefined }) {
@@ -46,6 +46,11 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
 export function DataTable({ columns, rows, empty, onRow }: { columns: string[]; rows: ReactNode[][]; empty: { title: string; description: string }; onRow?: (index: number) => void }) {
   if (!rows.length) return <EmptyState {...empty} />;
   return <div className="table-scroll"><table><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{rows.map((cells, index) => <tr key={index} className={onRow ? "clickable" : undefined} onClick={() => onRow?.(index)}>{cells.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table></div>;
+}
+
+export function ConfirmationDialog({ open, title, description, expected, value, onChange, onCancel, onConfirm, pending, error, confirmLabel }: { open: boolean; title: string; description: string; expected: string; value: string; onChange: (value: string) => void; onCancel: () => void; onConfirm: () => void; pending: boolean; error?: string; confirmLabel: string }) {
+  if (!open) return null;
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onCancel(); }}><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><div className="dialog-icon"><ShieldAlert size={20} /></div><h2 id="confirm-title">{title}</h2><p>{description}</p><label><span>Type <strong>{expected}</strong> to confirm</span><input autoFocus value={value} onChange={(event) => onChange(event.target.value)} /></label>{error && <div className="dialog-error">{error}</div>}<div className="dialog-actions"><button className="button secondary" onClick={onCancel} disabled={pending}>Cancel</button><button className="button danger-button" onClick={onConfirm} disabled={pending || value !== expected}>{pending ? "Working..." : confirmLabel}</button></div></section></div>;
 }
 
 export function formatDate(value: string | Date | null | undefined, withTime = true) {

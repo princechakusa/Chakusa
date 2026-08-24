@@ -5,6 +5,8 @@ import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { config } from "../lib/config.js";
 import { permissionsForAdminRole, requireAdminPermission, type AdminPermission } from "../modules/admin/admin.permissions.js";
+import { adminCsrfHeaderSchema } from "../modules/admin/admin.schemas.js";
+import { tokenHashMatches } from "../lib/authTokens.js";
 
 export interface AdminPrincipal {
   membershipId: string;
@@ -13,6 +15,7 @@ export interface AdminPrincipal {
   fullName: string;
   role: AdminRole;
   permissions: readonly AdminPermission[];
+  sessionId: string;
 }
 
 declare module "fastify" {
@@ -20,6 +23,7 @@ declare module "fastify" {
   interface FastifyInstance {
     authenticateAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdminPermission: (request: FastifyRequest, permission: AdminPermission) => void;
+    requireAdminCsrf: (request: FastifyRequest) => Promise<void>;
   }
 }
 
@@ -61,11 +65,25 @@ export default fp(async function adminAuthPlugin(fastify: FastifyInstance) {
       fullName: membership.user.fullName,
       role: membership.role,
       permissions: permissionsForAdminRole(membership.role),
+      sessionId: request.user.sessionId,
     };
   });
 
   fastify.decorate("requireAdminPermission", function (request: FastifyRequest, permission: AdminPermission) {
     if (!request.admin) throw ApiError.unauthorized();
     requireAdminPermission(request.admin.role, permission);
+  });
+
+  fastify.decorate("requireAdminCsrf", async function (request: FastifyRequest) {
+    if (!request.admin) throw ApiError.unauthorized();
+    const value = request.headers["x-csrf-token"];
+    const csrfToken = adminCsrfHeaderSchema.parse(Array.isArray(value) ? value[0] : value);
+    const session = await prisma.authSession.findFirst({
+      where: { id: request.admin.sessionId, userId: request.admin.userId, scope: "ADMIN", revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { csrfTokenHash: true },
+    });
+    if (!session?.csrfTokenHash || !tokenHashMatches(csrfToken, session.csrfTokenHash)) {
+      throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid admin session or CSRF token");
+    }
   });
 });

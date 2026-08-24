@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminCsrfHeaderSchema, adminLoginSchema, adminSessionParamsSchema } from "./admin.schemas.js";
+import { adminBusinessConfirmationSchema, adminCsrfHeaderSchema, adminLoginSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
+import { resetBusinessOnboarding, revokeUserSessions } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAutomationListQuerySchema,
@@ -178,6 +179,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     reply.send(await getAdminBusiness(adminIdParamsSchema.parse(request.params).id));
   });
 
+  fastify.post("/businesses/:id/reset-onboarding", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "business.onboarding.reset");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { confirmation } = adminBusinessConfirmationSchema.parse(request.body);
+    reply.send(await resetBusinessOnboarding(request.admin!, id, confirmation, auditContext(request)));
+  });
+
   fastify.get("/users", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "user.read");
     reply.send(await listAdminUsers(adminUserListQuerySchema.parse(request.query)));
@@ -186,6 +195,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/users/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "user.read");
     reply.send(await getAdminUser(adminIdParamsSchema.parse(request.params).id));
+  });
+
+  fastify.post("/users/:id/revoke-sessions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "user.session.revoke");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { confirmation } = adminUserConfirmationSchema.parse(request.body);
+    reply.send(await revokeUserSessions(request.admin!, id, confirmation, auditContext(request)));
   });
 
   fastify.get("/subscriptions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

@@ -79,13 +79,13 @@ describe("admin security foundation", () => {
     const signedIn = await login(account.email);
     const cookie = refreshCookie(signedIn);
 
-    const denied = await app.inject({ method: "POST", url: "/admin/auth/refresh", headers: { cookie, "x-csrf-token": "x".repeat(40) } });
+    const denied = await app.inject({ method: "POST", url: "/admin/auth/refresh", headers: { origin: "http://localhost:5173", cookie, "x-csrf-token": "x".repeat(40) } });
     expect(denied.statusCode).toBe(401);
 
     const refreshed = await app.inject({
       method: "POST",
       url: "/admin/auth/refresh",
-      headers: { cookie, "x-csrf-token": signedIn.json().csrfToken },
+      headers: { origin: "http://localhost:5173", cookie, "x-csrf-token": signedIn.json().csrfToken },
     });
     expect(refreshed.statusCode).toBe(200);
     expect(refreshed.json().accessToken).toEqual(expect.any(String));

@@ -27,5 +27,6 @@ The static output is written to `admin/dist`. `_redirects` and `_headers` are in
 - Refresh credentials use an HttpOnly, SameSite=Strict cookie.
 - Refresh and logout require a session-bound CSRF token.
 - Navigation visibility and every API route independently enforce RBAC.
-- Phase 2 is read-only; destructive controls are not rendered.
+- Guarded controls are limited to canonical, reversible actions: onboarding reset and session revocation.
+- Every control requires RBAC, session-bound CSRF, and exact-value confirmation.
 - Admin audit records are append-only at the database layer.

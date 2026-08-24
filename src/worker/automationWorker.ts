@@ -77,7 +77,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     if (stopped) return;
     try {
       await sweepLifecycleAutomations();
-      await generateDueWeeklyOwnerReports();
+      await generateDueWeeklyOwnerReports(new Date(), 50, options.appointmentPushProvider);
     } catch (error) {
       options.onError?.(error);
     }

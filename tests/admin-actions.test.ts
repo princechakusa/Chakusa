@@ -224,4 +224,17 @@ describe("admin guarded actions", () => {
     expect(login.statusCode).toBe(200);
     expect(await prisma.adminAuditLog.count({ where: { targetId: target.userId, action: { in: ["USER_DISABLED", "USER_REACTIVATED"] } } })).toBe(2);
   });
+
+  it("requeues only failed automation runs with permission and an audit record", async () => {
+    const operations = await admin("OPERATIONS");
+    const rule = await prisma.automationRule.create({ data: { businessId: operations.account.businessId, name: "Retry rule", triggerType: "LEAD_CREATED", channel: "SMS", enabled: true } });
+    const run = await prisma.automationRun.create({ data: { businessId: operations.account.businessId, automationRuleId: rule.id, dedupeKey: "retry-test", status: "FAILED", scheduledFor: new Date("2026-01-01T00:00:00.000Z"), attemptCount: 3, completedAt: new Date(), errorMessage: "provider failed" } });
+    const retried = await app.inject({ method: "POST", url: `/admin/automation/runs/${run.id}/retry`, headers: headers(operations.token, operations.csrf), payload: { confirmation: "RETRY" } });
+    expect(retried.statusCode).toBe(200);
+    expect(retried.json()).toMatchObject({ id: run.id, status: "PENDING", attemptCount: 3 });
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "AUTOMATION_RUN_RETRIED", targetId: run.id } })).not.toBeNull();
+    const readOnly = await admin("READ_ONLY");
+    const denied = await app.inject({ method: "POST", url: `/admin/automation/runs/${run.id}/retry`, headers: headers(readOnly.token, readOnly.csrf), payload: { confirmation: "RETRY" } });
+    expect(denied.statusCode).toBe(403);
+  });
 });

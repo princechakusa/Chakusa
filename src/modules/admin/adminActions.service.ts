@@ -122,6 +122,18 @@ export async function updateUserAccountStatus(actor: AdminAuditActor, userId: st
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+export async function retryAutomationRun(actor: AdminAuditActor, runId: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const run = await tx.automationRun.findUnique({ where: { id: runId }, select: { id: true, status: true, scheduledFor: true, attemptCount: true, business: { select: { id: true, platformStatus: true } } } });
+    if (!run) throw ApiError.notFound("Automation run not found");
+    if (run.status !== "FAILED") throw ApiError.conflict("Only failed automation runs can be retried");
+    if (run.business.platformStatus !== "ACTIVE") throw ApiError.conflict("The business must be active before retrying automation");
+    const updated = await tx.automationRun.update({ where: { id: run.id }, data: { status: "PENDING", scheduledFor: new Date(), startedAt: null, completedAt: null, cancelledAt: null, leaseExpiresAt: null, errorMessage: null }, select: { id: true, status: true, scheduledFor: true, attemptCount: true } });
+    await recordAdminAudit({ actor, action: "AUTOMATION_RUN_RETRIED", targetType: "automation_run", targetId: run.id, oldValue: { status: run.status, scheduledFor: run.scheduledFor, attemptCount: run.attemptCount }, newValue: { status: updated.status, scheduledFor: updated.scheduledFor, attemptCount: updated.attemptCount }, context }, tx);
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 function requireExactEmail(confirmation: string, email: string) {
   if (confirmation.toLowerCase() !== email.toLowerCase()) {
     throw ApiError.badRequest("Enter the exact user email to confirm the admin access change");

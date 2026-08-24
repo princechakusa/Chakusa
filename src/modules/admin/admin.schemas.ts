@@ -33,6 +33,10 @@ export const adminRevokeSessionSchema = z.object({
   confirmation: z.literal("REVOKE"),
 });
 
+export const adminAutomationRetrySchema = z.object({
+  confirmation: z.literal("RETRY"),
+});
+
 export const adminRoleSchema = z.enum([
   "SUPER_ADMIN",
   "PLATFORM_ADMIN",

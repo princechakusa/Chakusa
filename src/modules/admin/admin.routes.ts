@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminAccessGrantSchema, adminAccessUpdateSchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
-import { deleteBusiness, grantAdminAccess, reactivateBusiness, resetBusinessOnboarding, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
+import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
+import { deleteBusiness, grantAdminAccess, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAutomationListQuerySchema,
@@ -275,6 +275,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/automation/runs", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "automation.read");
     reply.send(await listAdminAutomationRuns(adminAutomationListQuerySchema.parse(request.query)));
+  });
+
+  fastify.post("/automation/runs/:id/retry", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "automation.retry");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    adminAutomationRetrySchema.parse(request.body);
+    reply.send(await retryAutomationRun(request.admin!, id, auditContext(request)));
   });
 
   fastify.get("/communications/overview", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

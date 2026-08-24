@@ -16,7 +16,7 @@ import { LeadsScreen } from '../screens/LeadsScreen';
 import { PremiumFtueScreen } from '../screens/PremiumFtueScreen';
 import { ReviewDetailScreen } from '../screens/ReviewDetailScreen';
 import { ReviewsScreen } from '../screens/ReviewsScreen';
-import { SettingsCompletionScreen as SettingsScreen } from '../screens/SettingsCompletionScreen';
+import { AccountHubScreen as SettingsScreen } from '../screens/AccountHubScreen';
 import { TemplatesScreen } from '../screens/TemplatesScreen';
 import { BusinessSettingsScreen } from '../screens/BusinessSettingsScreen';
 import { ActionQueueScreen as AttentionCenterScreen } from '../screens/ActionQueueScreen';
@@ -27,6 +27,7 @@ import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { ProScreen } from '../screens/ProScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import { AccountInformationScreen } from '../screens/AccountInformationScreen';
+import { NotificationPreferencesScreen } from '../screens/NotificationPreferencesScreen';
 import { AutomationScreen } from '../screens/AutomationScreen';
 import { TeamScreen } from '../screens/TeamScreen';
 import { TeamInviteScreen } from '../screens/TeamInviteScreen';
@@ -76,7 +77,7 @@ export function AppNavigator() {
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
     {status === 'authenticated' && routes.onboarding ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
-    {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AppointmentEditor" component={AppointmentEditorScreen} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
+    {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AppointmentEditor" component={AppointmentEditorScreen} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
     {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />

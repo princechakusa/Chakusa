@@ -6,6 +6,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Reveal, Screen, SectionHeader, StatusBadge } from '../components/ui';
 import { AppointmentDto, AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey } from '../apiTypes';
 import { DashboardAudienceSummary } from '../components/DashboardAudienceSummary';
+import { ActivationJourneyCard } from '../components/ActivationJourneyCard';
+import { ValueProofCard } from '../components/ValueProofCard';
+import { PublicProfileGrowthCard } from '../components/PublicProfileGrowthCard';
 import { AUTOMATION_ENABLED } from '../config';
 import { automationAvailability, missedCallRules } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
@@ -13,6 +16,7 @@ import { dashboardMilestones, Milestone, milestoneCopy, recoveryEngineReadyMiles
 import { recoveryEngineStatus } from '../domain/recoveryEngineStatus';
 import { audienceCoachingDestination } from '../domain/coachingNavigation';
 import { endOfDay, startOfDay } from '../domain/calendar';
+import { activationJourney } from '../domain/activationJourney';
 import { computeSetupScore } from '../domain/setupScore';
 import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
 import { appointmentsApi, automationApi, customersApi } from '../services/endpoints';
@@ -30,7 +34,7 @@ export function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, business } = useAuth();
   const { attention } = usePreferences();
-  const { plan, status: planStatus, features } = usePlanExperience();
+  const { plan, status: planStatus, features, subscription } = usePlanExperience();
   const { dashboard, leads, reviews, reminders, state, loadDashboard, loadLeads, loadReviews, loadReminders } = useAppState();
   const [callDetectionAvail, setCallDetectionAvail] = useState<CallDetectionAvailability>('unsupported');
   const [hasContactsPermission, setHasContactsPermission] = useState(false);
@@ -91,6 +95,7 @@ export function DashboardScreen() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
+  const activation = activationJourney(dashboard);
   const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments()]);
   const openAudience = (audienceKey: SmartAudienceKey) => {
     const destination = audienceCoachingDestination(audienceKey);
@@ -101,6 +106,10 @@ export function DashboardScreen() {
     <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={todayAppointments.length ? `${todayAppointments.length} appointment${todayAppointments.length === 1 ? '' : 's'} today · ${attentionCount} item${attentionCount === 1 ? '' : 's'} need attention` : attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'No appointments today · Your recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open calendar" onPress={() => navigation.navigate('Main', { screen: 'Calendar' })} style={styles.attentionButton}><Ionicons name="calendar-outline" size={23} color={colors.text} />{todayAppointments.length ? <View style={styles.count}><Text style={styles.countText}>{todayAppointments.length > 9 ? '9+' : todayAppointments.length}</Text></View> : null}</Pressable>} />
 
     {milestone ? <Reveal><View accessibilityRole="alert" style={styles.milestone}><Ionicons name="sparkles" size={22} color={colors.surface} /><View style={styles.milestoneCopy}><Text style={styles.milestoneTitle}>{milestone.title}</Text><Text style={styles.milestoneMessage}>{milestone.message}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} onPress={() => setMilestone(null)}><Ionicons name="close" size={20} color={colors.surface} /></Pressable></View></Reveal> : null}
+
+    <ActivationJourneyCard journey={activation} onContinue={() => { if (activation.next) navigation.navigate('Main', { screen: activation.next.destination }); }} />
+    {subscription?.value ? <ValueProofCard value={subscription.value} currency={business?.currency} free={plan === 'FREE'} onPress={() => navigation.navigate(plan === 'FREE' ? 'Pro' : 'Insights')} /> : null}
+    {business?.publicSlug ? <PublicProfileGrowthCard businessName={business.name} slug={business.publicSlug} /> : null}
 
     {setup.score < 100 ? <Pressable accessibilityRole="button" accessibilityLabel="Business setup progress" onPress={() => navigation.navigate('BusinessSettings')} style={styles.engineSummary}>
       <View style={[styles.engineSummaryIcon, { backgroundColor: colors.attention }]}><Ionicons name="clipboard-outline" size={20} color={colors.surface} /></View>

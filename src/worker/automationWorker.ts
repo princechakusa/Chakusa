@@ -56,15 +56,19 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
 
   const tick = async () => {
     if (stopped) return;
-    try {
-      await processDueAutomationRuns(options.provider, batchSize);
-      await sendDueAppointmentReminders(options.appointmentPushProvider, batchSize);
-      await sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize);
-      await sendDueAppointmentPaymentReminders(options.appointmentMessagingProvider ?? options.provider, batchSize);
-      await recordWorkerHeartbeat(startedAt);
-    } catch (error) {
-      options.onError?.(error);
+    // These jobs share one worker process but are operationally independent.
+    // One provider/database failure must not suppress reminders, payment
+    // follow-ups, or the heartbeat for the rest of the cycle.
+    const jobs: (() => Promise<unknown>)[] = [
+      () => processDueAutomationRuns(options.provider, batchSize),
+      () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
+      () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),
+      () => sendDueAppointmentPaymentReminders(options.appointmentMessagingProvider ?? options.provider, batchSize),
+    ];
+    for (const job of jobs) {
+      try { await job(); } catch (error) { options.onError?.(error); }
     }
+    try { await recordWorkerHeartbeat(startedAt); } catch (error) { options.onError?.(error); }
     if (!stopped) {
       timer = setTimeout(() => void tick(), intervalMs);
     }
@@ -75,12 +79,8 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
   // Automation Engine's two time-elapsed triggers — not a second worker.
   const lifecycleTick = async () => {
     if (stopped) return;
-    try {
-      await sweepLifecycleAutomations();
-      await generateDueWeeklyOwnerReports(new Date(), 50, options.appointmentPushProvider);
-    } catch (error) {
-      options.onError?.(error);
-    }
+    try { await sweepLifecycleAutomations(); } catch (error) { options.onError?.(error); }
+    try { await generateDueWeeklyOwnerReports(new Date(), 50, options.appointmentPushProvider); } catch (error) { options.onError?.(error); }
     if (!stopped) {
       lifecycleTimer = setTimeout(() => void lifecycleTick(), lifecycleIntervalMs);
     }

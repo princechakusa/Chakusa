@@ -109,7 +109,12 @@ export function DashboardScreen() {
 
     {milestone ? <Reveal><View accessibilityRole="alert" style={styles.milestone}><Ionicons name="sparkles" size={22} color={colors.surface} /><View style={styles.milestoneCopy}><Text style={styles.milestoneTitle}>{milestone.title}</Text><Text style={styles.milestoneMessage}>{milestone.message}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} onPress={() => setMilestone(null)}><Ionicons name="close" size={20} color={colors.surface} /></Pressable></View></Reveal> : null}
 
-    <ActivationJourneyCard journey={activation} onContinue={() => { if (activation.next) navigation.navigate('Main', { screen: activation.next.destination }); }} />
+    <ActivationJourneyCard journey={activation} onContinue={() => {
+      const destination = activation.next?.destination;
+      if (!destination) return;
+      if (destination.kind === 'root') navigation.navigate(destination.screen);
+      else navigation.navigate('Main', { screen: destination.screen });
+    }} />
     {subscription?.value ? <ValueProofCard value={subscription.value} currency={business?.currency} free={plan === 'FREE'} onPress={() => navigation.navigate(plan === 'FREE' ? 'Pro' : 'Insights')} /> : null}
     {business?.publicSlug ? <PublicProfileGrowthCard businessName={business.name} slug={business.publicSlug} /> : null}
     {weeklyReport ? <View><SectionHeader title="Your weekly report" /><View style={styles.breakdown}><Row label="Appointments completed" value={String(weeklyReport.summary.appointmentsCompleted)} /><Row label="Revenue collected" value={formatMoney(weeklyReport.summary.collectedRevenue, business?.currency ?? undefined)} /><Row label="New customers" value={String(weeklyReport.summary.newCustomers)} /><Row label="Customers messaged" value={String(weeklyReport.summary.customerMessagesSent)} last /></View></View> : null}

@@ -61,6 +61,7 @@ describe("appointments", () => {
     expect(paid.json()).toMatchObject({ paidAmount: "100", paymentStatus: "paid" });
     const dashboard = await app.inject({ method: "GET", url: "/dashboard/summary", headers });
     expect(dashboard.json().recoveredRevenue).toMatchObject({ appointmentCollected: 100, appointmentOutstanding: 0 });
+    expect(dashboard.json().activation).toEqual({ activePublicServices: 1, appointmentsBooked: 1, appointmentsCompleted: 0, appointmentsPaid: 1, customerMessagesSent: 0 });
     expect((await app.inject({ method: "PATCH", url: `/appointments/${created.json().id}/payment`, headers, payload: { paidAmount: 101 } })).statusCode).toBe(400);
   });
 

@@ -84,6 +84,11 @@ export async function getDashboardSummary(businessId: string) {
     newLeadCustomers,
     dueReminderCustomers,
     customersDueForReview,
+    activePublicServices,
+    appointmentsBooked,
+    appointmentsCompleted,
+    appointmentsPaid,
+    customerMessagesSent,
   ] = await Promise.all([
     prisma.lead.count({ where: { businessId, source: LEAD_SOURCE_MISSED_CALL } }),
     prisma.lead.count({ where: { businessId, status: "new" } }),
@@ -170,6 +175,11 @@ export async function getDashboardSummary(businessId: string) {
       distinct: ["customerId"],
     }),
     customersDueForReviewRequest(businessId),
+    prisma.serviceOffering.count({ where: { businessId, active: true, publiclyBookable: true } }),
+    prisma.appointment.count({ where: { businessId, status: { not: "CANCELED" } } }),
+    prisma.appointment.count({ where: { businessId, status: "COMPLETED" } }),
+    prisma.appointment.count({ where: { businessId, paymentStatus: "paid", status: { not: "CANCELED" } } }),
+    prisma.message.count({ where: { businessId, status: { in: ["sent", "delivered"] } } }),
   ]);
 
   const totalLeads = newLeads + contactedLeads + bookedLeads + wonLeads + lostLeads;
@@ -298,6 +308,13 @@ export async function getDashboardSummary(businessId: string) {
     businessHealth,
     customerIntelligence,
     recommendations,
+    activation: {
+      activePublicServices,
+      appointmentsBooked,
+      appointmentsCompleted,
+      appointmentsPaid,
+      customerMessagesSent,
+    },
     generatedAt: new Date(),
     windowStart: today,
   };

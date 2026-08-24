@@ -1,16 +1,19 @@
 import { RootStackParamList } from '../types';
+import { directNotificationTarget } from '../domain/notificationTarget';
 import { feedbackApi } from './endpoints';
 
 export type NotificationTarget =
   | { screen: 'LeadDetail'; params: RootStackParamList['LeadDetail'] }
   | { screen: 'ReviewDetail'; params: RootStackParamList['ReviewDetail'] }
-  | { screen: 'CustomerProfile'; params: RootStackParamList['CustomerProfile'] };
+  | { screen: 'CustomerProfile'; params: RootStackParamList['CustomerProfile'] }
+  | { screen: 'AppointmentEditor'; params: RootStackParamList['AppointmentEditor'] };
 
 interface RawNotificationData {
   type?: unknown;
   leadId?: unknown;
   feedbackId?: unknown;
   reviewRequestId?: unknown;
+  appointmentId?: unknown;
 }
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
@@ -48,14 +51,10 @@ async function resolveFeedbackTarget(feedbackId: string): Promise<NotificationTa
 export async function resolveNotificationTarget(data: unknown): Promise<NotificationTarget | null> {
   if (!data || typeof data !== 'object') return null;
   const payload = data as RawNotificationData;
+  const directTarget = directNotificationTarget(payload);
+  if (directTarget) return directTarget;
 
   switch (payload.type) {
-    case 'lead':
-      return isNonEmptyString(payload.leadId) ? { screen: 'LeadDetail', params: { leadId: payload.leadId } } : null;
-    case 'review_request':
-      return isNonEmptyString(payload.reviewRequestId)
-        ? { screen: 'ReviewDetail', params: { reviewId: payload.reviewRequestId } }
-        : null;
     case 'feedback':
       return isNonEmptyString(payload.feedbackId) ? resolveFeedbackTarget(payload.feedbackId) : null;
     default:

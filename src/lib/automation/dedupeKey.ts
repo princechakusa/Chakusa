@@ -30,3 +30,8 @@ export function buildLeadFollowUpDedupeKey(ruleId: string, leadId: string): stri
 export function buildCustomerRetentionDedupeKey(ruleId: string, customerId: string): string {
   return `${ruleId}:CUSTOMER_RETENTION:${customerId}`;
 }
+
+/** One reminder for one unfinished review request; never a repeating nag. */
+export function buildReviewRequestFollowUpDedupeKey(ruleId: string, reviewRequestId: string): string {
+  return `${ruleId}:REVIEW_REQUEST_FOLLOW_UP:${reviewRequestId}`;
+}

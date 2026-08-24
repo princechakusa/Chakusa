@@ -4,7 +4,7 @@ import { ApiError } from "../errors.js";
 import { isEntitled } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { createAutomationRun } from "../../modules/automation/automation.service.js";
-import { buildCustomerRetentionDedupeKey, buildLeadCreatedDedupeKey, buildLeadFollowUpDedupeKey } from "./dedupeKey.js";
+import { buildCustomerRetentionDedupeKey, buildLeadCreatedDedupeKey, buildLeadFollowUpDedupeKey, buildReviewRequestFollowUpDedupeKey } from "./dedupeKey.js";
 import type { Lead, LeadStatus } from "@prisma/client";
 
 /**
@@ -185,8 +185,42 @@ export async function sweepCustomerRetention(now: Date = new Date()): Promise<vo
   }
 }
 
-/** Runs both lifecycle sweeps — the single entry point worker/automationWorker.ts calls on its slower interval. */
+/** Schedules one reminder for a sent/opened review request that remains unfinished. */
+export async function sweepReviewRequestFollowUps(now: Date = new Date()): Promise<void> {
+  const rules = await prisma.automationRule.findMany({ where: { triggerType: "REVIEW_REQUEST_FOLLOW_UP", enabled: true, channel: "SMS" } });
+  for (const rule of rules) {
+    try {
+      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: { plan: true, status: true } });
+      if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) continue;
+      const cutoff = new Date(now.getTime() - rule.delaySeconds * 1000);
+      const requests = await prisma.reviewRequest.findMany({
+        where: { businessId: rule.businessId, customerId: { not: null }, status: { in: ["sent", "opened"] }, sentAt: { not: null, lte: cutoff }, publicTokenConsumedAt: null },
+        orderBy: { sentAt: "asc" },
+        take: SWEEP_BATCH_LIMIT,
+      });
+      for (const request of requests) {
+        try {
+          await createAutomationRun(rule.businessId, {
+            automationRuleId: rule.id,
+            customerId: request.customerId,
+            reviewRequestId: request.id,
+            dedupeKey: buildReviewRequestFollowUpDedupeKey(rule.id, request.id),
+            scheduledFor: now,
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.code === "CONFLICT") continue;
+          console.error("[automation] failed to schedule a review-request follow-up run", error);
+        }
+      }
+    } catch (error) {
+      console.error("[automation] review-request follow-up sweep failed for a rule", error);
+    }
+  }
+}
+
+/** Runs every lifecycle sweep — the single entry point worker/automationWorker.ts calls on its slower interval. */
 export async function sweepLifecycleAutomations(now: Date = new Date()): Promise<void> {
   await sweepLeadFollowUps(now);
+  await sweepReviewRequestFollowUps(now);
   await sweepCustomerRetention(now);
 }

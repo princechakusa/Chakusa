@@ -167,6 +167,7 @@ export interface CreateAutomationRunInput {
   automationRuleId: string;
   customerId?: string | null;
   leadId?: string | null;
+  reviewRequestId?: string | null;
   dedupeKey: string;
   scheduledFor: Date;
 }
@@ -183,6 +184,11 @@ async function assertLeadInBusiness(businessId: string, leadId: string, db: Data
   if (!lead) {
     throw ApiError.badRequest("leadId does not belong to this business");
   }
+}
+
+async function assertReviewRequestInBusiness(businessId: string, reviewRequestId: string, db: DatabaseClient) {
+  const reviewRequest = await db.reviewRequest.findFirst({ where: { id: reviewRequestId, businessId } });
+  if (!reviewRequest) throw ApiError.badRequest("reviewRequestId does not belong to this business");
 }
 
 /**
@@ -208,6 +214,9 @@ export async function createAutomationRun(businessId: string, input: CreateAutom
   if (input.leadId) {
     await assertLeadInBusiness(businessId, input.leadId, db);
   }
+  if (input.reviewRequestId) {
+    await assertReviewRequestInBusiness(businessId, input.reviewRequestId, db);
+  }
 
   try {
     return await db.automationRun.create({
@@ -216,6 +225,7 @@ export async function createAutomationRun(businessId: string, input: CreateAutom
         automationRuleId: input.automationRuleId,
         customerId: input.customerId ?? null,
         leadId: input.leadId ?? null,
+        reviewRequestId: input.reviewRequestId ?? null,
         dedupeKey: input.dedupeKey,
         scheduledFor: input.scheduledFor,
         status: "PENDING",

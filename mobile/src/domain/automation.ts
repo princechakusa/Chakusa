@@ -11,7 +11,7 @@ export function isTerminalRunStatus(status: AutomationRunStatus) { return ['COMP
 export function safeAutomationFailureCopy() { return 'Chakusa could not complete this follow-up.'; }
 export function canChangeAutomation(availability: AutomationAvailability, rule: AutomationRuleDto | null, nextEnabled: boolean) { return availability === 'available' && Boolean(rule) && rule!.enabled !== nextEnabled; }
 export function missedCallRules(rules: AutomationRuleDto[]) { return rules.filter(rule => rule.triggerType === 'LEAD_CREATED' && rule.channel === 'SMS'); }
-export type LifecycleAutomationKind = 'LEAD_FOLLOW_UP' | 'CUSTOMER_RETENTION';
+export type LifecycleAutomationKind = 'LEAD_FOLLOW_UP' | 'REVIEW_REQUEST_FOLLOW_UP' | 'CUSTOMER_RETENTION';
 export interface LifecycleAutomationDefinition {
   triggerType: LifecycleAutomationKind;
   name: string;
@@ -24,6 +24,7 @@ export interface LifecycleAutomationDefinition {
 export function lifecycleAutomationDefinitions(reminderDays = 42): LifecycleAutomationDefinition[] {
   return [
     { triggerType: 'LEAD_FOLLOW_UP', name: 'Lead follow-up', title: 'Follow up quiet leads', description: 'Chakusa checks leads that are still new, contacted, or booked and sends one follow-up after a day.', when: 'Lead has gone quiet for 1 day', delaySeconds: 86_400, config: { leadStatuses: ['new', 'contacted', 'booked'] } },
+    { triggerType: 'REVIEW_REQUEST_FOLLOW_UP', name: 'Review request follow-up', title: 'Follow up review requests', description: 'Chakusa sends one reminder when a review request remains unfinished. Completed reviews and private feedback are skipped.', when: 'Review request unfinished for 3 days', delaySeconds: 259_200, config: {} },
     { triggerType: 'CUSTOMER_RETENTION', name: 'Customer win-back', title: 'Bring customers back', description: `Chakusa contacts customers who previously completed a job but have not returned in ${reminderDays} days.`, when: `No new visit for ${reminderDays} days`, delaySeconds: 0, config: { minDaysSinceVisit: reminderDays } },
   ];
 }

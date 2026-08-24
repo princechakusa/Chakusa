@@ -990,6 +990,7 @@ model ReviewRequest {
   business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   feedback Feedback[]
+  automationRuns AutomationRun[]
 
   @@index([businessId])
   @@index([businessId, status])
@@ -1264,6 +1265,7 @@ model AutomationRun {
   automationRuleId String              @map("automation_rule_id")
   customerId       String?             @map("customer_id")
   leadId           String?             @map("lead_id")
+  reviewRequestId  String?             @map("review_request_id")
   status           AutomationRunStatus @default(PENDING)
   // Deterministically derived by the future scheduler from
   // (automationRuleId, triggering entity, trigger occurrence) — e.g.
@@ -1300,6 +1302,7 @@ model AutomationRun {
   automationRule AutomationRule @relation(fields: [automationRuleId], references: [id], onDelete: Cascade)
   customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lead           Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  reviewRequest  ReviewRequest? @relation(fields: [reviewRequestId], references: [id], onDelete: SetNull)
   messages       Message[]
 
   @@unique([businessId, dedupeKey])
@@ -1316,6 +1319,7 @@ model AutomationRun {
   @@index([automationRuleId])
   @@index([customerId])
   @@index([leadId])
+  @@index([reviewRequestId])
   @@index([status, leaseExpiresAt])
   // The worker's primary claim query (claimDueAutomationRuns in
   // executor.ts) filters on status = PENDING AND scheduledFor <= now,

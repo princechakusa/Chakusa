@@ -103,3 +103,19 @@ export async function renderCustomerRetentionMessage(
     phone_number: business.phone ?? "",
   });
 }
+
+/** Review follow-up reuses review-request wording while issuing a fresh one-time link. */
+export async function renderReviewRequestFollowUpMessage(
+  business: Business,
+  customer: Customer,
+  serviceName: string | null,
+  reviewLink: string,
+): Promise<{ body: string; messageType: MessageType }> {
+  return renderWithTemplate(business, "review_request", {
+    customer_name: customer.name,
+    business_name: business.name,
+    service_name: serviceName ?? "your service",
+    review_link: reviewLink,
+    phone_number: business.phone ?? "",
+  });
+}

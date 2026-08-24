@@ -4,8 +4,8 @@ import { createTestApp, resetDatabase, registerAccount, setPlan, setSubscription
 import { prisma } from "../src/lib/prisma.js";
 import { LEAD_SOURCE_MISSED_CALL } from "../src/lib/leadSources.js";
 import { createAutomationRule } from "../src/modules/automation/automation.service.js";
-import { sweepLeadFollowUps, sweepCustomerRetention, sweepLifecycleAutomations } from "../src/lib/automation/scheduler.js";
-import { buildCustomerRetentionDedupeKey, buildLeadFollowUpDedupeKey } from "../src/lib/automation/dedupeKey.js";
+import { sweepLeadFollowUps, sweepCustomerRetention, sweepLifecycleAutomations, sweepReviewRequestFollowUps } from "../src/lib/automation/scheduler.js";
+import { buildCustomerRetentionDedupeKey, buildLeadFollowUpDedupeKey, buildReviewRequestFollowUpDedupeKey } from "../src/lib/automation/dedupeKey.js";
 import { executeAutomationRun } from "../src/lib/automation/executor.js";
 import { startAutomationWorker } from "../src/worker/automationWorker.js";
 import type { MessagingProvider, OutboundMessage, SendResult } from "../src/lib/messaging/messagingProvider.js";
@@ -333,6 +333,58 @@ describe("customer lifecycle automation engine (Stage 8)", () => {
       await sweepLifecycleAutomations();
 
       expect(await prisma.automationRun.count({ where: { businessId } })).toBe(2);
+    });
+  });
+
+  describe("review-request follow-up", () => {
+    async function fixture() {
+      const { businessId } = await registerAccount(app);
+      await setPlan(businessId, "PRO");
+      const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", { name: "Review reminder", enabled: true, triggerType: "REVIEW_REQUEST_FOLLOW_UP", channel: "SMS", delaySeconds: 3600, config: {} });
+      const customer = await makeCustomer(businessId);
+      return { businessId, rule, customer };
+    }
+
+    it("schedules one tenant-scoped run after the configured delay", async () => {
+      const { businessId, rule, customer } = await fixture();
+      const request = await prisma.reviewRequest.create({ data: { businessId, customerId: customer.id, serviceName: "Haircut", status: "sent", sentAt: new Date(Date.now() - 7200_000) } });
+      await sweepReviewRequestFollowUps();
+      await sweepReviewRequestFollowUps();
+      const runs = await prisma.automationRun.findMany({ where: { businessId } });
+      expect(runs).toHaveLength(1);
+      expect(runs[0]).toMatchObject({ automationRuleId: rule.id, customerId: customer.id, reviewRequestId: request.id, dedupeKey: buildReviewRequestFollowUpDedupeKey(rule.id, request.id) });
+    });
+
+    it("does not schedule resolved or too-recent requests", async () => {
+      const { businessId, customer } = await fixture();
+      await prisma.reviewRequest.createMany({ data: [
+        { businessId, customerId: customer.id, status: "reviewed", sentAt: new Date(Date.now() - 7200_000) },
+        { businessId, customerId: customer.id, status: "sent", sentAt: new Date() },
+      ] });
+      await sweepReviewRequestFollowUps();
+      expect(await prisma.automationRun.count({ where: { businessId } })).toBe(0);
+    });
+
+    it("sends a fresh secure review link and records one review_request message", async () => {
+      const { businessId, rule, customer } = await fixture();
+      const request = await prisma.reviewRequest.create({ data: { businessId, customerId: customer.id, serviceName: "Haircut", status: "opened", sentAt: new Date(Date.now() - 7200_000) } });
+      const run = await prisma.automationRun.create({ data: { businessId, automationRuleId: rule.id, customerId: customer.id, reviewRequestId: request.id, dedupeKey: buildReviewRequestFollowUpDedupeKey(rule.id, request.id), scheduledFor: new Date(), status: "RUNNING", startedAt: new Date() } });
+      const { provider, calls } = makeFakeProvider();
+      await executeAutomationRun(run, provider);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.body).toContain("/r/");
+      expect(await prisma.message.count({ where: { businessId, messageType: "review_request", automationRunId: run.id } })).toBe(1);
+      expect((await prisma.automationRun.findUniqueOrThrow({ where: { id: run.id } })).status).toBe("COMPLETED");
+    });
+
+    it("cancels without sending if the request resolves after scheduling", async () => {
+      const { businessId, rule, customer } = await fixture();
+      const request = await prisma.reviewRequest.create({ data: { businessId, customerId: customer.id, status: "reviewed", sentAt: new Date(Date.now() - 7200_000) } });
+      const run = await prisma.automationRun.create({ data: { businessId, automationRuleId: rule.id, customerId: customer.id, reviewRequestId: request.id, dedupeKey: buildReviewRequestFollowUpDedupeKey(rule.id, request.id), scheduledFor: new Date(), status: "RUNNING", startedAt: new Date() } });
+      const { provider, calls } = makeFakeProvider();
+      await executeAutomationRun(run, provider);
+      expect(calls).toHaveLength(0);
+      expect((await prisma.automationRun.findUniqueOrThrow({ where: { id: run.id } })).status).toBe("CANCELLED");
     });
   });
 

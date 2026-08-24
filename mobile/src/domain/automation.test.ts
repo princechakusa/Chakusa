@@ -33,9 +33,10 @@ describe('automation product rules', () => {
   it('selects only missed-call SMS rules', () => expect(missedCallRules([rule, { ...rule, id: 'other', triggerType: 'LEAD_FOLLOW_UP' }])).toEqual([rule]));
   it('defines the existing lifecycle engines with deterministic repository inputs', () => {
     const definitions = lifecycleAutomationDefinitions(30);
-    expect(definitions.map(item => item.triggerType)).toEqual(['LEAD_FOLLOW_UP', 'CUSTOMER_RETENTION']);
+    expect(definitions.map(item => item.triggerType)).toEqual(['LEAD_FOLLOW_UP', 'REVIEW_REQUEST_FOLLOW_UP', 'CUSTOMER_RETENTION']);
     expect(definitions[0].delaySeconds).toBe(86_400);
-    expect(definitions[1].config).toEqual({ minDaysSinceVisit: 30 });
+    expect(definitions[1].delaySeconds).toBe(259_200);
+    expect(definitions[2].config).toEqual({ minDaysSinceVisit: 30 });
   });
   it('selects a lifecycle SMS rule by trigger', () => {
     const followUp = { ...rule, id: 'follow-up', triggerType: 'LEAD_FOLLOW_UP' as const };

@@ -2,7 +2,9 @@ import { prisma } from "../prisma.js";
 import { isEntitled } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
-import { renderCustomerRetentionMessage, renderLeadFollowUpMessage, renderLeadStaleFollowUpMessage } from "../messageRendering.js";
+import { renderCustomerRetentionMessage, renderLeadFollowUpMessage, renderLeadStaleFollowUpMessage, renderReviewRequestFollowUpMessage } from "../messageRendering.js";
+import { buildPublicReviewUrl } from "../publicReviewLinks.js";
+import { generatePublicReviewLink } from "../../modules/reviews/reviews.service.js";
 import { DEFAULT_LEAD_FOLLOW_UP_STATUSES } from "./scheduler.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
 import type { MessagingProvider } from "../messaging/messagingProvider.js";
@@ -163,6 +165,21 @@ async function resolveRunContext(
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
     const { body, messageType } = await renderLeadStaleFollowUpMessage(business, lead, customer.customer);
     return { lead, customer: customer.customer, phone: customer.phone, body, messageType };
+  }
+
+  if (rule.triggerType === "REVIEW_REQUEST_FOLLOW_UP") {
+    if (!run.reviewRequestId) return { cancelReason: "Run has no associated review request" };
+    const reviewRequest = await prisma.reviewRequest.findFirst({ where: { id: run.reviewRequestId, businessId: run.businessId, customerId: run.customerId } });
+    if (!reviewRequest) return { cancelReason: "Review request no longer exists" };
+    if (reviewRequest.status !== "sent" && reviewRequest.status !== "opened") return { cancelReason: `Review request is already resolved (status: ${reviewRequest.status})` };
+    if (reviewRequest.publicTokenConsumedAt) return { cancelReason: "Review request has already received a response" };
+
+    const customer = await resolveCustomer(run);
+    if ("cancelReason" in customer) return customer;
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
+    const reviewLink = buildPublicReviewUrl((await generatePublicReviewLink(run.businessId, reviewRequest.id)).token);
+    const { body, messageType } = await renderReviewRequestFollowUpMessage(business, customer.customer, reviewRequest.serviceName, reviewLink);
+    return { lead: null, customer: customer.customer, phone: customer.phone, body, messageType };
   }
 
   // CUSTOMER_RETENTION — no lead is involved; the win-back attempt concerns

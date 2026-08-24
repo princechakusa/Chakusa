@@ -354,7 +354,7 @@ export async function listAdminCommunications(query: AdminCommunicationListQuery
   const [rows, total] = await Promise.all([
     prisma.message.findMany({
       where, orderBy: { createdAt: "desc" }, ...pageArgs(query.page, query.pageSize),
-      select: { id: true, messageType: true, channel: true, body: true, status: true, sentAt: true, deliveredAt: true, provider: true, createdAt: true, business: { select: { id: true, name: true } }, customer: { select: { id: true, name: true } }, automationRun: { select: { id: true } } },
+      select: { id: true, messageType: true, channel: true, body: true, status: true, sentAt: true, deliveredAt: true, provider: true, providerErrorCode: true, createdAt: true, business: { select: { id: true, name: true } }, customer: { select: { id: true, name: true } }, automationRun: { select: { id: true } } },
     }),
     prisma.message.count({ where }),
   ]);

@@ -55,3 +55,9 @@ export const createPublicBookingSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 export type CreatePublicBookingInput = z.infer<typeof createPublicBookingSchema>;
+
+export const reschedulePublicBookingSchema = z.object({
+  assignedMemberId: z.string().uuid(),
+  startsAt: z.string().datetime({ offset: true }),
+});
+export type ReschedulePublicBookingInput = z.infer<typeof reschedulePublicBookingSchema>;

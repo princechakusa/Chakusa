@@ -47,4 +47,27 @@ describe("public appointment booking", () => {
     expect(canceled.statusCode).toBe(200);
     expect(canceled.json().status).toBe("CANCELED");
   });
+
+  it("lets a customer confirm, reschedule, and export the appointment with the secure token", async () => {
+    const account = await registerAccount(app, { businessName: "Customer Managed Studio" });
+    const business = await prisma.business.update({ where: { id: account.businessId }, data: { timezone: "UTC", workingHours: openEveryDay, bookingMinNoticeMinutes: 0, bookingWindowDays: 365, cancellationNoticeMinutes: 0 } });
+    const member = await prisma.businessMember.findFirstOrThrow({ where: { businessId: business.id } });
+    const service = await prisma.serviceOffering.create({ data: { businessId: business.id, name: "Managed Session", durationMinutes: 45 } });
+    const booked = await app.inject({ method: "POST", url: `/public/business/${business.publicSlug}/book`, payload: { serviceOfferingId: service.id, assignedMemberId: member.id, startsAt: "2026-08-31T10:00:00.000Z", name: "Customer", phone: "+15550000002" } });
+    const token = encodeURIComponent(booked.json().managementToken);
+
+    const confirmed = await app.inject({ method: "POST", url: `/public/business/${business.publicSlug}/bookings/${token}/confirm` });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json().status).toBe("CONFIRMED");
+
+    const rescheduled = await app.inject({ method: "POST", url: `/public/business/${business.publicSlug}/bookings/${token}/reschedule`, payload: { assignedMemberId: member.id, startsAt: "2026-08-31T12:00:00.000Z" } });
+    expect(rescheduled.statusCode).toBe(200);
+    expect(rescheduled.json()).toMatchObject({ startsAt: "2026-08-31T12:00:00.000Z", endsAt: "2026-08-31T12:45:00.000Z" });
+
+    const calendar = await app.inject({ method: "GET", url: `/public/business/${business.publicSlug}/bookings/${token}/calendar.ics` });
+    expect(calendar.statusCode).toBe(200);
+    expect(calendar.headers["content-type"]).toContain("text/calendar");
+    expect(calendar.body).toContain("BEGIN:VEVENT");
+    expect(calendar.body).toContain("DTSTART:20260831T120000Z");
+  });
 });

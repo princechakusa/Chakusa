@@ -3,10 +3,10 @@ import { findOrCreateCustomerByPhone } from "../customers/customers.service.js";
 import { createLead } from "../leads/leads.service.js";
 import { LEAD_SOURCE_PUBLIC_PROFILE } from "../../lib/leadSources.js";
 import type { SubmitPublicContactInput } from "./public.schemas.js";
-import type { CreatePublicBookingInput } from "./public.schemas.js";
+import type { CreatePublicBookingInput, ReschedulePublicBookingInput } from "./public.schemas.js";
 import type { Business } from "@prisma/client";
 import { calculateAvailability } from "../availability/availability.service.js";
-import { createAppointment, transitionAppointment } from "../appointments/appointments.service.js";
+import { createAppointment, transitionAppointment, updateAppointment } from "../appointments/appointments.service.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
 import { ApiError } from "../../lib/errors.js";
 
@@ -84,6 +84,30 @@ export async function cancelPublicBooking(slug: string, rawToken: string) {
   const cutoff = appointment.startsAt.getTime() - appointment.business.cancellationNoticeMinutes * 60_000;
   if (Date.now() > cutoff) throw ApiError.conflict("This booking is inside the cancellation window. Contact the business for help.");
   return transitionAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, "CANCELED");
+}
+
+export async function confirmPublicBooking(slug: string, rawToken: string) {
+  const appointment = await resolvePublicBooking(slug, rawToken); if (!appointment) return null;
+  if (appointment.status === "CONFIRMED") return appointment;
+  if (appointment.status !== "SCHEDULED") throw ApiError.conflict("This booking can no longer be confirmed");
+  return transitionAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, "CONFIRMED");
+}
+
+export async function reschedulePublicBooking(slug: string, rawToken: string, input: ReschedulePublicBookingInput) {
+  const appointment = await resolvePublicBooking(slug, rawToken); if (!appointment) return null;
+  if (!["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw ApiError.conflict("This booking can no longer be rescheduled");
+  if (!appointment.serviceOffering) throw ApiError.conflict("Contact the business to reschedule this appointment");
+  const startsAt = new Date(input.startsAt);
+  const endsAt = new Date(startsAt.getTime() + appointment.serviceOffering.durationMinutes * 60_000);
+  return updateAppointment(appointment.businessId, appointment.createdByUserId, appointment.id, { assignedMemberId: input.assignedMemberId, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() });
+}
+
+function icsEscape(value: string) { return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;"); }
+function icsDate(value: Date) { return value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z"); }
+export async function publicBookingCalendar(slug: string, rawToken: string) {
+  const appointment = await resolvePublicBooking(slug, rawToken); if (!appointment) return null;
+  const staff = appointment.assignedMember?.user.fullName ? ` with ${appointment.assignedMember.user.fullName}` : "";
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Chakusa//Booking//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT", `UID:${appointment.id}@chakusa.com`, `DTSTAMP:${icsDate(new Date())}`, `DTSTART:${icsDate(appointment.startsAt)}`, `DTEND:${icsDate(appointment.endsAt)}`, `SUMMARY:${icsEscape(`${appointment.serviceName} — ${appointment.business.name}`)}`, `DESCRIPTION:${icsEscape(`Appointment at ${appointment.business.name}${staff}`)}`, `STATUS:${appointment.status === "CANCELED" ? "CANCELLED" : "CONFIRMED"}`, "END:VEVENT", "END:VCALENDAR", ""].join("\r\n");
 }
 
 /**

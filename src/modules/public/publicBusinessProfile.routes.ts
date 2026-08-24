@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { ApiError } from "../../lib/errors.js";
-import { createPublicBookingSchema, publicAvailabilitySchema, submitPublicContactSchema } from "./public.schemas.js";
-import { cancelPublicBooking, createPublicBooking, publicAvailability, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
+import { createPublicBookingSchema, publicAvailabilitySchema, reschedulePublicBookingSchema, submitPublicContactSchema } from "./public.schemas.js";
+import { cancelPublicBooking, confirmPublicBooking, createPublicBooking, publicAvailability, publicBookingCalendar, reschedulePublicBooking, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
 
 /**
  * Unauthenticated, permanent-link routes for a business's public profile
@@ -50,5 +50,14 @@ export default async function publicBusinessProfileRoutes(fastify: FastifyInstan
   });
   fastify.post<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/cancel", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
     const result = await cancelPublicBooking(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.send(result);
+  });
+  fastify.post<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/confirm", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await confirmPublicBooking(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.send(result);
+  });
+  fastify.post<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/reschedule", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await reschedulePublicBooking(request.params.slug, request.params.token, reschedulePublicBookingSchema.parse(request.body)); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.send(result);
+  });
+  fastify.get<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/calendar.ics", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await publicBookingCalendar(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.header("content-type", "text/calendar; charset=utf-8").header("content-disposition", 'attachment; filename="appointment.ics"').send(result);
   });
 }

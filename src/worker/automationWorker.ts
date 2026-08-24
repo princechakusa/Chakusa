@@ -1,6 +1,8 @@
 import { processDueAutomationRuns } from "../lib/automation/executor.js";
 import { sweepLifecycleAutomations } from "../lib/automation/scheduler.js";
 import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
+import { sendDueAppointmentReminders } from "../modules/appointments/appointmentReminders.js";
+import type { PushProvider } from "../lib/push/pushProvider.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -16,6 +18,7 @@ export interface AutomationWorkerOptions {
   /** Max runs claimed per poll cycle. Default 20. */
   batchSize?: number;
   provider?: MessagingProvider;
+  appointmentPushProvider?: PushProvider;
   onError?: (error: unknown) => void;
 }
 
@@ -51,6 +54,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     if (stopped) return;
     try {
       await processDueAutomationRuns(options.provider, batchSize);
+      await sendDueAppointmentReminders(options.appointmentPushProvider, batchSize);
     } catch (error) {
       options.onError?.(error);
     }

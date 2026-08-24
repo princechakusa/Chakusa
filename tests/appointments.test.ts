@@ -2,6 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../src/lib/prisma.js";
 import { authHeader, createTestApp, registerAccount, resetDatabase } from "./helpers.js";
+import { sendDueAppointmentReminders } from "../src/modules/appointments/appointmentReminders.js";
+import type { PushProvider } from "../src/lib/push/pushProvider.js";
 
 describe("appointments", () => {
   let app: FastifyInstance;
@@ -45,5 +47,15 @@ describe("appointments", () => {
     expect((await app.inject({ method: "POST", url: `/appointments/${id}/status`, headers, payload: { status: "CONFIRMED" } })).statusCode).toBe(200);
     expect((await app.inject({ method: "POST", url: `/appointments/${id}/status`, headers, payload: { status: "COMPLETED" } })).json().status).toBe("COMPLETED");
     expect((await app.inject({ method: "PATCH", url: `/appointments/${id}`, headers, payload: { notes: "late edit" } })).statusCode).toBe(409);
+  });
+
+  it("delivers an upcoming owner reminder at most once", async () => {
+    const account = await fixture(); const now = new Date("2026-09-01T08:00:00.000Z");
+    await prisma.deviceToken.create({ data: { userId: account.userId, token: "ExponentPushToken[appointment-reminder]", platform: "ios", provider: "expo" } });
+    await prisma.appointment.create({ data: { businessId: account.businessId, createdByUserId: account.userId, serviceName: "Haircut", startsAt: new Date("2026-09-01T09:00:00.000Z"), endsAt: new Date("2026-09-01T10:00:00.000Z"), reminderMinutes: 60 } });
+    const calls: string[][] = []; const provider: PushProvider = { isValidToken: () => true, sendToDevice: async token => ({ token, accepted: true, invalidToken: false }), sendToDevices: async tokens => { calls.push(tokens); return tokens.map(token => ({ token, accepted: true, invalidToken: false })); } };
+    expect(await sendDueAppointmentReminders(provider, 10, now)).toBe(1);
+    expect(await sendDueAppointmentReminders(provider, 10, now)).toBe(0);
+    expect(calls).toHaveLength(1);
   });
 });

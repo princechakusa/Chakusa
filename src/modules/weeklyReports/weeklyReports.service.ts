@@ -5,7 +5,7 @@ import type { PushProvider } from "../../lib/push/pushProvider.js";
 import { sendWeeklyOwnerReportEmail } from "./weeklyReportEmail.js";
 
 const DAY_MS = 86_400_000;
-export interface WeeklyReportSummary { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number; }
+export interface WeeklyReportSummary { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; revenueRecovered: number; customersReturned: number; outstandingRevenue: number; automationSuccessRate: number | null; topOpportunity: string | null; highestRisk: string | null; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number; }
 
 function localWeek(now: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", hourCycle: "h23" }).formatToParts(now);
@@ -17,17 +17,25 @@ function localWeek(now: Date, timeZone: string) {
 }
 
 export async function buildWeeklyReportSummary(businessId: string, periodStart: Date, periodEnd: Date): Promise<WeeklyReportSummary> {
-  const [appointmentsCompleted, appointmentsBooked, revenue, newCustomers, newLeads, wonLeads, customerMessagesSent, reviewsReceived] = await Promise.all([
+  const [appointmentsCompleted, appointmentsBooked, revenue, recovered, returned, outstanding, automation, newCustomers, newLeads, wonLeads, customerMessagesSent, reviewsReceived] = await Promise.all([
     prisma.appointment.count({ where: { businessId, status: "COMPLETED", endsAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.appointment.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.appointment.aggregate({ where: { businessId, status: { not: "CANCELED" }, updatedAt: { gte: periodStart, lt: periodEnd } }, _sum: { paidAmount: true } }),
+    prisma.lead.aggregate({ where: { businessId, status: "won", wonAt: { gte: periodStart, lt: periodEnd }, estimatedValue: { not: null } }, _sum: { estimatedValue: true } }),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS count FROM (SELECT customer_id FROM leads WHERE business_id = ${businessId} AND status = 'won' AND customer_id IS NOT NULL AND won_at >= ${periodStart} AND won_at < ${periodEnd} GROUP BY customer_id HAVING COUNT(*) >= 2) returning_customers`),
+    prisma.$queryRaw<{ outstanding: string | null }[]>(Prisma.sql`SELECT SUM(GREATEST(estimated_value - COALESCE(paid_amount, 0), 0)) AS outstanding FROM leads WHERE business_id = ${businessId} AND status = 'won' AND payment_status != 'paid' AND estimated_value IS NOT NULL`),
+    prisma.$queryRaw<{ completed: bigint; terminal: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed, COUNT(*) FILTER (WHERE status IN ('COMPLETED','FAILED','CANCELLED')) AS terminal FROM automation_runs WHERE business_id = ${businessId} AND updated_at >= ${periodStart} AND updated_at < ${periodEnd}`),
     prisma.customer.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.lead.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.lead.count({ where: { businessId, status: "won", wonAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.message.count({ where: { businessId, status: { in: ["sent", "delivered"] }, sentAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.reviewRequest.count({ where: { businessId, status: "reviewed", updatedAt: { gte: periodStart, lt: periodEnd } } }),
   ]);
-  return { appointmentsCompleted, appointmentsBooked, collectedRevenue: Number(revenue._sum.paidAmount ?? 0), newCustomers, newLeads, wonLeads, customerMessagesSent, reviewsReceived };
+  const outstandingRevenue = Number(outstanding[0]?.outstanding ?? 0);
+  const automationTerminal = Number(automation[0]?.terminal ?? 0);
+  const topOpportunity = outstandingRevenue > 0 ? "Collect outstanding payments" : newLeads > 0 ? "Follow up on new leads" : reviewsReceived < wonLeads ? "Complete open review requests" : null;
+  const highestRisk = outstandingRevenue > 0 ? "Outstanding revenue" : appointmentsCompleted === 0 && appointmentsBooked > 0 ? "Booked appointments not completed" : null;
+  return { appointmentsCompleted, appointmentsBooked, collectedRevenue: Number(revenue._sum.paidAmount ?? 0), revenueRecovered: Number(recovered._sum.estimatedValue ?? 0), customersReturned: Number(returned[0]?.count ?? 0), outstandingRevenue, automationSuccessRate: automationTerminal > 0 ? Number(automation[0]?.completed ?? 0) / automationTerminal : null, topOpportunity, highestRisk, newCustomers, newLeads, wonLeads, customerMessagesSent, reviewsReceived };
 }
 
 export async function generateDueWeeklyOwnerReports(now = new Date(), batchSize = 50, pushProvider?: PushProvider) {

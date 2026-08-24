@@ -33,7 +33,6 @@ export async function getValueCenter(businessId: string): Promise<ValueCenterDto
     const triggerType = ruleType.get(row.automationRuleId) ?? "unknown";
     const item = byType.get(triggerType) ?? { triggerType, scheduled: 0, sent: 0, delivered: 0, opened: null, replied: null, booked: null, paid: null, revenue: null };
     item.scheduled += row._count._all;
-    if (row.status === "COMPLETED") item.sent += row._count._all;
     byType.set(triggerType, item);
   }
   // Message delivery is authoritative, but opens/replies/bookings/payments are

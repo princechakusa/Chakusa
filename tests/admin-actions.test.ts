@@ -92,4 +92,88 @@ describe("admin guarded actions", () => {
     expect(await prisma.authSession.count({ where: { userId: current.account.userId, scope: "ADMIN", revokedAt: null } })).toBe(0);
     expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_LOGOUT_ALL", targetId: current.account.userId } })).not.toBeNull();
   });
+
+  it("lets only a Super Admin grant administration access through the audited user flow", async () => {
+    const superAdmin = await admin("SUPER_ADMIN");
+    const targetEmail = "new-support-admin@example.com";
+    const target = await registerAccount(app, { email: targetEmail, password: "support-password-123" });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/admin/users/${target.userId}/admin-access`,
+      headers: headers(superAdmin.token, superAdmin.csrf),
+      payload: { role: "SUPPORT_AGENT", confirmation: targetEmail },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({ userId: target.userId, role: "SUPPORT_AGENT", status: "ACTIVE" });
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_ACCESS_GRANTED", targetId: response.json().id } })).toMatchObject({
+      adminEmail: superAdmin.email,
+      newValue: { userId: target.userId, email: targetEmail, role: "SUPPORT_AGENT", status: "ACTIVE" },
+    });
+
+    const platformAdmin = await admin("PLATFORM_ADMIN");
+    const deniedTarget = await registerAccount(app, { email: "denied-admin@example.com" });
+    const denied = await app.inject({
+      method: "POST",
+      url: `/admin/users/${deniedTarget.userId}/admin-access`,
+      headers: headers(platformAdmin.token, platformAdmin.csrf),
+      payload: { role: "READ_ONLY", confirmation: "denied-admin@example.com" },
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(await prisma.adminMembership.findUnique({ where: { userId: deniedTarget.userId } })).toBeNull();
+  });
+
+  it("updates and revokes target admin access while invalidating only target admin sessions", async () => {
+    const superAdmin = await admin("SUPER_ADMIN");
+    const targetEmail = "managed-admin@example.com";
+    const target = await registerAccount(app, { email: targetEmail, password: "managed-password-123" });
+    await prisma.adminMembership.create({ data: { userId: target.userId, role: "OPERATIONS" } });
+    const targetLogin = await app.inject({ method: "POST", url: "/admin/auth/login", headers: { origin: "http://localhost:5173" }, payload: { email: targetEmail, password: "managed-password-123" } });
+    expect(targetLogin.statusCode).toBe(200);
+
+    const updated = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${target.userId}/admin-access`,
+      headers: headers(superAdmin.token, superAdmin.csrf),
+      payload: { role: "READ_ONLY", status: "SUSPENDED", confirmation: targetEmail },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({ role: "READ_ONLY", status: "SUSPENDED" });
+    expect(await prisma.authSession.count({ where: { userId: target.userId, scope: "ADMIN", revokedAt: null } })).toBe(0);
+    expect(await prisma.authSession.count({ where: { userId: target.userId, scope: "PRODUCT", revokedAt: null } })).toBe(1);
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_ACCESS_UPDATED", targetId: updated.json().id } })).toMatchObject({
+      oldValue: { role: "OPERATIONS", status: "ACTIVE" },
+      newValue: { role: "READ_ONLY", status: "SUSPENDED", revokedSessionCount: 1 },
+    });
+
+    const revoked = await app.inject({
+      method: "DELETE",
+      url: `/admin/users/${target.userId}/admin-access`,
+      headers: headers(superAdmin.token, superAdmin.csrf),
+      payload: { confirmation: targetEmail },
+    });
+    expect(revoked.statusCode).toBe(200);
+    expect(revoked.json()).toEqual({ userId: target.userId, revoked: true });
+    expect(await prisma.adminMembership.findUnique({ where: { userId: target.userId } })).toBeNull();
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "ADMIN_ACCESS_REVOKED" } })).not.toBeNull();
+  });
+
+  it("prevents a Super Admin from changing or revoking their own access", async () => {
+    const current = await admin("SUPER_ADMIN");
+    const update = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${current.account.userId}/admin-access`,
+      headers: headers(current.token, current.csrf),
+      payload: { role: "READ_ONLY", confirmation: current.email },
+    });
+    const revoke = await app.inject({
+      method: "DELETE",
+      url: `/admin/users/${current.account.userId}/admin-access`,
+      headers: headers(current.token, current.csrf),
+      payload: { confirmation: current.email },
+    });
+    expect(update.statusCode).toBe(409);
+    expect(revoke.statusCode).toBe(409);
+    expect(await prisma.adminMembership.findUnique({ where: { userId: current.account.userId } })).toMatchObject({ role: "SUPER_ADMIN", status: "ACTIVE" });
+  });
 });

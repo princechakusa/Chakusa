@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type AdminMembershipStatus, type AdminRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { revokeAllSessions } from "../auth/auth.service.js";
@@ -34,5 +34,135 @@ export async function revokeUserSessions(
     const result = await revokeAllSessions(user.id, "admin_revoked", tx);
     await recordAdminAudit({ actor, action: "USER_SESSIONS_REVOKED", targetType: "user", targetId: user.id, oldValue: { activeSessionCount: result.count }, newValue: { activeSessionCount: 0 }, context }, tx);
     return { userId: user.id, revokedSessionCount: result.count };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+function requireExactEmail(confirmation: string, email: string) {
+  if (confirmation.toLowerCase() !== email.toLowerCase()) {
+    throw ApiError.badRequest("Enter the exact user email to confirm the admin access change");
+  }
+}
+
+async function revokeTargetAdminSessions(tx: Prisma.TransactionClient, userId: string, reason: string) {
+  return tx.authSession.updateMany({
+    where: { userId, scope: "ADMIN", revokedAt: null },
+    data: { revokedAt: new Date(), revokeReason: reason },
+  });
+}
+
+async function requireAnotherActiveSuperAdmin(tx: Prisma.TransactionClient, membership: { id: string; role: AdminRole; status: AdminMembershipStatus }) {
+  if (membership.role !== "SUPER_ADMIN" || membership.status !== "ACTIVE") return;
+  const remaining = await tx.adminMembership.count({
+    where: { id: { not: membership.id }, role: "SUPER_ADMIN", status: "ACTIVE" },
+  });
+  if (remaining === 0) throw ApiError.conflict("The final active Super Admin cannot be changed or removed");
+}
+
+export async function grantAdminAccess(
+  actor: AdminAuditActor,
+  userId: string,
+  role: AdminRole,
+  confirmation: string,
+  context: AdminAuditContext,
+) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, passwordHash: true, adminMembership: { select: { id: true } } },
+    });
+    if (!user) throw ApiError.notFound("User not found");
+    requireExactEmail(confirmation, user.email);
+    if (user.adminMembership) throw ApiError.conflict("This user already has administration access");
+    if (!user.passwordHash) throw ApiError.badRequest("The user must configure password authentication before receiving administration access");
+
+    const membership = await tx.adminMembership.create({
+      data: { userId: user.id, role },
+      select: { id: true, userId: true, role: true, status: true, mfaRequired: true, mfaEnrolledAt: true, createdAt: true },
+    });
+    await recordAdminAudit({
+      actor,
+      action: "ADMIN_ACCESS_GRANTED",
+      targetType: "admin_membership",
+      targetId: membership.id,
+      newValue: { userId: user.id, email: user.email, role: membership.role, status: membership.status },
+      context,
+    }, tx);
+    return membership;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function updateAdminAccess(
+  actor: AdminAuditActor,
+  userId: string,
+  input: { role?: AdminRole; status?: AdminMembershipStatus; confirmation: string },
+  context: AdminAuditContext,
+) {
+  if (userId === actor.userId) throw ApiError.conflict("Use another Super Admin account to change your own administration access");
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, adminMembership: { select: { id: true, role: true, status: true, mfaRequired: true, mfaEnrolledAt: true } } },
+    });
+    if (!user) throw ApiError.notFound("User not found");
+    requireExactEmail(input.confirmation, user.email);
+    if (!user.adminMembership) throw ApiError.notFound("Administration membership not found");
+
+    const nextRole = input.role ?? user.adminMembership.role;
+    const nextStatus = input.status ?? user.adminMembership.status;
+    if (nextRole === user.adminMembership.role && nextStatus === user.adminMembership.status) {
+      throw ApiError.conflict("Administration access is already configured with those values");
+    }
+    if (user.adminMembership.role === "SUPER_ADMIN" && user.adminMembership.status === "ACTIVE" && (nextRole !== "SUPER_ADMIN" || nextStatus !== "ACTIVE")) {
+      await requireAnotherActiveSuperAdmin(tx, user.adminMembership);
+    }
+
+    const updated = await tx.adminMembership.update({
+      where: { id: user.adminMembership.id },
+      data: { role: nextRole, status: nextStatus },
+      select: { id: true, userId: true, role: true, status: true, mfaRequired: true, mfaEnrolledAt: true, createdAt: true },
+    });
+    const revoked = await revokeTargetAdminSessions(tx, user.id, "admin_access_changed");
+    await recordAdminAudit({
+      actor,
+      action: "ADMIN_ACCESS_UPDATED",
+      targetType: "admin_membership",
+      targetId: updated.id,
+      oldValue: { role: user.adminMembership.role, status: user.adminMembership.status },
+      newValue: { role: updated.role, status: updated.status, revokedSessionCount: revoked.count },
+      context,
+    }, tx);
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function revokeAdminAccess(
+  actor: AdminAuditActor,
+  userId: string,
+  confirmation: string,
+  context: AdminAuditContext,
+) {
+  if (userId === actor.userId) throw ApiError.conflict("Use another Super Admin account to revoke your own administration access");
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, adminMembership: { select: { id: true, role: true, status: true, mfaRequired: true } } },
+    });
+    if (!user) throw ApiError.notFound("User not found");
+    requireExactEmail(confirmation, user.email);
+    if (!user.adminMembership) throw ApiError.notFound("Administration membership not found");
+    await requireAnotherActiveSuperAdmin(tx, user.adminMembership);
+
+    const revoked = await revokeTargetAdminSessions(tx, user.id, "admin_access_revoked");
+    await tx.adminMembership.delete({ where: { id: user.adminMembership.id } });
+    await recordAdminAudit({
+      actor,
+      action: "ADMIN_ACCESS_REVOKED",
+      targetType: "admin_membership",
+      targetId: user.adminMembership.id,
+      oldValue: { userId: user.id, email: user.email, role: user.adminMembership.role, status: user.adminMembership.status },
+      newValue: { revoked: true, revokedSessionCount: revoked.count },
+      context,
+    }, tx);
+    return { userId: user.id, revoked: true as const };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

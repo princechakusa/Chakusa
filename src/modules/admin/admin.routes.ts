@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminBusinessConfirmationSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
-import { resetBusinessOnboarding, revokeUserSessions } from "./adminActions.service.js";
+import { adminAccessGrantSchema, adminAccessUpdateSchema, adminBusinessConfirmationSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
+import { grantAdminAccess, resetBusinessOnboarding, revokeAdminAccess, revokeUserSessions, updateAdminAccess } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAutomationListQuerySchema,
@@ -209,6 +209,30 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const { id } = adminIdParamsSchema.parse(request.params);
     const { confirmation } = adminUserConfirmationSchema.parse(request.body);
     reply.send(await revokeUserSessions(request.admin!, id, confirmation, auditContext(request)));
+  });
+
+  fastify.post("/users/:id/admin-access", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "admin.manage");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { role, confirmation } = adminAccessGrantSchema.parse(request.body);
+    reply.status(201).send(await grantAdminAccess(request.admin!, id, role, confirmation, auditContext(request)));
+  });
+
+  fastify.patch("/users/:id/admin-access", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "admin.manage");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const input = adminAccessUpdateSchema.parse(request.body);
+    reply.send(await updateAdminAccess(request.admin!, id, input, auditContext(request)));
+  });
+
+  fastify.delete("/users/:id/admin-access", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "admin.manage");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { confirmation } = adminUserConfirmationSchema.parse(request.body);
+    reply.send(await revokeAdminAccess(request.admin!, id, confirmation, auditContext(request)));
   });
 
   fastify.get("/subscriptions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

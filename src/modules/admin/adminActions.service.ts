@@ -109,6 +109,19 @@ export async function revokeUserSessions(
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+export async function updateUserAccountStatus(actor: AdminAuditActor, userId: string, status: "ACTIVE" | "DISABLED", confirmation: string, context: AdminAuditContext) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, email: true, accountStatus: true } });
+    if (!user) throw ApiError.notFound("User not found");
+    if (confirmation.toLowerCase() !== user.email.toLowerCase()) throw ApiError.badRequest("Enter the exact user email to confirm account status change");
+    if (user.accountStatus === status) throw ApiError.conflict(`User account is already ${status.toLowerCase()}`);
+    const updated = await tx.user.update({ where: { id: user.id }, data: { accountStatus: status }, select: { id: true, email: true, accountStatus: true } });
+    const revoked = status === "DISABLED" ? await revokeAllSessions(user.id, "admin_account_disabled", tx) : { count: 0 };
+    await recordAdminAudit({ actor, action: status === "DISABLED" ? "USER_DISABLED" : "USER_REACTIVATED", targetType: "user", targetId: user.id, oldValue: { accountStatus: user.accountStatus }, newValue: { accountStatus: status, revokedSessionCount: revoked.count }, context }, tx);
+    return { ...updated, revokedSessionCount: revoked.count };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 function requireExactEmail(confirmation: string, email: string) {
   if (confirmation.toLowerCase() !== email.toLowerCase()) {
     throw ApiError.badRequest("Enter the exact user email to confirm the admin access change");

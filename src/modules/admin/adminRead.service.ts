@@ -253,7 +253,7 @@ export async function listAdminUsers(query: AdminUserListQuery) {
     prisma.user.findMany({
       where, orderBy, ...pageArgs(query.page, query.pageSize),
       select: {
-        id: true, email: true, fullName: true, emailVerifiedAt: true, createdAt: true,
+        id: true, email: true, fullName: true, emailVerifiedAt: true, accountStatus: true, createdAt: true,
         adminMembership: { select: { id: true, role: true, status: true, mfaRequired: true, mfaEnrolledAt: true } },
         memberships: { select: { id: true, role: true, status: true, business: { select: { id: true, name: true } } } },
         _count: { select: { authSessions: true, deviceTokens: true } },
@@ -268,7 +268,7 @@ export async function getAdminUser(id: string) {
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
-      id: true, email: true, fullName: true, emailVerifiedAt: true, createdAt: true, updatedAt: true,
+      id: true, email: true, fullName: true, emailVerifiedAt: true, accountStatus: true, createdAt: true, updatedAt: true,
       adminMembership: { select: { id: true, role: true, status: true, mfaRequired: true, mfaEnrolledAt: true, createdAt: true } },
       authIdentities: { select: { provider: true, providerEmail: true, providerEmailVerified: true, createdAt: true } },
       memberships: { select: { id: true, role: true, status: true, createdAt: true, business: { select: { id: true, name: true } } } },

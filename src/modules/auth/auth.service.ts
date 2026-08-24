@@ -541,7 +541,7 @@ export async function authenticateUser(input: LoginInput) {
   // Always run the same-cost Argon2id verification, even when the user
   // doesn't exist, so response timing can't be used to enumerate emails.
   const valid = await verifyPasswordConstantTime(user?.passwordHash, input.password);
-  if (!user || !valid) {
+  if (!user || !valid || user.accountStatus === "DISABLED") {
     throw ApiError.auth(401, "AUTH_INVALID_CREDENTIALS", "Invalid email or password");
   }
   const auth = await createSession(user.id, prisma);

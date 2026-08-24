@@ -25,6 +25,10 @@ export const adminUserConfirmationSchema = z.object({
   confirmation: z.string().email(),
 });
 
+export const adminUserStatusSchema = adminUserConfirmationSchema.extend({
+  status: z.enum(["ACTIVE", "DISABLED"]),
+});
+
 export const adminRevokeSessionSchema = z.object({
   confirmation: z.literal("REVOKE"),
 });

@@ -208,4 +208,20 @@ describe("admin guarded actions", () => {
     expect(await prisma.user.findUnique({ where: { id: target.userId } })).not.toBeNull();
     expect(await prisma.adminAuditLog.findFirst({ where: { action: "BUSINESS_DELETED", targetId: target.businessId } })).not.toBeNull();
   });
+
+  it("disables accounts, revokes sessions, blocks login, and supports audited reactivation", async () => {
+    const superAdmin = await admin("SUPER_ADMIN");
+    const targetEmail = "disabled-user@example.com";
+    const target = await registerAccount(app, { email: targetEmail, password: "disabled-password-123" });
+    const disabled = await app.inject({ method: "PATCH", url: `/admin/users/${target.userId}/account-status`, headers: headers(superAdmin.token, superAdmin.csrf), payload: { status: "DISABLED", confirmation: targetEmail } });
+    expect(disabled.statusCode).toBe(200);
+    expect(disabled.json().revokedSessionCount).toBe(1);
+    const blocked = await app.inject({ method: "POST", url: "/auth/login", payload: { email: targetEmail, password: "disabled-password-123" } });
+    expect(blocked.statusCode).toBe(401);
+    const reactivated = await app.inject({ method: "PATCH", url: `/admin/users/${target.userId}/account-status`, headers: headers(superAdmin.token, superAdmin.csrf), payload: { status: "ACTIVE", confirmation: targetEmail } });
+    expect(reactivated.statusCode).toBe(200);
+    const login = await app.inject({ method: "POST", url: "/auth/login", payload: { email: targetEmail, password: "disabled-password-123" } });
+    expect(login.statusCode).toBe(200);
+    expect(await prisma.adminAuditLog.count({ where: { targetId: target.userId, action: { in: ["USER_DISABLED", "USER_REACTIVATED"] } } })).toBe(2);
+  });
 });

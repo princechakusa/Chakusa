@@ -45,8 +45,9 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
         expiresAt: { gt: new Date() },
         scope: "PRODUCT",
       },
-      select: { id: true },
+      select: { id: true, user: { select: { accountStatus: true } } },
     });
     if (!session) throw ApiError.auth(401, "AUTH_SESSION_EXPIRED", "Authentication session expired");
+    if (session.user.accountStatus === "DISABLED") throw ApiError.auth(403, "AUTH_ACCOUNT_DISABLED", "This account has been disabled");
   });
 });

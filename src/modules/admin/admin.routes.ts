@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminAccessGrantSchema, adminAccessUpdateSchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema } from "./admin.schemas.js";
-import { deleteBusiness, grantAdminAccess, reactivateBusiness, resetBusinessOnboarding, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, verifyBusiness } from "./adminActions.service.js";
+import { adminAccessGrantSchema, adminAccessUpdateSchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
+import { deleteBusiness, grantAdminAccess, reactivateBusiness, resetBusinessOnboarding, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAutomationListQuerySchema,
@@ -233,6 +233,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const { id } = adminIdParamsSchema.parse(request.params);
     const { confirmation } = adminUserConfirmationSchema.parse(request.body);
     reply.send(await revokeUserSessions(request.admin!, id, confirmation, auditContext(request)));
+  });
+
+  fastify.patch("/users/:id/account-status", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "user.disable");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { status, confirmation } = adminUserStatusSchema.parse(request.body);
+    reply.send(await updateUserAccountStatus(request.admin!, id, status, confirmation, auditContext(request)));
   });
 
   fastify.post("/users/:id/admin-access", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

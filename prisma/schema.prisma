@@ -59,6 +59,11 @@ enum AdminMembershipStatus {
   SUSPENDED
 }
 
+enum UserAccountStatus {
+  ACTIVE
+  DISABLED
+}
+
 enum AuthSessionScope {
   PRODUCT
   ADMIN
@@ -381,6 +386,7 @@ model User {
   normalizedEmail String    @unique @map("normalized_email")
   passwordHash    String?   @map("password_hash")
   emailVerifiedAt DateTime? @map("email_verified_at")
+  accountStatus   UserAccountStatus @default(ACTIVE) @map("account_status")
   fullName        String    @map("full_name")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

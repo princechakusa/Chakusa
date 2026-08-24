@@ -54,9 +54,10 @@ export default fp(async function adminAuthPlugin(fastify: FastifyInstance) {
           },
         },
       },
-      include: { user: { select: { email: true, fullName: true } } },
+      include: { user: { select: { email: true, fullName: true, accountStatus: true } } },
     });
     if (!membership) throw ApiError.auth(401, "AUTH_SESSION_EXPIRED", "Admin session expired");
+    if (membership.user.accountStatus === "DISABLED") throw ApiError.auth(403, "AUTH_ACCOUNT_DISABLED", "This account has been disabled");
 
     request.admin = {
       membershipId: membership.id,

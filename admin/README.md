@@ -21,7 +21,7 @@ The client is available at `http://localhost:5173` and expects the API at `http:
 npm run admin:build
 ```
 
-The static output is written to `admin/dist`. `_redirects` and `_headers` are included for Cloudflare static-assets compatibility. `wrangler.jsonc` deploys the output as a single-page application and contains no secrets.
+The static output is written to `admin/dist`. `_headers` supplies the security and cache headers. SPA fallback routing is configured only through `wrangler.jsonc`; a catch-all `_redirects` rewrite must not be added because Workers rejects it as a redirect loop.
 
 For the connected Cloudflare Worker, set the root directory to `admin`, the build command to `npm run build`, and the deploy command to `npm run deploy`. Add `VITE_API_URL=https://chakusa-api.onrender.com` as a build variable. The production API must set `ADMIN_CONSOLE_ENABLED=true` and `ADMIN_CONSOLE_ORIGIN` to the exact HTTPS console origin.
 

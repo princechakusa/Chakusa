@@ -19,12 +19,13 @@ describe("service catalog and availability", () => {
 
   it("persists structured services and keeps legacy service names compatible", async () => {
     const account = await registerAccount(app, { email: "service-owner@example.com" });
-    const created = await app.inject({ method: "POST", url: "/services", headers: authHeader(account.token), payload: { name: "Haircut", durationMinutes: 45, price: 35, depositAmount: 10, preparationMinutes: 5, cleanupMinutes: 10 } });
+    const created = await app.inject({ method: "POST", url: "/services", headers: authHeader(account.token), payload: { name: "Haircut", category: "Hair", sortOrder: 2, durationMinutes: 45, price: 35, depositAmount: 10, preparationMinutes: 5, cleanupMinutes: 10 } });
     expect(created.statusCode).toBe(201);
-    expect(created.json()).toMatchObject({ name: "Haircut", durationMinutes: 45, price: "35", depositAmount: "10", active: true, publiclyBookable: true });
+    expect(created.json()).toMatchObject({ name: "Haircut", category: "Hair", sortOrder: 2, durationMinutes: 45, price: "35", depositAmount: "10", active: true, publiclyBookable: true });
+    await app.inject({ method: "POST", url: "/services", headers: authHeader(account.token), payload: { name: "Color", category: "Hair", sortOrder: 1, durationMinutes: 60 } });
     const listed = await app.inject({ method: "GET", url: "/services?active=true", headers: authHeader(account.token) });
-    expect(listed.json()).toHaveLength(1);
-    expect((await prisma.business.findUniqueOrThrow({ where: { id: account.businessId } })).defaultServices).toEqual(["Haircut"]);
+    expect(listed.json().map((service: { name: string }) => service.name)).toEqual(["Color", "Haircut"]);
+    expect((await prisma.business.findUniqueOrThrow({ where: { id: account.businessId } })).defaultServices).toEqual(["Color", "Haircut"]);
   });
 
   it("rejects service assignments to a member of another business", async () => {

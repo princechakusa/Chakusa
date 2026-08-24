@@ -757,6 +757,7 @@ model ServiceOffering {
   businessId         String   @map("business_id")
   name               String
   description        String?
+  category           String?
   durationMinutes    Int      @map("duration_minutes")
   preparationMinutes Int      @default(0) @map("preparation_minutes")
   cleanupMinutes     Int      @default(0) @map("cleanup_minutes")

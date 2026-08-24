@@ -4,6 +4,7 @@ const money = z.number().nonnegative().max(99_999_999);
 const serviceFields = {
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullable().optional(),
+  category: z.string().trim().min(1).max(80).nullable().optional(),
   durationMinutes: z.number().int().min(5).max(1_440),
   preparationMinutes: z.number().int().min(0).max(240).default(0),
   cleanupMinutes: z.number().int().min(0).max(240).default(0),
@@ -21,7 +22,7 @@ function depositDoesNotExceedPrice(value: { price?: number | null; depositAmount
 
 export const createServiceOfferingSchema = z.object(serviceFields).refine(depositDoesNotExceedPrice, { message: "depositAmount cannot exceed price", path: ["depositAmount"] });
 export const updateServiceOfferingSchema = z.object({
-  name: serviceFields.name.optional(), description: serviceFields.description,
+  name: serviceFields.name.optional(), description: serviceFields.description, category: serviceFields.category,
   durationMinutes: serviceFields.durationMinutes.optional(), preparationMinutes: serviceFields.preparationMinutes.optional(), cleanupMinutes: serviceFields.cleanupMinutes.optional(),
   price: serviceFields.price, depositAmount: serviceFields.depositAmount, active: serviceFields.active.optional(), publiclyBookable: serviceFields.publiclyBookable.optional(), sortOrder: serviceFields.sortOrder.optional(), memberIds: serviceFields.memberIds.optional(),
 }).refine(depositDoesNotExceedPrice, { message: "depositAmount cannot exceed price", path: ["depositAmount"] });

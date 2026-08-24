@@ -78,7 +78,7 @@ export const appointmentsApi = {
   sendConfirmation: (id: string) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/send-confirmation`, {}),
   updatePayment: (id: string, paidAmount: number) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}/payment`, { paidAmount }),
 };
-export interface ServiceOfferingInput { name: string; description?: string | null; durationMinutes: number; preparationMinutes?: number; cleanupMinutes?: number; price?: number | null; depositAmount?: number | null; active?: boolean; publiclyBookable?: boolean; sortOrder?: number; memberIds?: string[]; }
+export interface ServiceOfferingInput { name: string; description?: string | null; category?: string | null; durationMinutes: number; preparationMinutes?: number; cleanupMinutes?: number; price?: number | null; depositAmount?: number | null; active?: boolean; publiclyBookable?: boolean; sortOrder?: number; memberIds?: string[]; }
 export const servicesApi = {
   list: (active?: boolean) => api.get<ServiceOfferingDto[]>(`/services${query({ active: active === undefined ? undefined : String(active) })}`),
   create: (body: ServiceOfferingInput) => api.post<ServiceOfferingDto>('/services', body),

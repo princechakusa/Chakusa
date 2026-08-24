@@ -39,6 +39,22 @@ describe("admin security foundation", () => {
     return (Array.isArray(header) ? header[0] : header)!.split(";")[0];
   }
 
+  it("allows credentialed CORS only for the configured administration origin", async () => {
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/admin/auth/login",
+      headers: {
+        origin: "http://localhost:5173",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type",
+      },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
   it("rejects ordinary product users at the admin login boundary", async () => {
     const account = await registerAccount(app, { email: "ordinary@example.com", password: "admin-password-123" });
     const response = await login("ordinary@example.com");

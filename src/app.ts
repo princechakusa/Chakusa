@@ -106,7 +106,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // safe for a mobile-only, bearer-token client with no browser-enforced
   // Origin header. Once a real web frontend domain exists, set
   // CORS_ALLOWED_ORIGINS and this becomes a real allowlist.
-  await app.register(cors, { origin: corsAllowedOrigins ?? true });
+  // The administration console uses an HttpOnly refresh cookie and sends
+  // credentialed cross-origin requests while the UI and API are deployed on
+  // separate hosts. Browsers reject even a successful login response unless
+  // the API explicitly opts into credentialed CORS. The origin callback still
+  // reflects only the configured allowlist in production, and admin routes
+  // independently enforce ADMIN_CONSOLE_ORIGIN as an exact match.
+  await app.register(cors, { origin: corsAllowedOrigins ?? true, credentials: true });
   const rateLimitEnabled = config.NODE_ENV !== "test" || options.enableRateLimit === true;
   if (rateLimitEnabled) {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });

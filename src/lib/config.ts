@@ -25,6 +25,11 @@ export const envSchema = z.object({
   // migration-only connection.
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
+  // Optional shared secret for the temporary HTTP-triggered scheduled-work
+  // fallback. When absent, POST /internal/worker/tick is disabled. Use a
+  // random value of at least 32 characters and send it only as a Bearer
+  // token from the external scheduler.
+  WORKER_TRIGGER_SECRET: z.preprocess((value) => value === "" ? undefined : value, z.string().min(32).optional()),
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),

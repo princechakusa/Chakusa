@@ -18,6 +18,7 @@ import feedbackRoutes from "./modules/feedback/feedback.routes.js";
 import reminderRoutes from "./modules/reminders/reminders.routes.js";
 import appointmentRoutes from "./modules/appointments/appointments.routes.js";
 import { readWorkerHeartbeat, workerHeartbeatHealthy } from './worker/workerHeartbeat.js';
+import { runTriggeredScheduledWork, validWorkerTriggerAuthorization } from './worker/scheduledWorkTrigger.js';
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import deviceRoutes from "./modules/devices/devices.routes.js";
 import messageRoutes from "./modules/messages/messages.routes.js";
@@ -135,6 +136,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
       reply.code(503);
       return { status: 'unavailable', lastSuccessAt: null };
     }
+  });
+
+  app.post('/internal/worker/tick', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
+    if (!config.WORKER_TRIGGER_SECRET) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    if (!validWorkerTriggerAuthorization(request.headers.authorization)) return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+    const result = await runTriggeredScheduledWork();
+    reply.send({ status: 'ok', ...result });
   });
 
   await app.register(authRoutes, {

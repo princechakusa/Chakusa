@@ -16,6 +16,7 @@ import templateRoutes from "./modules/templates/templates.routes.js";
 import reviewRequestRoutes from "./modules/reviews/reviews.routes.js";
 import feedbackRoutes from "./modules/feedback/feedback.routes.js";
 import reminderRoutes from "./modules/reminders/reminders.routes.js";
+import appointmentRoutes from "./modules/appointments/appointments.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import deviceRoutes from "./modules/devices/devices.routes.js";
 import messageRoutes from "./modules/messages/messages.routes.js";
@@ -137,6 +138,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(reviewRequestRoutes, { prefix: "/review-requests" });
   await app.register(feedbackRoutes, { prefix: "/feedback" });
   await app.register(reminderRoutes, { prefix: "/reminders" });
+  await app.register(appointmentRoutes, { prefix: "/appointments" });
   await app.register(dashboardRoutes, { prefix: "/dashboard" });
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });

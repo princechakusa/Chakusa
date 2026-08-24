@@ -176,6 +176,14 @@ enum ReminderStatus {
   dismissed
 }
 
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
 enum MessageTone {
   friendly
   professional
@@ -251,6 +259,11 @@ enum ActivityEventType {
   TEAM_MEMBER_JOINED
   TEAM_MEMBER_ROLE_CHANGED
   TEAM_MEMBER_REMOVED
+  APPOINTMENT_CREATED
+  APPOINTMENT_UPDATED
+  APPOINTMENT_COMPLETED
+  APPOINTMENT_CANCELED
+  APPOINTMENT_NO_SHOW
 }
 
 // Whether a customer opted out of a specific channel or every channel a
@@ -490,6 +503,7 @@ model Business {
   billingEvents    BillingEvent[]
   teamInvitations  TeamInvitation[]
   customerTags     CustomerTag[]
+  appointments     Appointment[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -508,6 +522,7 @@ model BusinessMember {
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -588,10 +603,38 @@ model Customer {
   optOuts        CustomerOptOut[]
   automationRuns AutomationRun[]
   tagAssignments CustomerTagAssignment[]
+  appointments   Appointment[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
   @@map("customers")
+}
+
+model Appointment {
+  id               String            @id @default(uuid())
+  businessId       String            @map("business_id")
+  customerId       String?           @map("customer_id")
+  assignedMemberId String?           @map("assigned_member_id")
+  serviceName      String            @map("service_name")
+  startsAt         DateTime          @map("starts_at")
+  endsAt           DateTime          @map("ends_at")
+  status           AppointmentStatus @default(SCHEDULED)
+  price            Decimal?          @db.Decimal(10, 2)
+  notes            String?
+  reminderMinutes  Int?              @map("reminder_minutes")
+  createdByUserId  String            @map("created_by_user_id")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedMember BusinessMember? @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, startsAt])
+  @@index([businessId, status, startsAt])
+  @@index([customerId, startsAt])
+  @@index([assignedMemberId, startsAt])
+  @@map("appointments")
 }
 
 // Owner-created labels for organising contacts. System audience labels are

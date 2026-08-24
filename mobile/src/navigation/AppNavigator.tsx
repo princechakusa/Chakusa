@@ -71,7 +71,6 @@ export function AppNavigator() {
     {routes.anonymous ? <>
       <Root.Screen name="FirstEntry" component={FirstEntryScreen} options={{ headerShown: false }} />
       <Root.Screen name="Login" component={AuthScreen} options={{ headerShown: false }} />
-      <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
     {status === 'authenticated' && routes.onboarding ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
@@ -80,6 +79,7 @@ export function AppNavigator() {
     {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />
     <Root.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset password' }} />
+    <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>
   </Root.Navigator>;
 }
 const styles = StyleSheet.create({ restoring: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.background }, routeTransition: { flex: 1, backgroundColor: colors.background }, restoringText: { ...typography.body, color: colors.textSecondary }, tabBar: { minHeight: 64, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', paddingTop: spacing.xs, paddingHorizontal: spacing.xs }, tab: { flex: 1, minWidth: 0, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 3 }, tabLabel: { ...typography.micro, fontSize: 10, color: colors.tabInactive }, tabLabelActive: { color: colors.primary } });

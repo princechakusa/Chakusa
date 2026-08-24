@@ -22,6 +22,8 @@ export const DEFAULT_TEMPLATE_BODIES: Record<MessageType, string> = {
     "Hi {{customer_name}}, your {{service_name}} appointment at {{business_name}} on {{booking_time}} has been canceled.",
   appointment_follow_up:
     "Hi {{customer_name}}, thank you for visiting {{business_name}} for your {{service_name}}. We hope to see you again.",
+  payment_reminder:
+    "Hi {{customer_name}}, your remaining balance for {{service_name}} at {{business_name}} is ready. Please use your secure payment link to pay.",
   public_profile_inquiry:
     "Hi {{customer_name}}, thanks for reaching out to {{business_name}} about your {{service_name}}! We'll get back to you shortly — feel free to call us at {{phone_number}} in the meantime.",
   lead_follow_up:

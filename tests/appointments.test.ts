@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../src/lib/prisma.js";
 import { authHeader, createTestApp, registerAccount, resetDatabase } from "./helpers.js";
-import { sendAppointmentConfirmation, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../src/modules/appointments/appointmentReminders.js";
+import { sendAppointmentConfirmation, sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../src/modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../src/lib/push/pushProvider.js";
 import type { MessagingProvider, OutboundMessage } from "../src/lib/messaging/messagingProvider.js";
 
@@ -98,5 +98,23 @@ describe("appointments", () => {
     expect(await sendDueCustomerAppointmentMessages(provider, 10, now)).toBe(3);
     expect(await sendDueCustomerAppointmentMessages(provider, 10, now)).toBe(0);
     expect(calls.map(call => call.body)).toEqual(expect.arrayContaining([expect.stringContaining("reminder"), expect.stringContaining("today"), expect.stringContaining("thank you")]));
+  });
+
+  it("sends one secure outstanding-payment reminder and exposes payment history", async () => {
+    const account = await fixture("payment-reminder@example.com");
+    await prisma.subscription.update({ where: { businessId: account.businessId }, data: { plan: "PRO", status: "ACTIVE" } });
+    await prisma.customer.update({ where: { id: account.customer.id }, data: { phone: "+15551234569", phoneE164: "+15551234569" } });
+    const appointment = await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Color", startsAt: new Date("2026-08-30T07:00:00.000Z"), endsAt: new Date("2026-08-30T08:00:00.000Z"), status: "COMPLETED", price: 100, paidAmount: 25, paymentStatus: "partially_paid" } });
+    await prisma.appointmentPaymentTransaction.create({ data: { businessId: account.businessId, appointmentId: appointment.id, kind: "balance", amount: 75, currency: "USD", checkoutUrl: "https://checkout.stripe.test/balance" } });
+    const calls: OutboundMessage[] = []; const provider: MessagingProvider = { id: "fake", supportsChannel: () => true, send: async message => { calls.push(message); return { accepted: true, providerMessageId: "payment-reminder-1", permanentFailure: false }; }, parseDeliveryWebhook: () => null, parseInboundWebhook: () => null, verifyWebhookSignature: () => false };
+    const now = new Date("2026-09-01T08:00:00.000Z");
+    expect(await sendDueAppointmentPaymentReminders(provider, 10, now)).toBe(1);
+    expect(await sendDueAppointmentPaymentReminders(provider, 10, now)).toBe(0);
+    expect(calls[0]?.body).toContain("75.00 USD");
+    expect(calls[0]?.body).toContain("https://checkout.stripe.test/balance");
+    const response = await app.inject({ method: "GET", url: `/appointments/${appointment.id}`, headers: authHeader(account.token) });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().paymentTransactions).toHaveLength(1);
+    expect(response.json().paymentReminderSentAt).not.toBeNull();
   });
 });

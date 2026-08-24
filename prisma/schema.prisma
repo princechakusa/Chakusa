@@ -151,6 +151,7 @@ enum MessageType {
   appointment_rescheduled
   appointment_canceled
   appointment_follow_up
+  payment_reminder
 }
 
 enum MessageChannel {
@@ -667,6 +668,7 @@ model Appointment {
   rescheduleConfirmationSentAt DateTime? @map("reschedule_confirmation_sent_at")
   cancellationConfirmationSentAt DateTime? @map("cancellation_confirmation_sent_at")
   followUpSentAt DateTime?           @map("follow_up_sent_at")
+  paymentReminderSentAt DateTime?    @map("payment_reminder_sent_at")
   createdByUserId  String            @map("created_by_user_id")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
@@ -686,6 +688,7 @@ model Appointment {
   @@index([status, startsAt, customerReminderSentAt])
   @@index([status, startsAt, sameDayReminderSentAt])
   @@index([status, endsAt, followUpSentAt])
+  @@index([status, paymentStatus, endsAt, paymentReminderSentAt])
   @@index([businessId, paymentStatus, startsAt])
   @@map("appointments")
 }

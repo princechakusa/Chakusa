@@ -39,6 +39,8 @@ describe("Stripe Connect appointment payments", () => {
     expect((await app.inject({ method: "POST", url: "/webhooks/stripe", headers: { "stripe-signature": "valid" }, payload: {} })).statusCode).toBe(200);
     expect(await prisma.appointment.findUnique({ where: { id: appointment.id }, select: { paidAmount: true, paymentStatus: true } })).toMatchObject({ paidAmount: expect.objectContaining({}), paymentStatus: "partially_paid" });
     expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appointment.id } })).paidAmount.toNumber()).toBe(25);
+    expect((await app.inject({ method: "POST", url: "/webhooks/stripe", headers: { "stripe-signature": "valid" }, payload: {} })).statusCode).toBe(200);
+    expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appointment.id } })).paidAmount.toNumber()).toBe(25);
 
     const refund = await app.inject({ method: "POST", url: `/payments/${transaction.id}/refund`, headers, payload: { amount: 10 } });
     expect(refund.statusCode).toBe(200); expect(refund.json()).toMatchObject({ status: "partially_refunded", refundedAmount: "10" });

@@ -113,8 +113,13 @@ export async function createAppointmentPaymentLink(
     throw ApiError.conflict(
       kind === "deposit"
         ? "The deposit has already been paid or is not required"
-        : "This appointment has no outstanding balance",
+      : "This appointment has no outstanding balance",
     );
+  const existing = await prisma.appointmentPaymentTransaction.findFirst({
+    where: { appointmentId, businessId, kind, status: "pending", checkoutUrl: { not: null } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) return existing;
   const currency = (appointment.business.currency ?? "USD").toUpperCase();
   const transaction = await prisma.appointmentPaymentTransaction.create({
     data: { businessId, appointmentId, kind, amount, currency },
@@ -256,8 +261,10 @@ export async function applyStripeEvent(event: Stripe.Event) {
     if (!paymentIntentId)
       throw ApiError.badRequest("Paid Checkout Session has no PaymentIntent");
     await prisma.$transaction(async (tx) => {
-      await tx.appointmentPaymentTransaction.update({
-        where: { id: transaction.id },
+      // Stripe retries events. Claim the transaction atomically so a duplicate
+      // delivery can never increment the appointment balance twice.
+      const claimed = await tx.appointmentPaymentTransaction.updateMany({
+        where: { id: transaction.id, status: "pending" },
         data: {
           status: "paid",
           paidAt: new Date(),
@@ -265,6 +272,7 @@ export async function applyStripeEvent(event: Stripe.Event) {
           failureCode: null,
         },
       });
+      if (claimed.count !== 1) return;
       const appointment = await tx.appointment.findUniqueOrThrow({
         where: { id: transaction.appointmentId },
       });

@@ -246,4 +246,18 @@ describe("admin guarded actions", () => {
     expect(JSON.stringify(response.json())).not.toMatch(/passwordHash|tokenHash|refreshToken|providerMessageId/);
     expect(await prisma.adminAuditLog.findFirst({ where: { action: "SUPPORT_READ_ONLY_CONTEXT_VIEWED", targetId: support.account.businessId } })).toMatchObject({ adminEmail: support.email, newValue: { mode: "read_only" } });
   });
+
+  it("seeds and audits platform feature flag changes with settings permissions", async () => {
+    const platformAdmin = await admin("PLATFORM_ADMIN");
+    const listed = await app.inject({ method: "GET", url: "/admin/settings", headers: headers(platformAdmin.token) });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().items).toHaveLength(4);
+    const changed = await app.inject({ method: "PATCH", url: "/admin/settings", headers: headers(platformAdmin.token, platformAdmin.csrf), payload: { key: "automation_enabled", enabled: false } });
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json()).toMatchObject({ key: "automation_enabled", value: false });
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "PLATFORM_SETTING_UPDATED", targetId: "automation_enabled" } })).toMatchObject({ adminEmail: platformAdmin.email, oldValue: { value: true }, newValue: { value: false } });
+    const readOnly = await admin("READ_ONLY");
+    const denied = await app.inject({ method: "PATCH", url: "/admin/settings", headers: headers(readOnly.token, readOnly.csrf), payload: { key: "automation_enabled", enabled: true } });
+    expect(denied.statusCode).toBe(403);
+  });
 });

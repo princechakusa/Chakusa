@@ -37,6 +37,11 @@ export const adminAutomationRetrySchema = z.object({
   confirmation: z.literal("RETRY"),
 });
 
+export const adminSettingUpdateSchema = z.object({
+  key: z.enum(["maintenance_mode", "automation_enabled", "communications_enabled", "support_read_only_impersonation"]),
+  enabled: z.boolean(),
+});
+
 export const adminRoleSchema = z.enum([
   "SUPER_ADMIN",
   "PLATFORM_ADMIN",

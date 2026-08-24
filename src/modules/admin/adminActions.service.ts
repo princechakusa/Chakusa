@@ -134,6 +134,26 @@ export async function retryAutomationRun(actor: AdminAuditActor, runId: string, 
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+const PLATFORM_SETTING_DEFAULTS = [
+  { key: "maintenance_mode", enabled: false, description: "Gate platform maintenance mode. Enforced by the deployment layer when enabled." },
+  { key: "automation_enabled", enabled: true, description: "Allow automation workers to process new runs." },
+  { key: "communications_enabled", enabled: true, description: "Allow outbound communication providers to send." },
+  { key: "support_read_only_impersonation", enabled: true, description: "Allow support agents to open audited read-only account context." },
+] as const;
+
+export async function listAdminPlatformSettings() {
+  for (const setting of PLATFORM_SETTING_DEFAULTS) await prisma.platformSetting.upsert({ where: { key: setting.key }, create: { key: setting.key, value: setting.enabled, description: setting.description }, update: {} });
+  return prisma.platformSetting.findMany({ where: { key: { in: PLATFORM_SETTING_DEFAULTS.map((setting) => setting.key) } }, orderBy: { key: "asc" }, select: { key: true, value: true, description: true, updatedAt: true } });
+}
+
+export async function updateAdminPlatformSetting(actor: AdminAuditActor, key: (typeof PLATFORM_SETTING_DEFAULTS)[number]["key"], enabled: boolean, context: AdminAuditContext) {
+  const current = await prisma.platformSetting.findUnique({ where: { key } });
+  if (!current) throw ApiError.notFound("Platform setting not found");
+  const updated = await prisma.platformSetting.update({ where: { key }, data: { value: enabled }, select: { key: true, value: true, description: true, updatedAt: true } });
+  await recordAdminAudit({ actor, action: "PLATFORM_SETTING_UPDATED", targetType: "platform_setting", targetId: key, oldValue: { value: current.value }, newValue: { value: enabled }, context });
+  return updated;
+}
+
 function requireExactEmail(confirmation: string, email: string) {
   if (confirmation.toLowerCase() !== email.toLowerCase()) {
     throw ApiError.badRequest("Enter the exact user email to confirm the admin access change");

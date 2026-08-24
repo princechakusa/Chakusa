@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
-import { deleteBusiness, grantAdminAccess, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
+import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminSettingUpdateSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
+import { deleteBusiness, grantAdminAccess, listAdminPlatformSettings, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateAdminPlatformSetting, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAutomationListQuerySchema,
@@ -313,5 +313,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/audit", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "audit.read");
     reply.send(await listAdminAuditLogs(adminAuditListQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/settings", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.read");
+    reply.send({ items: await listAdminPlatformSettings() });
+  });
+
+  fastify.patch("/settings", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = adminSettingUpdateSchema.parse(request.body);
+    reply.send(await updateAdminPlatformSetting(request.admin!, input.key, input.enabled, auditContext(request)));
   });
 }

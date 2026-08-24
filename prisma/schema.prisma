@@ -493,6 +493,17 @@ model AdminMembership {
   @@map("admin_memberships")
 }
 
+model PlatformSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
 /// Append-only platform audit ledger. Actor identity and role are snapshotted
 /// as strings instead of foreign keys so account deletion or role changes can
 /// never rewrite or cascade-delete historical evidence.

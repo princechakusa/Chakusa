@@ -16,6 +16,7 @@ const CommunicationsPage = lazy(() => import("./pages/CommunicationsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
 const SecurityPage = lazy(() => import("./pages/SecurityPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 function ProtectedLayout() {
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="support" element={<SupportPage />} />
       <Route path="audit" element={<AuditPage />} />
       <Route path="security" element={<SecurityPage />} />
+      <Route path="settings" element={<SettingsPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Route>
   </Routes></Suspense>;

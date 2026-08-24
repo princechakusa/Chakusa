@@ -30,6 +30,7 @@ export const bulkImportCustomersSchema = z.object({
     .max(500, "Import is limited to 500 customers at a time"),
 });
 export type BulkImportCustomersInput = z.infer<typeof bulkImportCustomersSchema>;
+export const customerCsvPreviewSchema = z.object({ csv: z.string().min(1).max(1_000_000) });
 
 export const listCustomersQuerySchema = z.object({
   search: z.string().optional(),

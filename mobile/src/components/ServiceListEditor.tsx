@@ -1,0 +1,12 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { addService } from '../domain/businessSetup';
+import { colors, radius, spacing, typography } from '../theme';
+
+export function ServiceListEditor({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+  const [draft, setDraft] = useState('');
+  const add = () => { const next = addService(value, draft); onChange(next); if (next !== value) setDraft(''); };
+  return <View style={styles.wrap}><Text style={styles.label}>Services</Text><Text style={styles.helper}>These appear when creating appointments and customer follow-ups.</Text><View style={styles.addRow}><TextInput accessibilityLabel="New service" value={draft} onChangeText={setDraft} onSubmitEditing={add} placeholder="Add a service" placeholderTextColor={colors.textSecondary} style={styles.input} /><Pressable accessibilityRole="button" accessibilityLabel="Add service" disabled={!draft.trim()} onPress={add} style={styles.add}><Ionicons name="add" size={22} color={colors.surface} /></Pressable></View><View style={styles.chips}>{value.map(service => <View key={service} style={styles.chip}><Text style={styles.chipText}>{service}</Text><Pressable accessibilityRole="button" accessibilityLabel={`Remove ${service}`} hitSlop={8} onPress={() => onChange(value.filter(item => item !== service))}><Ionicons name="close-circle" size={20} color={colors.textSecondary} /></Pressable></View>)}</View></View>;
+}
+const styles = StyleSheet.create({ wrap: { gap: spacing.xs }, label: { ...typography.caption, color: colors.text }, helper: { ...typography.caption, color: colors.textSecondary }, addRow: { flexDirection: 'row', gap: spacing.xs }, input: { minHeight: 48, flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, ...typography.body, color: colors.text }, add: { width: 48, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, chip: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.round, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, chipText: { ...typography.caption, color: colors.text } });

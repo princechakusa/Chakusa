@@ -33,4 +33,12 @@ describe("business onboarding completion", () => {
     expect(response.json().onboardingCompletedAt).toBeTypeOf("string");
     expect((await prisma.business.findUnique({ where: { id: account.businessId } }))?.onboardingCompletedAt).not.toBeNull();
   });
+
+  it("rejects malformed structured opening times", async () => {
+    const account = await registerAccount(app);
+    const invalid = await app.inject({ method: "PATCH", url: "/business", headers: authHeader(account.token), payload: {
+      workingHours: { version: 1, days: Object.fromEntries(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(day => [day, { enabled: true, opensAt: "9am", closesAt: "17:00" }])) },
+    } });
+    expect(invalid.statusCode).toBe(400);
+  });
 });

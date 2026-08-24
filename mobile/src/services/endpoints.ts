@@ -30,6 +30,7 @@ export const businessApi = {
   get: () => api.get<BusinessDto>('/business'),
   patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone'>>) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
+  exportData: () => api.get<Record<string, unknown>>('/business/export'),
 };
 export const devicesApi = {
   register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) => api.post<{ id: string; platform: string; provider: string; isActive: boolean; lastUsedAt: string; createdAt: string }>('/devices', body),

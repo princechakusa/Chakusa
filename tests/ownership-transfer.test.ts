@@ -33,5 +33,15 @@ describe('business ownership transfer', () => {
     const newContext = await app.inject({ method: 'GET', url: '/auth/me', headers: authHeader(targetToken) });
     expect(oldContext.json().role).toBe('ADMIN');
     expect(newContext.json().role).toBe('OWNER');
+
+    await prisma.customer.create({ data: { businessId: owner.businessId, name: 'Export Customer', email: 'customer@example.com' } });
+    const formerOwnerExport = await app.inject({ method: 'GET', url: '/business/export', headers: authHeader(owner.token) });
+    const ownerExport = await app.inject({ method: 'GET', url: '/business/export', headers: authHeader(targetToken) });
+    expect(formerOwnerExport.statusCode).toBe(403);
+    expect(ownerExport.statusCode).toBe(200);
+    expect(ownerExport.headers['content-disposition']).toContain('.json');
+    expect(ownerExport.json()).toMatchObject({ schemaVersion: 1, business: { name: 'Acme Studio' }, customers: [{ name: 'Export Customer' }] });
+    expect(ownerExport.body).not.toContain('passwordHash');
+    expect(ownerExport.body).not.toContain('refreshToken');
   });
 });

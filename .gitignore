@@ -5,6 +5,19 @@ dist/
 # secret manager. No .env file, including templates, belongs in Git.
 .env*
 
+# Private keys and signing credentials must be supplied by the deployment
+# secret manager and must never be committed.
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json
+
 *.log
 coverage/
 .DS_Store

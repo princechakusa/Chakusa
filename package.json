@@ -27,7 +27,8 @@
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "admin:dev": "npm --prefix admin run dev",
     "admin:typecheck": "npm --prefix admin run typecheck",
-    "admin:build": "npm --prefix admin run build"
+    "admin:build": "npm --prefix admin run build",
+    "security:repository": "node scripts/check-repository-secrets.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

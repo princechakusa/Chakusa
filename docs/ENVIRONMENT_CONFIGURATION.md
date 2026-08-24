@@ -2,6 +2,8 @@
 
 Chakusa does not store `.env` files or environment templates in Git. Configuration must be injected into the process by the deployment platform, CI system, EAS, Cloudflare, or an approved local secret manager.
 
+The tracked `.gitignore` blocks `.env` files and common private-key formats. CI runs `npm run security:repository` and rejects a change if one of those files is tracked.
+
 ## Local test API
 
 Supply `DATABASE_URL` and optionally `DIRECT_URL` in the current shell, pointing to a local PostgreSQL database named exactly `chakusa_test`, then run `npm run dev:test`. The safety guard rejects remote hosts, other database names, and non-test environments. The script generates an ephemeral JWT secret and explicitly disables remote integrations.

@@ -237,4 +237,13 @@ describe("admin guarded actions", () => {
     const denied = await app.inject({ method: "POST", url: `/admin/automation/runs/${run.id}/retry`, headers: headers(readOnly.token, readOnly.csrf), payload: { confirmation: "RETRY" } });
     expect(denied.statusCode).toBe(403);
   });
+
+  it("provides an audited read-only support context without exposing credentials", async () => {
+    const support = await admin("SUPPORT_AGENT");
+    const response = await app.inject({ method: "GET", url: `/admin/support/businesses/${support.account.businessId}/context`, headers: headers(support.token) });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ id: support.account.businessId, owner: { email: support.email }, platformStatus: "ACTIVE" });
+    expect(JSON.stringify(response.json())).not.toMatch(/passwordHash|tokenHash|refreshToken|providerMessageId/);
+    expect(await prisma.adminAuditLog.findFirst({ where: { action: "SUPPORT_READ_ONLY_CONTEXT_VIEWED", targetId: support.account.businessId } })).toMatchObject({ adminEmail: support.email, newValue: { mode: "read_only" } });
+  });
 });

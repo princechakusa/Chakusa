@@ -19,6 +19,7 @@ import {
   getAdminCommunicationOverview,
   getAdminDashboard,
   getAdminUser,
+  getAdminSupportContext,
   listAdminAuditLogs,
   listAdminAutomationRuns,
   listAdminBusinesses,
@@ -27,6 +28,7 @@ import {
   listAdminSupportTickets,
   listAdminUsers,
 } from "./adminRead.service.js";
+import { recordAdminAudit } from "./adminAudit.service.js";
 import {
   authenticateAdminUser,
   listOwnAdminSessions,
@@ -298,6 +300,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/support", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "support.read");
     reply.send(await listAdminSupportTickets(adminSupportListQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/support/businesses/:id/context", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "support.impersonate.read");
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const context = await getAdminSupportContext(id);
+    await recordAdminAudit({ actor: request.admin!, action: "SUPPORT_READ_ONLY_CONTEXT_VIEWED", targetType: "business", targetId: id, newValue: { mode: "read_only", memberCount: context.members.length, ticketCount: context.supportTickets.length }, context: auditContext(request) });
+    reply.send(context);
   });
 
   fastify.get("/audit", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

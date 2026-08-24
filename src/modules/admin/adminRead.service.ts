@@ -381,6 +381,22 @@ export async function listAdminSupportTickets(query: AdminSupportListQuery) {
   return pageEnvelope(rows, total, query.page, query.pageSize);
 }
 
+export async function getAdminSupportContext(businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true, name: true, platformStatus: true, verifiedAt: true, onboardingCompletedAt: true, createdAt: true,
+      owner: { select: { id: true, fullName: true, email: true, emailVerifiedAt: true, accountStatus: true, createdAt: true } },
+      members: { select: { id: true, role: true, status: true, createdAt: true, user: { select: { id: true, fullName: true, email: true, accountStatus: true, authSessions: { orderBy: { createdAt: "desc" }, take: 5, select: { scope: true, createdAt: true, lastUsedAt: true, expiresAt: true, revokedAt: true, ipAddress: true, userAgent: true } } } } } },
+      supportTickets: { orderBy: { createdAt: "desc" }, take: 20, select: { id: true, subject: true, category: true, status: true, createdAt: true, updatedAt: true, resolvedAt: true } },
+      activityEvents: { orderBy: { createdAt: "desc" }, take: 30, select: { id: true, eventType: true, entityType: true, entityId: true, createdAt: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 20, select: { id: true, messageType: true, channel: true, status: true, sentAt: true, deliveredAt: true, providerErrorCode: true, createdAt: true } },
+    },
+  });
+  if (!business) throw ApiError.notFound("Business not found");
+  return business;
+}
+
 export async function listAdminAuditLogs(query: AdminAuditListQuery) {
   const where: Prisma.AdminAuditLogWhereInput = {
     ...(query.action ? { action: query.action } : {}),

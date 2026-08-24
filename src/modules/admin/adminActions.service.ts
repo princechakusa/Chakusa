@@ -21,6 +21,22 @@ export async function resetBusinessOnboarding(
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+export async function updateBusinessCohort(actor: AdminAuditActor, businessId: string, cohort: string | null, context: AdminAuditContext) {
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, betaCohort: true } });
+  if (!business) throw ApiError.notFound("Business not found");
+  const updated = await prisma.business.update({ where: { id: businessId }, data: { betaCohort: cohort || null }, select: { id: true, betaCohort: true } });
+  await recordAdminAudit({ actor, action: "BUSINESS_BETA_COHORT_UPDATED", targetType: "business", targetId: businessId, oldValue: { cohort: business.betaCohort }, newValue: { cohort: updated.betaCohort }, context });
+  return updated;
+}
+
+export async function updateBetaFeedback(actor: AdminAuditActor, id: string, status: "OPEN" | "IN_REVIEW" | "RESOLVED" | "CLOSED", internalNotes: string | null, context: AdminAuditContext) {
+  const current = await prisma.betaFeedback.findUnique({ where: { id }, select: { id: true, status: true, internalNotes: true } });
+  if (!current) throw ApiError.notFound("Feedback not found");
+  const updated = await prisma.betaFeedback.update({ where: { id }, data: { status, internalNotes }, select: { id: true, status: true, internalNotes: true, updatedAt: true } });
+  await recordAdminAudit({ actor, action: "BETA_FEEDBACK_UPDATED", targetType: "beta_feedback", targetId: id, oldValue: { status: current.status, internalNotes: current.internalNotes }, newValue: { status: updated.status, internalNotes: updated.internalNotes }, context });
+  return updated;
+}
+
 export async function verifyBusiness(actor: AdminAuditActor, businessId: string, confirmation: string, context: AdminAuditContext) {
   return prisma.$transaction(async (tx) => {
     const business = await tx.business.findUnique({ where: { id: businessId }, select: { id: true, name: true, verifiedAt: true, platformStatus: true } });

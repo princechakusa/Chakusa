@@ -15,6 +15,7 @@ const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const AutomationPage = lazy(() => import("./pages/AutomationPage"));
 const CommunicationsPage = lazy(() => import("./pages/CommunicationsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
+const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
 const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -42,6 +43,7 @@ export default function App() {
       <Route path="automation" element={<AutomationPage />} />
       <Route path="communications" element={<CommunicationsPage />} />
       <Route path="support" element={<SupportPage />} />
+      <Route path="feedback" element={<FeedbackPage />} />
       <Route path="audit" element={<AuditPage />} />
       <Route path="security" element={<SecurityPage />} />
       <Route path="settings" element={<SettingsPage />} />

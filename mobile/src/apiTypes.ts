@@ -151,6 +151,8 @@ export interface WeeklyOwnerReportDto { id: string; weekKey: string; periodStart
 export interface CalendarSubscriptionDto { id: string; label: string; createdAt: string; revokedAt: string | null; lastAccessedAt: string | null; }
 export type SupportTicketCategory = 'account' | 'billing' | 'booking' | 'messaging' | 'technical' | 'other';
 export interface SupportTicketDto { id: string; category: SupportTicketCategory; subject: string; message: string; status: 'open' | 'in_progress' | 'resolved' | 'closed'; expectedResponseAt: string; resolvedAt: string | null; createdAt: string; updatedAt: string; }
+export type BetaFeedbackCategory = 'BUG' | 'PERFORMANCE' | 'BOOKING' | 'PAYMENTS' | 'AUTOMATION' | 'REPORTING' | 'UX' | 'OTHER';
+export interface BetaFeedbackDto { id: string; rating: number; category: BetaFeedbackCategory; title: string; description: string; status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'CLOSED'; createdAt: string; }
 export type AttentionCategory = 'missed_call_followup' | 'customer_due' | 'review_opportunity' | 'payment_outstanding';
 export interface AttentionItemDto { category: AttentionCategory; id: string; customerId: string | null; customerName: string | null; customerPhone: string | null; detail: string | null; occurredAt: string; message: string | null; amount: number | null; }
 

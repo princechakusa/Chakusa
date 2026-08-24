@@ -12,6 +12,8 @@ export const adminCsrfHeaderSchema = z.string().min(32).max(256);
 export const adminBusinessConfirmationSchema = z.object({
   confirmation: z.string().min(1).max(200),
 });
+export const adminBusinessCohortSchema = z.object({ cohort: z.string().trim().max(80).nullable() });
+export const adminFeedbackUpdateSchema = z.object({ status: z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "CLOSED"]), internalNotes: z.string().trim().max(4000).nullable().optional() });
 
 export const adminBusinessSuspensionSchema = adminBusinessConfirmationSchema.extend({
   reason: z.string().trim().min(10).max(500),

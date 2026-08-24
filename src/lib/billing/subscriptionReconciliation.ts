@@ -176,6 +176,18 @@ export function normalizeGoogleState(purchase: GoogleSubscriptionPurchaseV2, pur
 
 export type ReconcileOutcome = "applied" | "stale-ignored" | "not-found";
 
+function subscriptionEventType(existing: { plan: Plan; status: SubscriptionStatus }, next: NormalizedSubscriptionState): "TRIAL_STARTED" | "TRIAL_EXPIRED" | "TRIAL_CONVERTED" | "SUBSCRIPTION_STARTED" | "UPGRADE" | "DOWNGRADE" | "CANCELLATION" | "GRACE_PERIOD" | "REACTIVATION" | "EXPIRATION" | null {
+  if (existing.status === "TRIALING" && next.status === "ACTIVE") return "TRIAL_CONVERTED";
+  if (existing.status !== "TRIALING" && next.status === "TRIALING") return "TRIAL_STARTED";
+  if (existing.status !== "EXPIRED" && next.status === "EXPIRED") return "EXPIRATION";
+  if (existing.status !== "CANCELED" && next.status === "CANCELED") return "CANCELLATION";
+  if (existing.status !== "GRACE_PERIOD" && next.status === "GRACE_PERIOD") return "GRACE_PERIOD";
+  if (["EXPIRED", "CANCELED"].includes(existing.status) && next.status === "ACTIVE") return "REACTIVATION";
+  if (existing.plan !== next.plan) return ["FREE", "PRO", "BUSINESS"].indexOf(next.plan) > ["FREE", "PRO", "BUSINESS"].indexOf(existing.plan) ? "UPGRADE" : "DOWNGRADE";
+  if (existing.plan === "FREE" && next.plan !== "FREE") return "SUBSCRIPTION_STARTED";
+  return null;
+}
+
 /**
  * The one place a NormalizedSubscriptionState is ever written to the
  * database. Tenant-scoped by an explicit `businessId` the caller must have
@@ -221,6 +233,10 @@ export async function applyNormalizedState(
         providerEventAt: state.effectiveAt,
       },
     });
+    const eventType = subscriptionEventType(existing, state);
+    if (eventType) {
+      await db.subscriptionEvent.create({ data: { businessId, type: eventType, provider: state.provider, fromPlan: existing.plan, toPlan: state.plan, fromStatus: existing.status, toStatus: state.status, effectiveAt: state.effectiveAt } });
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       // Two businesses raced to claim the same originalTransactionId/

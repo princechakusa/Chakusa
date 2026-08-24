@@ -9,6 +9,7 @@ import type {
   AdminBusinessListQuery,
   AdminCommunicationListQuery,
   AdminDashboardQuery,
+  AdminFeedbackListQuery,
   AdminSubscriptionListQuery,
   AdminSupportListQuery,
   AdminUserListQuery,
@@ -204,7 +205,7 @@ export async function getAdminBetaAnalytics() {
   const day = new Date(now.getTime() - 86_400_000);
   const week = new Date(now.getTime() - 7 * 86_400_000);
   const month = new Date(now.getTime() - 30 * 86_400_000);
-  const [cohort, activeDaily, activeWeekly, activeMonthly, lifecycle] = await Promise.all([
+  const [cohort, activeDaily, activeWeekly, activeMonthly, lifecycle, subscriptionEvents] = await Promise.all([
     prisma.$queryRaw<{ total: bigint; active: bigint; onboarding: bigint; services: bigint; customers: bigint; bookings: bigint; completed: bigint; payments: bigint; automation: bigint; review_requests: bigint; reviews: bigint; weekly_reports: bigint }[]>(Prisma.sql`
       SELECT COUNT(*) AS total,
         COUNT(*) FILTER (WHERE platform_status = 'ACTIVE') AS active,
@@ -224,6 +225,7 @@ export async function getAdminBetaAnalytics() {
     prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${week}`),
     prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${month}`),
     prisma.$queryRaw<{ trialing: bigint; active: bigint; expired: bigint; canceled: bigint; grace: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'TRIALING') AS trialing, COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active, COUNT(*) FILTER (WHERE status = 'EXPIRED') AS expired, COUNT(*) FILTER (WHERE status = 'CANCELED') AS canceled, COUNT(*) FILTER (WHERE status = 'GRACE_PERIOD') AS grace FROM subscriptions`),
+    prisma.subscriptionEvent.groupBy({ by: ["type"], _count: { _all: true } }),
   ]);
   const row = cohort[0];
   const total = Number(row?.total ?? 0);
@@ -231,7 +233,7 @@ export async function getAdminBetaAnalytics() {
     generatedAt: now,
     businesses: { totalBeta: total, active: Number(row?.active ?? 0), dailyActive: Number(activeDaily[0]?.count ?? 0), weeklyActive: Number(activeWeekly[0]?.count ?? 0), monthlyActive: Number(activeMonthly[0]?.count ?? 0), inactive: Math.max(0, total - Number(activeMonthly[0]?.count ?? 0)) },
     activation: { onboardingCompleted: Number(row?.onboarding ?? 0), firstService: Number(row?.services ?? 0), firstCustomer: Number(row?.customers ?? 0), firstBooking: Number(row?.bookings ?? 0), firstAppointmentCompleted: Number(row?.completed ?? 0), firstPaymentCollected: Number(row?.payments ?? 0), firstAutomationExecuted: Number(row?.automation ?? 0), firstReviewRequested: Number(row?.review_requests ?? 0), firstReviewReceived: Number(row?.reviews ?? 0), firstWeeklyReportGenerated: Number(row?.weekly_reports ?? 0) },
-    commercial: { trialing: Number(lifecycle[0]?.trialing ?? 0), active: Number(lifecycle[0]?.active ?? 0), gracePeriod: Number(lifecycle[0]?.grace ?? 0), expired: Number(lifecycle[0]?.expired ?? 0), canceled: Number(lifecycle[0]?.canceled ?? 0), trialToPaidConversion: null, churn: null, reactivations: null },
+    commercial: { trialing: Number(lifecycle[0]?.trialing ?? 0), active: Number(lifecycle[0]?.active ?? 0), gracePeriod: Number(lifecycle[0]?.grace ?? 0), expired: Number(lifecycle[0]?.expired ?? 0), canceled: Number(lifecycle[0]?.canceled ?? 0), trialToPaidConversion: null, churn: null, reactivations: null, events: subscriptionEvents.map((event) => ({ type: event.type, count: event._count._all })) },
   };
 }
 
@@ -440,6 +442,20 @@ export async function listAdminSupportTickets(query: AdminSupportListQuery) {
       select: { id: true, category: true, subject: true, message: true, status: true, expectedResponseAt: true, resolvedAt: true, createdAt: true, updatedAt: true, business: { select: { id: true, name: true } }, createdByUser: { select: { id: true, fullName: true, email: true } } },
     }),
     prisma.supportTicket.count({ where }),
+  ]);
+  return pageEnvelope(rows, total, query.page, query.pageSize);
+}
+
+export async function listAdminFeedback(query: AdminFeedbackListQuery) {
+  const where: Prisma.BetaFeedbackWhereInput = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.category ? { category: query.category } : {}),
+    ...(query.rating ? { rating: query.rating } : {}),
+    ...(query.search ? { OR: [{ title: { contains: query.search, mode: "insensitive" } }, { description: { contains: query.search, mode: "insensitive" } }, { business: { name: { contains: query.search, mode: "insensitive" } } }] } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.betaFeedback.findMany({ where, orderBy: { createdAt: "desc" }, ...pageArgs(query.page, query.pageSize), include: { business: { select: { id: true, name: true, industry: true } }, createdByUser: { select: { fullName: true, email: true } } } }),
+    prisma.betaFeedback.count({ where }),
   ]);
   return pageEnvelope(rows, total, query.page, query.pageSize);
 }

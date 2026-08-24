@@ -220,6 +220,37 @@ enum FeedbackStatus {
   resolved
 }
 
+enum BetaFeedbackStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum BetaFeedbackCategory {
+  BUG
+  PERFORMANCE
+  BOOKING
+  PAYMENTS
+  AUTOMATION
+  REPORTING
+  UX
+  OTHER
+}
+
+enum SubscriptionEventType {
+  TRIAL_STARTED
+  TRIAL_EXPIRED
+  TRIAL_CONVERTED
+  SUBSCRIPTION_STARTED
+  UPGRADE
+  DOWNGRADE
+  CANCELLATION
+  GRACE_PERIOD
+  REACTIVATION
+  EXPIRATION
+}
+
 enum ReminderStatus {
   due
   sent
@@ -401,6 +432,7 @@ model User {
   deviceTokens        DeviceToken[]
   sentTeamInvitations TeamInvitation[]     @relation("TeamInvitationInviter")
   supportTickets      SupportTicket[]
+  betaFeedback        BetaFeedback[]
   adminMembership     AdminMembership?
 
   @@index([createdAt])
@@ -616,6 +648,7 @@ model Business {
   // nothing in this codebase ever updates this field after creation.
   publicSlug                        String?     @unique @map("public_slug")
   onboardingCompletedAt             DateTime?   @map("onboarding_completed_at")
+  betaCohort                         String?    @map("beta_cohort")
   platformStatus                    BusinessPlatformStatus @default(ACTIVE) @map("platform_status")
   verifiedAt                        DateTime?   @map("verified_at")
   suspendedAt                       DateTime?   @map("suspended_at")
@@ -656,11 +689,58 @@ model Business {
   weeklyOwnerReports             WeeklyOwnerReport[]
   externalCalendarSubscriptions  ExternalCalendarSubscription[]
   supportTickets                 SupportTicket[]
+  betaFeedback                   BetaFeedback[]
+  subscriptionEvents             SubscriptionEvent[]
 
   @@index([ownerId])
   @@index([createdAt])
   @@index([platformStatus, createdAt])
+  @@index([betaCohort])
   @@map("businesses")
+}
+
+model BetaFeedback {
+  id            String              @id @default(uuid())
+  businessId    String              @map("business_id")
+  createdByUserId String            @map("created_by_user_id")
+  rating        Int
+  category      BetaFeedbackCategory
+  title         String
+  description   String
+  appVersion    String?             @map("app_version")
+  platform      String?
+  deviceModel   String?             @map("device_model")
+  buildNumber   String?             @map("build_number")
+  screenshotUrl String?             @map("screenshot_url")
+  status        BetaFeedbackStatus  @default(OPEN)
+  internalNotes String?             @map("internal_notes")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByUser User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
+  @@index([category, createdAt])
+  @@map("beta_feedback")
+}
+
+model SubscriptionEvent {
+  id          String               @id @default(uuid())
+  businessId  String               @map("business_id")
+  type        SubscriptionEventType
+  provider    SubscriptionProvider?
+  fromPlan    Plan?                @map("from_plan")
+  toPlan      Plan?                @map("to_plan")
+  fromStatus  SubscriptionStatus?  @map("from_status")
+  toStatus    SubscriptionStatus?  @map("to_status")
+  effectiveAt DateTime             @map("effective_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([businessId, effectiveAt])
+  @@index([type, effectiveAt])
+  @@map("subscription_events")
 }
 
 model WeeklyOwnerReport {

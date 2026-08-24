@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
-import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminSettingUpdateSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
-import { deleteBusiness, grantAdminAccess, listAdminPlatformSettings, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateAdminPlatformSetting, updateUserAccountStatus, verifyBusiness } from "./adminActions.service.js";
+import { adminAccessGrantSchema, adminAccessUpdateSchema, adminAutomationRetrySchema, adminBusinessCohortSchema, adminBusinessConfirmationSchema, adminBusinessDeletionSchema, adminBusinessSuspensionSchema, adminCsrfHeaderSchema, adminFeedbackUpdateSchema, adminLoginSchema, adminRevokeSessionSchema, adminSessionParamsSchema, adminSettingUpdateSchema, adminUserConfirmationSchema, adminUserStatusSchema } from "./admin.schemas.js";
+import { deleteBusiness, grantAdminAccess, listAdminPlatformSettings, reactivateBusiness, resetBusinessOnboarding, retryAutomationRun, revokeAdminAccess, revokeUserSessions, suspendBusiness, updateAdminAccess, updateAdminPlatformSetting, updateUserAccountStatus, updateBetaFeedback, updateBusinessCohort, verifyBusiness } from "./adminActions.service.js";
 import {
   adminAuditListQuerySchema,
   adminAnalyticsQuerySchema,
@@ -10,6 +10,7 @@ import {
   adminBusinessListQuerySchema,
   adminCommunicationListQuerySchema,
   adminDashboardQuerySchema,
+  adminFeedbackListQuerySchema,
   adminIdParamsSchema,
   adminSubscriptionListQuerySchema,
   adminSupportListQuerySchema,
@@ -22,6 +23,7 @@ import {
   getAdminCommunicationOverview,
   getAdminDashboard,
   getAdminUser,
+  listAdminFeedback,
   getAdminSupportContext,
   listAdminAuditLogs,
   listAdminAutomationRuns,
@@ -208,6 +210,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     reply.send(await resetBusinessOnboarding(request.admin!, id, confirmation, auditContext(request)));
   });
 
+  fastify.patch("/businesses/:id/cohort", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "business.cohort.manage");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const { cohort } = adminBusinessCohortSchema.parse(request.body);
+    reply.send(await updateBusinessCohort(request.admin!, id, cohort, auditContext(request)));
+  });
+
   fastify.post("/businesses/:id/verify", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "business.verify"); await fastify.requireAdminCsrf(request);
     const { id } = adminIdParamsSchema.parse(request.params); const { confirmation } = adminBusinessConfirmationSchema.parse(request.body);
@@ -313,6 +323,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/support", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "support.read");
     reply.send(await listAdminSupportTickets(adminSupportListQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/feedback", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "feedback.read");
+    reply.send(await listAdminFeedback(adminFeedbackListQuerySchema.parse(request.query)));
+  });
+
+  fastify.patch("/feedback/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "feedback.manage");
+    await fastify.requireAdminCsrf(request);
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const input = adminFeedbackUpdateSchema.parse(request.body);
+    reply.send(await updateBetaFeedback(request.admin!, id, input.status, input.internalNotes ?? null, auditContext(request)));
   });
 
   fastify.get("/support/businesses/:id/context", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import type { CreateSupportTicketInput } from "./support.schemas.js";
+import type { CreateBetaFeedbackInput, CreateSupportTicketInput } from "./support.schemas.js";
 
 const RESPONSE_WINDOW_MS = 2 * 86_400_000;
 
@@ -13,4 +13,8 @@ export async function createSupportTicket(businessId: string, userId: string, in
 
 export async function listSupportTickets(businessId: string) {
   return prisma.supportTicket.findMany({ where: { businessId }, orderBy: { createdAt: "desc" }, take: 50 });
+}
+
+export async function createBetaFeedback(businessId: string, userId: string, input: CreateBetaFeedbackInput) {
+  return prisma.betaFeedback.create({ data: { businessId, createdByUserId: userId, ...input } });
 }

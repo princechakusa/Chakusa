@@ -15,6 +15,7 @@ const navigation = [
   { to: "/automation", label: "Automation", icon: Workflow, permission: "automation.read" },
   { to: "/communications", label: "Communications", icon: MessageSquareText, permission: "communication.read" },
   { to: "/support", label: "Support", icon: CircleHelp, permission: "support.read" },
+  { to: "/feedback", label: "Beta feedback", icon: MessageSquareText, permission: "feedback.read" },
   { to: "/audit", label: "Audit log", icon: FileClock, permission: "audit.read" },
   { to: "/security", label: "Security", icon: ShieldCheck, permission: null },
   { to: "/settings", label: "Settings", icon: Settings, permission: "settings.read" },

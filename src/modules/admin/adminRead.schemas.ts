@@ -54,6 +54,14 @@ export const adminSupportListQuerySchema = z.object({
   ...pagination,
 });
 
+export const adminFeedbackListQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
+  status: z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "CLOSED"]).optional(),
+  category: z.enum(["BUG", "PERFORMANCE", "BOOKING", "PAYMENTS", "AUTOMATION", "REPORTING", "UX", "OTHER"]).optional(),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  ...pagination,
+});
+
 export const adminAuditListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   action: z.string().trim().max(120).optional(),
@@ -71,4 +79,5 @@ export type AdminSubscriptionListQuery = z.infer<typeof adminSubscriptionListQue
 export type AdminAutomationListQuery = z.infer<typeof adminAutomationListQuerySchema>;
 export type AdminCommunicationListQuery = z.infer<typeof adminCommunicationListQuerySchema>;
 export type AdminSupportListQuery = z.infer<typeof adminSupportListQuerySchema>;
+export type AdminFeedbackListQuery = z.infer<typeof adminFeedbackListQuerySchema>;
 export type AdminAuditListQuery = z.infer<typeof adminAuditListQuerySchema>;

@@ -44,6 +44,7 @@ import weeklyReportRoutes from "./modules/weeklyReports/weeklyReports.routes.js"
 import supportRoutes from "./modules/support/support.routes.js";
 import adminAuthPlugin from "./plugins/adminAuth.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -176,6 +177,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleCredentialRevoker: options.appleCredentialRevoker,
   });
   await app.register(businessRoutes, { prefix: "/business" });
+  await app.register(calendarRoutes, { prefix: "/calendar" });
   await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(leadRoutes, { prefix: "/leads" });
   await app.register(templateRoutes, { prefix: "/message-templates" });
@@ -205,6 +207,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Same unauthenticated, rate-limited discipline — see
   // publicBusinessProfile.routes.ts's top-level doc comment.
   await app.register(publicBusinessProfileRoutes, { prefix: "/public/business" });
+  await app.register(publicCalendarRoutes, { prefix: "/public/calendar" });
   // GET is unauthenticated; POST /:token/accept applies fastify.authenticate
   // per-route — see publicTeamInviteRoutes's top-level doc comment.
   await app.register(publicTeamInviteRoutes, { prefix: "/public/team-invites" });

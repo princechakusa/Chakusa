@@ -1,0 +1,31 @@
+# Chakusa Administration Console
+
+Internal, role-gated administration client for the existing Chakusa API. It does not contain product business logic or connect directly to the database.
+
+## Local development
+
+From the repository root, run the guarded local API and the admin client in separate terminals:
+
+```sh
+npm run dev:test
+npm run admin:dev
+```
+
+The client is available at `http://localhost:5173` and expects the API at `http://localhost:4000`. Override the API origin with `VITE_API_URL`.
+
+## Production build
+
+```sh
+npm run admin:build
+```
+
+The static output is written to `admin/dist`. `_redirects` and `_headers` are included for Cloudflare Pages compatibility. The production API must set `ADMIN_CONSOLE_ENABLED=true` and `ADMIN_CONSOLE_ORIGIN` to the exact HTTPS console origin. The final Cloudflare hostname has intentionally not been invented or hard-coded.
+
+## Security model
+
+- Access tokens are kept in memory only.
+- Refresh credentials use an HttpOnly, SameSite=Strict cookie.
+- Refresh and logout require a session-bound CSRF token.
+- Navigation visibility and every API route independently enforce RBAC.
+- Phase 2 is read-only; destructive controls are not rendered.
+- Admin audit records are append-only at the database layer.

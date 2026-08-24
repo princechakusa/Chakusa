@@ -25,6 +25,8 @@ const childEnvironment: NodeJS.ProcessEnv = {
   APPLE_BILLING_ENABLED: "false",
   GOOGLE_BILLING_ENABLED: "false",
   SENTRY_ENABLED: "false",
+  ADMIN_CONSOLE_ENABLED: "true",
+  ADMIN_CONSOLE_ORIGIN: "http://localhost:5173",
 };
 
 console.log("NODE_ENV=test");

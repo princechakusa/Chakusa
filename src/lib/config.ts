@@ -208,6 +208,10 @@ export const envSchema = z.object({
   // origin. Set this once a real web frontend domain exists; no domain is
   // invented here since none is configured yet.
   CORS_ALLOWED_ORIGINS: optionalSecret,
+  // Disabled by default. In production, enabling the internal console also
+  // requires its exact HTTPS origin (the eventual Cloudflare URL).
+  ADMIN_CONSOLE_ENABLED: booleanFlag,
+  ADMIN_CONSOLE_ORIGIN: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   // Production Infrastructure Phase 4: same "off by default, feature-flag
   // gated" shape as EMAIL_ENABLED above — Sentry is an operational nicety,
   // not something local dev/test or an unconfigured deployment should ever
@@ -237,6 +241,15 @@ export const envSchema = z.object({
   }
   if (env.SENTRY_ENABLED && !env.SENTRY_DSN) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["SENTRY_DSN"], message: "SENTRY_DSN is required in production when SENTRY_ENABLED=true" });
+  }
+  if (env.ADMIN_CONSOLE_ENABLED) {
+    if (!env.ADMIN_CONSOLE_ORIGIN) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["ADMIN_CONSOLE_ORIGIN"], message: "ADMIN_CONSOLE_ORIGIN is required in production when ADMIN_CONSOLE_ENABLED=true" });
+    } else if (!env.ADMIN_CONSOLE_ORIGIN.startsWith("https://")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["ADMIN_CONSOLE_ORIGIN"], message: "ADMIN_CONSOLE_ORIGIN must use https:// in production" });
+    } else if (new URL(env.ADMIN_CONSOLE_ORIGIN).origin !== env.ADMIN_CONSOLE_ORIGIN) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["ADMIN_CONSOLE_ORIGIN"], message: "ADMIN_CONSOLE_ORIGIN must be an origin only, with no path or trailing slash" });
+    }
   }
   if (!env.PUBLIC_REVIEW_BASE_URL) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });
@@ -295,7 +308,11 @@ export const googleOAuthClientIds = config.GOOGLE_OAUTH_CLIENT_IDS
   .map((value) => value.trim())
   .filter(Boolean) ?? [];
 
-export const corsAllowedOrigins = config.CORS_ALLOWED_ORIGINS
+const configuredCorsOrigins = config.CORS_ALLOWED_ORIGINS
   ?.split(",")
   .map((value) => value.trim())
   .filter(Boolean) ?? null;
+
+export const corsAllowedOrigins = configuredCorsOrigins || config.ADMIN_CONSOLE_ORIGIN
+  ? [...new Set([...(configuredCorsOrigins ?? []), ...(config.ADMIN_CONSOLE_ORIGIN ? [config.ADMIN_CONSOLE_ORIGIN] : [])])]
+  : null;

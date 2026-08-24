@@ -9,6 +9,7 @@ export interface JwtPayload {
   userId: string;
   sessionId: string;
   type: "access";
+  scope?: "admin";
 }
 
 declare module "@fastify/jwt" {
@@ -42,6 +43,7 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
         userId: request.user.userId,
         revokedAt: null,
         expiresAt: { gt: new Date() },
+        scope: "PRODUCT",
       },
       select: { id: true },
     });

@@ -40,6 +40,25 @@ enum BusinessRole {
   STAFF
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  PLATFORM_ADMIN
+  SUPPORT_AGENT
+  FINANCE
+  OPERATIONS
+  READ_ONLY
+}
+
+enum AdminMembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuthSessionScope {
+  PRODUCT
+  ADMIN
+}
+
 // A member's access state, independent of BusinessRole. ACTIVE is the only
 // state that existed implicitly before Business v1 (every member always
 // had full access). SUSPENDED is new: it represents a non-owner member
@@ -371,7 +390,9 @@ model User {
   deviceTokens        DeviceToken[]
   sentTeamInvitations TeamInvitation[]     @relation("TeamInvitationInviter")
   supportTickets      SupportTicket[]
+  adminMembership     AdminMembership?
 
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -413,27 +434,78 @@ model AuthChallenge {
 }
 
 model AuthSession {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  tokenHash    String    @unique @map("token_hash")
-  familyId     String    @map("family_id")
-  expiresAt    DateTime  @map("expires_at")
-  lastUsedAt   DateTime? @map("last_used_at")
-  rotatedAt    DateTime? @map("rotated_at")
-  replacedById String?   @unique @map("replaced_by_id")
-  revokedAt    DateTime? @map("revoked_at")
-  revokeReason String?   @map("revoke_reason")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  tokenHash     String           @unique @map("token_hash")
+  familyId      String           @map("family_id")
+  expiresAt     DateTime         @map("expires_at")
+  lastUsedAt    DateTime?        @map("last_used_at")
+  rotatedAt     DateTime?        @map("rotated_at")
+  replacedById  String?          @unique @map("replaced_by_id")
+  revokedAt     DateTime?        @map("revoked_at")
+  revokeReason  String?          @map("revoke_reason")
+  scope         AuthSessionScope @default(PRODUCT)
+  csrfTokenHash String?          @map("csrf_token_hash")
+  ipAddress     String?          @map("ip_address")
+  userAgent     String?          @map("user_agent")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
 
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   replacedBy AuthSession?  @relation("SessionRotation", fields: [replacedById], references: [id], onDelete: SetNull)
   replaces   AuthSession[] @relation("SessionRotation")
 
   @@index([userId])
+  @@index([userId, scope])
   @@index([familyId])
   @@index([expiresAt])
   @@map("auth_sessions")
+}
+
+/// Platform-level access for Chakusa staff. This is intentionally separate
+/// from BusinessMember/BusinessRole, which only grants authority inside one
+/// tenant. A user must enter through the dedicated ADMIN-scoped login flow;
+/// product sessions can never authorize an admin route.
+model AdminMembership {
+  id            String                @id @default(uuid())
+  userId        String                @unique @map("user_id")
+  role          AdminRole
+  status        AdminMembershipStatus @default(ACTIVE)
+  mfaRequired   Boolean               @default(false) @map("mfa_required")
+  mfaEnrolledAt DateTime?             @map("mfa_enrolled_at")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, role])
+  @@map("admin_memberships")
+}
+
+/// Append-only platform audit ledger. Actor identity and role are snapshotted
+/// as strings instead of foreign keys so account deletion or role changes can
+/// never rewrite or cascade-delete historical evidence.
+model AdminAuditLog {
+  id                String   @id @default(uuid())
+  adminMembershipId String?  @map("admin_membership_id")
+  adminUserId       String?  @map("admin_user_id")
+  adminEmail        String   @map("admin_email")
+  adminRole         String   @map("admin_role")
+  action            String
+  targetType        String   @map("target_type")
+  targetId          String?  @map("target_id")
+  oldValue          Json?    @map("old_value")
+  newValue          Json?    @map("new_value")
+  ipAddress         String?  @map("ip_address")
+  userAgent         String?  @map("user_agent")
+  requestId         String?  @map("request_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([adminMembershipId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([action, createdAt])
+  @@map("admin_audit_logs")
 }
 
 model PasswordResetToken {
@@ -481,11 +553,11 @@ model DeviceToken {
 }
 
 model Business {
-  id               String      @id @default(uuid())
-  ownerId          String      @map("owner_id")
-  name             String
-  industry         String?
-  phone            String?
+  id                                String      @id @default(uuid())
+  ownerId                           String      @map("owner_id")
+  name                              String
+  industry                          String?
+  phone                             String?
   // Best-effort E.164 normalization of `phone`, computed opportunistically
   // at write time (see src/lib/phone.ts) — never required, never validated
   // against `phone` staying in sync, and never blocks a write when it can't
@@ -493,84 +565,85 @@ model Business {
   // client already reads/writes; this is purely an additive derived field
   // for the future messaging/automation layer, which needs a dialable
   // address and has no use for a string it can't send to.
-  phoneE164        String?     @map("phone_e164")
+  phoneE164                         String?     @map("phone_e164")
   // ISO 3166-1 alpha-2 (e.g. "ZW", "ZA"), IANA timezone (e.g.
   // "Africa/Harare"), ISO 4217 (e.g. "USD", "ZWL"). All nullable: existing
   // businesses predate these fields, and this phase adds no onboarding flow
   // to collect them — they're foundational for future
   // country/timezone-aware automation (provider routing, quiet hours), not
   // read by anything yet.
-  country          String?
-  timezone         String?
-  currency         String?
-  googleReviewLink String?     @map("google_review_link")
+  country                           String?
+  timezone                          String?
+  currency                          String?
+  googleReviewLink                  String?     @map("google_review_link")
   // Shown on the public business profile page (see publicSlug below) as a
   // short "about this business" summary — distinct from `industry` (a
   // category) and `defaultServices` (a list), this is free-text the owner
   // writes in their own words. Never required; the public page renders
   // fine without it.
-  description      String?
-  workingHours     Json?       @map("working_hours")
-  defaultServices  Json?       @map("default_services")
-  reminderDays     Int         @default(42) @map("reminder_days")
-  preferredTone    MessageTone @default(friendly) @map("preferred_tone")
+  description                       String?
+  workingHours                      Json?       @map("working_hours")
+  defaultServices                   Json?       @map("default_services")
+  reminderDays                      Int         @default(42) @map("reminder_days")
+  preferredTone                     MessageTone @default(friendly) @map("preferred_tone")
   // Permanent, shareable slug for this business's public profile page
   // (chakusa.app/b/:publicSlug — see src/modules/public/publicBusinessProfile.service.ts).
   // Generated once at business-creation time (src/lib/publicSlug.ts) and
   // never regenerated afterward: an already-shared link (on a storefront,
   // a Google listing, a customer's phone) must keep resolving forever, so
   // nothing in this codebase ever updates this field after creation.
-  publicSlug       String?     @unique @map("public_slug")
-  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
-  bookingMinNoticeMinutes Int @default(60) @map("booking_min_notice_minutes")
-  bookingWindowDays Int @default(90) @map("booking_window_days")
-  slotIntervalMinutes Int @default(15) @map("slot_interval_minutes")
-  cancellationNoticeMinutes Int @default(1440) @map("cancellation_notice_minutes")
-  defaultAppointmentReminderMinutes Int @default(1440) @map("default_appointment_reminder_minutes")
-  stripeAccountId  String?     @unique @map("stripe_account_id")
-  messagingConsentConfirmedAt DateTime? @map("messaging_consent_confirmed_at")
-  paymentRemindersEnabled Boolean @default(false) @map("payment_reminders_enabled")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
+  publicSlug                        String?     @unique @map("public_slug")
+  onboardingCompletedAt             DateTime?   @map("onboarding_completed_at")
+  bookingMinNoticeMinutes           Int         @default(60) @map("booking_min_notice_minutes")
+  bookingWindowDays                 Int         @default(90) @map("booking_window_days")
+  slotIntervalMinutes               Int         @default(15) @map("slot_interval_minutes")
+  cancellationNoticeMinutes         Int         @default(1440) @map("cancellation_notice_minutes")
+  defaultAppointmentReminderMinutes Int         @default(1440) @map("default_appointment_reminder_minutes")
+  stripeAccountId                   String?     @unique @map("stripe_account_id")
+  messagingConsentConfirmedAt       DateTime?   @map("messaging_consent_confirmed_at")
+  paymentRemindersEnabled           Boolean     @default(false) @map("payment_reminders_enabled")
+  createdAt                         DateTime    @default(now()) @map("created_at")
+  updatedAt                         DateTime    @updatedAt @map("updated_at")
 
-  owner            User              @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members          BusinessMember[]
-  customers        Customer[]
-  leads            Lead[]
-  messages         Message[]
-  reviewRequests   ReviewRequest[]
-  feedback         Feedback[]
-  reminders        Reminder[]
-  messageTemplates MessageTemplate[]
-  activityEvents   ActivityEvent[]
-  subscription     Subscription?
-  customerOptOuts  CustomerOptOut[]
-  automationRules  AutomationRule[]
-  automationRuns   AutomationRun[]
-  billingEvents    BillingEvent[]
-  teamInvitations  TeamInvitation[]
-  customerTags     CustomerTag[]
-  appointments     Appointment[]
-  serviceOfferings ServiceOffering[]
-  bookingBlocks    BookingBlock[]
-  publicBookingAccess PublicBookingAccess[]
+  owner                          User                            @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members                        BusinessMember[]
+  customers                      Customer[]
+  leads                          Lead[]
+  messages                       Message[]
+  reviewRequests                 ReviewRequest[]
+  feedback                       Feedback[]
+  reminders                      Reminder[]
+  messageTemplates               MessageTemplate[]
+  activityEvents                 ActivityEvent[]
+  subscription                   Subscription?
+  customerOptOuts                CustomerOptOut[]
+  automationRules                AutomationRule[]
+  automationRuns                 AutomationRun[]
+  billingEvents                  BillingEvent[]
+  teamInvitations                TeamInvitation[]
+  customerTags                   CustomerTag[]
+  appointments                   Appointment[]
+  serviceOfferings               ServiceOffering[]
+  bookingBlocks                  BookingBlock[]
+  publicBookingAccess            PublicBookingAccess[]
   appointmentPaymentTransactions AppointmentPaymentTransaction[]
-  weeklyOwnerReports WeeklyOwnerReport[]
-  supportTickets SupportTicket[]
+  weeklyOwnerReports             WeeklyOwnerReport[]
+  supportTickets                 SupportTicket[]
 
   @@index([ownerId])
+  @@index([createdAt])
   @@map("businesses")
 }
 
 model WeeklyOwnerReport {
-  id          String   @id @default(uuid())
-  businessId  String   @map("business_id")
-  weekKey     String   @map("week_key")
-  periodStart DateTime @map("period_start")
-  periodEnd   DateTime @map("period_end")
+  id          String    @id @default(uuid())
+  businessId  String    @map("business_id")
+  weekKey     String    @map("week_key")
+  periodStart DateTime  @map("period_start")
+  periodEnd   DateTime  @map("period_end")
   summary     Json
   viewedAt    DateTime? @map("viewed_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -587,10 +660,10 @@ model SupportTicket {
   subject            String
   message            String
   status             SupportTicketStatus   @default(open)
-  expectedResponseAt DateTime               @map("expected_response_at")
-  resolvedAt         DateTime?              @map("resolved_at")
-  createdAt          DateTime               @default(now()) @map("created_at")
-  updatedAt          DateTime               @updatedAt @map("updated_at")
+  expectedResponseAt DateTime              @map("expected_response_at")
+  resolvedAt         DateTime?             @map("resolved_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
 
   business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   createdByUser User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
@@ -611,12 +684,12 @@ model BusinessMember {
   status     BusinessMemberStatus @default(ACTIVE)
   createdAt  DateTime             @default(now()) @map("created_at")
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+  business           Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments       Appointment[]
   serviceAssignments ServiceMemberAssignment[]
-  bookingBlocks BookingBlock[]
-  workingHours Json? @map("working_hours")
+  bookingBlocks      BookingBlock[]
+  workingHours       Json?                     @map("working_hours")
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -687,9 +760,9 @@ model Customer {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
   leads          Lead[]
-  referredLeads  Lead[]           @relation("LeadReferredBy")
+  referredLeads  Lead[]                  @relation("LeadReferredBy")
   messages       Message[]
   reviewRequests ReviewRequest[]
   feedback       Feedback[]
@@ -701,42 +774,43 @@ model Customer {
 
   @@index([businessId])
   @@index([businessId, createdAt])
+  @@index([createdAt])
   @@map("customers")
 }
 
 model Appointment {
-  id               String            @id @default(uuid())
-  businessId       String            @map("business_id")
-  customerId       String?           @map("customer_id")
-  assignedMemberId String?           @map("assigned_member_id")
-  serviceOfferingId String?          @map("service_offering_id")
-  serviceName      String            @map("service_name")
-  startsAt         DateTime          @map("starts_at")
-  endsAt           DateTime          @map("ends_at")
-  status           AppointmentStatus @default(SCHEDULED)
-  price            Decimal?          @db.Decimal(10, 2)
-  depositAmount    Decimal?          @db.Decimal(10, 2) @map("deposit_amount")
-  paidAmount       Decimal           @default(0) @db.Decimal(10, 2) @map("paid_amount")
-  paymentStatus    LeadPaymentStatus @default(unpaid) @map("payment_status")
-  notes            String?
-  reminderMinutes  Int?              @map("reminder_minutes")
-  reminderSentAt   DateTime?         @map("reminder_sent_at")
-  confirmationSentAt DateTime?       @map("confirmation_sent_at")
-  customerReminderSentAt DateTime?   @map("customer_reminder_sent_at")
-  sameDayReminderSentAt DateTime?    @map("same_day_reminder_sent_at")
-  rescheduleConfirmationSentAt DateTime? @map("reschedule_confirmation_sent_at")
-  cancellationConfirmationSentAt DateTime? @map("cancellation_confirmation_sent_at")
-  followUpSentAt DateTime?           @map("follow_up_sent_at")
-  paymentReminderSentAt DateTime?    @map("payment_reminder_sent_at")
-  createdByUserId  String            @map("created_by_user_id")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
+  id                             String            @id @default(uuid())
+  businessId                     String            @map("business_id")
+  customerId                     String?           @map("customer_id")
+  assignedMemberId               String?           @map("assigned_member_id")
+  serviceOfferingId              String?           @map("service_offering_id")
+  serviceName                    String            @map("service_name")
+  startsAt                       DateTime          @map("starts_at")
+  endsAt                         DateTime          @map("ends_at")
+  status                         AppointmentStatus @default(SCHEDULED)
+  price                          Decimal?          @db.Decimal(10, 2)
+  depositAmount                  Decimal?          @map("deposit_amount") @db.Decimal(10, 2)
+  paidAmount                     Decimal           @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  paymentStatus                  LeadPaymentStatus @default(unpaid) @map("payment_status")
+  notes                          String?
+  reminderMinutes                Int?              @map("reminder_minutes")
+  reminderSentAt                 DateTime?         @map("reminder_sent_at")
+  confirmationSentAt             DateTime?         @map("confirmation_sent_at")
+  customerReminderSentAt         DateTime?         @map("customer_reminder_sent_at")
+  sameDayReminderSentAt          DateTime?         @map("same_day_reminder_sent_at")
+  rescheduleConfirmationSentAt   DateTime?         @map("reschedule_confirmation_sent_at")
+  cancellationConfirmationSentAt DateTime?         @map("cancellation_confirmation_sent_at")
+  followUpSentAt                 DateTime?         @map("follow_up_sent_at")
+  paymentReminderSentAt          DateTime?         @map("payment_reminder_sent_at")
+  createdByUserId                String            @map("created_by_user_id")
+  createdAt                      DateTime          @default(now()) @map("created_at")
+  updatedAt                      DateTime          @updatedAt @map("updated_at")
 
-  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  assignedMember BusinessMember? @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
-  serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
-  publicAccess    PublicBookingAccess?
+  business            Business                        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer            Customer?                       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedMember      BusinessMember?                 @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  serviceOffering     ServiceOffering?                @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
+  publicAccess        PublicBookingAccess?
   paymentTransactions AppointmentPaymentTransaction[]
 
   @@index([businessId, startsAt])
@@ -768,28 +842,29 @@ model PublicBookingAccess {
 }
 
 model AppointmentPaymentTransaction {
-  id                    String                              @id @default(uuid())
-  businessId            String                              @map("business_id")
-  appointmentId         String                              @map("appointment_id")
-  kind                  AppointmentPaymentKind
-  status                AppointmentPaymentTransactionStatus @default(pending)
-  amount                Decimal                             @db.Decimal(10, 2)
-  refundedAmount        Decimal                             @default(0) @db.Decimal(10, 2) @map("refunded_amount")
-  currency              String
-  stripeCheckoutSessionId String?                           @unique @map("stripe_checkout_session_id")
-  stripePaymentIntentId String?                             @unique @map("stripe_payment_intent_id")
-  checkoutUrl           String?                             @map("checkout_url")
-  failureCode           String?                             @map("failure_code")
-  paidAt                DateTime?                           @map("paid_at")
-  refundedAt            DateTime?                           @map("refunded_at")
-  createdAt             DateTime                            @default(now()) @map("created_at")
-  updatedAt             DateTime                            @updatedAt @map("updated_at")
+  id                      String                              @id @default(uuid())
+  businessId              String                              @map("business_id")
+  appointmentId           String                              @map("appointment_id")
+  kind                    AppointmentPaymentKind
+  status                  AppointmentPaymentTransactionStatus @default(pending)
+  amount                  Decimal                             @db.Decimal(10, 2)
+  refundedAmount          Decimal                             @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  currency                String
+  stripeCheckoutSessionId String?                             @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId   String?                             @unique @map("stripe_payment_intent_id")
+  checkoutUrl             String?                             @map("checkout_url")
+  failureCode             String?                             @map("failure_code")
+  paidAt                  DateTime?                           @map("paid_at")
+  refundedAt              DateTime?                           @map("refunded_at")
+  createdAt               DateTime                            @default(now()) @map("created_at")
+  updatedAt               DateTime                            @updatedAt @map("updated_at")
 
   business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
   @@index([businessId, status, createdAt])
   @@index([appointmentId, createdAt])
+  @@index([status, createdAt])
   @@map("appointment_payment_transactions")
 }
 
@@ -803,15 +878,15 @@ model ServiceOffering {
   preparationMinutes Int      @default(0) @map("preparation_minutes")
   cleanupMinutes     Int      @default(0) @map("cleanup_minutes")
   price              Decimal? @db.Decimal(10, 2)
-  depositAmount      Decimal? @db.Decimal(10, 2) @map("deposit_amount")
+  depositAmount      Decimal? @map("deposit_amount") @db.Decimal(10, 2)
   active             Boolean  @default(true)
   publiclyBookable   Boolean  @default(true) @map("publicly_bookable")
   sortOrder          Int      @default(0) @map("sort_order")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  business    Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  assignments ServiceMemberAssignment[]
+  business     Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments  ServiceMemberAssignment[]
   appointments Appointment[]
 
   @@unique([businessId, name])
@@ -820,8 +895,8 @@ model ServiceOffering {
 }
 
 model ServiceMemberAssignment {
-  serviceOfferingId String @map("service_offering_id")
-  businessMemberId  String @map("business_member_id")
+  serviceOfferingId String   @map("service_offering_id")
+  businessMemberId  String   @map("business_member_id")
   createdAt         DateTime @default(now()) @map("created_at")
 
   serviceOffering ServiceOffering @relation(fields: [serviceOfferingId], references: [id], onDelete: Cascade)
@@ -859,7 +934,7 @@ model CustomerTag {
   name       String
   createdAt  DateTime @default(now()) @map("created_at")
 
-  business    Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
   assignments CustomerTagAssignment[]
 
   @@unique([businessId, name])
@@ -868,8 +943,8 @@ model CustomerTag {
 }
 
 model CustomerTagAssignment {
-  customerId String @map("customer_id")
-  tagId      String @map("tag_id")
+  customerId String   @map("customer_id")
+  tagId      String   @map("tag_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
   customer Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -881,28 +956,28 @@ model CustomerTagAssignment {
 }
 
 model Lead {
-  id               String      @id @default(uuid())
-  businessId       String      @map("business_id")
-  customerId       String?     @map("customer_id")
-  source           String?
+  id                   String            @id @default(uuid())
+  businessId           String            @map("business_id")
+  customerId           String?           @map("customer_id")
+  source               String?
   // Set only by an automated recovery-source connector (e.g. the Android
   // missed-call detector) that may retry ingestion after a network failure
   // or replay an offline-queued event — this is what makes that replay safe.
   // Manual/API-created leads always leave this null; Postgres unique indexes
   // permit unlimited NULLs, so they're never constrained by each other here.
-  clientEventId    String?     @map("client_event_id")
-  missedCallTime   DateTime?   @map("missed_call_time")
-  serviceRequested String?     @map("service_requested")
-  urgency          LeadUrgency @default(medium)
-  status           LeadStatus  @default(new)
-  estimatedValue   Decimal?    @map("estimated_value") @db.Decimal(10, 2)
+  clientEventId        String?           @map("client_event_id")
+  missedCallTime       DateTime?         @map("missed_call_time")
+  serviceRequested     String?           @map("service_requested")
+  urgency              LeadUrgency       @default(medium)
+  status               LeadStatus        @default(new)
+  estimatedValue       Decimal?          @map("estimated_value") @db.Decimal(10, 2)
   // Manually set by the business when closing out a won lead — never
   // written by anything else. Distinguishes a verified paid amount from
   // estimatedValue's self-reported guess, and lets Outstanding Revenue
   // exist as a real metric (sum of estimatedValue across won-but-unpaid
   // leads) without Chakusa processing any payment itself.
-  paymentStatus    LeadPaymentStatus @default(unpaid) @map("payment_status")
-  paidAmount       Decimal?    @map("paid_amount") @db.Decimal(10, 2)
+  paymentStatus        LeadPaymentStatus @default(unpaid) @map("payment_status")
+  paidAmount           Decimal?          @map("paid_amount") @db.Decimal(10, 2)
   // Attribution only — the referral program tracks word-of-mouth, it never
   // moves money or grants a reward through Chakusa itself. Set when a lead
   // arrives through a customer's personal referral link (see
@@ -910,15 +985,15 @@ model Lead {
   // against the same business as the lead (see leads.service.ts's
   // assertCustomerInBusiness) so a link can never attribute a lead to a
   // customer of a different business.
-  referredByCustomerId String?  @map("referred_by_customer_id")
-  notes            String?
-  generatedReply   String?     @map("generated_reply")
-  contactedAt      DateTime?   @map("contacted_at")
-  bookedAt         DateTime?   @map("booked_at")
-  wonAt            DateTime?   @map("won_at")
-  lostAt           DateTime?   @map("lost_at")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
+  referredByCustomerId String?           @map("referred_by_customer_id")
+  notes                String?
+  generatedReply       String?           @map("generated_reply")
+  contactedAt          DateTime?         @map("contacted_at")
+  bookedAt             DateTime?         @map("booked_at")
+  wonAt                DateTime?         @map("won_at")
+  lostAt               DateTime?         @map("lost_at")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
 
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -932,6 +1007,8 @@ model Lead {
   @@index([businessId, createdAt])
   @@index([customerId])
   @@index([referredByCustomerId])
+  @@index([createdAt])
+  @@index([status, createdAt])
   @@map("leads")
 }
 
@@ -984,6 +1061,7 @@ model Message {
   @@index([customerId])
   @@index([leadId])
   @@index([providerMessageId])
+  @@index([status, createdAt])
   @@map("messages")
 }
 
@@ -1026,14 +1104,15 @@ model ReviewRequest {
   // safe no-op instead of a duplicate Feedback row.
   publicTokenConsumedAt DateTime? @map("public_token_consumed_at")
 
-  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  feedback Feedback[]
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  feedback       Feedback[]
   automationRuns AutomationRun[]
 
   @@index([businessId])
   @@index([businessId, status])
   @@index([customerId])
+  @@index([status, createdAt])
   @@map("review_requests")
 }
 
@@ -1055,6 +1134,7 @@ model Feedback {
   @@index([businessId])
   @@index([businessId, status])
   @@index([customerId])
+  @@index([createdAt])
   @@map("feedback")
 }
 
@@ -1114,6 +1194,7 @@ model ActivityEvent {
   @@index([businessId])
   @@index([businessId, createdAt])
   @@index([entityType, entityId])
+  @@index([createdAt])
   @@map("activity_events")
 }
 
@@ -1166,6 +1247,7 @@ model Subscription {
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
+  @@index([status, plan])
   @@map("subscriptions")
 }
 
@@ -1367,6 +1449,7 @@ model AutomationRun {
   // it, that query falls back to the (status, leaseExpiresAt) index or a
   // sequential scan as PENDING rows accumulate across many businesses.
   @@index([status, scheduledFor])
+  @@index([status, createdAt])
   @@map("automation_runs")
 }
 
@@ -1375,10 +1458,10 @@ model AutomationRun {
 // through /health/worker so deployment checks can distinguish "API is up"
 // from "scheduled work is actually being processed."
 model WorkerHeartbeat {
-  id             String   @id
-  startedAt      DateTime @map("started_at")
-  lastSuccessAt  DateTime @map("last_success_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id            String   @id
+  startedAt     DateTime @map("started_at")
+  lastSuccessAt DateTime @map("last_success_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("worker_heartbeats")
 }

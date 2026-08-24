@@ -1,0 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
+import { Clock3, RotateCcw, Workflow } from "lucide-react";
+import { useDeferredValue, useState } from "react";
+import { apiFetch, queryString, type PageEnvelope } from "../api";
+import { DataTable, ErrorState, formatDate, LoadingState, PageHeader, Pagination, SearchInput, StatusBadge } from "../components/ui";
+
+interface Run { id: string; status: string; scheduledFor: string; startedAt: string | null; attemptCount: number; failureCategory: string | null; executionTimeMs: number | null; business: { id: string; name: string }; automationRule: { name: string; triggerType: string; channel: string; enabled: boolean }; customer: { name: string } | null }
+
+export default function AutomationPage() {
+  const [search, setSearch] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1);
+  const params = { search: useDeferredValue(search) || undefined, status: status || undefined, page, pageSize: 25 };
+  const query = useQuery({ queryKey: ["automation-runs", params], queryFn: () => apiFetch<PageEnvelope<Run>>(`/admin/automation/runs?${queryString(params)}`), refetchInterval: 30_000 });
+  const rows = query.data?.items ?? [];
+  return <div className="page"><PageHeader eyebrow="Operations" title="Automation monitor" description="Observe queue outcomes, retries, execution time, and sanitized failure categories." actions={<span className="live-indicator"><i />Live every 30s</span>} /><div className="toolbar panel"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Search business or automation rule" /><div className="filters"><select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}><option value="">All statuses</option><option>PENDING</option><option>RUNNING</option><option>COMPLETED</option><option>FAILED</option><option>CANCELLED</option></select></div></div><section className="panel table-panel">{query.isLoading ? <LoadingState label="Loading automation runs" /> : query.error ? <ErrorState message={(query.error as Error).message} onRetry={() => void query.refetch()} /> : <><DataTable columns={["Automation", "Business", "Status", "Attempts", "Scheduled", "Execution", "Failure"]} rows={rows.map((run) => [<div className="primary-cell"><span className="entity-icon"><Workflow size={16} /></span><div><strong>{run.automationRule.name}</strong><span>{run.automationRule.triggerType.replaceAll("_", " ")} · {run.automationRule.channel}</span></div></div>, run.business.name, <StatusBadge value={run.status} />, <span className="icon-value"><RotateCcw size={14} />{run.attemptCount}</span>, formatDate(run.scheduledFor), <span className="icon-value"><Clock3 size={14} />{run.executionTimeMs == null ? "—" : `${(run.executionTimeMs / 1000).toFixed(1)}s`}</span>, run.failureCategory ? <StatusBadge value={run.failureCategory} /> : "—"])} empty={{ title: "No automation runs", description: "No runs match the current search and status." }} /><Pagination page={query.data!.page} pageSize={query.data!.pageSize} total={query.data!.total} onPage={setPage} /></>}</section></div>;
+}

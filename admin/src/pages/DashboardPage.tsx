@@ -1,0 +1,42 @@
+import { useQuery } from "@tanstack/react-query";
+import { Activity, ArrowUpRight, CircleHelp, Database, Server, TriangleAlert, Workflow } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { apiFetch } from "../api";
+import { ErrorState, formatDate, formatMoney, formatNumber, formatPercent, LoadingState, MetricCard, PageHeader, StatusBadge } from "../components/ui";
+
+interface Dashboard {
+  metrics: Record<string, number | null>;
+  breakdowns: { subscriptionPlans: { key: string; count: number }[]; automation: { key: string; count: number }[] };
+  recent: { signups: any[]; activity: any[]; automationFailures: any[]; support: any[] };
+  health: { api: string; database: string; worker: string; workerLastSeenAt: string | null; errorFeed: { available: boolean; reason: string } };
+  unavailable: Record<string, string>;
+  window: { days: number; generatedAt: string };
+}
+
+const chartColors = ["#176b55", "#90a69d", "#d7e1dc"];
+
+export default function DashboardPage() {
+  const query = useQuery({ queryKey: ["admin-dashboard"], queryFn: () => apiFetch<Dashboard>("/admin/dashboard?days=30") });
+  if (query.isLoading) return <LoadingState label="Loading platform overview" />;
+  if (query.error || !query.data) return <ErrorState message={query.error instanceof Error ? query.error.message : "Dashboard unavailable"} onRetry={() => void query.refetch()} />;
+  const { metrics, breakdowns, recent, health, unavailable } = query.data;
+  return <div className="page dashboard-page">
+    <PageHeader eyebrow="Executive overview" title="Platform pulse" description="A live, read-only view of Chakusa’s operational health and growth." actions={<><span className="last-updated">Updated {formatDate(query.data.window.generatedAt)}</span><button className="button secondary" onClick={() => void query.refetch()}>Refresh data</button></>} />
+    <section className="metric-grid primary-metrics">
+      <MetricCard label="Total businesses" value={formatNumber(metrics.totalBusinesses)} detail={`${formatNumber(metrics.newBusinessesToday)} joined today`} />
+      <MetricCard label="Recently active" value={formatNumber(metrics.recentlyActiveBusinesses)} detail="Recorded activity · 30 days" tone="good" />
+      <MetricCard label="Total customers" value={formatNumber(metrics.totalCustomers)} detail="Across all businesses" />
+      <MetricCard label="Leads generated" value={formatNumber(metrics.totalLeads)} detail={`${formatNumber(metrics.recoveredLeads)} recovered`} />
+      <MetricCard label="Recovery rate" value={formatPercent(metrics.recoveryRate)} detail="Won leads ÷ all leads" tone="good" />
+      <MetricCard label="Revenue recovered" value={formatMoney(metrics.recoveredRevenue)} detail="Estimated value of won leads" tone="good" />
+    </section>
+    <section className="dashboard-grid charts-grid">
+      <article className="panel chart-panel"><div className="panel-heading"><div><p className="eyebrow">Subscriptions</p><h2>Plan distribution</h2></div><span>{formatNumber(metrics.activeSubscriptions)} active</span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height={230}><BarChart data={breakdowns.subscriptionPlans} margin={{ left: -22, right: 12, top: 10 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" /><XAxis dataKey="key" axisLine={false} tickLine={false} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} /><Tooltip cursor={{ fill: "var(--surface-muted)" }} contentStyle={{ borderRadius: 10, borderColor: "var(--border)" }} /><Bar dataKey="count" fill="#176b55" radius={[5, 5, 0, 0]} maxBarSize={52} /></BarChart></ResponsiveContainer></div><div className="unavailable-row"><span><strong>MRR</strong> —</span><span><strong>ARR</strong> —</span><small>{unavailable.mrr}</small></div></article>
+      <article className="panel chart-panel"><div className="panel-heading"><div><p className="eyebrow">Automation</p><h2>Run outcomes</h2></div><StatusBadge value={health.worker} /></div><div className="donut-layout"><ResponsiveContainer width="54%" height={230}><PieChart><Pie data={breakdowns.automation} dataKey="count" nameKey="key" innerRadius={58} outerRadius={88} paddingAngle={3}>{breakdowns.automation.map((entry, index) => <Cell key={entry.key} fill={chartColors[index % chartColors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer><div className="chart-legend">{breakdowns.automation.map((entry, index) => <div key={entry.key}><i style={{ background: chartColors[index] }} /><span>{entry.key.toLowerCase()}</span><strong>{entry.count}</strong></div>)}</div></div><div className="panel-stat-row"><span>Success rate<strong>{formatPercent(metrics.automationSuccessRate)}</strong></span><span>Queued now<strong>{formatNumber(metrics.queuedAutomationRuns)}</strong></span></div></article>
+    </section>
+    <section className="metric-grid secondary-metrics"><MetricCard label="Automation runs" value={formatNumber(metrics.totalAutomationRuns)} /><MetricCard label="Review requests" value={formatNumber(metrics.reviewRequests)} detail={`${formatNumber(metrics.reviewsReceived)} received`} /><MetricCard label="Average rating" value={metrics.averageRating == null ? "—" : `${formatNumber(metrics.averageRating, 1)} / 5`} detail={`${formatNumber(metrics.ratingSampleSize)} responses`} /><MetricCard label="Payment failures" value={formatNumber(metrics.failedAppointmentPayments)} detail="Appointment payments" tone={metrics.failedAppointmentPayments ? "warning" : "default"} /></section>
+    <section className="health-strip panel"><div><p className="eyebrow">Platform health</p><h2>Core services</h2></div><div className="health-items"><span><Server size={17} />API <StatusBadge value={health.api} /></span><span><Database size={17} />Database <StatusBadge value={health.database} /></span><span><Workflow size={17} />Worker <StatusBadge value={health.worker} /></span><span title={health.errorFeed.reason}><TriangleAlert size={17} />Error feed <StatusBadge value="unavailable" /></span></div></section>
+    <section className="dashboard-grid activity-grid"><article className="panel"><div className="panel-heading"><div><p className="eyebrow">Growth</p><h2>Recent signups</h2></div><ArrowUpRight size={18} /></div><div className="feed-list">{recent.signups.map((item) => <div className="feed-item" key={item.id}><span className="entity-icon"><span>{item.name[0]}</span></span><div><strong>{item.name}</strong><p>{item.owner.fullName} · {item.owner.email}</p></div><div className="feed-meta"><StatusBadge value={item.subscription?.plan ?? "FREE"} /><time>{formatDate(item.createdAt, false)}</time></div></div>)}</div></article><article className="panel"><div className="panel-heading"><div><p className="eyebrow">Operations</p><h2>Recent activity</h2></div><Activity size={18} /></div><div className="feed-list compact">{recent.activity.map((item) => <div className="feed-item" key={item.id}><span className="activity-dot" /><div><strong>{item.eventType.replaceAll("_", " ").toLowerCase()}</strong><p>{item.business.name}{item.actor ? ` · ${item.actor.fullName}` : ""}</p></div><time>{formatDate(item.createdAt)}</time></div>)}</div></article></section>
+    <section className="dashboard-grid activity-grid"><article className="panel"><div className="panel-heading"><div><p className="eyebrow">Attention required</p><h2>Automation failures</h2></div><TriangleAlert size={18} /></div><div className="feed-list compact">{recent.automationFailures.length ? recent.automationFailures.map((item) => <div className="feed-item" key={item.id}><span className="entity-icon danger"><Workflow size={16} /></span><div><strong>{item.automationRule.name}</strong><p>{item.business.name} · {item.failureCategory.replaceAll("_", " ")}</p></div><time>{formatDate(item.createdAt)}</time></div>) : <p className="quiet-copy">No recent automation failures.</p>}</div></article><article className="panel"><div className="panel-heading"><div><p className="eyebrow">Support</p><h2>Recent cases</h2></div><CircleHelp size={18} /></div><div className="feed-list compact">{recent.support.length ? recent.support.map((item) => <div className="feed-item" key={item.id}><span className="activity-dot support" /><div><strong>{item.subject}</strong><p>{item.business.name} · {item.category}</p></div><StatusBadge value={item.status} /></div>) : <p className="quiet-copy">No support activity yet.</p>}</div></article></section>
+  </div>;
+}

@@ -17,6 +17,11 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
  */
 export async function resetDatabase() {
   assertDestructiveTestDatabaseAccessAllowed();
+  // The admin audit ledger is protected by database triggers that reject
+  // row-level UPDATE/DELETE. TRUNCATE is used only inside the independently
+  // guarded local-test reset path; production application code has no such
+  // operation.
+  await prisma.$executeRawUnsafe('TRUNCATE TABLE "admin_audit_logs"');
   await prisma.$transaction([
     prisma.workerHeartbeat.deleteMany(),
     prisma.weeklyOwnerReport.deleteMany(),
@@ -45,6 +50,7 @@ export async function resetDatabase() {
     prisma.authSession.deleteMany(),
     prisma.authChallenge.deleteMany(),
     prisma.authIdentity.deleteMany(),
+    prisma.adminMembership.deleteMany(),
     prisma.subscription.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),

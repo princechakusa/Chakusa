@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { AuthChallengePurpose, Prisma } from "@prisma/client";
+import { AuthChallengePurpose, Prisma, type AuthSession, type AuthSessionScope } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword, verifyPassword, verifyPasswordConstantTime } from "../../lib/password.js";
 import { ApiError } from "../../lib/errors.js";
@@ -94,7 +94,19 @@ async function claimAppleChallenge(tx: Prisma.TransactionClient, proof: AppleCha
   if (claimed.count !== 1) throw ApiError.auth(401, "APPLE_CHALLENGE_USED", "Apple authentication challenge is no longer valid");
 }
 
-export async function createSession(userId: string, db: DatabaseClient, familyId: string = randomUUID()) {
+interface CreateSessionAttributes {
+  scope?: AuthSessionScope;
+  csrfTokenHash?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
+export async function createSession(
+  userId: string,
+  db: DatabaseClient,
+  familyId: string = randomUUID(),
+  attributes: CreateSessionAttributes = {},
+) {
   const token = generateOpaqueToken();
   const session = await db.authSession.create({
     data: {
@@ -103,6 +115,10 @@ export async function createSession(userId: string, db: DatabaseClient, familyId
       tokenHash: token.hash,
       familyId,
       expiresAt: refreshExpiry(),
+      scope: attributes.scope,
+      csrfTokenHash: attributes.csrfTokenHash,
+      ipAddress: attributes.ipAddress,
+      userAgent: attributes.userAgent,
     },
   });
   return { session, refreshToken: token.raw };
@@ -532,13 +548,23 @@ export async function authenticateUser(input: LoginInput) {
   return { user, ...auth };
 }
 
-export async function rotateRefreshToken(rawToken: string) {
+type SessionRotationHook = (
+  tx: Prisma.TransactionClient,
+  current: AuthSession,
+  replacement: AuthSession,
+) => Promise<void>;
+
+export async function rotateRefreshToken(
+  rawToken: string,
+  requiredScope: AuthSessionScope = "PRODUCT",
+  onRotated?: SessionRotationHook,
+) {
   const id = parseOpaqueToken(rawToken);
   if (!id) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid refresh token");
 
   const outcome = await prisma.$transaction(async (tx) => {
     const current = await tx.authSession.findUnique({ where: { id } });
-    if (!current || !tokenHashMatches(rawToken, current.tokenHash)) return { kind: "invalid" } as const;
+    if (!current || current.scope !== requiredScope || !tokenHashMatches(rawToken, current.tokenHash)) return { kind: "invalid" } as const;
 
     if (current.revokedAt || current.rotatedAt) {
       await tx.authSession.updateMany({
@@ -555,7 +581,12 @@ export async function rotateRefreshToken(rawToken: string) {
       return { kind: "expired" } as const;
     }
 
-    const replacement = await createSession(current.userId, tx, current.familyId);
+    const replacement = await createSession(current.userId, tx, current.familyId, {
+      scope: current.scope,
+      csrfTokenHash: current.csrfTokenHash,
+      ipAddress: current.ipAddress,
+      userAgent: current.userAgent,
+    });
     const claimed = await tx.authSession.updateMany({
       where: { id: current.id, rotatedAt: null, revokedAt: null },
       data: { rotatedAt: new Date(), lastUsedAt: new Date(), replacedById: replacement.session.id },
@@ -567,6 +598,7 @@ export async function rotateRefreshToken(rawToken: string) {
       });
       return { kind: "reused" } as const;
     }
+    await onRotated?.(tx, current, replacement.session);
     return { kind: "ok", userId: current.userId, ...replacement } as const;
   });
 

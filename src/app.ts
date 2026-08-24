@@ -42,6 +42,8 @@ import type { StripePaymentProvider } from "./lib/payments/stripeProvider.js";
 import paymentRoutes from "./modules/payments/payments.routes.js";
 import weeklyReportRoutes from "./modules/weeklyReports/weeklyReports.routes.js";
 import supportRoutes from "./modules/support/support.routes.js";
+import adminAuthPlugin from "./plugins/adminAuth.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -116,6 +118,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // src/lib/sentry.ts's doc comments for why.
   attachFastifySentry(app);
   await app.register(authPlugin);
+  await app.register(adminAuthPlugin);
   await app.register(tenantPlugin);
 
   // Cheap, DB-free liveness — "the process is up and answering HTTP," not
@@ -183,6 +186,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(paymentRoutes, { prefix: "/payments", provider: options.stripePaymentProvider });
   await app.register(weeklyReportRoutes, { prefix: "/weekly-reports" });
   await app.register(supportRoutes, { prefix: "/support-tickets" });
+  await app.register(adminRoutes, { prefix: "/admin" });
   await app.register(subscriptionRoutes, {
     prefix: "/subscription",
     appleStoreClient: options.appleStoreClient,

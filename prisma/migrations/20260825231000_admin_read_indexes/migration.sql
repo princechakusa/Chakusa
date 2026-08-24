@@ -1,0 +1,12 @@
+CREATE INDEX "businesses_created_at_idx" ON "businesses"("created_at");
+CREATE INDEX "users_created_at_idx" ON "users"("created_at");
+CREATE INDEX "customers_created_at_idx" ON "customers"("created_at");
+CREATE INDEX "leads_created_at_idx" ON "leads"("created_at");
+CREATE INDEX "leads_status_created_at_idx" ON "leads"("status", "created_at");
+CREATE INDEX "review_requests_status_created_at_idx" ON "review_requests"("status", "created_at");
+CREATE INDEX "feedback_created_at_idx" ON "feedback"("created_at");
+CREATE INDEX "activity_events_created_at_idx" ON "activity_events"("created_at");
+CREATE INDEX "subscriptions_status_plan_idx" ON "subscriptions"("status", "plan");
+CREATE INDEX "automation_runs_status_created_at_idx" ON "automation_runs"("status", "created_at");
+CREATE INDEX "messages_status_created_at_idx" ON "messages"("status", "created_at");
+CREATE INDEX "appointment_payment_transactions_status_created_at_idx" ON "appointment_payment_transactions"("status", "created_at");

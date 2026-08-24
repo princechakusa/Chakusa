@@ -9,6 +9,8 @@ import { ApiError } from '../services/api';
 import { customersApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 
 export function CustomersImportScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -16,6 +18,7 @@ export function CustomersImportScreen() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkImportCustomersResultDto | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   const parsed = useMemo(() => parseCustomerImportText(text), [text]);
 
@@ -31,6 +34,7 @@ export function CustomersImportScreen() {
       setImporting(false);
     }
   };
+  const chooseFile = async () => { setError(null); try { const picked = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'text/plain', 'text/tab-separated-values'], copyToCacheDirectory: true }); if (picked.canceled) return; const asset = picked.assets[0]; if (!asset) return; if ((asset.size ?? 0) > 1_000_000) { setError('Choose a CSV file smaller than 1 MB.'); return; } const contents = await new File(asset.uri).text(); setText(contents); setFileName(asset.name); } catch { setError('Unable to read that file. Choose a CSV or text file and try again.'); } };
 
   if (result) {
     return <Screen>
@@ -46,6 +50,7 @@ export function CustomersImportScreen() {
 
   return <Screen>
     <AppHeader eyebrow="CUSTOMERS" title="Import your customer list" subtitle="Paste names and phone numbers, one per line" />
+    <SecondaryButton fullWidth label="Choose CSV file" onPress={() => void chooseFile()} />{fileName ? <Text style={styles.fileName}>Previewing {fileName}</Text> : null}
     <Text style={styles.hint}>One customer per line: name, then phone and/or email, separated by a comma or tab. For example:{'\n'}Jane Doe, +263771234567{'\n'}John Smith, john@example.com</Text>
     <TextInput
       accessibilityLabel="Pasted customer list"
@@ -71,6 +76,7 @@ const styles = StyleSheet.create({
   hint: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.md },
   input: { minHeight: 180, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, ...typography.body, color: colors.text, textAlignVertical: 'top', marginBottom: spacing.xs },
   count: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.md },
+  fileName: { ...typography.caption, color: colors.primary, marginBottom: spacing.sm },
   error: { ...typography.caption, color: colors.negative, marginBottom: spacing.sm },
   summary: { gap: spacing.sm, marginBottom: spacing.xl },
   summaryRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },

@@ -40,4 +40,9 @@ describe('parseCustomerImportText', () => {
     expect(result.rows).toHaveLength(3);
     expect(result.rows[2]).toEqual({ name: 'No Contact Info', phone: undefined, email: undefined });
   });
+
+  it('supports CSV headers, quoted commas, and a UTF-8 byte order mark', () => {
+    const result = parseCustomerImportText('\uFEFFname,phone,email\n"Doe, Jane",+263771234567,jane@example.com');
+    expect(result.rows).toEqual([{ name: 'Doe, Jane', phone: '+263771234567', email: 'jane@example.com' }]);
+  });
 });

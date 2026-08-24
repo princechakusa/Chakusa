@@ -17,6 +17,7 @@ import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
 import { publicRouteFromPath } from './src/domain/publicRoutes';
 import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
 import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfileScreen';
+import { PublicBookingManagementScreen } from './src/screens/PublicBookingManagementScreen';
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['chakusa://'],
@@ -34,6 +35,7 @@ export default function App() {
   if (publicRoute?.kind === 'feedback') return <SafeAreaProvider><StatusBar style="dark" /><PublicFeedbackScreen token={publicRoute.token} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
+  if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
   return (
     <SafeAreaProvider>
       <PreferencesProvider><AuthProvider><PushNotificationManager /><CallDetectionSyncManager /><NotificationTapHandler /><AppProvider><PlanExperienceProvider><BillingProvider><NavigationContainer ref={navigationRef} linking={linking}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></BillingProvider></PlanExperienceProvider></AppProvider></AuthProvider></PreferencesProvider>

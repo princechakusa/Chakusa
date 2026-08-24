@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -71,9 +71,20 @@ export const remindersApi = {
 export const appointmentsApi = {
   list: (from: string, to: string, customerId?: string) => api.get<import('../apiTypes').AppointmentDto[]>(`/appointments${query({ from, to, customerId })}`),
   get: (id: string) => api.get<import('../apiTypes').AppointmentDto>(`/appointments/${id}`),
-  create: (body: { customerId?: string; assignedMemberId?: string; serviceName: string; startsAt: string; endsAt: string; price?: number; notes?: string; reminderMinutes?: number | null }) => api.post<import('../apiTypes').AppointmentDto>('/appointments', body),
-  patch: (id: string, body: Partial<Pick<import('../apiTypes').AppointmentDto, 'customerId' | 'assignedMemberId' | 'serviceName' | 'startsAt' | 'endsAt' | 'price' | 'notes' | 'reminderMinutes'>>) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}`, body),
+  create: (body: { customerId?: string; assignedMemberId?: string; serviceOfferingId?: string; serviceName: string; startsAt: string; endsAt: string; price?: number; notes?: string; reminderMinutes?: number | null }) => api.post<import('../apiTypes').AppointmentDto>('/appointments', body),
+  patch: (id: string, body: Partial<Pick<import('../apiTypes').AppointmentDto, 'customerId' | 'assignedMemberId' | 'serviceOfferingId' | 'serviceName' | 'startsAt' | 'endsAt' | 'price' | 'notes' | 'reminderMinutes'>>) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}`, body),
   transition: (id: string, status: import('../apiTypes').AppointmentStatus) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/status`, { status }),
+};
+export interface ServiceOfferingInput { name: string; description?: string | null; durationMinutes: number; preparationMinutes?: number; cleanupMinutes?: number; price?: number | null; depositAmount?: number | null; active?: boolean; publiclyBookable?: boolean; sortOrder?: number; memberIds?: string[]; }
+export const servicesApi = {
+  list: (active?: boolean) => api.get<ServiceOfferingDto[]>(`/services${query({ active: active === undefined ? undefined : String(active) })}`),
+  create: (body: ServiceOfferingInput) => api.post<ServiceOfferingDto>('/services', body),
+  patch: (id: string, body: Partial<ServiceOfferingInput>) => api.patch<ServiceOfferingDto>(`/services/${id}`, body),
+  archive: (id: string) => api.delete<ServiceOfferingDto>(`/services/${id}`),
+};
+export interface AvailabilitySlotDto { startsAt: string; endsAt: string; members: { id: string; name: string }[]; }
+export const availabilityApi = {
+  list: (serviceOfferingId: string, from: string, to: string, memberId?: string) => api.get<AvailabilitySlotDto[]>(`/availability${query({ serviceOfferingId, from, to, memberId })}`),
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export const subscriptionApi = {

@@ -47,6 +47,11 @@ export const updateBusinessSchema = z.object({
   defaultServices: z.array(z.string()).optional(),
   reminderDays: z.number().int().positive().optional(),
   preferredTone: z.enum(["friendly", "professional", "casual"]).optional(),
+  bookingMinNoticeMinutes: z.number().int().min(0).max(43_200).optional(),
+  bookingWindowDays: z.number().int().min(1).max(365).optional(),
+  slotIntervalMinutes: z.number().int().min(5).max(120).optional(),
+  cancellationNoticeMinutes: z.number().int().min(0).max(43_200).optional(),
+  defaultAppointmentReminderMinutes: z.number().int().min(0).max(10_080).optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

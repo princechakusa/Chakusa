@@ -483,6 +483,11 @@ model Business {
   // nothing in this codebase ever updates this field after creation.
   publicSlug       String?     @unique @map("public_slug")
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  bookingMinNoticeMinutes Int @default(60) @map("booking_min_notice_minutes")
+  bookingWindowDays Int @default(90) @map("booking_window_days")
+  slotIntervalMinutes Int @default(15) @map("slot_interval_minutes")
+  cancellationNoticeMinutes Int @default(1440) @map("cancellation_notice_minutes")
+  defaultAppointmentReminderMinutes Int @default(1440) @map("default_appointment_reminder_minutes")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
@@ -504,6 +509,9 @@ model Business {
   teamInvitations  TeamInvitation[]
   customerTags     CustomerTag[]
   appointments     Appointment[]
+  serviceOfferings ServiceOffering[]
+  bookingBlocks    BookingBlock[]
+  publicBookingAccess PublicBookingAccess[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -523,6 +531,9 @@ model BusinessMember {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  serviceAssignments ServiceMemberAssignment[]
+  bookingBlocks BookingBlock[]
+  workingHours Json? @map("working_hours")
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -615,6 +626,7 @@ model Appointment {
   businessId       String            @map("business_id")
   customerId       String?           @map("customer_id")
   assignedMemberId String?           @map("assigned_member_id")
+  serviceOfferingId String?          @map("service_offering_id")
   serviceName      String            @map("service_name")
   startsAt         DateTime          @map("starts_at")
   endsAt           DateTime          @map("ends_at")
@@ -630,12 +642,86 @@ model Appointment {
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
   assignedMember BusinessMember? @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
+  publicAccess    PublicBookingAccess?
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
   @@index([customerId, startsAt])
   @@index([assignedMemberId, startsAt])
+  @@index([serviceOfferingId, startsAt])
   @@map("appointments")
+}
+
+model PublicBookingAccess {
+  id            String   @id @default(uuid())
+  businessId    String   @map("business_id")
+  appointmentId String   @unique @map("appointment_id")
+  tokenHash     String   @map("token_hash")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("public_booking_access")
+}
+
+model ServiceOffering {
+  id                 String   @id @default(uuid())
+  businessId         String   @map("business_id")
+  name               String
+  description        String?
+  durationMinutes    Int      @map("duration_minutes")
+  preparationMinutes Int      @default(0) @map("preparation_minutes")
+  cleanupMinutes     Int      @default(0) @map("cleanup_minutes")
+  price              Decimal? @db.Decimal(10, 2)
+  depositAmount      Decimal? @db.Decimal(10, 2) @map("deposit_amount")
+  active             Boolean  @default(true)
+  publiclyBookable   Boolean  @default(true) @map("publicly_bookable")
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  business    Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments ServiceMemberAssignment[]
+  appointments Appointment[]
+
+  @@unique([businessId, name])
+  @@index([businessId, active, publiclyBookable, sortOrder])
+  @@map("service_offerings")
+}
+
+model ServiceMemberAssignment {
+  serviceOfferingId String @map("service_offering_id")
+  businessMemberId  String @map("business_member_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  serviceOffering ServiceOffering @relation(fields: [serviceOfferingId], references: [id], onDelete: Cascade)
+  businessMember  BusinessMember  @relation(fields: [businessMemberId], references: [id], onDelete: Cascade)
+
+  @@id([serviceOfferingId, businessMemberId])
+  @@index([businessMemberId])
+  @@map("service_member_assignments")
+}
+
+model BookingBlock {
+  id               String   @id @default(uuid())
+  businessId       String   @map("business_id")
+  assignedMemberId String?  @map("assigned_member_id")
+  startsAt         DateTime @map("starts_at")
+  endsAt           DateTime @map("ends_at")
+  reason           String?
+  createdByUserId  String   @map("created_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignedMember BusinessMember? @relation(fields: [assignedMemberId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, startsAt])
+  @@index([assignedMemberId, startsAt])
+  @@map("booking_blocks")
 }
 
 // Owner-created labels for organising contacts. System audience labels are

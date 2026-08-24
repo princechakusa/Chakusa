@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { ApiError } from "../../lib/errors.js";
-import { submitPublicContactSchema } from "./public.schemas.js";
-import { resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
+import { createPublicBookingSchema, publicAvailabilitySchema, submitPublicContactSchema } from "./public.schemas.js";
+import { cancelPublicBooking, createPublicBooking, publicAvailability, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
 
 /**
  * Unauthenticated, permanent-link routes for a business's public profile
@@ -37,4 +37,18 @@ export default async function publicBusinessProfileRoutes(fastify: FastifyInstan
       reply.status(201).send({ state: "submitted", businessName: result.businessName });
     },
   );
+  fastify.get<{ Params: { slug: string } }>("/:slug/availability", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const input = publicAvailabilitySchema.parse(request.query); const result = await publicAvailability(request.params.slug, input.serviceOfferingId, input.from, input.to);
+    if (!result) throw ApiError.notFound("This business page is invalid or no longer available"); reply.send(result);
+  });
+  fastify.post<{ Params: { slug: string } }>("/:slug/book", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await createPublicBooking(request.params.slug, createPublicBookingSchema.parse(request.body));
+    if (!result) throw ApiError.notFound("This business page is invalid or no longer available"); reply.status(201).send(result);
+  });
+  fastify.get<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await resolvePublicBooking(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.send(result);
+  });
+  fastify.post<{ Params: { slug: string; token: string } }>("/:slug/bookings/:token/cancel", { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const result = await cancelPublicBooking(request.params.slug, request.params.token); if (!result) throw ApiError.notFound("This booking link is invalid or expired"); reply.send(result);
+  });
 }

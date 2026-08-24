@@ -25,6 +25,7 @@ export function AccountHubScreen() {
   const [sessionAction, setSessionAction] = useState<'logout'|'all'|null>(null);
   const [exporting, setExporting] = useState(false);
   const owner = role === 'OWNER';
+  const canManageBusiness = role === 'OWNER' || role === 'ADMIN';
   const businessName = business?.name || 'Your business';
   const firstName = user?.fullName?.trim().split(/\s+/)[0] || 'there';
   const initials = businessName.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
@@ -67,7 +68,7 @@ export function AccountHubScreen() {
       <MenuRow icon="people-outline" tone="purple" title="Team members" detail={features?.teamManagement ? 'Manage your team and their access' : 'View team access and plans'} onPress={() => navigation.navigate('Team')} />
       <MenuRow icon="notifications-outline" tone="amber" title="Notifications" detail="Choose what Chakusa highlights for you" onPress={() => navigation.navigate('NotificationPreferences')} />
       <MenuRow icon="chatbubble-ellipses-outline" tone="green" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
-      {owner ? <MenuRow icon="pricetag-outline" tone="blue" title="Services and hours" detail={`${business?.defaultServices?.length ?? 0} services configured`} onPress={() => navigation.navigate('BusinessSettings')} /> : null}
+      {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
       <MenuRow icon="flash-outline" tone="amber" title="Automation" detail={features?.automation ? 'Manage active customer workflows' : 'Explore recovery workflows'} onPress={() => navigation.navigate('Automation')} last />
     </MenuSection>
 

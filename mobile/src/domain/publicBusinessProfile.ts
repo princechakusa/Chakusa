@@ -6,6 +6,8 @@ export interface PublicBusinessProfileDetails {
   googleReviewLink: string | null;
   workingHours: Record<string, unknown> | null;
   defaultServices: string[] | null;
+  currency: string | null;
+  services: { id: string; name: string; description: string | null; durationMinutes: number; price: number | null; depositAmount: number | null }[];
 }
 
 export type PublicBusinessProfileViewState =

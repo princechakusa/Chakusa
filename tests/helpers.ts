@@ -19,6 +19,11 @@ export async function resetDatabase() {
   assertDestructiveTestDatabaseAccessAllowed();
   await prisma.$transaction([
     prisma.workerHeartbeat.deleteMany(),
+    prisma.publicBookingAccess.deleteMany(),
+    prisma.bookingBlock.deleteMany(),
+    prisma.appointment.deleteMany(),
+    prisma.serviceMemberAssignment.deleteMany(),
+    prisma.serviceOffering.deleteMany(),
     prisma.billingEvent.deleteMany(),
     prisma.teamInvitation.deleteMany(),
     prisma.activityEvent.deleteMany(),

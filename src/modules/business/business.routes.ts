@@ -9,6 +9,7 @@ import { updateBusinessSchema, createBusinessSchema } from "./business.schemas.j
 import { completeBusinessOnboarding } from "./business.service.js";
 import { exportBusinessData } from './businessExport.service.js';
 import { requireOwner } from '../../lib/authorization.js';
+import { syncServiceOfferingsFromLegacyNames } from '../services/services.service.js';
 
 export default async function businessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -84,8 +85,15 @@ export default async function businessRoutes(fastify: FastifyInstance) {
         defaultServices: input.defaultServices as Prisma.InputJsonValue | undefined,
         reminderDays: input.reminderDays,
         preferredTone: input.preferredTone,
+        bookingMinNoticeMinutes: input.bookingMinNoticeMinutes,
+        bookingWindowDays: input.bookingWindowDays,
+        slotIntervalMinutes: input.slotIntervalMinutes,
+        cancellationNoticeMinutes: input.cancellationNoticeMinutes,
+        defaultAppointmentReminderMinutes: input.defaultAppointmentReminderMinutes,
       },
     });
+
+    if (input.defaultServices) await syncServiceOfferingsFromLegacyNames(request.businessId!, input.defaultServices);
 
     reply.send(business);
   });

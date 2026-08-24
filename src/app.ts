@@ -17,6 +17,8 @@ import reviewRequestRoutes from "./modules/reviews/reviews.routes.js";
 import feedbackRoutes from "./modules/feedback/feedback.routes.js";
 import reminderRoutes from "./modules/reminders/reminders.routes.js";
 import appointmentRoutes from "./modules/appointments/appointments.routes.js";
+import serviceOfferingRoutes from "./modules/services/services.routes.js";
+import availabilityRoutes from "./modules/availability/availability.routes.js";
 import { readWorkerHeartbeat, workerHeartbeatHealthy } from './worker/workerHeartbeat.js';
 import { runTriggeredScheduledWork, validWorkerTriggerAuthorization } from './worker/scheduledWorkTrigger.js';
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
@@ -160,6 +162,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(feedbackRoutes, { prefix: "/feedback" });
   await app.register(reminderRoutes, { prefix: "/reminders" });
   await app.register(appointmentRoutes, { prefix: "/appointments" });
+  await app.register(serviceOfferingRoutes, { prefix: "/services" });
+  await app.register(availabilityRoutes, { prefix: "/availability" });
   await app.register(dashboardRoutes, { prefix: "/dashboard" });
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });

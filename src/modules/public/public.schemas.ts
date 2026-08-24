@@ -38,3 +38,20 @@ export const submitPublicContactSchema = z.object({
   ref: z.string().optional(),
 });
 export type SubmitPublicContactInput = z.infer<typeof submitPublicContactSchema>;
+
+export const publicAvailabilitySchema = z.object({
+  serviceOfferingId: z.string().uuid(),
+  from: z.string().datetime({ offset: true }),
+  to: z.string().datetime({ offset: true }),
+}).refine(value => new Date(value.to) > new Date(value.from), { message: "to must be after from", path: ["to"] });
+
+export const createPublicBookingSchema = z.object({
+  serviceOfferingId: z.string().uuid(),
+  assignedMemberId: z.string().uuid(),
+  startsAt: z.string().datetime({ offset: true }),
+  name: z.string().trim().min(1).max(200),
+  phone: z.string().trim().min(1).max(50),
+  email: z.string().trim().email().max(320).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+export type CreatePublicBookingInput = z.infer<typeof createPublicBookingSchema>;

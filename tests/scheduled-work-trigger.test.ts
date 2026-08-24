@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { config } from '../src/lib/config.js';
 import { prisma } from '../src/lib/prisma.js';
@@ -27,8 +27,8 @@ describe('secure scheduled-work HTTP trigger', () => {
     const secret = 'correct-secret-that-is-at-least-32-characters';
     config.WORKER_TRIGGER_SECRET = secret;
     const response = await app.inject({ method: 'POST', url: '/internal/worker/tick', headers: { authorization: `Bearer ${secret}` } });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ status: 'ok', processed: 0, recovered: 0, remindersSent: 0 });
-    expect(await prisma.workerHeartbeat.findUnique({ where: { id: 'automation-worker' } })).not.toBeNull();
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ status: 'accepted' });
+    await vi.waitFor(async () => expect(await prisma.workerHeartbeat.findUnique({ where: { id: 'automation-worker' } })).not.toBeNull());
   });
 });

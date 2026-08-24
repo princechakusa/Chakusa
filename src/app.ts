@@ -4,7 +4,7 @@ import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
 import { prisma } from "./lib/prisma.js";
-import { attachFastifySentry } from "./lib/sentry.js";
+import { attachFastifySentry, captureUnexpectedError } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
 import tenantPlugin from "./plugins/tenant.js";
 import errorHandlerPlugin from "./plugins/errorHandler.js";
@@ -141,8 +141,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   app.post('/internal/worker/tick', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
     if (!config.WORKER_TRIGGER_SECRET) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });
     if (!validWorkerTriggerAuthorization(request.headers.authorization)) return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
-    const result = await runTriggeredScheduledWork();
-    reply.send({ status: 'ok', ...result });
+    void runTriggeredScheduledWork().catch(captureUnexpectedError);
+    reply.code(202).send({ status: 'accepted' });
   });
 
   await app.register(authRoutes, {

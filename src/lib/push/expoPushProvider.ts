@@ -41,6 +41,9 @@ export class ExpoPushProvider implements PushProvider {
       title: message.title,
       body: message.body,
       data: message.data,
+      sound: "default",
+      priority: "high",
+      channelId: "default",
     }));
 
     const chunks = expo.chunkPushNotifications(messages);

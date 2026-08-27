@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.chakusa.mobile",
       "usesAppleSignIn": true,
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

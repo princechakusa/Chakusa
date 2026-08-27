@@ -14,6 +14,7 @@
         "EXPO_PUBLIC_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_AUTOMATION_ENABLED": "false",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "EXPO_PUBLIC_BILLING_ENABLED": "true",
         "EXPO_PUBLIC_APPLE_PRO_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.pro.monthly",
         "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly"
@@ -34,6 +35,7 @@
         "EXPO_PUBLIC_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_AUTOMATION_ENABLED": "false",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "EXPO_PUBLIC_BILLING_ENABLED": "true",
         "EXPO_PUBLIC_APPLE_PRO_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.pro.monthly",
         "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly"

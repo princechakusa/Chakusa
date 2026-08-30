@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, ValueCenterDto, WeeklyOwnerReportDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
 import { api } from './api';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
@@ -109,12 +109,22 @@ export const subscriptionApi = {
   verifyGoogle: (purchaseToken: string) => api.post<SubscriptionStatusDto>('/subscription/google/verify', { purchaseToken }),
 };
 export const automationApi = {
+  foundationStatus: () => api.get<AutomationFoundationDto>('/automation/foundation/status'),
   listRules: () => api.get<AutomationRuleDto[]>('/automation/rules'),
   listRuns: (page = 1, pageSize = 25) => api.get<AutomationRunHistoryDto>(`/automation/runs${query({ page, pageSize })}`),
   createRule: (body: { name: string; enabled: boolean; triggerType: AutomationTriggerType; channel: AutomationChannel; delaySeconds: number; config: Record<string, unknown> }) => api.post<AutomationRuleDto>('/automation/rules', body),
   updateRule: (id: string, body: { name?: string; channel?: AutomationChannel; delaySeconds?: number; config?: Record<string, unknown> }) => api.patch<AutomationRuleDto>(`/automation/rules/${id}`, body),
   enableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/enable`),
   disableRule: (id: string) => api.post<AutomationRuleDto>(`/automation/rules/${id}/disable`),
+  listWorkflows: () => api.get<WorkflowDto[]>('/automation/workflows'),
+  getWorkflow: (id: string) => api.get<WorkflowDto>(`/automation/workflows/${id}`),
+  listWorkflowTemplates: () => api.get<{items:WorkflowTemplateDto[]}>('/automation/workflow-templates'),
+  triggerWorkflow: (id: string, input: Record<string,unknown> = {}) => api.post<WorkflowExecutionDto>(`/automation/workflows/${id}/trigger`, { input }),
+  pauseWorkflow: (id: string) => api.post<WorkflowDto>(`/automation/workflows/${id}/pause`),
+  resumeWorkflow: (id: string) => api.post<WorkflowDto>(`/automation/workflows/${id}/resume`),
+  listWorkflowExecutions: () => api.get<{items:WorkflowExecutionDto[]}>('/automation/workflow-executions'),
+  controlExecution: (id: string, action: 'pause'|'resume'|'cancel'|'retry') => api.post<WorkflowExecutionDto>(`/automation/workflow-executions/${id}/${action}`),
+  workflowAnalytics: () => api.get<WorkflowAnalyticsDto>('/automation/workflow-analytics'),
 };
 export const missedCallsApi = {
   report: (body: { phone: string; occurredAt: string; clientEventId: string }) => api.post<LeadDto>('/leads/missed-call', body),

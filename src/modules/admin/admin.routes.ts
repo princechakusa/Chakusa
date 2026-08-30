@@ -34,6 +34,13 @@ import {
   listAdminUsers,
 } from "./adminRead.service.js";
 import { recordAdminAudit } from "./adminAudit.service.js";
+import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
+import { getOutboxStatus } from "./outboxRead.service.js";
+import { getPlatformWorkflow, listPlatformWorkflowExecutions, listPlatformWorkflows, retryPlatformWorkflowExecution } from "./workflowAdmin.service.js";
+import { createWorkflowVersion, publishWorkflow, setWorkflowStatus } from "../automation/workflow.service.js";
+import { createWorkflowTemplateVersion, listAllWorkflowTemplates, setWorkflowTemplateActive } from "../automation/workflowTemplates.js";
+import { workflowDefinitionSchema } from "../automation/automation.schemas.js";
+import { z } from "zod";
 import {
   authenticateAdminUser,
   listOwnAdminSessions,
@@ -355,6 +362,25 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     fastify.requireAdminPermission(request, "settings.read");
     reply.send({ items: await listAdminPlatformSettings() });
   });
+
+  fastify.get("/automation/foundation", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "automation.read");
+    reply.send(await getAutomationFoundationStatus());
+  });
+
+  fastify.get("/outbox", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "automation.read");
+    reply.send(await getOutboxStatus());
+  });
+  fastify.get("/workflows", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.view"); reply.send({ items: await listPlatformWorkflows() }); });
+  fastify.get<{ Params: { id: string } }>("/workflows/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.view"); const workflow = await getPlatformWorkflow(request.params.id); if (!workflow) throw ApiError.notFound("Workflow not found"); reply.send(workflow); });
+  fastify.post<{ Params: { id: string } }>("/workflows/:id/versions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.edit"); await fastify.requireAdminCsrf(request); const workflow = await getPlatformWorkflow(request.params.id); if (!workflow) throw ApiError.notFound("Workflow not found"); const input = z.object({ definition: workflowDefinitionSchema }).parse(request.body); const created = await createWorkflowVersion(workflow.businessId, workflow.id, input.definition); await recordAdminAudit({ actor: request.admin!, action: "WORKFLOW_VERSION_CREATED", targetType: "workflow", targetId: workflow.id, newValue: { version: created.version }, context: auditContext(request) }); reply.code(201).send(created); });
+  fastify.get("/workflow-templates", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.view"); reply.send({ items: await listAllWorkflowTemplates() }); });
+  fastify.post("/workflow-templates", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.edit"); await fastify.requireAdminCsrf(request); const input = z.object({ key: z.string().trim().regex(/^[A-Z0-9_]{2,80}$/), name: z.string().trim().min(1).max(120), description: z.string().trim().max(1000).optional(), definition: workflowDefinitionSchema }).parse(request.body); const created = await createWorkflowTemplateVersion(input); await recordAdminAudit({ actor: request.admin!, action: "WORKFLOW_TEMPLATE_VERSION_CREATED", targetType: "workflow_template", targetId: created.id, newValue: { key: created.key, version: created.version }, context: auditContext(request) }); reply.code(201).send(created); });
+  fastify.post<{ Params: { id: string; action: string } }>("/workflow-templates/:id/:action", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.edit"); await fastify.requireAdminCsrf(request); if (!["activate", "deactivate"].includes(request.params.action)) throw ApiError.badRequest("Unsupported template action"); const updated = await setWorkflowTemplateActive(request.params.id, request.params.action === "activate"); await recordAdminAudit({ actor: request.admin!, action: `WORKFLOW_TEMPLATE_${request.params.action.toUpperCase()}`, targetType: "workflow_template", targetId: updated.id, newValue: { active: updated.active }, context: auditContext(request) }); reply.send(updated); });
+  fastify.post<{ Params: { id: string; action: string } }>("/workflows/:id/:action", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { const action = request.params.action; if (!(["publish", "pause", "resume"] as const).includes(action as "publish" | "pause" | "resume")) throw ApiError.badRequest("Unsupported workflow action"); const permission = action === "publish" ? "workflow.publish" : action === "pause" ? "workflow.pause" : "workflow.resume"; fastify.requireAdminPermission(request, permission); await fastify.requireAdminCsrf(request); const workflow = await getPlatformWorkflow(request.params.id); if (!workflow) throw ApiError.notFound("Workflow not found"); const updated = action === "publish" ? await publishWorkflow(workflow.businessId, workflow.id) : await setWorkflowStatus(workflow.businessId, workflow.id, action === "pause" ? "PAUSED" : "PUBLISHED"); await recordAdminAudit({ actor: request.admin!, action: `WORKFLOW_${action.toUpperCase()}`, targetType: "workflow", targetId: workflow.id, oldValue: { status: workflow.status }, newValue: { status: updated.status }, context: auditContext(request) }); reply.send(updated); });
+  fastify.get("/workflow-executions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "workflow.view"); const status = (request.query as { status?: string }).status; reply.send({ items: await listPlatformWorkflowExecutions(status) }); });
+  fastify.post<{ Params: { id: string } }>("/workflow-executions/:id/retry", { preHandler: fastify.authenticateAdmin }, async (request, reply) => { fastify.requireAdminPermission(request, "automation.retry"); await fastify.requireAdminCsrf(request); const result = await retryPlatformWorkflowExecution(request.params.id); if (!result.count) throw ApiError.conflict("Only failed or cancelled workflow executions can be retried"); await recordAdminAudit({ actor: request.admin!, action: "WORKFLOW_EXECUTION_RETRIED", targetType: "workflow_execution", targetId: request.params.id, newValue: { status: "PENDING" }, context: auditContext(request) }); reply.send({ id: request.params.id, status: "PENDING" }); });
 
   fastify.patch("/settings", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "settings.manage");

@@ -20,12 +20,13 @@ import { AUTOMATION_ENABLED } from '../config';
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { formatDateTime } from '../utils/format';
+import { ProductionWorkflowPanel } from '../components/ProductionWorkflowPanel';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Automation'>;
 const HISTORY_PAGE_SIZE = 25;
 
 export function AutomationScreen({ navigation }: Props) {
-  const { business } = useAuth();
+  const { business, role } = useAuth();
   const { plan, status, features, loading: planLoading, error: planError, refresh: refreshPlan, handleEntitlementError } = usePlanExperience();
   const [rules, setRules] = useState<AutomationRuleDto[]>([]);
   const [rulesLoaded, setRulesLoaded] = useState(false);
@@ -161,6 +162,7 @@ export function AutomationScreen({ navigation }: Props) {
 
   return <Screen refreshing={refreshing} onRefresh={() => void pullToRefresh()}>
     <AppHeader eyebrow="RECOVERY ENGINE" title="Your recovery engine" subtitle="Everything Chakusa is doing on your behalf, in one place." />
+    <ProductionWorkflowPanel canManage={['OWNER','ADMIN'].includes(role ?? '')} />
     <View style={styles.card}>
       <View style={styles.statusRow}>
         <Text style={styles.heading}>Engine status</Text>

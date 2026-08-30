@@ -69,6 +69,44 @@ enum AuthSessionScope {
   ADMIN
 }
 
+enum FeatureFlagScope {
+  PLATFORM
+  BUSINESS
+  USER
+  INTERNAL
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  DEAD
+}
+
+enum EventDeliveryStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  RETRY
+  DEAD
+}
+
+enum WorkflowStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 // A member's access state, independent of BusinessRole. ACTIVE is the only
 // state that existed implicitly before Business v1 (every member always
 // had full access). SUSPENDED is new: it represents a non-owner member
@@ -536,6 +574,231 @@ model PlatformSetting {
   @@map("platform_settings")
 }
 
+/// Durable event ledger. Rows are written in the caller's transaction only;
+/// publication/queue consumption is intentionally deferred to a later stage.
+model OutboxEvent {
+  id             String       @id @default(uuid())
+  dedupeKey      String       @unique @map("dedupe_key")
+  aggregateType  String       @map("aggregate_type")
+  aggregateId    String       @map("aggregate_id")
+  eventType      String       @map("event_type")
+  eventVersion   Int          @default(1) @map("event_version")
+  tenantId       String       @map("tenant_id")
+  businessId     String       @map("business_id")
+  payload        Json
+  metadata       Json?
+  correlationId  String?      @map("correlation_id")
+  causationId    String?      @map("causation_id")
+  status         OutboxStatus @default(PENDING)
+  retryCount     Int          @default(0) @map("retry_count")
+  nextAttemptAt  DateTime     @default(now()) @map("next_attempt_at")
+  leaseOwner     String?      @map("lease_owner")
+  leaseExpiresAt DateTime?    @map("lease_expires_at")
+  lastError      String?      @map("last_error")
+  publishedAt    DateTime?    @map("published_at")
+  lastAttemptAt  DateTime?    @map("last_attempt_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  deliveries     EventDelivery[]
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([businessId, status, createdAt])
+  @@index([aggregateType, aggregateId, createdAt])
+  @@index([businessId, aggregateType, aggregateId, createdAt, status])
+  @@index([eventType, createdAt])
+  @@map("outbox_events")
+}
+
+model EventSubscription {
+  id String @id @default(uuid())
+  name String @unique
+  eventType String @map("event_type")
+  version Int @default(1)
+  active Boolean @default(true)
+  maxAttempts Int @default(8) @map("max_attempts")
+  createdAt DateTime @default(now()) @map("created_at")
+  deliveries EventDelivery[]
+  @@index([eventType, active])
+  @@map("event_subscriptions")
+}
+
+model EventDelivery {
+  id String @id @default(uuid())
+  eventId String @map("event_id")
+  subscriptionId String @map("subscription_id")
+  status EventDeliveryStatus @default(PENDING)
+  attempts Int @default(0)
+  leaseOwner String? @map("lease_owner")
+  leaseExpiresAt DateTime? @map("lease_expires_at")
+  lastError String? @map("last_error")
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  deliveredAt DateTime? @map("delivered_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  event OutboxEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subscription EventSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  @@unique([eventId, subscriptionId])
+  @@index([status, nextAttemptAt, leaseExpiresAt, createdAt])
+  @@index([subscriptionId, status, eventId])
+  @@map("event_deliveries")
+}
+
+model Workflow {
+  id         String         @id @default(uuid())
+  businessId String         @map("business_id")
+  name       String
+  description String?
+  status     WorkflowStatus @default(DRAFT)
+  createdById String         @map("created_by_id")
+  scheduleEnabled Boolean?   @map("schedule_enabled")
+  nextTriggerAt DateTime?    @map("next_trigger_at")
+  scheduleLeaseOwner String? @map("schedule_lease_owner")
+  scheduleLeaseExpiresAt DateTime? @map("schedule_lease_expires_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  versions   WorkflowVersion[]
+  executions WorkflowExecution[]
+  @@index([businessId, status])
+  @@index([status, scheduleEnabled, nextTriggerAt, scheduleLeaseExpiresAt])
+  @@map("workflows")
+}
+
+model WorkflowVersion {
+  id         String   @id @default(uuid())
+  workflowId String   @map("workflow_id")
+  version    Int
+  definition Json
+  checksum   String
+  publishedAt DateTime? @map("published_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  @@unique([workflowId, version])
+  @@index([workflowId, publishedAt])
+  @@map("workflow_versions")
+}
+
+model WorkflowExecution {
+  id             String                  @id @default(uuid())
+  workflowId     String                  @map("workflow_id")
+  version        Int
+  businessId     String                  @map("business_id")
+  triggerEventId String?                 @map("trigger_event_id")
+  status         WorkflowExecutionStatus @default(PENDING)
+  state          Json
+  idempotencyKey String                  @unique @map("idempotency_key")
+  attempts       Int                     @default(0)
+  retryCount     Int                     @default(0) @map("retry_count")
+  currentNodeId  String?                 @map("current_node_id")
+  leaseOwner     String?                 @map("lease_owner")
+  leaseExpiresAt DateTime?               @map("lease_expires_at")
+  nextAttemptAt  DateTime                @default(now()) @map("next_attempt_at")
+  timeoutAt      DateTime?               @map("timeout_at")
+  cancelledAt    DateTime?               @map("cancelled_at")
+  cancellationReason String?             @map("cancellation_reason")
+  scheduledFor   DateTime?               @map("scheduled_for")
+  startedAt      DateTime?               @map("started_at")
+  completedAt    DateTime?               @map("completed_at")
+  lastError      String?                 @map("last_error")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+  workflow       Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  history        WorkflowExecutionEvent[]
+  actionAttempts WorkflowActionAttempt[]
+  @@index([businessId, status, nextAttemptAt])
+  @@index([status, nextAttemptAt, leaseExpiresAt])
+  @@index([workflowId, createdAt])
+  @@index([businessId, createdAt, status])
+  @@map("workflow_executions")
+}
+
+model WorkflowActionAttempt {
+  id             String   @id @default(uuid())
+  executionId    String   @map("execution_id")
+  businessId     String   @map("business_id")
+  nodeId         String   @map("node_id")
+  actionName     String   @map("action_name")
+  idempotencyKey String   @unique @map("idempotency_key")
+  status         String   @default("PENDING")
+  attempts       Int      @default(0)
+  output         Json?
+  lastError      String?  @map("last_error")
+  startedAt      DateTime? @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  execution      WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  @@unique([executionId, nodeId])
+  @@index([businessId, status, updatedAt])
+  @@map("workflow_action_attempts")
+}
+
+model WorkflowExecutionEvent {
+  id          String   @id @default(uuid())
+  executionId String   @map("execution_id")
+  businessId  String   @map("business_id")
+  type        String
+  nodeId      String?  @map("node_id")
+  durationMs  Int?     @map("duration_ms")
+  retryCount  Int      @default(0) @map("retry_count")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  @@index([businessId, type, createdAt])
+  @@index([executionId, createdAt])
+  @@map("workflow_execution_events")
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(uuid())
+  key         String
+  version     Int
+  name        String
+  description String?
+  definition  Json
+  checksum    String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@unique([key, version])
+  @@index([active, key])
+  @@map("workflow_templates")
+}
+
+model AutomationTask {
+  id          String   @id @default(uuid())
+  idempotencyKey String @unique @map("idempotency_key")
+  businessId  String   @map("business_id")
+  executionId String?  @map("execution_id")
+  title       String
+  description String?
+  assignedMemberId String? @map("assigned_member_id")
+  status      String   @default("OPEN")
+  dueAt       DateTime? @map("due_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  @@index([businessId, status, dueAt])
+  @@map("automation_tasks")
+}
+
+/// Server-controlled rollout and capability metadata. Target identifiers are
+/// optional by scope so one table supports platform, business, user, and
+/// internal cohorts without duplicating flag entities.
+model FeatureFlag {
+  id             String          @id @default(uuid())
+  key            String
+  scope          FeatureFlagScope
+  businessId     String?         @map("business_id")
+  userId         String?         @map("user_id")
+  enabled        Boolean         @default(false)
+  status         String          @default("DISABLED")
+  rolloutPercent Int             @default(100) @map("rollout_percent")
+  metadata       Json?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([key, scope])
+  @@index([businessId, key])
+  @@index([userId, key])
+  @@map("feature_flags")
+}
+
 /// Append-only platform audit ledger. Actor identity and role are snapshotted
 /// as strings instead of foreign keys so account deletion or role changes can
 /// never rewrite or cascade-delete historical evidence.
@@ -865,6 +1128,9 @@ model Customer {
   phoneE164  String?  @map("phone_e164")
   email      String?
   notes      String?
+  birthday   DateTime? @db.Date
+  anniversary DateTime? @db.Date
+  customFields Json? @map("custom_fields")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -882,6 +1148,8 @@ model Customer {
 
   @@index([businessId])
   @@index([businessId, createdAt])
+  @@index([businessId, birthday])
+  @@index([businessId, anniversary])
   @@index([createdAt])
   @@map("customers")
 }

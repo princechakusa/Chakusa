@@ -1,0 +1,13 @@
+CREATE TYPE "WorkflowStatus" AS ENUM ('DRAFT','PUBLISHED','PAUSED','ARCHIVED');
+CREATE TYPE "WorkflowExecutionStatus" AS ENUM ('PENDING','RUNNING','PAUSED','COMPLETED','FAILED','CANCELLED');
+CREATE TABLE "workflows" ("id" TEXT NOT NULL,"business_id" TEXT NOT NULL,"name" TEXT NOT NULL,"description" TEXT,"status" "WorkflowStatus" NOT NULL DEFAULT 'DRAFT',"created_by_id" TEXT NOT NULL,"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMP(3) NOT NULL,CONSTRAINT "workflows_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "workflow_versions" ("id" TEXT NOT NULL,"workflow_id" TEXT NOT NULL,"version" INTEGER NOT NULL,"definition" JSONB NOT NULL,"checksum" TEXT NOT NULL,"published_at" TIMESTAMP(3),"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "workflow_versions_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "workflow_executions" ("id" TEXT NOT NULL,"workflow_id" TEXT NOT NULL,"version" INTEGER NOT NULL,"business_id" TEXT NOT NULL,"trigger_event_id" TEXT,"status" "WorkflowExecutionStatus" NOT NULL DEFAULT 'PENDING',"state" JSONB NOT NULL,"idempotency_key" TEXT NOT NULL,"attempts" INTEGER NOT NULL DEFAULT 0,"scheduled_for" TIMESTAMP(3),"started_at" TIMESTAMP(3),"completed_at" TIMESTAMP(3),"last_error" TEXT,"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMP(3) NOT NULL,CONSTRAINT "workflow_executions_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "workflow_versions_workflow_id_version_key" ON "workflow_versions"("workflow_id","version");
+CREATE UNIQUE INDEX "workflow_executions_idempotency_key_key" ON "workflow_executions"("idempotency_key");
+CREATE INDEX "workflows_business_id_status_idx" ON "workflows"("business_id","status");
+CREATE INDEX "workflow_versions_workflow_id_published_at_idx" ON "workflow_versions"("workflow_id","published_at");
+CREATE INDEX "workflow_executions_business_id_status_scheduled_for_idx" ON "workflow_executions"("business_id","status","scheduled_for");
+CREATE INDEX "workflow_executions_workflow_id_created_at_idx" ON "workflow_executions"("workflow_id","created_at");
+ALTER TABLE "workflow_versions" ADD CONSTRAINT "workflow_versions_workflow_id_fkey" FOREIGN KEY ("workflow_id") REFERENCES "workflows"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "workflow_executions" ADD CONSTRAINT "workflow_executions_workflow_id_fkey" FOREIGN KEY ("workflow_id") REFERENCES "workflows"("id") ON DELETE CASCADE ON UPDATE CASCADE;

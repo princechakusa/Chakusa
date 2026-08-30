@@ -18,11 +18,11 @@ const handle = startAutomationWorker({
   onError: (error) => console.error("[automation-worker] poll cycle failed", error),
 });
 
-function shutdown(signal: string) {
+async function shutdown(signal: string) {
   console.log(`[automation-worker] received ${signal}, stopping`);
-  handle.stop();
+  await handle.stop();
   process.exit(0);
 }
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

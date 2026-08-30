@@ -154,6 +154,10 @@ const PLATFORM_SETTING_DEFAULTS = [
   { key: "maintenance_mode", enabled: false, description: "Gate platform maintenance mode. Enforced by the deployment layer when enabled." },
   { key: "automation_enabled", enabled: true, description: "Allow automation workers to process new runs." },
   { key: "communications_enabled", enabled: true, description: "Allow outbound communication providers to send." },
+  { key: "ai_enabled", enabled: true, description: "Allow AI-assisted features to operate." },
+  { key: "messaging_enabled", enabled: true, description: "Allow messaging features to operate." },
+  { key: "providers_enabled", enabled: true, description: "Allow configured third-party providers to operate." },
+  { key: "conversations_enabled", enabled: true, description: "Allow conversation features to operate." },
   { key: "support_read_only_impersonation", enabled: true, description: "Allow support agents to open audited read-only account context." },
 ] as const;
 

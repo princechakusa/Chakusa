@@ -5,6 +5,9 @@ export const createCustomerSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional(),
   notes: z.string().optional(),
+  birthday: z.coerce.date().optional(),
+  anniversary: z.coerce.date().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 

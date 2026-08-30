@@ -12,6 +12,7 @@ import { toApiLead } from "./leads.serialization.js";
 import type { CreateLeadInput, ReportMissedCallInput, UpdateLeadInput, UpdateLeadPaymentInput } from "./leads.schemas.js";
 import type { Lead, Plan } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
+import { recordOutboxEvent } from "../../lib/outbox.js";
 
 export async function listLeads(
   businessId: string,
@@ -65,7 +66,7 @@ export async function createLead(
       assertUnderLimit({ plan, resource: "leads", limit, current, periodResetsAt: startOfNextUtcMonth() });
     }
 
-    return tx.lead.create({
+    const created = await tx.lead.create({
       data: {
         businessId,
         customerId: input.customerId,
@@ -79,6 +80,8 @@ export async function createLead(
         referredByCustomerId: input.referredByCustomerId,
       },
     });
+    await recordOutboxEvent(tx, { dedupeKey: `lead:${created.id}:created`, aggregateType: "lead", aggregateId: created.id, eventType: "LeadCreated", tenantId: businessId, businessId, payload: { id: created.id, source: created.source } });
+    return created;
   });
 
   await recordActivity({
@@ -192,16 +195,10 @@ export async function updateLead(
     await assertCustomerInBusiness(businessId, input.customerId);
   }
 
-  const lead = await prisma.lead.update({
-    where: { id: leadId },
-    data: {
-      customerId: input.customerId,
-      source: input.source,
-      serviceRequested: input.serviceRequested,
-      urgency: input.urgency,
-      estimatedValue: input.estimatedValue,
-      notes: input.notes,
-    },
+  const lead = await prisma.$transaction(async (tx) => {
+    const updated = await tx.lead.update({ where: { id: leadId }, data: { customerId: input.customerId, source: input.source, serviceRequested: input.serviceRequested, urgency: input.urgency, estimatedValue: input.estimatedValue, notes: input.notes } });
+    await recordOutboxEvent(tx, { dedupeKey: `lead:${leadId}:updated:${updated.updatedAt.toISOString()}`, aggregateType: "lead", aggregateId: leadId, eventType: "LeadUpdated", tenantId: businessId, businessId, payload: { id: leadId } });
+    return updated;
   });
 
   return withResponseTime(lead);

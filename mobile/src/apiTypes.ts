@@ -6,6 +6,15 @@ export interface AutomationRuleDto { id: string; businessId: string; name: strin
 export type AutomationRunReason = 'INVALID_PHONE' | 'CUSTOMER_OPTED_OUT' | 'SUBSCRIPTION_INACTIVE' | 'LEAD_ALREADY_CONTACTED' | 'RULE_DISABLED' | 'SEND_FAILED' | 'UNKNOWN';
 export interface AutomationRunHistoryItemDto { id: string; status: AutomationRunStatus; scheduledFor: string; startedAt: string | null; completedAt: string | null; triggerType: AutomationTriggerType; channel: AutomationChannel; customer: { id: string; name: string } | null; lead: { id: string; serviceRequested: string | null; status: LeadStatus } | null; reason: AutomationRunReason | null; }
 export interface AutomationRunHistoryDto { items: AutomationRunHistoryItemDto[]; total: number; page: number; pageSize: number; }
+export type WorkflowStatus = 'DRAFT'|'PUBLISHED'|'PAUSED'|'ARCHIVED';
+export type WorkflowExecutionStatus = 'PENDING'|'RUNNING'|'PAUSED'|'COMPLETED'|'FAILED'|'CANCELLED';
+export interface WorkflowVersionDto { id:string; version:number; publishedAt:string|null; createdAt:string; definition?:Record<string,unknown>; checksum?:string; }
+export interface WorkflowExecutionEventDto { id:string; type:string; nodeId?:string|null; error?:string|null; durationMs?:number|null; retryCount?:number; createdAt:string; }
+export interface WorkflowDto { id:string; name:string; description:string|null; status:WorkflowStatus; updatedAt:string; versions:WorkflowVersionDto[]; executions?:WorkflowExecutionDto[]; _count?:{executions:number}; }
+export interface WorkflowExecutionDto { id:string; status:WorkflowExecutionStatus; attempts:number; retryCount?:number; scheduledFor:string|null; nextAttemptAt:string; startedAt:string|null; completedAt:string|null; lastError:string|null; currentNodeId?:string|null; history?:WorkflowExecutionEventDto[]; workflow:{id:string;name:string}; }
+export interface WorkflowTemplateDto { id:string; key:string; version:number; name:string; description:string|null; active:boolean; definition:Record<string,unknown>; }
+export interface WorkflowAnalyticsDto { windowDays:number; totals:Partial<Record<WorkflowExecutionStatus,number>>; throughputPerDay:number; successRate:number|null; failureRate:number|null; averageExecutionTimeMs:number|null; retries:number; events:Record<string,number>; }
+export interface AutomationFoundationDto { capabilities:Record<string,'ENABLED'|'DISABLED'|'BETA'|'INTERNAL'|'PRODUCTION'>; killSwitches:Record<string,boolean>; providerKillSwitches:Record<string,boolean>; maintenance:boolean; updatedAt:string|null; }
 export type LeadUrgency = 'low' | 'medium' | 'high';
 export type ReviewStatus = 'pending' | 'sent' | 'opened' | 'reviewed' | 'feedback_received';
 export type ReminderStatus = 'due' | 'sent' | 'completed' | 'dismissed';
@@ -32,7 +41,7 @@ export interface CreatedTeamInvitationDto { id: string; email: string; role: Exc
 export interface TeamSeatSummaryDto { seats: { activeMembers: number; pendingReservations: number; current: number; limit: number; remaining: number; }; }
 export interface PublicTeamInvitationDto { state: 'open' | 'accepted' | 'expired' | 'revoked'; business?: { name: string }; email?: string; role?: Exclude<BusinessRole, 'OWNER'>; }
 
-export interface CustomerDto { id: string; businessId: string; name: string; phone: string | null; email: string | null; notes: string | null; createdAt: string; updatedAt: string; }
+export interface CustomerDto { id: string; businessId: string; name: string; phone: string | null; email: string | null; notes: string | null; birthday?:string|null; anniversary?:string|null; customFields?:Record<string,unknown>|null; createdAt: string; updatedAt: string; }
 export interface CustomerListResponse { items: CustomerDto[]; total: number; page: number; pageSize: number; }
 export interface BulkImportCustomersResultDto { created: { id: string; name: string }[]; skipped: { name: string; reason: 'duplicate_phone' | 'limit_reached' }[]; failed: { name: string; reason: string }[]; }
 export interface MessageDto { id: string; body: string; status: MessageStatus; channel: MessageChannel; messageType?: MessageType; automationRunId?: string | null; sentAt: string | null; createdAt: string; }

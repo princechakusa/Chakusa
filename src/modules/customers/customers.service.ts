@@ -9,8 +9,9 @@ import { deriveCommunicationStatuses } from "../../lib/communicationStatus.js";
 import { buildCommunicationTimeline } from "../../lib/communicationTimeline.js";
 import { generateCustomerCoachingHighlight } from "../../lib/customerCoachingHighlight.js";
 import type { BulkImportCustomersInput, CreateCustomerInput, UpdateCustomerInput } from "./customers.schemas.js";
-import type { Lead, Plan } from "@prisma/client";
+import { Prisma, type Lead, type Plan } from "@prisma/client";
 import type { CountryCode } from "libphonenumber-js";
+import { recordOutboxEvent } from "../../lib/outbox.js";
 
 /**
  * Best-effort E.164 derivation for a customer's phone — never blocks the
@@ -73,7 +74,9 @@ export async function createCustomer(
       assertUnderLimit({ plan, resource: "customers", limit, current });
     }
 
-    return tx.customer.create({ data: { businessId, ...input, phoneE164 } });
+    const created = await tx.customer.create({ data: { businessId, ...input, phoneE164, customFields: input.customFields as Prisma.InputJsonValue | undefined } });
+    await recordOutboxEvent(tx, { dedupeKey: `customer:${created.id}:created`, aggregateType: "customer", aggregateId: created.id, eventType: "CustomerCreated", tenantId: businessId, businessId, payload: { id: created.id } });
+    return created;
   });
 
   await recordActivity({
@@ -135,20 +138,10 @@ export async function bulkImportCustomers(
         }
       }
 
-      const customer = await prisma.customer.create({
-        data: { businessId, name: row.name, phone: row.phone, email: row.email, notes: row.notes, phoneE164 },
-      });
+      const customer = await prisma.$transaction(async (tx) => { const createdCustomer = await tx.customer.create({ data: { businessId, name: row.name, phone: row.phone, email: row.email, notes: row.notes, phoneE164 } }); await recordOutboxEvent(tx, { dedupeKey: `customer:${createdCustomer.id}:created`, aggregateType: "customer", aggregateId: createdCustomer.id, eventType: "CustomerCreated", tenantId: businessId, businessId, payload: { id: createdCustomer.id } }); await recordActivity({ businessId, actorId, eventType: "CUSTOMER_CREATED", entityType: "customer", entityId: createdCustomer.id, metadata: { source: "bulk_import" } }, tx); return createdCustomer; });
       current += 1;
       created.push({ id: customer.id, name: customer.name });
 
-      await recordActivity({
-        businessId,
-        actorId,
-        eventType: "CUSTOMER_CREATED",
-        entityType: "customer",
-        entityId: customer.id,
-        metadata: { source: "bulk_import" },
-      });
     } catch (error) {
       failed.push({ name: row.name, reason: error instanceof Error ? error.message : "Could not import this customer" });
     }
@@ -192,9 +185,11 @@ export async function findOrCreateCustomerByPhone(
       const current = await tx.customer.count({ where: { businessId } });
       assertUnderLimit({ plan, resource: "customers", limit, current });
     }
-    return tx.customer.create({
+    const created = await tx.customer.create({
       data: { businessId, name: rawPhone, phone: rawPhone, phoneE164 },
     });
+    await recordOutboxEvent(tx, { dedupeKey: `customer:${created.id}:created`, aggregateType: "customer", aggregateId: created.id, eventType: "CustomerCreated", tenantId: businessId, businessId, payload: { id: created.id } });
+    return created;
   });
 
   await recordActivity({
@@ -312,9 +307,10 @@ export async function updateCustomer(
   await assertCustomerInBusiness(businessId, customerId);
   const phoneE164 = await derivePhoneE164(businessId, input.phone);
 
-  const customer = await prisma.customer.update({
-    where: { id: customerId },
-    data: { ...input, phoneE164 },
+  const customer = await prisma.$transaction(async (tx) => {
+    const updated = await tx.customer.update({ where: { id: customerId }, data: { ...input, phoneE164, customFields: input.customFields as Prisma.InputJsonValue | undefined } });
+    await recordOutboxEvent(tx, { dedupeKey: `customer:${customerId}:updated:${updated.updatedAt.toISOString()}`, aggregateType: "customer", aggregateId: customerId, eventType: "CustomerUpdated", tenantId: businessId, businessId, payload: { id: customerId } });
+    return updated;
   });
 
   await recordActivity({

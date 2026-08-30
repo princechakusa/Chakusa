@@ -16,7 +16,7 @@ export default async function calendarRoutes(fastify: FastifyInstance) {
   });
   fastify.post("/subscriptions", async (request, reply) => {
     requireOwner(request);
-    const created = await createCalendarSubscription(request.businessId!, createCalendarSubscriptionSchema.parse(request.body));
+    const created = await createCalendarSubscription(request.businessId!, createCalendarSubscriptionSchema.parse(request.body ?? {}));
     const host = request.headers.host;
     const forwardedHeader = request.headers["x-forwarded-proto"];
     const forwardedProtocol = (typeof forwardedHeader === "string" ? forwardedHeader : "").split(",")[0]?.trim() ?? "";

@@ -45,6 +45,7 @@ import supportRoutes from "./modules/support/support.routes.js";
 import adminAuthPlugin from "./plugins/adminAuth.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
+import { readAutomationHealth } from "./lib/automation/automationHealth.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -161,6 +162,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
       return { status: 'unavailable', lastSuccessAt: null };
     }
   });
+  app.get('/health/automation', async (_request, reply) => { try { const health = await readAutomationHealth(); if (health.status !== "ok") reply.code(503); return health; } catch { reply.code(503); return { status: "unavailable" }; } });
 
   app.post('/internal/worker/tick', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
     if (!config.WORKER_TRIGGER_SECRET) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });

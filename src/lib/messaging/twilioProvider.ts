@@ -102,14 +102,14 @@ export class TwilioMessagingProvider implements MessagingProvider {
   }
 
   async send(message: OutboundMessage): Promise<SendResult> {
-    if (!this.supportsChannel(message.channel)) {
-      return { accepted: false, errorCode: "UNSUPPORTED_CHANNEL", permanentFailure: true };
-    }
-
     if (!this.sender.fromNumber && !this.sender.whatsappFrom && !this.sender.messagingServiceSid) {
       // Configuration error, never reaches Twilio at all — retrying the
       // same request cannot succeed without an operator fixing config.
       return { accepted: false, errorCode: "PROVIDER_NOT_CONFIGURED", permanentFailure: true };
+    }
+
+    if (!this.supportsChannel(message.channel)) {
+      return { accepted: false, errorCode: "UNSUPPORTED_CHANNEL", permanentFailure: true };
     }
 
     try {

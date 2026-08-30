@@ -5,6 +5,13 @@ import { sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDu
 import type { PushProvider } from "../lib/push/pushProvider.js";
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
 import { generateDueWeeklyOwnerReports } from "../modules/weeklyReports/weeklyReports.service.js";
+import { publishOutboxBatch, recoverExpiredOutboxClaims } from "./outboxPublisher.js";
+import { dispatchDeliveryBatch, recoverExpiredDeliveries } from "../lib/automation/domainEventBus.js";
+import { initializeWorkflowSchedules, registerWorkflowTriggerSubscribers, scheduleTimeTriggers } from "../lib/automation/triggerEngine.js";
+import { registerDefaultActions, type IdempotentActionGateway } from "../lib/automation/defaultActions.js";
+import { unavailableWorkflowGateways } from "../lib/automation/workflowProviderGateways.js";
+import { processWorkflowExecutions } from "./workflowWorker.js";
+import { getAutomationFoundationStatus } from "../modules/automation/automationFoundation.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -22,11 +29,12 @@ export interface AutomationWorkerOptions {
   provider?: MessagingProvider;
   appointmentPushProvider?: PushProvider;
   appointmentMessagingProvider?: MessagingProvider;
+  workflowGateways?: { messaging?: IdempotentActionGateway; ai?: IdempotentActionGateway };
   onError?: (error: unknown) => void;
 }
 
 export interface AutomationWorkerHandle {
-  stop: () => void;
+  stop: () => Promise<void>;
 }
 
 /**
@@ -52,15 +60,25 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
   let lifecycleTimer: NodeJS.Timeout | undefined;
+  let activeTick: Promise<void> | null = null;
+  let activeLifecycleTick: Promise<void> | null = null;
   const startedAt = new Date();
+  const initialized = (async () => { registerDefaultActions(options.workflowGateways ?? unavailableWorkflowGateways()); await registerWorkflowTriggerSubscribers(); await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries(), initializeWorkflowSchedules()]); })();
 
   const tick = async () => {
     if (stopped) return;
+    await initialized;
+    const foundation = await getAutomationFoundationStatus();
+    if (!foundation.killSwitches.automation || foundation.maintenance) { try { await recordWorkerHeartbeat(startedAt); } catch (error) { options.onError?.(error); } if (!stopped) timer = setTimeout(() => { activeTick = tick().finally(() => { activeTick = null; }); }, intervalMs); return; }
     // These jobs share one worker process but are operationally independent.
     // One provider/database failure must not suppress reminders, payment
     // follow-ups, or the heartbeat for the rest of the cycle.
     const jobs: (() => Promise<unknown>)[] = [
       () => processDueAutomationRuns(options.provider, batchSize),
+      () => publishOutboxBatch(batchSize),
+      () => dispatchDeliveryBatch(batchSize),
+      () => processWorkflowExecutions(batchSize),
+      () => scheduleTimeTriggers(new Date(), Math.max(batchSize, 100)),
       () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
       () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),
       () => sendDueAppointmentPaymentReminders(options.appointmentMessagingProvider ?? options.provider, batchSize),
@@ -70,7 +88,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     }
     try { await recordWorkerHeartbeat(startedAt); } catch (error) { options.onError?.(error); }
     if (!stopped) {
-      timer = setTimeout(() => void tick(), intervalMs);
+      timer = setTimeout(() => { activeTick = tick().finally(() => { activeTick = null; }); }, intervalMs);
     }
   };
 
@@ -82,18 +100,19 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
     try { await sweepLifecycleAutomations(); } catch (error) { options.onError?.(error); }
     try { await generateDueWeeklyOwnerReports(new Date(), 50, options.appointmentPushProvider); } catch (error) { options.onError?.(error); }
     if (!stopped) {
-      lifecycleTimer = setTimeout(() => void lifecycleTick(), lifecycleIntervalMs);
+      lifecycleTimer = setTimeout(() => { activeLifecycleTick = lifecycleTick().finally(() => { activeLifecycleTick = null; }); }, lifecycleIntervalMs);
     }
   };
 
-  timer = setTimeout(() => void tick(), 0);
-  lifecycleTimer = setTimeout(() => void lifecycleTick(), 0);
+  timer = setTimeout(() => { activeTick = tick().finally(() => { activeTick = null; }); }, 0);
+  lifecycleTimer = setTimeout(() => { activeLifecycleTick = lifecycleTick().finally(() => { activeLifecycleTick = null; }); }, 0);
 
   return {
-    stop: () => {
+    stop: async () => {
       stopped = true;
       if (timer) clearTimeout(timer);
       if (lifecycleTimer) clearTimeout(lifecycleTimer);
+      await Promise.allSettled([activeTick, activeLifecycleTick].filter((value): value is Promise<void> => value !== null));
     },
   };
 }

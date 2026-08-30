@@ -13,6 +13,7 @@ import type { CreateReviewRequestInput, UpdateReviewRequestInput } from "./revie
 import type { Prisma, Plan, SubscriptionStatus } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
+import { recordOutboxEvent } from "../../lib/outbox.js";
 
 type DatabaseClient = typeof prisma | Prisma.TransactionClient;
 
@@ -73,7 +74,7 @@ export async function createReviewRequest(
       assertUnderLimit({ plan, resource: "reviewRequests", limit, current, periodResetsAt: startOfNextUtcMonth() });
     }
 
-    return tx.reviewRequest.create({
+    const created = await tx.reviewRequest.create({
       data: {
         businessId,
         customerId: input.customerId,
@@ -82,6 +83,8 @@ export async function createReviewRequest(
         googleReviewLink: business.googleReviewLink,
       },
     });
+    await recordOutboxEvent(tx, { dedupeKey: `review-request:${created.id}:created`, aggregateType: "review_request", aggregateId: created.id, eventType: "ReviewRequestCreated", tenantId: businessId, businessId, payload: { id: created.id } });
+    return created;
   });
 
   await recordActivity({
@@ -390,9 +393,10 @@ export async function markReviewRequestReviewed(
 ) {
   const existing = await getOwnedReviewRequest(businessId, id);
 
-  const claimed = await prisma.reviewRequest.updateMany({
-    where: { id, businessId, status: { not: "reviewed" } },
-    data: { status: "reviewed" },
+  const claimed = await prisma.$transaction(async (tx) => {
+    const result = await tx.reviewRequest.updateMany({ where: { id, businessId, status: { not: "reviewed" } }, data: { status: "reviewed" } });
+    if (result.count > 0) await recordOutboxEvent(tx, { dedupeKey: `review:${id}:submitted`, aggregateType: "review_request", aggregateId: id, eventType: "ReviewSubmitted", tenantId: businessId, businessId, payload: { id, serviceName: existing.serviceName } });
+    return result;
   });
 
   if (claimed.count > 0) {

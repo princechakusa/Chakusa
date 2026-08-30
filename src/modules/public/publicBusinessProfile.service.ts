@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { findOrCreateCustomerByPhone } from "../customers/customers.service.js";
+import { findOrCreateCustomerByPhone, updateCustomer } from "../customers/customers.service.js";
 import { createLead } from "../leads/leads.service.js";
 import { LEAD_SOURCE_PUBLIC_PROFILE } from "../../lib/leadSources.js";
 import type { SubmitPublicContactInput } from "./public.schemas.js";
@@ -65,7 +65,7 @@ export async function createPublicBooking(slug: string, input: CreatePublicBooki
   if (!offering) throw ApiError.notFound("This service is not available for online booking");
   const endsAt = new Date(new Date(input.startsAt).getTime() + offering.durationMinutes * 60_000).toISOString();
   const customer = await findOrCreateCustomerByPhone(business.id, business.ownerId, input.phone, "FREE");
-  await prisma.customer.update({ where: { id: customer.id }, data: { name: input.name, ...(input.email ? { email: input.email } : {}) } });
+  await updateCustomer(business.id, business.ownerId, customer.id, { name: input.name, ...(input.email ? { email: input.email } : {}) });
   const appointment = await createAppointment(business.id, business.ownerId, { customerId: customer.id, assignedMemberId: input.assignedMemberId, serviceOfferingId: offering.id, serviceName: offering.name, startsAt: input.startsAt, endsAt, notes: input.notes, reminderMinutes: business.defaultAppointmentReminderMinutes });
   const token = generateOpaqueToken();
   await prisma.publicBookingAccess.create({ data: { id: token.id, businessId: business.id, appointmentId: appointment.id, tokenHash: token.hash, expiresAt: new Date(appointment.endsAt.getTime() + 365 * 86_400_000) } });
@@ -145,7 +145,7 @@ export async function submitPublicContactForm(
 
   const customer = await findOrCreateCustomerByPhone(business.id, business.ownerId, input.phone, plan);
   if (customer.created) {
-    await prisma.customer.update({ where: { id: customer.id }, data: { name: input.name } });
+    await updateCustomer(business.id, business.ownerId, customer.id, { name: input.name });
   }
 
   // Silently ignored rather than validated/rejected: a stale or tampered

@@ -251,7 +251,8 @@ describe("admin guarded actions", () => {
     const platformAdmin = await admin("PLATFORM_ADMIN");
     const listed = await app.inject({ method: "GET", url: "/admin/settings", headers: headers(platformAdmin.token) });
     expect(listed.statusCode).toBe(200);
-    expect(listed.json().items).toHaveLength(4);
+    expect(listed.json().items).toHaveLength(8);
+    expect(listed.json().items.map((item: { key: string }) => item.key)).toEqual(expect.arrayContaining(["automation_enabled", "ai_enabled", "messaging_enabled", "providers_enabled", "conversations_enabled"]));
     const changed = await app.inject({ method: "PATCH", url: "/admin/settings", headers: headers(platformAdmin.token, platformAdmin.csrf), payload: { key: "automation_enabled", enabled: false } });
     expect(changed.statusCode).toBe(200);
     expect(changed.json()).toMatchObject({ key: "automation_enabled", value: false });

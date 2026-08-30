@@ -6,6 +6,7 @@ import {
   defaultStripePaymentProvider,
   type StripePaymentProvider,
 } from "../../lib/payments/stripeProvider.js";
+import { recordOutboxEvent } from "../../lib/outbox.js";
 
 const ZERO_DECIMAL = new Set([
   "BIF",
@@ -227,6 +228,7 @@ export async function refundPayment(
               : "partially_paid",
       },
     });
+    await recordOutboxEvent(tx, { dedupeKey: `payment:${transaction.id}:refund:${updated.updatedAt.toISOString()}`, aggregateType: "payment", aggregateId: transaction.id, eventType: "PaymentRefunded", tenantId: businessId, businessId, payload: { id: transaction.id, amount: refundAmount } });
     return updated;
   });
 }
@@ -287,6 +289,7 @@ export async function applyStripeEvent(event: Stripe.Event) {
             total != null && paidAmount >= total ? "paid" : "partially_paid",
         },
       });
+      await recordOutboxEvent(tx, { dedupeKey: `payment:${transaction.id}:received`, aggregateType: "payment", aggregateId: transaction.id, eventType: "PaymentReceived", tenantId: transaction.businessId, businessId: transaction.businessId, payload: { id: transaction.id, appointmentId: transaction.appointmentId, amount: transaction.amount.toNumber(), currency: transaction.currency } });
     });
   } else if (
     event.type === "checkout.session.async_payment_failed" ||

@@ -45,3 +45,13 @@ export const listAutomationRunHistoryQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(25),
 });
 export type ListAutomationRunHistoryQuery = z.infer<typeof listAutomationRunHistoryQuerySchema>;
+
+const workflowNodeSchema = z.object({ id: z.string().trim().min(1).max(100), type: z.enum(["condition","delay","action","branch"]), config: z.record(z.string(), z.unknown()), next: z.array(z.string().trim().min(1).max(100)).max(2).optional() });
+export const workflowDefinitionSchema = z.object({ trigger: z.object({ type: z.string().trim().min(1).max(80), config: z.record(z.string(), z.unknown()).optional() }), nodes: z.array(workflowNodeSchema).min(1).max(250), startNodeId: z.string().trim().min(1).max(100).optional(), settings: z.object({ timeoutSeconds: z.number().int().min(1).max(31_536_000).optional(), maxRetries: z.number().int().min(0).max(20).optional() }).optional() });
+export const createWorkflowSchema = z.object({ name: z.string().trim().min(1).max(120), description: z.string().trim().max(1000).optional(), definition: workflowDefinitionSchema });
+export const createWorkflowVersionSchema = z.object({ definition: workflowDefinitionSchema });
+export const publishWorkflowSchema = z.object({ version: z.number().int().positive().optional() });
+export const manualWorkflowSchema = z.object({ input: z.record(z.string(), z.unknown()).default({}) });
+export const workflowExecutionQuerySchema = z.object({ status: z.enum(["PENDING","RUNNING","PAUSED","COMPLETED","FAILED","CANCELLED"]).optional(), take: z.coerce.number().int().positive().max(100).default(50) });
+export const workflowAnalyticsQuerySchema = z.object({ days: z.coerce.number().int().min(1).max(365).default(30) });
+export const workflowExecutionActionSchema = z.enum(["pause", "resume", "cancel", "retry"]);

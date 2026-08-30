@@ -23,6 +23,16 @@ export async function resetDatabase() {
   // operation.
   await prisma.$executeRawUnsafe('TRUNCATE TABLE "admin_audit_logs"');
   await prisma.$transaction([
+    prisma.workflowExecutionEvent.deleteMany(),
+    prisma.workflowExecution.deleteMany(),
+    prisma.workflowVersion.deleteMany(),
+    prisma.workflow.deleteMany(),
+    prisma.workflowTemplate.deleteMany(),
+    prisma.automationTask.deleteMany(),
+    prisma.eventDelivery.deleteMany(),
+    prisma.eventSubscription.deleteMany(),
+    prisma.outboxEvent.deleteMany(),
+    prisma.featureFlag.deleteMany(),
     prisma.workerHeartbeat.deleteMany(),
     prisma.weeklyOwnerReport.deleteMany(),
     prisma.publicBookingAccess.deleteMany(),

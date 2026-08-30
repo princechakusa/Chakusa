@@ -18,13 +18,14 @@ export interface ValueCenterDto {
 
 export async function getValueCenter(businessId: string): Promise<ValueCenterDto> {
   const summary = await getDashboardSummary(businessId);
-  const [insights, audiences, automationRows, messageRows, appointmentRows, ratingRow] = await Promise.all([
+  const [insights, audiences, automationRows, messageRows, appointmentRows, ratingRow, workflowRows] = await Promise.all([
     getBusinessInsights(businessId, summary),
     getAudienceSummaries(businessId),
     prisma.automationRun.groupBy({ by: ["automationRuleId", "status"], where: { businessId }, _count: { _all: true }, orderBy: { automationRuleId: "asc" } }),
     prisma.message.findMany({ where: { businessId, automationRunId: { not: null } }, select: { status: true, automationRun: { select: { automationRule: { select: { triggerType: true } } } } } }),
     prisma.appointment.groupBy({ by: ["status"], where: { businessId }, _count: { _all: true } }),
     prisma.feedback.aggregate({ where: { businessId }, _avg: { rating: true } }),
+    prisma.workflowExecution.findMany({ where: { businessId }, select: { status: true, state: true, actionAttempts: { where: { status: "SUCCEEDED" }, select: { actionName: true } } } }),
   ]);
   const rules = await prisma.automationRule.findMany({ where: { businessId, id: { in: automationRows.map((row) => row.automationRuleId) } }, select: { id: true, triggerType: true } });
   const ruleType = new Map(rules.map((rule) => [rule.id, rule.triggerType]));
@@ -46,6 +47,21 @@ export async function getValueCenter(businessId: string): Promise<ValueCenterDto
     if (message.status === "delivered") item.delivered += 1;
   }
   const appointmentCounts = new Map(appointmentRows.map((row) => [row.status, row._count._all]));
+  const workflowCompleted = workflowRows.filter((row) => row.status === "COMPLETED").length;
+  for (const execution of workflowRows) {
+    const state = execution.state && typeof execution.state === "object" && !Array.isArray(execution.state) ? execution.state as Record<string, unknown> : {};
+    const triggerType = String(state.eventType ?? (state.scheduledAt ? "SCHEDULED" : state.manualInput !== undefined ? "MANUAL" : "HYBRID_WORKFLOW"));
+    const item = byType.get(triggerType) ?? { triggerType, scheduled: 0, sent: 0, delivered: 0, opened: null, replied: null, booked: null, paid: null, revenue: null };
+    item.scheduled += 1;
+    // Only explicit, persisted outcome attribution is counted. This avoids
+    // claiming unrelated business revenue merely because a workflow ran.
+    const outcome = state.outcome && typeof state.outcome === "object" && !Array.isArray(state.outcome) ? state.outcome as Record<string, unknown> : null;
+    if (outcome?.booked === true) item.booked = (item.booked ?? 0) + 1;
+    if (outcome?.paid === true) item.paid = (item.paid ?? 0) + 1;
+    if (typeof outcome?.revenue === "number" && Number.isFinite(outcome.revenue)) item.revenue = (item.revenue ?? 0) + outcome.revenue;
+    item.sent += execution.actionAttempts.filter((attempt) => ["SEND_MESSAGE", "SEND_NOTIFICATION", "INTERNAL_NOTIFICATION"].includes(attempt.actionName)).length;
+    byType.set(triggerType, item);
+  }
   const dormant = audiences.find((item) => item.key === "dormant");
   const returning = insights.customerLifecycle.counts.returning + insights.customerLifecycle.counts.loyal + insights.customerLifecycle.counts.vip;
   const opportunities: ValueCenterDto["opportunities"] = [];
@@ -61,7 +77,7 @@ export async function getValueCenter(businessId: string): Promise<ValueCenterDto
       customers: { total: summary.customerIntelligence.totalCustomers, new: summary.customerIntelligence.newCustomersThisPeriod, recovered: summary.customerIntelligence.returningCustomers, retained: returning, dormant: dormant?.totalCustomers ?? 0, dormantReturned: null },
       appointments: { booked: summary.activation?.appointmentsBooked ?? 0, completed: summary.activation?.appointmentsCompleted ?? 0, cancelled: appointmentCounts.get("CANCELED") ?? null, noShows: appointmentCounts.get("NO_SHOW") ?? null, noShowsRecovered: null },
       reputation: { requests: summary.reviews.requestsSent, received: summary.reviews.reviewsReceived, averageRating: ratingRow._avg?.rating ?? null },
-      automation: { messagesSent: summary.activation?.customerMessagesSent ?? 0, automationsCompleted: automationRows.filter((row) => row.status === "COMPLETED").reduce((sum, row) => sum + row._count._all, 0), followUpsCompleted: comebackCount(summary), reminderSuccess: insights.recoveryPerformance.reminderCompletionRate },
+      automation: { messagesSent: summary.activation?.customerMessagesSent ?? 0, automationsCompleted: automationRows.filter((row) => row.status === "COMPLETED").reduce((sum, row) => sum + row._count._all, 0) + workflowCompleted, followUpsCompleted: comebackCount(summary), reminderSuccess: insights.recoveryPerformance.reminderCompletionRate },
     },
     automationRoi: [...byType.values()], opportunities, generatedAt: new Date(),
   };

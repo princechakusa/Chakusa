@@ -40,7 +40,7 @@ export const adminAutomationRetrySchema = z.object({
 });
 
 export const adminSettingUpdateSchema = z.object({
-  key: z.enum(["maintenance_mode", "automation_enabled", "communications_enabled", "support_read_only_impersonation"]),
+  key: z.enum(["maintenance_mode", "automation_enabled", "communications_enabled", "support_read_only_impersonation", "ai_enabled", "messaging_enabled", "providers_enabled", "conversations_enabled"]),
   enabled: z.boolean(),
 });
 

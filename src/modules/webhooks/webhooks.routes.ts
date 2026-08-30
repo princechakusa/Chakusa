@@ -9,6 +9,8 @@ import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js
 import { prisma } from "../../lib/prisma.js";
 import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
 import { applyStripeEvent } from "../payments/payments.service.js";
+import { createHash } from "node:crypto";
+import { recordDeliveryReceipt, recordInboundMessage } from "../../lib/messaging/messagingPlatform.js";
 
 export interface WebhookRoutesOptions {
   /** Test-only injection point — see subscription.routes.ts's SubscriptionRoutesOptions for the identical pattern. Defaults to the real store clients; never live in tests. */
@@ -66,8 +68,12 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
     const event = messagingProvider.parseDeliveryWebhook(request.body, context.headers);
     if (!event) throw ApiError.badRequest("Invalid delivery event");
-    const status = event.status === "delivered" ? "delivered" : event.status === "undelivered" ? "undelivered" : event.status === "failed" ? "failed" : "sent";
-    await prisma.message.updateMany({ where: { providerMessageId: event.providerMessageId }, data: { status, providerErrorCode: event.errorCode ?? null, deliveredAt: event.status === "delivered" ? event.occurredAt : null } });
+    const eventId = createHash("sha256").update(`${event.providerMessageId}:${event.status}:${event.occurredAt.toISOString()}:${event.errorCode ?? ""}`).digest("hex");
+    const recorded = await recordDeliveryReceipt({ provider: messagingProvider.id, providerEventId: eventId, providerMessageId: event.providerMessageId, status: event.status, occurredAt: event.occurredAt, errorCode: event.errorCode, payload: request.body });
+    if (!recorded) {
+      const status = event.status === "delivered" ? "delivered" : event.status === "undelivered" ? "undelivered" : event.status === "failed" ? "failed" : "sent";
+      await prisma.message.updateMany({ where: { providerMessageId: event.providerMessageId }, data: { status, providerErrorCode: event.errorCode ?? null, deliveredAt: event.status === "delivered" ? event.occurredAt : null } });
+    }
     reply.send({ received: true });
   });
 
@@ -76,9 +82,11 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
     const event = messagingProvider.parseInboundWebhook(request.body, context.headers);
     if (!event) throw ApiError.badRequest("Invalid inbound event");
+    const phone = event.from.replace(/^whatsapp:/, "");
+    const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { id: true, businessId: true } });
+    const providerMessageId = typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : createHash("sha256").update(`${phone}:${event.receivedAt.toISOString()}:${event.body}`).digest("hex");
+    for (const customer of customers) await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
     if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(event.body.trim().toUpperCase())) {
-      const phone = event.from.replace(/^whatsapp:/, "");
-      const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { businessId: true } });
       for (const { businessId } of customers) {
         const channel = event.channel === "whatsapp" ? "WHATSAPP" : "SMS";
         await prisma.customerOptOut.upsert({ where: { businessId_phone_channel: { businessId, phone, channel } }, create: { businessId, phone, channel, source: "provider_webhook" }, update: { source: "provider_webhook" } });

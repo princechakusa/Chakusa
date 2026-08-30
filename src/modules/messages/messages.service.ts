@@ -101,7 +101,7 @@ export async function sendMessage(
       businessId,
       customerId: customer.id,
       leadId: input.leadId,
-      messageType: input.messageType,
+      messageType: input.messageType ?? "custom",
       channel: "sms",
       body: input.body,
       status: result.accepted ? "sent" : "failed",

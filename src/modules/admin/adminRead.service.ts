@@ -395,7 +395,7 @@ export async function listAdminAutomationRuns(query: AdminAutomationListQuery) {
 }
 
 export async function getAdminCommunicationOverview() {
-  const [messages, delivered, failed, templates, reviewRequests, reviewsReceived, remindersDue] = await Promise.all([
+  const [messages, delivered, failed, templates, reviewRequests, reviewsReceived, remindersDue, openConversations, pendingDispatches, deadDispatches] = await Promise.all([
     prisma.message.count(),
     prisma.message.count({ where: { status: "delivered" } }),
     prisma.message.count({ where: { status: { in: ["failed", "undelivered"] } } }),
@@ -403,8 +403,11 @@ export async function getAdminCommunicationOverview() {
     prisma.reviewRequest.count(),
     prisma.reviewRequest.count({ where: { status: "reviewed" } }),
     prisma.reminder.count({ where: { status: "due", dueDate: { lte: new Date() } } }),
+    prisma.conversation.count({ where: { status: "OPEN", deletedAt: null } }),
+    prisma.messageDispatch.count({ where: { status: { in: ["PENDING", "RETRY", "PROCESSING"] } } }),
+    prisma.messageDispatch.count({ where: { status: "DEAD" } }),
   ]);
-  return { messages, delivered, failed, templates, reviewRequests, reviewsReceived, remindersDue };
+  return { messages, delivered, failed, templates, reviewRequests, reviewsReceived, remindersDue, openConversations, pendingDispatches, deadDispatches };
 }
 
 export async function listAdminCommunications(query: AdminCommunicationListQuery) {
@@ -419,11 +422,11 @@ export async function listAdminCommunications(query: AdminCommunicationListQuery
   const [rows, total] = await Promise.all([
     prisma.message.findMany({
       where, orderBy: { createdAt: "desc" }, ...pageArgs(query.page, query.pageSize),
-      select: { id: true, messageType: true, channel: true, body: true, status: true, sentAt: true, deliveredAt: true, provider: true, providerErrorCode: true, createdAt: true, business: { select: { id: true, name: true } }, customer: { select: { id: true, name: true } }, automationRun: { select: { id: true } } },
+      select: { id: true, messageType: true, channel: true, body: true, status: true, direction: true, actorType: true, sentAt: true, deliveredAt: true, provider: true, providerErrorCode: true, createdAt: true, business: { select: { id: true, name: true } }, customer: { select: { id: true, name: true } }, automationRun: { select: { id: true } }, dispatches: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, attempts: true, lastError: true } } },
     }),
     prisma.message.count({ where }),
   ]);
-  return pageEnvelope(rows.map(({ automationRun, ...message }) => ({ ...message, source: automationRun ? "automation" : "manual" })), total, query.page, query.pageSize);
+  return pageEnvelope(rows.map(({ automationRun, ...message }) => ({ ...message, source: automationRun || message.actorType === "AUTOMATION" ? "automation" : message.direction === "INBOUND" ? "customer" : "manual" })), total, query.page, query.pageSize);
 }
 
 export async function listAdminSupportTickets(query: AdminSupportListQuery) {

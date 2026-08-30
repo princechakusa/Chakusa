@@ -12,6 +12,8 @@ import { registerDefaultActions, type IdempotentActionGateway } from "../lib/aut
 import { unavailableWorkflowGateways } from "../lib/automation/workflowProviderGateways.js";
 import { processWorkflowExecutions } from "./workflowWorker.js";
 import { getAutomationFoundationStatus } from "../modules/automation/automationFoundation.js";
+import { processMessageDispatches } from "../lib/messaging/messagingPlatform.js";
+import { WorkflowMessagingGateway } from "../lib/messaging/workflowMessagingGateway.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -63,7 +65,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
   let activeTick: Promise<void> | null = null;
   let activeLifecycleTick: Promise<void> | null = null;
   const startedAt = new Date();
-  const initialized = (async () => { registerDefaultActions(options.workflowGateways ?? unavailableWorkflowGateways()); await registerWorkflowTriggerSubscribers(); await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries(), initializeWorkflowSchedules()]); })();
+  const initialized = (async () => { const fallback = unavailableWorkflowGateways(); registerDefaultActions({ messaging: options.workflowGateways?.messaging ?? new WorkflowMessagingGateway(), ai: options.workflowGateways?.ai ?? fallback.ai }); await registerWorkflowTriggerSubscribers(); await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries(), initializeWorkflowSchedules()]); })();
 
   const tick = async () => {
     if (stopped) return;
@@ -78,6 +80,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
       () => publishOutboxBatch(batchSize),
       () => dispatchDeliveryBatch(batchSize),
       () => processWorkflowExecutions(batchSize),
+      () => processMessageDispatches(options.provider, batchSize),
       () => scheduleTimeTriggers(new Date(), Math.max(batchSize, 100)),
       () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
       () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),

@@ -21,6 +21,7 @@ import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { formatDateTime } from '../utils/format';
 import { ProductionWorkflowPanel } from '../components/ProductionWorkflowPanel';
+import { MessagingOperationsPanel } from '../components/MessagingOperationsPanel';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Automation'>;
 const HISTORY_PAGE_SIZE = 25;
@@ -163,6 +164,7 @@ export function AutomationScreen({ navigation }: Props) {
   return <Screen refreshing={refreshing} onRefresh={() => void pullToRefresh()}>
     <AppHeader eyebrow="RECOVERY ENGINE" title="Your recovery engine" subtitle="Everything Chakusa is doing on your behalf, in one place." />
     <ProductionWorkflowPanel canManage={['OWNER','ADMIN'].includes(role ?? '')} />
+    <MessagingOperationsPanel />
     <View style={styles.card}>
       <View style={styles.statusRow}>
         <Text style={styles.heading}>Engine status</Text>

@@ -488,3 +488,65 @@ export interface CreateBookingResponseDto {
   appointment: { id: string; serviceName: string; startsAt: string; endsAt: string; status: string; bookingChannel: string; bookedByCustomerProfileId: string | null };
   receipt: BookingReceiptDto;
 }
+
+// --- PROGRAM 2 LOOP 4: Customer AI Assistant ---------------------------
+export type CustomerAIMessageRole = 'user' | 'assistant' | 'tool';
+export interface CustomerAIToolResultDto {
+  tool: string;
+  ok: boolean;
+  output?: unknown;
+  error?: string;
+  denied?: boolean;
+}
+export interface CustomerAIConversationDto {
+  id: string;
+  title: string | null;
+  businessId: string | null;
+  pinned: boolean;
+  archivedAt: string | null;
+  lastMessageAt: string | null;
+  messageCount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+export interface CustomerAIMessageDto {
+  id: string;
+  role: CustomerAIMessageRole;
+  content: string;
+  toolCalls?: CustomerAIToolResultDto[] | null;
+  policyOutcome?: string | null;
+  rating?: number | null;
+  createdAt: string;
+}
+export interface CustomerAIConversationListDto {
+  items: CustomerAIConversationDto[];
+  nextCursor: string | null;
+}
+export interface CustomerAIConversationDetailDto {
+  conversation: CustomerAIConversationDto;
+  messages: CustomerAIMessageDto[];
+  nextCursor: string | null;
+}
+export interface CustomerAITurnResponseDto {
+  userMessage: CustomerAIMessageDto;
+  assistantMessage: CustomerAIMessageDto;
+  status: 'COMPLETED' | 'ESCALATED' | 'FAILED';
+  toolResults: CustomerAIToolResultDto[];
+}
+export interface CustomerAIRecommendationDto {
+  type: 'repeat_booking' | 'similar_to_favourite' | 'nearby_top_rated' | 'promotion' | 'highly_rated';
+  slug: string | null;
+  name: string;
+  category: string | null;
+  reason: string;
+  rating?: number | null;
+  dueInDays?: number | null;
+}
+export interface CustomerAISettingsDto {
+  personalizationEnabled: boolean;
+  memoryEnabled: boolean;
+  recommendationsEnabled: boolean;
+  language: string;
+  notifyOnReply: boolean;
+  notifyRecommendations: boolean;
+}

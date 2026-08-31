@@ -117,6 +117,8 @@ export async function resetDatabase() {
     prisma.marketplacePromotion.deleteMany(),
     prisma.businessMarketplaceListing.deleteMany(),
     prisma.marketplaceCategory.deleteMany(),
+    prisma.customerAIMessage.deleteMany(),
+    prisma.customerAIConversation.deleteMany(),
     prisma.customerBusinessLink.deleteMany(),
     prisma.customerProfile.deleteMany(),
     prisma.emailVerificationToken.deleteMany(),

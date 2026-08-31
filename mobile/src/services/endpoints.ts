@@ -177,6 +177,8 @@ import type {
   MarketplaceSuggestionsDto, MarketplaceRecentSearchDto, MarketplaceBusinessProfileDto,
   MarketplacePromotionDto, MarketplaceShareDto, MarketplaceCardDto,
   BookableServicesDto, BookingAvailabilityDto, CustomerBookingDto, CreateBookingResponseDto, BookingScope,
+  CustomerAIConversationDto, CustomerAIConversationListDto, CustomerAIConversationDetailDto,
+  CustomerAITurnResponseDto, CustomerAIRecommendationDto, CustomerAISettingsDto,
 } from '../apiTypes';
 
 export const customerAuthApi = {
@@ -262,3 +264,29 @@ export const bookingApi = {
     api.patch<CustomerBookingDto>(`/customer/bookings/${id}/reschedule`, { startsAt, assignedMemberId }),
   cancel: (id: string) => api.post<CustomerBookingDto>(`/customer/bookings/${id}/cancel`),
 };
+
+// PROGRAM 2 LOOP 4: Customer AI Assistant. Threads + turns run entirely on
+// the existing AI Platform server-side; this client is a thin wrapper.
+export const customerAssistantApi = {
+  createConversation: (body: { title?: string; businessSlug?: string } = {}) =>
+    api.post<CustomerAIConversationDto>('/customer/ai/assistant/conversations', body),
+  listConversations: (params: { archived?: boolean; q?: string; cursor?: string; limit?: number } = {}) =>
+    api.get<CustomerAIConversationListDto>(`/customer/ai/assistant/conversations${query({ ...params, archived: params.archived === undefined ? undefined : String(params.archived) })}`),
+  getConversation: (id: string, params: { cursor?: string; limit?: number } = {}) =>
+    api.get<CustomerAIConversationDetailDto>(`/customer/ai/assistant/conversations/${id}${query(params)}`),
+  sendMessage: (id: string, content: string) =>
+    api.post<CustomerAITurnResponseDto>(`/customer/ai/assistant/conversations/${id}/messages`, { content }),
+  updateConversation: (id: string, patch: { title?: string; pinned?: boolean; archived?: boolean }) =>
+    api.patch<CustomerAIConversationDto>(`/customer/ai/assistant/conversations/${id}`, patch),
+  deleteConversation: (id: string) => api.delete<{ deleted: boolean }>(`/customer/ai/assistant/conversations/${id}`),
+  rateMessage: (messageId: string, rating: -1 | 0 | 1, note?: string) =>
+    api.post<CustomerAIMessageDtoLike>(`/customer/ai/assistant/messages/${messageId}/feedback`, { rating, note }),
+  context: () => api.get<Record<string, unknown>>('/customer/ai/assistant/context'),
+  personalization: () => api.get<Record<string, unknown>>('/customer/ai/assistant/personalization'),
+  recommendations: (params: { lat?: number; lng?: number; limit?: number } = {}) =>
+    api.get<{ recommendations: CustomerAIRecommendationDto[] }>(`/customer/ai/assistant/recommendations${query(params)}`),
+  getSettings: () => api.get<CustomerAISettingsDto>('/customer/ai/assistant/settings'),
+  updateSettings: (patch: Partial<CustomerAISettingsDto>) =>
+    api.patch<CustomerAISettingsDto>('/customer/ai/assistant/settings', patch),
+};
+type CustomerAIMessageDtoLike = { id: string; rating: number | null };

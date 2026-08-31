@@ -14,6 +14,7 @@ import customerAuthRoutes from "./modules/customerAuth/customerAuth.routes.js";
 import customerPlatformRoutes from "./modules/customer/customer.routes.js";
 import marketplaceRoutes from "./modules/marketplace/marketplace.routes.js";
 import customerBookingRoutes from "./modules/customer/booking.routes.js";
+import customerAIAssistantRoutes from "./modules/customer/aiAssistant.routes.js";
 import businessRoutes from "./modules/business/business.routes.js";
 import customerRoutes from "./modules/customers/customers.routes.js";
 import leadRoutes from "./modules/leads/leads.routes.js";
@@ -224,6 +225,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(customerPlatformRoutes, { prefix: "/customer" });
   await app.register(marketplaceRoutes, { prefix: "/customer/marketplace" });
   await app.register(customerBookingRoutes, { prefix: "/customer/bookings" });
+  await app.register(customerAIAssistantRoutes, { prefix: "/customer/ai/assistant" });
   await app.register(businessRoutes, { prefix: "/business" });
   await app.register(calendarRoutes, { prefix: "/calendar" });
   await app.register(customerRoutes, { prefix: "/customers" });

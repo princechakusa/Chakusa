@@ -3095,10 +3095,57 @@ model CustomerProfile {
   reports            BusinessReport[]
   recentSearches     CustomerRecentSearch[]
   bookedAppointments Appointment[]
+  aiConversations    CustomerAIConversation[]
 
   @@index([status])
   @@index([phoneE164])
   @@map("customer_profiles")
+}
+
+// PROGRAM 2 LOOP 4: the customer-visible chat thread for the Customer AI
+// Assistant. This is thread storage only (title, pin, archive, delete,
+// search) — every turn is executed by the existing AI Platform (routeAI,
+// Policy Engine, Tool Broker, Memory Platform). `businessId` is the anchor
+// business a turn runs against; the assistant itself is customer-scoped.
+// The thread id is what flows through AIConversationRun.conversationId and
+// the memory/ledger rows (all bare-string keyed, no FK).
+model CustomerAIConversation {
+  id                String    @id @default(uuid())
+  customerProfileId String    @map("customer_profile_id")
+  businessId        String?   @map("business_id")
+  title             String?
+  pinned            Boolean   @default(false)
+  archivedAt        DateTime? @map("archived_at")
+  deletedAt         DateTime? @map("deleted_at")
+  lastMessageAt     DateTime? @map("last_message_at")
+  messageCount      Int       @default(0) @map("message_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  customerProfile CustomerProfile      @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  messages        CustomerAIMessage[]
+
+  @@index([customerProfileId, pinned, lastMessageAt])
+  @@index([customerProfileId, archivedAt, deletedAt])
+  @@map("customer_ai_conversations")
+}
+
+model CustomerAIMessage {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  role           String
+  content        String
+  runId          String?  @map("run_id")
+  toolCalls      Json?    @map("tool_calls")
+  policyOutcome  String?  @map("policy_outcome")
+  rating         Int?
+  feedbackNote   String?  @map("feedback_note")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation CustomerAIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("customer_ai_messages")
 }
 
 // The relationship between one customer and one business. `businessCustomerId`

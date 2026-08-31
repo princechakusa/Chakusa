@@ -91,6 +91,16 @@ import {
   adminUpsertAIModel,
 } from "./aiAdmin.service.js";
 import {
+  adminCustomerAIAnalytics,
+  adminCustomerAIConversationDetail,
+  adminCustomerAIConversations,
+  adminCustomerAIFeedback,
+  adminCustomerAIQualityMetrics,
+  adminCustomerAISettingsOverview,
+  adminCustomerAIToolUsage,
+  adminCustomerAIUsage,
+} from "./aiCustomerAdmin.service.js";
+import {
   authenticateAdminUser,
   listOwnAdminSessions,
   logoutAdminSession,
@@ -485,6 +495,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/ai/cost", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const sinceHours = z.object({ sinceHours: z.coerce.number().int().min(1).max(8760).default(720) }).parse(request.query).sinceHours; reply.send(await adminAICostDashboard(sinceHours)); });
   fastify.get("/ai/memory-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIMemoryMonitoring()); });
   fastify.get("/ai/policy-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIPolicyMonitoring()); });
+
+  // PROGRAM 2 LOOP 4: Customer AI Assistant oversight. Read-only, same
+  // `platform.read` gate + `aiRead` preHandler as every other /ai/* route.
+  fastify.get("/ai/customer/analytics", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminCustomerAIAnalytics()); });
+  fastify.get("/ai/customer/usage", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const days = z.object({ days: z.coerce.number().int().min(1).max(90).default(14) }).parse(request.query).days; reply.send(await adminCustomerAIUsage(days)); });
+  fastify.get("/ai/customer/tool-usage", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminCustomerAIToolUsage()); });
+  fastify.get("/ai/customer/conversations", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const query = z.object({ customerProfileId: z.string().uuid().optional(), page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(200).optional() }).parse(request.query); reply.send(await adminCustomerAIConversations(query)); });
+  fastify.get<{ Params: { id: string } }>("/ai/customer/conversations/:id", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminCustomerAIConversationDetail(request.params.id)); });
+  fastify.get("/ai/customer/feedback", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const query = z.object({ page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(200).optional() }).parse(request.query); reply.send(await adminCustomerAIFeedback(query)); });
+  fastify.get("/ai/customer/quality", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminCustomerAIQualityMetrics()); });
+  fastify.get("/ai/customer/settings-overview", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminCustomerAISettingsOverview()); });
 
   // PROGRAM 2 LOOP 1: Customer Platform administration. Reads require
   // `customer.read`; status / verify require `customer.manage` + CSRF + audit.

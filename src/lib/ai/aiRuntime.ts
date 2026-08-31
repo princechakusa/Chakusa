@@ -12,6 +12,7 @@ import { recordConversationEvent, summarizeConversation } from "./memory/summari
 import type { RetrievalPhase, RetrievalResult } from "./memory/memoryTypes.js";
 import { emitAIEvent } from "./ops/aiMetrics.js";
 import { getAgentTool, isAgentTool } from "./agent/agentTools.js";
+import { getCustomerAssistantTool, isCustomerAssistantTool } from "./customerAssistant/customerAssistantTools.js";
 
 export const AI_RUN_STATES = ["RECEIVED","CONTEXT_READY","CLASSIFIED","PLANNED","TOOL_SELECTION","TOOL_EXECUTION","DRAFT_RESPONSE","HUMAN_APPROVAL","RESPONDING","COMPLETED","ESCALATED","FAILED"] as const;
 const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","CREATE_TASK","ASSIGN_STAFF","ESCALATE","PAUSE_WORKFLOW","RESUME_WORKFLOW"]);
@@ -23,10 +24,17 @@ const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","C
 // LOOP 4: the same broker also serves the AI Receptionist's tool set
 // (agentTools.ts) — automation actions and receptionist tools share this one
 // policy-gated, idempotent, ledgered path.
-export async function executeAITool(input: { businessId: string; runId: string; name: string; config: unknown; idempotencyKey: string; approved?: boolean; workflowId?: string }) {
-  const automationTool = allowed.has(input.name);
-  const agentTool = isAgentTool(input.name);
-  if (!automationTool && !agentTool) throw ApiError.forbidden("AI tool is not allowlisted");
+// PROGRAM 2 LOOP 4: and now the Customer AI Assistant's customer-safe tool
+// set (customerAssistant/customerAssistantTools.ts). `toolset: "customer"`
+// selects that registry and threads `customerProfileId` into the tool ctx;
+// the Policy Engine TOOL_EXECUTION checkpoint, idempotency guard and ledger
+// write are byte-for-byte the same path.
+export async function executeAITool(input: { businessId: string; runId: string; name: string; config: unknown; idempotencyKey: string; approved?: boolean; workflowId?: string; toolset?: "agent" | "customer"; customerProfileId?: string }) {
+  const customerTool = input.toolset === "customer" && isCustomerAssistantTool(input.name);
+  const automationTool = !customerTool && allowed.has(input.name);
+  const agentTool = !customerTool && isAgentTool(input.name);
+  if (!automationTool && !agentTool && !customerTool) throw ApiError.forbidden("AI tool is not allowlisted");
+  if (customerTool && !input.customerProfileId) throw ApiError.badRequest("customer tool execution requires a customerProfileId");
   const config = z.record(z.string(), z.unknown()).parse(input.config ?? {});
   if (automationTool) {
     const errors = validateActionConfig(input.name, config);
@@ -57,7 +65,13 @@ export async function executeAITool(input: { businessId: string; runId: string; 
   if (existing) return { replayed: true };
 
   let result: unknown;
-  if (agentTool) {
+  if (customerTool) {
+    const tool = getCustomerAssistantTool(input.name)!;
+    result = await tool.run(
+      { customerProfileId: input.customerProfileId!, businessId: input.businessId, runId: run.id, conversationId: run.conversationId },
+      config,
+    );
+  } else if (agentTool) {
     const tool = getAgentTool(input.name)!;
     result = await tool.run(
       { businessId: input.businessId, runId: run.id, conversationId: run.conversationId, customerId: run.customerId ?? null },

@@ -2785,3 +2785,91 @@ model AIPolicyChange {
   @@index([businessId, policyId, createdAt])
   @@map("ai_policy_changes")
 }
+
+// LOOP 3B-3: Memory Platform & Knowledge Layer. Supplies trusted, attributed
+// context to the AI Gateway. Every row is tenant-scoped by businessId and the
+// retrieval engine never crosses that boundary. Following AutomationRule /
+// AIPolicy precedent, per-item structure lives in `data` JSON so new memory
+// kinds never need a migration.
+model AIMemoryRecord {
+  id              String    @id @default(uuid())
+  businessId      String    @map("business_id")
+  scope           String
+  kind            String
+  subjectType     String?   @map("subject_type")
+  subjectId       String?   @map("subject_id")
+  conversationId  String?   @map("conversation_id")
+  customerId      String?   @map("customer_id")
+  runId           String?   @map("run_id")
+  title           String?
+  content         String
+  data            Json?
+  source          String
+  sourceRef       String?   @map("source_ref")
+  confidence      Float?
+  importance      Float     @default(0.5)
+  pinned          Boolean   @default(false)
+  supersededById  String?   @map("superseded_by_id")
+  expiresAt       DateTime? @map("expires_at")
+  lastAccessedAt  DateTime? @map("last_accessed_at")
+  accessCount     Int       @default(0) @map("access_count")
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([businessId, scope, kind])
+  @@index([businessId, customerId, scope])
+  @@index([businessId, conversationId])
+  @@index([businessId, expiresAt])
+  @@map("ai_memory_records")
+}
+
+// Working memory for one in-flight AI run: active context, temporary
+// variables, running tool outputs, pending questions. Short-lived — pruned
+// once expiresAt passes.
+model AIMemorySession {
+  id               String   @id @default(uuid())
+  businessId       String   @map("business_id")
+  runId            String   @unique @map("run_id")
+  conversationId   String?  @map("conversation_id")
+  customerId       String?  @map("customer_id")
+  context          Json     @default("{}")
+  variables        Json     @default("{}")
+  toolOutputs      Json     @default("[]") @map("tool_outputs")
+  pendingQuestions Json     @default("[]") @map("pending_questions")
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([businessId, expiresAt])
+  @@map("ai_memory_sessions")
+}
+
+// Append-only retrieval telemetry: hit/miss, latency, compression ratio,
+// context size, freshness, and source-attribution coverage per retrieval.
+model AIRetrievalLog {
+  id                   String   @id @default(uuid())
+  businessId           String   @map("business_id")
+  runId                String?  @map("run_id")
+  conversationId       String?  @map("conversation_id")
+  customerId           String?  @map("customer_id")
+  phase                String
+  query                String?
+  candidateCount       Int      @map("candidate_count")
+  returnedCount        Int      @map("returned_count")
+  duplicatesSuppressed Int      @default(0) @map("duplicates_suppressed")
+  hit                  Boolean
+  latencyMs            Int      @map("latency_ms")
+  rawTokens            Int      @map("raw_tokens")
+  contextTokens        Int      @map("context_tokens")
+  compressionRatio     Float    @map("compression_ratio")
+  freshnessScore       Float    @map("freshness_score")
+  attributionCoverage  Float    @map("attribution_coverage")
+  sources              Json
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([businessId, createdAt])
+  @@index([businessId, phase, createdAt])
+  @@index([runId])
+  @@map("ai_retrieval_logs")
+}

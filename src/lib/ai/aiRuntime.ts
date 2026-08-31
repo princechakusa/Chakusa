@@ -6,6 +6,10 @@ import { getAction, validateActionConfig } from "../automation/actionRegistry.js
 import { businessAIContext, routeAI } from "./aiGateway.js";
 import { renderPublishedPrompt } from "./promptRegistry.js";
 import { evaluatePolicy } from "./policyEngine.js";
+import { retrieveMemory, formatMemoryForContext } from "./memory/retrievalEngine.js";
+import { appendToolOutput, ensureSession, getSession, setSessionContext } from "./memory/memoryStore.js";
+import { recordConversationEvent, summarizeConversation } from "./memory/summarization.js";
+import type { RetrievalPhase, RetrievalResult } from "./memory/memoryTypes.js";
 
 export const AI_RUN_STATES = ["RECEIVED","CONTEXT_READY","CLASSIFIED","PLANNED","TOOL_SELECTION","TOOL_EXECUTION","DRAFT_RESPONSE","HUMAN_APPROVAL","RESPONDING","COMPLETED","ESCALATED","FAILED"] as const;
 const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","CREATE_TASK","ASSIGN_STAFF","ESCALATE","PAUSE_WORKFLOW","RESUME_WORKFLOW"]);
@@ -46,14 +50,87 @@ export async function executeAITool(input: { businessId: string; runId: string; 
   if (existing) return { replayed: true };
   const result = await handler({ businessId: input.businessId, executionId: `ai:${run.id}`, nodeId: input.name, input: run.state, idempotencyKey: input.idempotencyKey, signal: AbortSignal.timeout(30_000) }, config);
   await prisma.aIInvocationLedger.create({ data: { businessId: input.businessId, customerId: run.customerId, conversationId: run.conversationId, provider: "tool-broker", model: input.name, promptVersion: "tool-v1", promptChecksum: createHash("sha256").update(input.name).digest("hex"), correlationId: input.idempotencyKey, safetyResult: "PASSED", outcome: "TOOL_COMPLETED", approvalStatus: decision.effect, toolRequests: { name: input.name, policyDecisionId: decision.decisionId } } });
+  // LOOP 3B-3: a successful tool result becomes running session memory.
+  if (await getSession(input.businessId, run.id)) {
+    await appendToolOutput(input.businessId, run.id, { name: input.name, output: (result as { output?: unknown })?.output ?? result });
+  }
   return result;
 }
-export async function advanceAIConversation(input: { businessId: string; runId: string; prompt: string; mode?: "DRAFT" | "APPROVAL" | "AUTONOMOUS" }) { const run = await prisma.aIConversationRun.findFirst({ where: { id: input.runId, businessId: input.businessId } }); if (!run) throw ApiError.notFound("AI conversation run not found"); const transitions = ["CONTEXT_READY","CLASSIFIED","PLANNED","TOOL_SELECTION","DRAFT_RESPONSE"] as const; for (const status of transitions) await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status } }); const context = await businessAIContext(input.businessId, run.customerId ?? undefined); const resolved = await renderPublishedPrompt({ templateKey: "conversation.orchestrator", businessId: input.businessId, values: { message: input.prompt } }); const response = await routeAI({ businessId: input.businessId, customerId: run.customerId ?? undefined, conversationId: run.conversationId, runId: run.id, task: "conversation", prompt: resolved.rendered.prompt, context, promptVersionId: resolved.versionId, requiredCapability: resolved.requiredCapability ?? "conversation" });
+// LOOP 3B-3: the Memory Platform supplies trusted, attributed context. The
+// runtime retrieves memory before intent classification, planning, tool
+// selection and response generation; retrieval is deterministic and every
+// item names its source. Session memory tracks the run; conversation memory
+// (AI decisions, intents, resolutions) and an extractive summary are written
+// as the run reaches a terminal state.
+export async function advanceAIConversation(input: { businessId: string; runId: string; prompt: string; mode?: "DRAFT" | "APPROVAL" | "AUTONOMOUS" }) {
+  const run = await prisma.aIConversationRun.findFirst({ where: { id: input.runId, businessId: input.businessId } });
+  if (!run) throw ApiError.notFound("AI conversation run not found");
+
+  await ensureSession({ businessId: input.businessId, runId: run.id, conversationId: run.conversationId, customerId: run.customerId ?? undefined, ttlMinutes: 60 });
+
+  const memoryCommon = { businessId: input.businessId, runId: run.id, conversationId: run.conversationId, customerId: run.customerId ?? undefined, query: input.prompt } as const;
+  const retrieval: Partial<Record<RetrievalPhase, RetrievalResult>> = {};
+
+  retrieval.INTENT = await retrieveMemory({ ...memoryCommon, phase: "INTENT" });
+  await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "CONTEXT_READY" } });
+  await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "CLASSIFIED" } });
+
+  retrieval.PLANNING = await retrieveMemory({ ...memoryCommon, phase: "PLANNING" });
+  await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "PLANNED" } });
+
+  retrieval.TOOL_SELECTION = await retrieveMemory({ ...memoryCommon, phase: "TOOL_SELECTION" });
+  await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "TOOL_SELECTION" } });
+
+  retrieval.RESPONSE = await retrieveMemory({ ...memoryCommon, phase: "RESPONSE" });
+  await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "DRAFT_RESPONSE" } });
+
+  const memoryContext = {
+    intent: retrieval.INTENT.items.map((item) => ({ scope: item.scope, kind: item.kind, source: item.source, content: item.content })),
+    planning: retrieval.PLANNING.items.map((item) => ({ scope: item.scope, kind: item.kind, source: item.source, content: item.content })),
+    toolSelection: retrieval.TOOL_SELECTION.items.map((item) => ({ scope: item.scope, kind: item.kind, source: item.source, content: item.content })),
+    response: retrieval.RESPONSE.items.map((item) => ({ scope: item.scope, kind: item.kind, source: item.source, content: item.content })),
+  };
+  const retrievalMetrics = Object.fromEntries(
+    (Object.entries(retrieval) as Array<[RetrievalPhase, RetrievalResult]>).map(([phase, result]) => [phase, result.metrics]),
+  );
+  await setSessionContext(input.businessId, run.id, { lastPrompt: input.prompt, retrieval: retrievalMetrics });
+
+  const context = {
+    ...(await businessAIContext(input.businessId, run.customerId ?? undefined)),
+    memory: memoryContext,
+    memoryDigest: formatMemoryForContext(retrieval.RESPONSE.items),
+  };
+  const resolved = await renderPublishedPrompt({ templateKey: "conversation.orchestrator", businessId: input.businessId, values: { message: input.prompt } });
+  const response = await routeAI({ businessId: input.businessId, customerId: run.customerId ?? undefined, conversationId: run.conversationId, runId: run.id, task: "conversation", prompt: resolved.rendered.prompt, context, promptVersionId: resolved.versionId, requiredCapability: resolved.requiredCapability ?? "conversation" });
+
   // LOOP 3B-2: the drafted reply is cleared by the Policy Engine at the
   // CUSTOMER_RESPONSE checkpoint. The decision — not the caller — sets the
-  // terminal state: DENY -> FAILED, ESCALATE -> ESCALATED, REQUIRE_APPROVAL
-  // (or an explicit APPROVAL mode) -> HUMAN_APPROVAL, ALLOW -> COMPLETED.
+  // terminal state.
   const outputText = typeof response.output === "string" ? response.output : JSON.stringify(response.output);
   const decision = await evaluatePolicy({ businessId: input.businessId, checkpoint: "CUSTOMER_RESPONSE", action: "reply", runId: run.id, conversationId: run.conversationId, customerId: run.customerId ?? undefined, confidence: response.confidence, outputText });
   const next = decision.effect === "DENY" ? "FAILED" : decision.effect === "ESCALATE" ? "ESCALATED" : decision.effect === "REQUIRE_APPROVAL" || input.mode === "APPROVAL" ? "HUMAN_APPROVAL" : "COMPLETED";
-  return prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: next, mode: input.mode ?? decision.mode ?? run.mode, lastError: decision.effect === "DENY" ? decision.reasons.map((reason) => reason.message).join("; ") : null, state: { context, response: response.output, promptVersionId: resolved.versionId, ledgerId: response.ledgerId, policyDecisionId: decision.decisionId, policyOutcome: decision.effect } as never } }); }
+
+  await recordConversationEvent({ businessId: input.businessId, conversationId: run.conversationId, runId: run.id, customerId: run.customerId ?? undefined, kind: "ai_decision", content: `AI drafted a reply; policy outcome ${decision.effect}, run ${next}.`, data: { policyDecisionId: decision.decisionId, confidence: response.confidence ?? null } });
+  if (next === "COMPLETED" || next === "ESCALATED" || next === "FAILED") {
+    await recordConversationEvent({ businessId: input.businessId, conversationId: run.conversationId, runId: run.id, customerId: run.customerId ?? undefined, kind: "resolution", content: `Run ${run.id.slice(0, 8)} reached ${next}.`, data: { outcome: next } });
+    await summarizeConversation({ businessId: input.businessId, conversationId: run.conversationId, runId: run.id, customerId: run.customerId ?? undefined, outcome: next });
+  }
+
+  return prisma.aIConversationRun.update({
+    where: { id: run.id },
+    data: {
+      status: next,
+      mode: input.mode ?? decision.mode ?? run.mode,
+      lastError: decision.effect === "DENY" ? decision.reasons.map((reason) => reason.message).join("; ") : null,
+      state: {
+        context,
+        response: response.output,
+        promptVersionId: resolved.versionId,
+        ledgerId: response.ledgerId,
+        policyDecisionId: decision.decisionId,
+        policyOutcome: decision.effect,
+        retrievalMetrics,
+      } as never,
+    },
+  });
+}

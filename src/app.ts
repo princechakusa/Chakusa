@@ -49,6 +49,7 @@ import { readAutomationHealth } from "./lib/automation/automationHealth.js";
 import { registerBuiltInAIProviders } from "./lib/ai/registerProviders.js";
 import aiPromptRoutes from "./modules/aiPrompts/aiPrompts.routes.js";
 import aiPolicyRoutes from "./modules/aiPolicies/aiPolicies.routes.js";
+import aiMemoryRoutes from "./modules/aiMemory/aiMemory.routes.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -202,6 +203,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(automationRoutes, { prefix: "/automation" });
   await app.register(aiPromptRoutes, { prefix: "/ai/prompts" });
   await app.register(aiPolicyRoutes, { prefix: "/ai/policies" });
+  await app.register(aiMemoryRoutes, { prefix: "/ai/memory" });
   await app.register(paymentRoutes, { prefix: "/payments", provider: options.stripePaymentProvider });
   await app.register(weeklyReportRoutes, { prefix: "/weekly-reports" });
   await app.register(supportRoutes, { prefix: "/support-tickets" });

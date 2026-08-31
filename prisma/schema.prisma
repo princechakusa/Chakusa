@@ -2684,3 +2684,104 @@ model PromptTestRun {
   @@index([versionId, createdAt])
   @@map("prompt_test_runs")
 }
+
+// LOOP 3B-2: Policy Engine. The authoritative decision layer consulted before
+// every AI invocation and every AI tool execution — no AI action bypasses it.
+// Following AutomationRule's precedent, the tunable knobs (confidence
+// thresholds, business/quiet hours, safety toggles, allowed channels,
+// sensitive topics) live in `document` JSON validated at the Zod layer, so a
+// new knob never needs a migration; only genuinely new structural concepts
+// (approval/tool rules, the decision ledger) get their own tables/columns.
+model AIPolicy {
+  id              String          @id @default(uuid())
+  businessId      String          @map("business_id")
+  scope           String          @default("BUSINESS")
+  workflowId      String?         @map("workflow_id")
+  version         Int
+  status          String          @default("DRAFT")
+  mode            String          @default("DRAFT")
+  document        Json
+  checksum        String
+  createdByUserId String?         @map("created_by_user_id")
+  activatedAt     DateTime?       @map("activated_at")
+  archivedAt      DateTime?       @map("archived_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  rules           AIPolicyRule[]
+  changes         AIPolicyChange[]
+
+  @@unique([businessId, scope, workflowId, version])
+  @@index([businessId, status])
+  @@map("ai_policies")
+}
+
+model AIPolicyRule {
+  id             String   @id @default(uuid())
+  businessId     String   @map("business_id")
+  policyId       String   @map("policy_id")
+  category       String
+  action         String
+  toolName       String?  @map("tool_name")
+  workflowId     String?  @map("workflow_id")
+  effect         String   @default("REQUIRE_APPROVAL")
+  strategy       String   @default("ANY_OWNER")
+  approverUserId String?  @map("approver_user_id")
+  minConfidence  Float?   @map("min_confidence")
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  policy         AIPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, category, action, toolName, workflowId])
+  @@index([businessId, category, action])
+  @@map("ai_policy_rules")
+}
+
+// Append-only ledger of every Policy Engine evaluation. Kept separate from
+// the AIInvocationLedger so a DENY that stops an invocation from ever
+// happening is still recorded, and so the messaging/tool side can attach a
+// decision without a corresponding model call.
+model AIPolicyDecision {
+  id                       String   @id @default(uuid())
+  businessId               String   @map("business_id")
+  customerId               String?  @map("customer_id")
+  conversationId           String?  @map("conversation_id")
+  workflowExecutionId      String?  @map("workflow_execution_id")
+  runId                    String?  @map("run_id")
+  policyId                 String?  @map("policy_id")
+  policyVersion            Int?     @map("policy_version")
+  checkpoint               String
+  action                   String
+  mode                     String
+  outcome                  String
+  reasons                  Json
+  confidence               Float?
+  requiredApprovalStrategy String?  @map("required_approval_strategy")
+  channel                  String?
+  correlationId            String?  @map("correlation_id")
+  dryRun                   Boolean  @default(false) @map("dry_run")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  @@index([businessId, createdAt])
+  @@index([runId, createdAt])
+  @@index([conversationId, createdAt])
+  @@map("ai_policy_decisions")
+}
+
+// Append-only version history / audit of tenant policy edits. Tenant-scoped
+// (the platform-wide AdminAuditLog is for Chakusa staff actions only).
+model AIPolicyChange {
+  id          String   @id @default(uuid())
+  businessId  String   @map("business_id")
+  policyId    String   @map("policy_id")
+  version     Int
+  changeType  String   @map("change_type")
+  actorUserId String?  @map("actor_user_id")
+  diff        Json?
+  document    Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  policy      AIPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, policyId, createdAt])
+  @@map("ai_policy_changes")
+}

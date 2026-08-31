@@ -65,8 +65,8 @@ export class ApiError extends Error {
     return new ApiError(statusCode, code, message);
   }
 
-  static forbidden(message = "Forbidden") {
-    return new ApiError(403, "FORBIDDEN", message);
+  static forbidden(message = "Forbidden", details?: unknown) {
+    return new ApiError(403, "FORBIDDEN", message, details);
   }
 
   static notFound(message = "Not found") {

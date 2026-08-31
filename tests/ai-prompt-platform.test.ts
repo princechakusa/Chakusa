@@ -241,7 +241,9 @@ describe("AI prompt platform (3B-1)", () => {
       data: { businessId, conversationId: "conv-1", idempotencyKey: "adv-1", status: "RECEIVED" },
     });
     const advanced = await advanceAIConversation({ businessId, runId: run.id, prompt: "hi there" });
-    expect(advanced.status).toBe("COMPLETED");
+    // With no AIPolicy configured the Policy Engine default mode is DRAFT, so
+    // the drafted reply lands in HUMAN_APPROVAL rather than COMPLETED (3B-2).
+    expect(advanced.status).toBe("HUMAN_APPROVAL");
     const ledger = await prisma.aIInvocationLedger.findFirstOrThrow({ where: { businessId } });
     expect(ledger.promptVersion).toBe(version.id);
   });

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
+import { assertSafeAIInput } from "./safety.js";
+import { assertPolicyAllows } from "./policyEngine.js";
+
+export { assertSafeAIInput } from "./safety.js";
 
 export type AITask = "classification" | "conversation" | "scheduling" | "extraction";
 export interface AIProvider { id: string; invoke(input: { model: string; task: AITask; prompt: string; context: unknown; tools: Array<{ name: string; schema: object }> }): Promise<{ output: unknown; confidence?: number; usage?: { inputTokens?: number; outputTokens?: number; reasoningTokens?: number }; toolRequests?: Array<{ name: string; arguments: unknown }> }> }
@@ -8,16 +12,31 @@ const providers = new Map<string, AIProvider>();
 export function registerAIProvider(provider: AIProvider) { providers.set(provider.id, provider); }
 export function clearAIProviders() { providers.clear(); }
 export function listAIProviderIds() { return [...providers.keys()]; }
-const injection = /ignore\s+(all\s+)?(previous|above)|system\s+prompt|reveal\s+(secret|instruction)|act\s+as/iu;
-export function assertSafeAIInput(value: string) { if (injection.test(value)) throw ApiError.badRequest("Unsafe prompt content detected"); }
 
 // LOOP 3B-1: routeAI() will only execute a prompt that resolves to an
 // immutable, PUBLISHED PromptVersion — callers pass its id and the gateway
 // re-checks status here so an unpublished or retired reference can never
 // reach a model. The version's declared requiredCapability is honored when
 // the caller does not override it.
-export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string }) {
+// LOOP 3B-2: every invocation is first cleared by the Policy Engine at the
+// INVOCATION checkpoint — a DENY (kill switch, injection, cross-tenant,
+// business restriction) throws before any provider call or ledger write.
+export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; runId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string; channel?: string; skipPolicy?: boolean }) {
   assertSafeAIInput(input.prompt);
+  if (!input.skipPolicy) {
+    await assertPolicyAllows({
+      businessId: input.businessId,
+      checkpoint: "INVOCATION",
+      action: input.task,
+      customerId: input.customerId,
+      conversationId: input.conversationId,
+      workflowExecutionId: input.workflowExecutionId,
+      runId: input.runId,
+      channel: input.channel,
+      promptText: input.prompt,
+      correlationId: input.correlationId,
+    });
+  }
   const promptVersion = await prisma.promptVersion.findUnique({ where: { id: input.promptVersionId }, select: { id: true, status: true, requiredCapability: true } });
   if (!promptVersion) throw ApiError.badRequest("routeAI requires a known prompt version");
   if (promptVersion.status !== "PUBLISHED") throw ApiError.badRequest("routeAI requires a published prompt version");

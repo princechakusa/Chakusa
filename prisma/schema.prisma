@@ -1200,19 +1200,27 @@ model Appointment {
   followUpSentAt                 DateTime?         @map("follow_up_sent_at")
   paymentReminderSentAt          DateTime?         @map("payment_reminder_sent_at")
   createdByUserId                String            @map("created_by_user_id")
+  // PROGRAM 2 LOOP 3: provenance for a booking made by an authenticated
+  // customer from the customer app. `createdByUserId` stays the business
+  // owner (the appointment writer, as with public bookings); this column is
+  // the customer-side link that "my bookings" / customer calendar read.
+  bookedByCustomerProfileId      String?           @map("booked_by_customer_profile_id")
+  bookingChannel                 String            @default("business") @map("booking_channel")
   createdAt                      DateTime          @default(now()) @map("created_at")
   updatedAt                      DateTime          @updatedAt @map("updated_at")
 
-  business            Business                        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer            Customer?                       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  assignedMember      BusinessMember?                 @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
-  serviceOffering     ServiceOffering?                @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
-  publicAccess        PublicBookingAccess?
-  paymentTransactions AppointmentPaymentTransaction[]
+  business             Business                        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer             Customer?                       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedMember       BusinessMember?                 @relation(fields: [assignedMemberId], references: [id], onDelete: SetNull)
+  serviceOffering      ServiceOffering?                @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
+  bookedByCustomer     CustomerProfile?                @relation(fields: [bookedByCustomerProfileId], references: [id], onDelete: SetNull)
+  publicAccess         PublicBookingAccess?
+  paymentTransactions  AppointmentPaymentTransaction[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
   @@index([customerId, startsAt])
+  @@index([bookedByCustomerProfileId, startsAt])
   @@index([assignedMemberId, startsAt])
   @@index([serviceOfferingId, startsAt])
   @@index([status, startsAt, customerReminderSentAt])
@@ -3079,13 +3087,14 @@ model CustomerProfile {
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
   user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessLinks   CustomerBusinessLink[]
-  notifications   CustomerNotification[]
-  activity        CustomerActivityEvent[]
-  businessViews   CustomerBusinessView[]
-  follows         BusinessFollow[]
-  reports         BusinessReport[]
-  recentSearches  CustomerRecentSearch[]
+  businessLinks      CustomerBusinessLink[]
+  notifications      CustomerNotification[]
+  activity           CustomerActivityEvent[]
+  businessViews      CustomerBusinessView[]
+  follows            BusinessFollow[]
+  reports            BusinessReport[]
+  recentSearches     CustomerRecentSearch[]
+  bookedAppointments Appointment[]
 
   @@index([status])
   @@index([phoneE164])

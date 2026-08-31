@@ -67,6 +67,13 @@ import {
   adminUpsertCategory,
 } from "./marketplaceAdmin.service.js";
 import {
+  adminBookingAnalytics,
+  adminGetBooking,
+  adminListBookings,
+  adminRescheduleBooking,
+  adminSetBookingStatus,
+} from "./bookingAdmin.service.js";
+import {
   adminAIAnalytics,
   adminAICostDashboard,
   adminAIEvaluationRun,
@@ -591,6 +598,50 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const input = z.object({ status: z.enum(["REVIEWING", "RESOLVED", "DISMISSED"]) }).parse(request.body);
     const updated = await adminResolveReport(request.params.id, input.status, request.admin!.userId);
     await recordAdminAudit({ actor: request.admin!, action: "MARKETPLACE_REPORT_RESOLVED", targetType: "business_report", targetId: request.params.id, newValue: { status: input.status }, context: auditContext(request) });
+    reply.send(updated);
+  });
+
+  // PROGRAM 2 LOOP 3: booking oversight. Reads need `booking.read`; manual
+  // adjustments need `booking.manage` + CSRF + audit and delegate to the
+  // existing appointment services.
+  const bookingRead = { preHandler: fastify.authenticateAdmin } as const;
+  const bookingStatusEnum = z.enum(["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"]);
+  fastify.get("/bookings", bookingRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "booking.read");
+    const q = z.object({
+      businessId: z.string().uuid().optional(),
+      status: bookingStatusEnum.optional(),
+      customerProfileId: z.string().uuid().optional(),
+      channel: z.enum(["business", "public", "customer_app"]).optional(),
+      from: z.string().datetime({ offset: true }).optional(),
+      to: z.string().datetime({ offset: true }).optional(),
+      page: z.coerce.number().int().min(1).optional(),
+      pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    }).parse(request.query);
+    reply.send(await adminListBookings(q));
+  });
+  fastify.get("/bookings/analytics", bookingRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "booking.read");
+    reply.send(await adminBookingAnalytics());
+  });
+  fastify.get<{ Params: { id: string } }>("/bookings/:id", bookingRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "booking.read");
+    reply.send(await adminGetBooking(request.params.id));
+  });
+  fastify.patch<{ Params: { id: string } }>("/bookings/:id/reschedule", bookingRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "booking.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ startsAt: z.string().datetime({ offset: true }), assignedMemberId: z.string().uuid().nullable().optional(), reason: z.string().trim().max(500).optional() }).parse(request.body);
+    const updated = await adminRescheduleBooking(request.admin!.userId, request.params.id, input);
+    await recordAdminAudit({ actor: request.admin!, action: "BOOKING_RESCHEDULED", targetType: "appointment", targetId: request.params.id, newValue: { startsAt: input.startsAt, reason: input.reason ?? null }, context: auditContext(request) });
+    reply.send(updated);
+  });
+  fastify.post<{ Params: { id: string } }>("/bookings/:id/status", bookingRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "booking.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ status: z.enum(["CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"]), reason: z.string().trim().max(500).optional() }).parse(request.body);
+    const updated = await adminSetBookingStatus(request.admin!.userId, request.params.id, input.status);
+    await recordAdminAudit({ actor: request.admin!, action: "BOOKING_STATUS_CHANGED", targetType: "appointment", targetId: request.params.id, newValue: { status: input.status, reason: input.reason ?? null }, context: auditContext(request) });
     reply.send(updated);
   });
 }

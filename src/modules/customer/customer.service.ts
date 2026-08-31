@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { unreadNotificationCount } from "../../lib/customer/customerNotifications.js";
 import { mapIndustryToCategory } from "../../lib/marketplace/categories.js";
+import { customerBookingAIContext } from "../../lib/booking/customerBooking.js";
 
 // PROGRAM 2 LOOP 1: read-only aggregation for the customer dashboard. It
 // reuses the Business, Appointment, Conversation, Feedback and
@@ -132,6 +133,10 @@ export async function getCustomerAIContext(customerProfileId: string) {
     : [];
   const discoveryById = new Map(discoveryBusinesses.map((business) => [business.id, business]));
 
+  // PROGRAM 2 LOOP 3: booking history + rebooking recommendations so the
+  // Customer AI can explain/recommend services and suggest future visits.
+  const bookings = await customerBookingAIContext(customerProfileId);
+
   return {
     name: profile.displayName ?? profile.user.fullName,
     preferredLanguage: profile.preferredLanguage,
@@ -151,5 +156,6 @@ export async function getCustomerAIContext(customerProfileId: string) {
     }),
     followedBusinesses: follows.map((follow) => ({ businessId: follow.businessId, name: discoveryById.get(follow.businessId)?.name ?? null, slug: discoveryById.get(follow.businessId)?.publicSlug ?? null })),
     recentlyViewedBusinesses: recentViews.map((view) => ({ businessId: view.businessId, name: discoveryById.get(view.businessId)?.name ?? null, slug: discoveryById.get(view.businessId)?.publicSlug ?? null, viewedAt: view.viewedAt })),
+    bookings,
   };
 }

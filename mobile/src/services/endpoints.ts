@@ -176,6 +176,7 @@ import type {
   MarketplaceDiscoveryMode, MarketplacePageDto, MarketplaceCategoriesResponse,
   MarketplaceSuggestionsDto, MarketplaceRecentSearchDto, MarketplaceBusinessProfileDto,
   MarketplacePromotionDto, MarketplaceShareDto, MarketplaceCardDto,
+  BookableServicesDto, BookingAvailabilityDto, CustomerBookingDto, CreateBookingResponseDto, BookingScope,
 } from '../apiTypes';
 
 export const customerAuthApi = {
@@ -244,4 +245,20 @@ export const marketplaceApi = {
   favourites: () => api.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),
   following: () => api.get<MarketplaceCardDto[]>('/customer/marketplace/following'),
   promotions: () => api.get<MarketplacePromotionDto[]>('/customer/marketplace/promotions'),
+};
+
+// PROGRAM 2 LOOP 3: Customer Booking & Calendar. Every scheduling decision
+// is the existing appointment/availability engine server-side — no payment,
+// loyalty or rewards surface in this client.
+export const bookingApi = {
+  services: (slug: string) => api.get<BookableServicesDto>(`/customer/bookings/businesses/${encodeURIComponent(slug)}/services`),
+  availability: (slug: string, serviceOfferingId: string, from: string, to: string, memberId?: string) =>
+    api.get<BookingAvailabilityDto>(`/customer/bookings/businesses/${encodeURIComponent(slug)}/availability${query({ serviceOfferingId, from, to, memberId })}`),
+  create: (body: { slug: string; serviceOfferingId: string; assignedMemberId?: string; startsAt: string; notes?: string }) =>
+    api.post<CreateBookingResponseDto>('/customer/bookings', body),
+  list: (scope: BookingScope = 'all') => api.get<CustomerBookingDto[]>(`/customer/bookings${query({ scope })}`),
+  get: (id: string) => api.get<CustomerBookingDto>(`/customer/bookings/${id}`),
+  reschedule: (id: string, startsAt: string, assignedMemberId?: string) =>
+    api.patch<CustomerBookingDto>(`/customer/bookings/${id}/reschedule`, { startsAt, assignedMemberId }),
+  cancel: (id: string) => api.post<CustomerBookingDto>(`/customer/bookings/${id}/cancel`),
 };

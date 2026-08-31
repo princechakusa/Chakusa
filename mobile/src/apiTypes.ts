@@ -426,3 +426,65 @@ export interface MarketplaceShareDto {
   shareUrl: string;
   message: string;
 }
+
+// --- PROGRAM 2 LOOP 3: Customer Booking & Calendar ----------------------
+export type BookingScope = 'upcoming' | 'past' | 'all';
+export interface BookableServiceDto {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  durationMinutes: number;
+  price: number | null;
+  depositAmount: number | null;
+}
+export interface BookableServicesDto {
+  businessName: string;
+  currency: string | null;
+  services: BookableServiceDto[];
+}
+export interface AvailabilitySlotDto {
+  startsAt: string;
+  endsAt: string;
+  members: Array<{ id: string; name: string }>;
+}
+export interface BookingAvailabilityDto {
+  timezone: string;
+  slots: AvailabilitySlotDto[];
+}
+export interface CustomerBookingDto {
+  id: string;
+  status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELED' | 'NO_SHOW';
+  serviceName: string;
+  serviceId: string | null;
+  category: string | null;
+  startsAt: string;
+  endsAt: string;
+  notes: string | null;
+  staffName: string | null;
+  price: number | null;
+  paidAmount: number;
+  paymentStatus: string;
+  bookingChannel: string;
+  reminder: { minutesBefore: number | null; reminderSent: boolean; sameDayReminderSent: boolean };
+  canReschedule: boolean;
+  canCancel: boolean;
+  cancellationCutoff: string;
+  business: { id: string; name: string; slug: string | null; timezone: string | null; currency: string | null; phone: string | null };
+}
+export interface BookingReceiptDto {
+  reference: string;
+  businessName: string;
+  service: string;
+  staff: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  price: number | null;
+  depositAmount: number | null;
+  currency: string | null;
+}
+export interface CreateBookingResponseDto {
+  appointment: { id: string; serviceName: string; startsAt: string; endsAt: string; status: string; bookingChannel: string; bookedByCustomerProfileId: string | null };
+  receipt: BookingReceiptDto;
+}

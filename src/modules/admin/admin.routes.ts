@@ -41,6 +41,7 @@ import { createWorkflowVersion, publishWorkflow, setWorkflowStatus } from "../au
 import { createWorkflowTemplateVersion, listAllWorkflowTemplates, setWorkflowTemplateActive } from "../automation/workflowTemplates.js";
 import { workflowDefinitionSchema } from "../automation/automation.schemas.js";
 import { z } from "zod";
+import { prisma } from "../../lib/prisma.js";
 import {
   authenticateAdminUser,
   listOwnAdminSessions,
@@ -325,6 +326,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/communications", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "communication.read");
     reply.send(await listAdminCommunications(adminCommunicationListQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/communications/operations", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "communication.read");
+    const [providers, credentials, templates, slas, attachments, conversations] = await Promise.all([
+      prisma.messagingChannelAccount.findMany({ where: { deletedAt: null }, select: { id: true, businessId: true, provider: true, channel: true, status: true, healthStatus: true, lastHealthAt: true } }),
+      prisma.providerCredential.findMany({ where: { deletedAt: null }, select: { id: true, businessId: true, channelAccountId: true, keyVersion: true, status: true, validationStatus: true, lastValidatedAt: true, expiresAt: true } }),
+      prisma.messagingTemplate.findMany({ where: { deletedAt: null }, include: { versions: { orderBy: { version: "desc" }, take: 5 } } }),
+      prisma.conversationSLA.groupBy({ by: ["type", "status"], _count: true }),
+      prisma.messageAttachment.groupBy({ by: ["uploadStatus", "malwareScanStatus"], _count: true }),
+      prisma.conversation.groupBy({ by: ["status", "priority"], where: { deletedAt: null }, _count: true }),
+    ]);
+    reply.send({ providers, credentials, templates, slas, attachments, conversations });
   });
 
   fastify.get("/support", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

@@ -1790,6 +1790,7 @@ model ConversationParticipant {
   externalAddress String?      @map("external_address")
   role            String
   createdAt       DateTime     @default(now()) @map("created_at")
+  endedAt         DateTime?    @map("ended_at")
   conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, role, externalAddress])
@@ -1877,22 +1878,26 @@ model MessageContent {
 }
 
 model MessageAttachment {
-  id                   String    @id @default(uuid())
-  businessId           String    @map("business_id")
-  messageId            String?   @map("message_id")
-  storageKey           String    @map("storage_key")
-  fileName             String    @map("file_name")
-  declaredMime         String    @map("declared_mime")
-  detectedMime         String?   @map("detected_mime")
-  sizeBytes            Int       @map("size_bytes")
-  checksumSha256       String    @map("checksum_sha256")
-  encryptionKeyVersion String?   @map("encryption_key_version")
-  malwareScanStatus    String    @default("PENDING") @map("malware_scan_status")
-  providerMediaId      String?   @map("provider_media_id")
-  retentionUntil       DateTime? @map("retention_until")
-  deletedAt            DateTime? @map("deleted_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  message              Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  id                   String                      @id @default(uuid())
+  businessId           String                      @map("business_id")
+  messageId            String?                     @map("message_id")
+  storageKey           String                      @map("storage_key")
+  fileName             String                      @map("file_name")
+  declaredMime         String                      @map("declared_mime")
+  detectedMime         String?                     @map("detected_mime")
+  sizeBytes            Int                         @map("size_bytes")
+  checksumSha256       String                      @map("checksum_sha256")
+  encryptionKeyVersion String?                     @map("encryption_key_version")
+  malwareScanStatus    String                      @default("PENDING") @map("malware_scan_status")
+  providerMediaId      String?                     @map("provider_media_id")
+  uploadStatus         String                      @default("PENDING") @map("upload_status")
+  retryCount           Int                         @default(0) @map("retry_count")
+  lastError            String?                     @map("last_error")
+  retentionUntil       DateTime?                   @map("retention_until")
+  deletedAt            DateTime?                   @map("deleted_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  message              Message?                    @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  events               AttachmentProcessingEvent[]
 
   @@unique([businessId, storageKey])
   @@index([businessId, malwareScanStatus])
@@ -2010,16 +2015,20 @@ model MessagingSender {
 }
 
 model ProviderCredential {
-  id               String                  @id @default(uuid())
-  businessId       String                  @map("business_id")
-  channelAccountId String                  @map("channel_account_id")
-  keyVersion       String                  @map("key_version")
-  encryptedPayload String                  @map("encrypted_payload")
-  status           String                  @default("ACTIVE")
-  rotatedAt        DateTime?               @map("rotated_at")
-  deletedAt        DateTime?               @map("deleted_at")
-  createdAt        DateTime                @default(now()) @map("created_at")
-  channelAccount   MessagingChannelAccount @relation(fields: [channelAccountId], references: [id], onDelete: Cascade)
+  id               String                    @id @default(uuid())
+  businessId       String                    @map("business_id")
+  channelAccountId String                    @map("channel_account_id")
+  keyVersion       String                    @map("key_version")
+  encryptedPayload String                    @map("encrypted_payload")
+  status           String                    @default("ACTIVE")
+  rotatedAt        DateTime?                 @map("rotated_at")
+  expiresAt        DateTime?                 @map("expires_at")
+  lastValidatedAt  DateTime?                 @map("last_validated_at")
+  validationStatus String                    @default("UNKNOWN") @map("validation_status")
+  deletedAt        DateTime?                 @map("deleted_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  channelAccount   MessagingChannelAccount   @relation(fields: [channelAccountId], references: [id], onDelete: Cascade)
+  auditEvents      ProviderCredentialAudit[]
 
   @@index([businessId, status])
   @@map("provider_credentials")
@@ -2180,6 +2189,56 @@ model MessageAttribution {
   @@unique([messageId, outcomeType, outcomeId, model])
   @@index([businessId, verifiedAt])
   @@map("message_attributions")
+}
+
+model AttachmentProcessingEvent {
+  id           String            @id @default(uuid())
+  businessId   String            @map("business_id")
+  attachmentId String            @map("attachment_id")
+  type         String
+  status       String
+  detail       String?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  attachment   MessageAttachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status, createdAt])
+  @@index([attachmentId, createdAt])
+  @@map("attachment_processing_events")
+}
+
+model ProviderCredentialAudit {
+  id           String             @id @default(uuid())
+  businessId   String             @map("business_id")
+  credentialId String             @map("credential_id")
+  actorId      String?            @map("actor_id")
+  action       String
+  keyVersion   String             @map("key_version")
+  metadata     Json?
+  createdAt    DateTime           @default(now()) @map("created_at")
+  credential   ProviderCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([credentialId, createdAt])
+  @@map("provider_credential_audits")
+}
+
+model ProviderHealthSample {
+  id                 String   @id @default(uuid())
+  businessId         String   @map("business_id")
+  channelAccountId   String   @map("channel_account_id")
+  provider           String
+  status             String
+  latencyMs          Int?     @map("latency_ms")
+  errorRate          Float    @default(0) @map("error_rate")
+  throughput         Int      @default(0)
+  rateLimitRemaining Int?     @map("rate_limit_remaining")
+  credentialValid    Boolean? @map("credential_valid")
+  detail             String?
+  sampledAt          DateTime @default(now()) @map("sampled_at")
+
+  @@index([businessId, sampledAt])
+  @@index([channelAccountId, sampledAt])
+  @@map("provider_health_samples")
 }
 
 // A configured-but-inert automation policy. Creating or enabling a row here

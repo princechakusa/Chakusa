@@ -14,6 +14,8 @@ import { processWorkflowExecutions } from "./workflowWorker.js";
 import { getAutomationFoundationStatus } from "../modules/automation/automationFoundation.js";
 import { processMessageDispatches } from "../lib/messaging/messagingPlatform.js";
 import { WorkflowMessagingGateway } from "../lib/messaging/workflowMessagingGateway.js";
+import { expireAttachments } from "../lib/messaging/attachmentPlatform.js";
+import { monitorProviderHealth, processConversationSLAs } from "../lib/messaging/messagingOperations.js";
 
 export interface AutomationWorkerOptions {
   /** How often to poll for due runs. Default 15s. */
@@ -81,6 +83,9 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
       () => dispatchDeliveryBatch(batchSize),
       () => processWorkflowExecutions(batchSize),
       () => processMessageDispatches(options.provider, batchSize),
+      () => processConversationSLAs(),
+      () => expireAttachments(),
+      () => monitorProviderHealth(),
       () => scheduleTimeTriggers(new Date(), Math.max(batchSize, 100)),
       () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
       () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),

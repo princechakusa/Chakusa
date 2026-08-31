@@ -10,6 +10,7 @@ export interface ValueCenterDto {
     appointments: { booked: number; completed: number; cancelled: number | null; noShows: number | null; noShowsRecovered: number | null };
     reputation: { requests: number; received: number; averageRating: number | null };
     automation: { messagesSent: number; automationsCompleted: number; followUpsCompleted: number; reminderSuccess: number | null };
+    messaging: { delivered: number; inboundReplies: number; resolvedConversations: number; slaCompliance: number | null; verifiedCost: string };
   };
   automationRoi: Array<{ triggerType: string; scheduled: number; sent: number; delivered: number; opened: number | null; replied: number | null; booked: number | null; paid: number | null; revenue: number | null }>;
   opportunities: Array<{ key: string; priority: "high" | "medium"; count: number; businessImpact: number | null; suggestedAction: string; action: { kind: "attention" | "audience" | "comeback"; category?: string; audienceKey?: string } }>;
@@ -18,7 +19,7 @@ export interface ValueCenterDto {
 
 export async function getValueCenter(businessId: string): Promise<ValueCenterDto> {
   const summary = await getDashboardSummary(businessId);
-  const [insights, audiences, automationRows, messageRows, appointmentRows, ratingRow, workflowRows] = await Promise.all([
+  const [insights, audiences, automationRows, messageRows, appointmentRows, ratingRow, workflowRows, messagingDelivered, inboundReplies, resolvedConversations, slaTotal, slaBreached, messagingCost] = await Promise.all([
     getBusinessInsights(businessId, summary),
     getAudienceSummaries(businessId),
     prisma.automationRun.groupBy({ by: ["automationRuleId", "status"], where: { businessId }, _count: { _all: true }, orderBy: { automationRuleId: "asc" } }),
@@ -26,6 +27,12 @@ export async function getValueCenter(businessId: string): Promise<ValueCenterDto
     prisma.appointment.groupBy({ by: ["status"], where: { businessId }, _count: { _all: true } }),
     prisma.feedback.aggregate({ where: { businessId }, _avg: { rating: true } }),
     prisma.workflowExecution.findMany({ where: { businessId }, select: { status: true, state: true, actionAttempts: { where: { status: "SUCCEEDED" }, select: { actionName: true } } } }),
+    prisma.message.count({ where: { businessId, deliveredAt: { not: null } } }),
+    prisma.message.count({ where: { businessId, direction: "INBOUND" } }),
+    prisma.conversation.count({ where: { businessId, status: "RESOLVED" } }),
+    prisma.conversationSLA.count({ where: { businessId, status: { in: ["COMPLETED", "BREACHED"] } } }),
+    prisma.conversationSLA.count({ where: { businessId, status: "BREACHED" } }),
+    prisma.messagingCostEvent.aggregate({ where: { businessId, verified: true }, _sum: { amount: true } }),
   ]);
   const rules = await prisma.automationRule.findMany({ where: { businessId, id: { in: automationRows.map((row) => row.automationRuleId) } }, select: { id: true, triggerType: true } });
   const ruleType = new Map(rules.map((rule) => [rule.id, rule.triggerType]));
@@ -78,6 +85,7 @@ export async function getValueCenter(businessId: string): Promise<ValueCenterDto
       appointments: { booked: summary.activation?.appointmentsBooked ?? 0, completed: summary.activation?.appointmentsCompleted ?? 0, cancelled: appointmentCounts.get("CANCELED") ?? null, noShows: appointmentCounts.get("NO_SHOW") ?? null, noShowsRecovered: null },
       reputation: { requests: summary.reviews.requestsSent, received: summary.reviews.reviewsReceived, averageRating: ratingRow._avg?.rating ?? null },
       automation: { messagesSent: summary.activation?.customerMessagesSent ?? 0, automationsCompleted: automationRows.filter((row) => row.status === "COMPLETED").reduce((sum, row) => sum + row._count._all, 0) + workflowCompleted, followUpsCompleted: comebackCount(summary), reminderSuccess: insights.recoveryPerformance.reminderCompletionRate },
+      messaging: { delivered: messagingDelivered, inboundReplies, resolvedConversations, slaCompliance: slaTotal ? (slaTotal - slaBreached) / slaTotal : null, verifiedCost: messagingCost._sum.amount?.toString() ?? "0" },
     },
     automationRoi: [...byType.values()], opportunities, generatedAt: new Date(),
   };

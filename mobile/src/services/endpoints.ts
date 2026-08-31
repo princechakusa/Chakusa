@@ -104,10 +104,13 @@ export const availabilityApi = {
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export const messagingApi = {
-  conversations: () => api.get<Array<{id:string;status:string;priority:string;automationMode:string;updatedAt:string;messages:Array<{body:string;direction:string}>}>>('/messages/conversations?limit=20'),
+  conversations: () => api.get<Array<{id:string;status:string;priority:string;automationMode:string;assignedMemberId:string|null;updatedAt:string;messages:Array<{id:string;body:string;direction:string}>;slas:Array<{type:string;status:string;dueAt:string}>}>>('/messages/conversations?limit=50'),
   failures: () => api.get<Array<{id:string;status:string;lastError:string|null;message:{body:string}}>>('/messages/failures'),
   analytics: () => api.get<{conversations:Array<{status:string;_count:number}>;delivery:Array<{status:string;channel:string;_count:number}>;verifiedCost:string}>('/messages/analytics'),
   retry: (id: string) => api.post<{queued:boolean}>(`/messages/failures/${id}/retry`),
+  templates: () => api.get<Array<{id:string;name:string;versions:Array<{id:string;status:string;locale:string;body:string}>}>>('/messages/templates'),
+  updateConversation: (id:string, body:{status?:string;assignedMemberId?:string|null;automationMode?:string}) => api.patch(`/messages/conversations/${id}`,body),
+  completeAnalytics: () => api.get<Record<string,unknown>>('/messages/analytics/complete'),
 };
 export const subscriptionApi = {
   getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),

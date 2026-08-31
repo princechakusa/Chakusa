@@ -11,6 +11,7 @@ import {
   type RetrievedItem,
 } from "./memoryTypes.js";
 import { recordToItem, sessionToItems } from "./memoryStore.js";
+import { emitAIEvent } from "../ops/aiMetrics.js";
 import {
   deriveBusinessKnowledge,
   deriveConversationKnowledge,
@@ -253,6 +254,7 @@ export async function retrieveMemory(input: RetrieveInput): Promise<RetrievalRes
     });
     logId = log.id;
   }
+  emitAIEvent({ businessId: input.businessId, metric: "memory_retrieval_latency_ms", value: metrics.latencyMs });
 
   // Mark stored records as accessed (best-effort, non-blocking on the hot path).
   const storedIds = selected.filter((item) => item.origin === "stored").map((item) => item.id);

@@ -1,5 +1,6 @@
 import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
 import { api } from './api';
+import type { AiConversationRunDto, AiValueCenterDto, AiHealthDto, AiEvaluationRunDto } from '../apiTypes';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 
 const query = (values: Record<string, string | number | undefined>) => { const params = new URLSearchParams(); Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); }); const encoded = params.toString(); return encoded ? `?${encoded}` : ''; };
@@ -153,4 +154,18 @@ export const teamApi = {
 export const publicTeamInvitesApi = {
   get: (token: string) => api.get<PublicTeamInvitationDto>(`/public/team-invites/${encodeURIComponent(token)}`, 'none'),
   accept: (token: string) => api.post<{ state: 'accepted' | 'expired' | 'already-used' }>(`/public/team-invites/${encodeURIComponent(token)}/accept`),
+};
+
+export const aiApi = {
+  monitoring: (sinceHours = 168) => api.get<Record<string, unknown>>(`/ai/ops/monitoring${query({ sinceHours })}`),
+  trends: (metric: string, sinceHours = 168, bucket: 'hour' | 'day' = 'day') => api.get<{ metric: string; bucket: string; points: Array<Record<string, unknown>> }>(`/ai/ops/trends${query({ metric, sinceHours, bucket })}`),
+  health: () => api.get<AiHealthDto>('/ai/ops/health'),
+  analytics: () => api.get<AiValueCenterDto>('/ai/ops/analytics'),
+  verifyOutcomes: () => api.post<{ checked: number; verified: number }>('/ai/ops/analytics/verify', {}),
+  listRuns: (status?: string, limit = 50) => api.get<AiConversationRunDto[]>(`/ai/ops/runs${query({ status, limit })}`),
+  getRun: (id: string) => api.get<AiConversationRunDto>(`/ai/ops/runs/${id}`),
+  approveRun: (id: string, attributeOutcome?: { outcomeType: string; outcomeId: string; amount?: number; currency?: string }) => api.post<AiConversationRunDto>(`/ai/ops/runs/${id}/approve`, attributeOutcome ? { attributeOutcome } : {}),
+  escalateRun: (id: string) => api.post<AiConversationRunDto>(`/ai/ops/runs/${id}/escalate`, {}),
+  evaluationRuns: (suiteId: string) => api.get<AiEvaluationRunDto[]>(`/ai/ops/evaluations/suites/${suiteId}/runs`),
+  evaluationRun: (id: string) => api.get<AiEvaluationRunDto & { results: Array<Record<string, unknown>> }>(`/ai/ops/evaluations/runs/${id}`),
 };

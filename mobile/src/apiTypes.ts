@@ -222,3 +222,58 @@ export interface SubscriptionStatusDto {
   };
   value: { recoveredRevenueThisMonth: number; completedAppointmentsThisMonth: number; scheduledAppointmentValue: number; customerMessagesSentThisMonth: number; reviewsReceivedThisMonth: number };
 }
+
+// LOOP 3B-4: AI management (mobile)
+export type AiRunStatus =
+  | 'RECEIVED' | 'CONTEXT_READY' | 'CLASSIFIED' | 'PLANNED' | 'TOOL_SELECTION'
+  | 'TOOL_EXECUTION' | 'DRAFT_RESPONSE' | 'HUMAN_APPROVAL' | 'RESPONDING'
+  | 'COMPLETED' | 'ESCALATED' | 'FAILED';
+export interface AiConversationRunDto {
+  id: string;
+  businessId: string;
+  customerId: string | null;
+  conversationId: string;
+  status: AiRunStatus;
+  mode: string;
+  state: Record<string, unknown>;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AiValueCenterDto {
+  aiConversations: number;
+  completedConversations: number;
+  aiAssistedBookings: number;
+  aiAssistedPayments: number;
+  aiAssistedReviews: number;
+  aiAssistedQuotes: number;
+  aiAssistedRevenue: number;
+  aiCost: number;
+  tokens: { input: number; output: number };
+  costPerConversation: number;
+  costPerBooking: number;
+  humanApprovalRate: number;
+  escalationRate: number;
+  aiRoi: number | null;
+  verifiedEventsOnly: boolean;
+}
+export interface AiHealthDto {
+  providerHealth: { live: Array<Record<string, unknown>>; persisted: Array<Record<string, unknown>> };
+  circuitBreaker: Array<{ provider: string; model: string | null; circuit: string; health: string; successRate: number }>;
+  aiFailureRate: number;
+}
+export interface AiEvaluationRunDto {
+  id: string;
+  suiteId: string;
+  runNumber: number;
+  label: string | null;
+  status: string;
+  totalCases: number;
+  passedCases: number;
+  failedCases: number;
+  score: number;
+  metrics: Record<string, unknown> | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+export type AiDraftReviewDecision = 'approve' | 'edit' | 'reject' | 'escalate';

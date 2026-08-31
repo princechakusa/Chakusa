@@ -10,6 +10,7 @@ import { retrieveMemory, formatMemoryForContext } from "./memory/retrievalEngine
 import { appendToolOutput, ensureSession, getSession, setSessionContext } from "./memory/memoryStore.js";
 import { recordConversationEvent, summarizeConversation } from "./memory/summarization.js";
 import type { RetrievalPhase, RetrievalResult } from "./memory/memoryTypes.js";
+import { emitAIEvent } from "./ops/aiMetrics.js";
 
 export const AI_RUN_STATES = ["RECEIVED","CONTEXT_READY","CLASSIFIED","PLANNED","TOOL_SELECTION","TOOL_EXECUTION","DRAFT_RESPONSE","HUMAN_APPROVAL","RESPONDING","COMPLETED","ESCALATED","FAILED"] as const;
 const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","CREATE_TASK","ASSIGN_STAFF","ESCALATE","PAUSE_WORKFLOW","RESUME_WORKFLOW"]);
@@ -54,6 +55,7 @@ export async function executeAITool(input: { businessId: string; runId: string; 
   if (await getSession(input.businessId, run.id)) {
     await appendToolOutput(input.businessId, run.id, { name: input.name, output: (result as { output?: unknown })?.output ?? result });
   }
+  emitAIEvent({ businessId: input.businessId, metric: "tool_usage", dimensions: { tool: input.name } });
   return result;
 }
 // LOOP 3B-3: the Memory Platform supplies trusted, attributed context. The

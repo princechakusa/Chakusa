@@ -43,6 +43,23 @@ import { workflowDefinitionSchema } from "../automation/automation.schemas.js";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import {
+  adminAIAnalytics,
+  adminAICostDashboard,
+  adminAIEvaluationRun,
+  adminAIEvaluations,
+  adminAIHealth,
+  adminAIInvocations,
+  adminAIMemoryMonitoring,
+  adminAIModels,
+  adminAIPolicyMonitoring,
+  adminAIPromptPackages,
+  adminAIPromptVersions,
+  adminAIProviders,
+  adminAIRoutingRules,
+  adminSetAIModelStatus,
+  adminUpsertAIModel,
+} from "./aiAdmin.service.js";
+import {
   authenticateAdminUser,
   listOwnAdminSessions,
   logoutAdminSession,
@@ -404,4 +421,37 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const input = adminSettingUpdateSchema.parse(request.body);
     reply.send(await updateAdminPlatformSetting(request.admin!, input.key, input.enabled, auditContext(request)));
   });
+
+  // LOOP 3B-4: AI administration. Read views require `platform.read`; the
+  // model registry (the one mutable surface) requires `ai.manage`.
+  const aiRead = { preHandler: fastify.authenticateAdmin } as const;
+  fastify.get("/ai/providers", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIProviders()); });
+  fastify.get("/ai/models", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send({ items: await adminAIModels() }); });
+  fastify.post("/ai/models", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "ai.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ provider: z.string().trim().min(1).max(60), model: z.string().trim().min(1).max(120), version: z.string().trim().min(1).max(40), capabilities: z.array(z.string().trim().max(60)).min(1), approvedUseCases: z.array(z.string().trim().max(60)).min(1), pricing: z.unknown().optional(), supportedLanguages: z.unknown().optional(), status: z.enum(["ACTIVE", "DISABLED", "DEPRECATED"]).optional() }).parse(request.body);
+    const saved = await adminUpsertAIModel(input);
+    await recordAdminAudit({ actor: request.admin!, action: "AI_MODEL_UPSERTED", targetType: "ai_model", targetId: saved.id, newValue: { provider: saved.provider, model: saved.model, version: saved.version, status: saved.status }, context: auditContext(request) });
+    reply.code(201).send(saved);
+  });
+  fastify.patch<{ Params: { id: string } }>("/ai/models/:id/status", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "ai.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ status: z.enum(["ACTIVE", "DISABLED", "DEPRECATED"]), healthStatus: z.enum(["HEALTHY", "DEGRADED", "DOWN", "UNKNOWN"]).optional() }).parse(request.body);
+    const updated = await adminSetAIModelStatus(request.params.id, input.status, input.healthStatus);
+    await recordAdminAudit({ actor: request.admin!, action: "AI_MODEL_STATUS_CHANGED", targetType: "ai_model", targetId: updated.id, newValue: { status: updated.status, healthStatus: updated.healthStatus }, context: auditContext(request) });
+    reply.send(updated);
+  });
+  fastify.get("/ai/routing", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIRoutingRules()); });
+  fastify.get("/ai/prompt-packages", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send({ items: await adminAIPromptPackages() }); });
+  fastify.get<{ Querystring: { templateId?: string } }>("/ai/prompt-versions", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const templateId = z.object({ templateId: z.string().uuid() }).parse(request.query).templateId; reply.send(await adminAIPromptVersions(templateId)); });
+  fastify.get("/ai/evaluations", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send({ items: await adminAIEvaluations() }); });
+  fastify.get<{ Params: { id: string } }>("/ai/evaluations/:id", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIEvaluationRun(request.params.id)); });
+  fastify.get("/ai/invocations", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const query = z.object({ page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(200).optional(), businessId: z.string().uuid().optional(), provider: z.string().optional(), outcome: z.string().optional() }).parse(request.query); reply.send(await adminAIInvocations(query)); });
+  fastify.get("/ai/analytics", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIAnalytics()); });
+  fastify.get("/ai/health", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIHealth()); });
+  fastify.get("/ai/cost", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const sinceHours = z.object({ sinceHours: z.coerce.number().int().min(1).max(8760).default(720) }).parse(request.query).sinceHours; reply.send(await adminAICostDashboard(sinceHours)); });
+  fastify.get("/ai/memory-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIMemoryMonitoring()); });
+  fastify.get("/ai/policy-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIPolicyMonitoring()); });
 }

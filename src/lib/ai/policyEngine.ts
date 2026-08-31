@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
 import { parseWorkingHours, zonedParts, minutesOfDay, type WeeklyHours } from "../workingHours.js";
 import { detectPromptInjection, scanModelOutput } from "./safety.js";
+import { emitAIEvent } from "./ops/aiMetrics.js";
 import {
   DEFAULT_MODE,
   DEFAULT_POLICY_DOCUMENT,
@@ -340,6 +341,14 @@ export async function evaluatePolicy(req: PolicyRequest): Promise<PolicyResult> 
       },
     });
     decisionId = decision.id;
+  }
+
+  // LOOP 3B-4: operational metrics for approval / escalation / denial rates.
+  const settled = effect as string;
+  if (!req.dryRun) {
+    if (settled === "REQUIRE_APPROVAL") emitAIEvent({ businessId: req.businessId, metric: "approvals" });
+    else if (settled === "ESCALATE") emitAIEvent({ businessId: req.businessId, metric: "escalations" });
+    else if (settled === "DENY") emitAIEvent({ businessId: req.businessId, metric: "policy_denials" });
   }
 
   return {

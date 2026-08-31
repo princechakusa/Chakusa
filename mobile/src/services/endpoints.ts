@@ -173,6 +173,9 @@ export const aiApi = {
 import type {
   CustomerSessionResponse, CustomerSelfProfileDto, CustomerDashboardDto,
   CustomerNotificationDto, CustomerBusinessLinkDto,
+  MarketplaceDiscoveryMode, MarketplacePageDto, MarketplaceCategoriesResponse,
+  MarketplaceSuggestionsDto, MarketplaceRecentSearchDto, MarketplaceBusinessProfileDto,
+  MarketplacePromotionDto, MarketplaceShareDto, MarketplaceCardDto,
 } from '../apiTypes';
 
 export const customerAuthApi = {
@@ -212,4 +215,33 @@ export const customerApi = {
   setNotificationPreferences: (notificationPreferences: Record<string, Record<string, boolean>>) => api.patch<CustomerSelfProfileDto>('/customer/notifications/preferences', { notificationPreferences }),
   aiConversations: () => api.get<{ conversations: Array<Record<string, unknown>> }>('/customer/ai/conversations'),
   aiContext: () => api.get<Record<string, unknown>>('/customer/ai/context'),
+};
+
+// PROGRAM 2 LOOP 2: Marketplace & Business Discovery. Read + lightweight
+// customer actions only — NO booking, calendar, payments or staff selection.
+export const marketplaceApi = {
+  discover: (params: { mode?: MarketplaceDiscoveryMode; category?: string; q?: string; city?: string; verifiedOnly?: boolean; lat?: number; lng?: number; radiusKm?: number; limit?: number; cursor?: string } = {}) =>
+    api.get<MarketplacePageDto>(`/customer/marketplace${query({ ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
+  nearby: (lat: number, lng: number, radiusKm = 15, limit?: number) =>
+    api.get<MarketplacePageDto>(`/customer/marketplace/nearby${query({ lat, lng, radiusKm, limit })}`),
+  featured: (limit?: number) => api.get<MarketplacePageDto>(`/customer/marketplace/featured${query({ limit })}`),
+  recent: (limit?: number) => api.get<MarketplacePageDto>(`/customer/marketplace/recent${query({ limit })}`),
+  popular: (limit?: number) => api.get<MarketplacePageDto>(`/customer/marketplace/popular${query({ limit })}`),
+  verified: (limit?: number) => api.get<MarketplacePageDto>(`/customer/marketplace/verified${query({ limit })}`),
+  categories: () => api.get<MarketplaceCategoriesResponse>('/customer/marketplace/categories'),
+  categoryBusinesses: (slug: string, params: { q?: string; limit?: number; cursor?: string } = {}) =>
+    api.get<MarketplacePageDto>(`/customer/marketplace/categories/${encodeURIComponent(slug)}${query(params as Record<string, string | number | undefined>)}`),
+  search: (q: string, params: { category?: string; city?: string; verifiedOnly?: boolean; limit?: number; cursor?: string } = {}) =>
+    api.get<MarketplacePageDto>(`/customer/marketplace/search${query({ q, ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
+  suggestions: (q: string) => api.get<MarketplaceSuggestionsDto>(`/customer/marketplace/search/suggestions${query({ q })}`),
+  recentSearches: () => api.get<MarketplaceRecentSearchDto[]>('/customer/marketplace/search/recent'),
+  business: (slug: string) => api.get<MarketplaceBusinessProfileDto>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}`),
+  setFavourite: (slug: string, favourite: boolean) => api.post<CustomerBusinessLinkDto & { favouriteCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/favourite`, { favourite }),
+  setFollow: (slug: string, follow: boolean) => api.post<{ following: boolean; followerCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/follow`, { follow }),
+  report: (slug: string, reason: string, detail?: string) => api.post<{ id: string; status: string }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/report`, { reason, detail }),
+  share: (slug: string) => api.get<MarketplaceShareDto>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/share`),
+  recentlyViewed: () => api.get<MarketplaceCardDto[]>('/customer/marketplace/recently-viewed'),
+  favourites: () => api.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),
+  following: () => api.get<MarketplaceCardDto[]>('/customer/marketplace/following'),
+  promotions: () => api.get<MarketplacePromotionDto[]>('/customer/marketplace/promotions'),
 };

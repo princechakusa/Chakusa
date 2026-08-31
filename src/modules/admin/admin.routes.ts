@@ -50,6 +50,23 @@ import {
   verifyAdminCustomer,
 } from "./customerAdmin.service.js";
 import {
+  adminCreatePromotion,
+  adminDeleteCategory,
+  adminDeletePromotion,
+  adminGetListing,
+  adminListCategories,
+  adminListListings,
+  adminListPromotions,
+  adminListReports,
+  adminMarketplaceAnalytics,
+  adminRefreshCategoryCounts,
+  adminResolveReport,
+  adminSeedCategories,
+  adminUpdateListing,
+  adminUpdatePromotion,
+  adminUpsertCategory,
+} from "./marketplaceAdmin.service.js";
+import {
   adminAIAnalytics,
   adminAICostDashboard,
   adminAIEvaluationRun,
@@ -490,6 +507,90 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     await fastify.requireAdminCsrf(request);
     const updated = await verifyAdminCustomer(request.params.id);
     await recordAdminAudit({ actor: request.admin!, action: "CUSTOMER_VERIFIED", targetType: "customer_profile", targetId: request.params.id, newValue: { verifiedAt: updated.verifiedAt }, context: auditContext(request) });
+    reply.send(updated);
+  });
+
+  // PROGRAM 2 LOOP 2: Marketplace administration. Reads need `marketplace.read`;
+  // curation needs `marketplace.manage` + CSRF + audit.
+  const mktRead = { preHandler: fastify.authenticateAdmin } as const;
+  fastify.get("/marketplace/listings", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.read");
+    const q = z.object({ search: z.string().trim().max(120).optional(), featured: z.coerce.boolean().optional(), page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(100).optional() }).parse(request.query);
+    reply.send(await adminListListings(q));
+  });
+  fastify.get("/marketplace/analytics", mktRead, async (request, reply) => { fastify.requireAdminPermission(request, "marketplace.read"); reply.send(await adminMarketplaceAnalytics()); });
+  fastify.get<{ Params: { businessId: string } }>("/marketplace/listings/:businessId", mktRead, async (request, reply) => { fastify.requireAdminPermission(request, "marketplace.read"); reply.send(await adminGetListing(request.params.businessId)); });
+  fastify.patch<{ Params: { businessId: string } }>("/marketplace/listings/:businessId", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    const patch = z.object({
+      listed: z.boolean().optional(), discoverable: z.boolean().optional(), featured: z.boolean().optional(),
+      featuredRank: z.number().int().nullable().optional(), featuredUntil: z.string().datetime().nullable().optional(),
+      categorySlug: z.string().trim().max(80).nullable().optional(), subcategorySlug: z.string().trim().max(80).nullable().optional(),
+      shortTagline: z.string().trim().max(200).nullable().optional(), photos: z.array(z.string().url().max(2048)).max(20).nullable().optional(),
+      socialLinks: z.record(z.string(), z.string().url().max(2048)).nullable().optional(),
+      addressLine: z.string().trim().max(300).nullable().optional(), city: z.string().trim().max(120).nullable().optional(), region: z.string().trim().max(120).nullable().optional(),
+      latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(),
+    }).parse(request.body);
+    const updated = await adminUpdateListing(request.params.businessId, patch);
+    await recordAdminAudit({ actor: request.admin!, action: "MARKETPLACE_LISTING_UPDATED", targetType: "business", targetId: request.params.businessId, newValue: { featured: updated.featured, listed: updated.listed, categorySlug: updated.categorySlug }, context: auditContext(request) });
+    reply.send(updated);
+  });
+
+  fastify.get("/marketplace/categories", mktRead, async (request, reply) => { fastify.requireAdminPermission(request, "marketplace.read"); reply.send({ items: await adminListCategories() }); });
+  fastify.post("/marketplace/categories", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ slug: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/), name: z.string().trim().min(1).max(120), icon: z.string().trim().max(60).optional(), description: z.string().trim().max(500).optional(), parentSlug: z.string().trim().max(80).nullable().optional(), sortOrder: z.number().int().optional(), trending: z.boolean().optional(), active: z.boolean().optional() }).parse(request.body);
+    const category = await adminUpsertCategory(input);
+    await recordAdminAudit({ actor: request.admin!, action: "MARKETPLACE_CATEGORY_UPSERTED", targetType: "marketplace_category", targetId: category.id, newValue: { slug: category.slug, name: category.name }, context: auditContext(request) });
+    reply.code(201).send(category);
+  });
+  fastify.post("/marketplace/categories/seed", mktRead, async (request, reply) => { fastify.requireAdminPermission(request, "marketplace.manage"); await fastify.requireAdminCsrf(request); reply.send(await adminSeedCategories()); });
+  fastify.post("/marketplace/categories/refresh-counts", mktRead, async (request, reply) => { fastify.requireAdminPermission(request, "marketplace.manage"); await fastify.requireAdminCsrf(request); reply.send(await adminRefreshCategoryCounts()); });
+  fastify.delete<{ Params: { slug: string } }>("/marketplace/categories/:slug", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    reply.send(await adminDeleteCategory(request.params.slug));
+  });
+
+  fastify.get("/marketplace/promotions", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.read");
+    const q = z.object({ businessId: z.string().uuid().optional(), activeOnly: z.coerce.boolean().optional() }).parse(request.query);
+    reply.send({ items: await adminListPromotions(q) });
+  });
+  fastify.post("/marketplace/promotions", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ businessId: z.string().uuid(), title: z.string().trim().min(1).max(160), description: z.string().trim().max(2000).optional(), badge: z.string().trim().max(40).optional(), startsAt: z.string().datetime().optional(), endsAt: z.string().datetime().optional() }).parse(request.body);
+    const promotion = await adminCreatePromotion({ ...input, createdByUserId: request.admin!.userId });
+    await recordAdminAudit({ actor: request.admin!, action: "MARKETPLACE_PROMOTION_CREATED", targetType: "marketplace_promotion", targetId: promotion.id, newValue: { businessId: input.businessId, title: input.title }, context: auditContext(request) });
+    reply.code(201).send(promotion);
+  });
+  fastify.patch<{ Params: { id: string } }>("/marketplace/promotions/:id", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    const patch = z.object({ title: z.string().trim().min(1).max(160).optional(), description: z.string().trim().max(2000).nullable().optional(), badge: z.string().trim().max(40).nullable().optional(), endsAt: z.string().datetime().nullable().optional(), active: z.boolean().optional() }).parse(request.body);
+    reply.send(await adminUpdatePromotion(request.params.id, patch));
+  });
+  fastify.delete<{ Params: { id: string } }>("/marketplace/promotions/:id", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    await adminDeletePromotion(request.params.id);
+    reply.code(204).send();
+  });
+
+  fastify.get("/marketplace/reports", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.read");
+    const q = z.object({ status: z.enum(["OPEN", "REVIEWING", "RESOLVED", "DISMISSED"]).optional() }).parse(request.query);
+    reply.send({ items: await adminListReports(q) });
+  });
+  fastify.patch<{ Params: { id: string } }>("/marketplace/reports/:id", mktRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "marketplace.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ status: z.enum(["REVIEWING", "RESOLVED", "DISMISSED"]) }).parse(request.body);
+    const updated = await adminResolveReport(request.params.id, input.status, request.admin!.userId);
+    await recordAdminAudit({ actor: request.admin!, action: "MARKETPLACE_REPORT_RESOLVED", targetType: "business_report", targetId: request.params.id, newValue: { status: input.status }, context: auditContext(request) });
     reply.send(updated);
   });
 }

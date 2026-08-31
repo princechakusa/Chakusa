@@ -340,3 +340,89 @@ export interface CustomerDashboardDto {
   activityHistory: Array<{ id: string; type: string; createdAt: string }>;
   generatedAt: string;
 }
+
+// --- PROGRAM 2 LOOP 2: Marketplace & Business Discovery -------------------
+export type MarketplaceDiscoveryMode = 'browse' | 'featured' | 'recent' | 'popular' | 'verified' | 'nearby';
+export interface MarketplaceCardDto {
+  slug: string;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  industry: string | null;
+  tagline: string | null;
+  city: string | null;
+  region: string | null;
+  photo: string | null;
+  verified: boolean;
+  featured: boolean;
+  rating: number | null;
+  reviewCount: number;
+  viewCount: number;
+  favouriteCount: number;
+  createdAt: string;
+}
+export interface MarketplacePageDto {
+  items: MarketplaceCardDto[];
+  nextCursor: string | null;
+}
+export interface MarketplaceCategoryDto {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  description: string | null;
+  parentId: string | null;
+  sortOrder: number;
+  trending: boolean;
+  active: boolean;
+  businessCount: number;
+  children?: MarketplaceCategoryDto[];
+}
+export interface MarketplaceCategoriesResponse {
+  categories: MarketplaceCategoryDto[];
+  trending: MarketplaceCategoryDto[];
+}
+export interface MarketplaceSuggestionsDto {
+  businesses: Array<{ name: string; publicSlug: string | null }>;
+  categories: Array<{ slug: string; name: string; icon: string | null }>;
+}
+export interface MarketplaceRecentSearchDto {
+  id: string;
+  query: string;
+  resultCount: number;
+  createdAt: string;
+}
+export interface MarketplaceBusinessProfileDto {
+  slug: string;
+  name: string;
+  about: string | null;
+  category: string;
+  industry: string | null;
+  tagline: string | null;
+  verified: boolean;
+  contact: { phone: string | null };
+  address: { line: string | null; city: string | null; region: string | null; country: string | null; latitude: number | null; longitude: number | null };
+  openingHours: unknown;
+  photos: string[];
+  socialLinks: Record<string, string>;
+  services: Array<{ id: string; name: string; description: string | null; category: string | null; durationMinutes: number; price: number | null; depositAmount: number | null; bookable: boolean }>;
+  team: Array<{ name: string; role: string }>;
+  promotions: Array<{ id: string; title: string; description: string | null; badge: string | null; endsAt: string | null }>;
+  reviewsSummary: { averageRating: number | null; totalReviews: number; recent: Array<{ rating: number; comment: string | null; sentiment: string | null; createdAt: string }> };
+  viewer: { favourite: boolean; following: boolean };
+  shareUrl: string;
+  businessId: string;
+}
+export interface MarketplacePromotionDto {
+  id: string;
+  title: string;
+  description: string | null;
+  badge: string | null;
+  endsAt: string | null;
+  business: { slug: string | null; name: string; verified: boolean; category: string; city: string | null };
+}
+export interface MarketplaceShareDto {
+  name: string;
+  shareUrl: string;
+  message: string;
+}

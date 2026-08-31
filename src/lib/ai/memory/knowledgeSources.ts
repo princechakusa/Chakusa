@@ -19,7 +19,7 @@ function money(value: unknown): string {
 }
 
 export async function deriveBusinessKnowledge(businessId: string): Promise<MemoryItem[]> {
-  const [business, services, members] = await Promise.all([
+  const [business, services, members, listing, promotions] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
       select: { name: true, industry: true, description: true, timezone: true, currency: true, country: true, preferredTone: true, workingHours: true, googleReviewLink: true },
@@ -34,6 +34,16 @@ export async function deriveBusinessKnowledge(businessId: string): Promise<Memor
       where: { businessId, status: "ACTIVE" },
       take: 40,
       select: { id: true, role: true, createdAt: true, user: { select: { fullName: true } } },
+    }),
+    prisma.businessMarketplaceListing.findUnique({
+      where: { businessId },
+      select: { categorySlug: true, subcategorySlug: true, shortTagline: true, city: true, region: true, listed: true, discoverable: true, featured: true, updatedAt: true },
+    }),
+    prisma.marketplacePromotion.findMany({
+      where: { businessId, active: true, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, title: true, description: true, badge: true, endsAt: true, createdAt: true },
     }),
   ]);
   if (!business) return [];
@@ -160,6 +170,45 @@ export async function deriveBusinessKnowledge(businessId: string): Promise<Memor
         createdAt: member.createdAt,
         updatedAt: now,
         expiresAt: null,
+      }),
+    );
+  }
+
+  // PROGRAM 2 LOOP 2: marketplace discovery placement — category, tagline and
+  // location the customer sees when browsing. Derived, never stored.
+  if (listing) {
+    items.push(
+      derived({
+        id: `biz:${businessId}:marketplace_listing`,
+        scope: "BUSINESS",
+        kind: "marketplace_listing",
+        title: "Marketplace listing",
+        content: `Marketplace category ${listing.categorySlug ?? "(mapped from industry)"}${listing.subcategorySlug ? ` / ${listing.subcategorySlug}` : ""}.${listing.shortTagline ? ` Tagline: "${listing.shortTagline}".` : ""}${listing.city ? ` Shown in ${[listing.city, listing.region].filter(Boolean).join(", ")}.` : ""} ${listing.discoverable && listing.listed ? "Discoverable" : "Hidden from discovery"}${listing.featured ? ", featured" : ""}.`,
+        data: { categorySlug: listing.categorySlug, subcategorySlug: listing.subcategorySlug, featured: listing.featured },
+        source: `business_marketplace_listing:${businessId}`,
+        sourceRef: businessId,
+        importance: 0.6,
+        createdAt: now,
+        updatedAt: listing.updatedAt,
+        expiresAt: null,
+      }),
+    );
+  }
+
+  for (const promotion of promotions) {
+    items.push(
+      derived({
+        id: `biz:promotion:${promotion.id}`,
+        scope: "BUSINESS",
+        kind: "marketplace_promotion",
+        title: promotion.title,
+        content: `Active promotion "${promotion.title}"${promotion.badge ? ` [${promotion.badge}]` : ""}${promotion.description ? `: ${promotion.description}` : ""}${promotion.endsAt ? ` (ends ${promotion.endsAt.toISOString().slice(0, 10)})` : ""}.`,
+        source: `marketplace_promotion:${promotion.id}`,
+        sourceRef: promotion.id,
+        importance: 0.55,
+        createdAt: promotion.createdAt,
+        updatedAt: now,
+        expiresAt: promotion.endsAt,
       }),
     );
   }

@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { unreadNotificationCount } from "../../lib/customer/customerNotifications.js";
+import { mapIndustryToCategory } from "../../lib/marketplace/categories.js";
 
 // PROGRAM 2 LOOP 1: read-only aggregation for the customer dashboard. It
 // reuses the Business, Appointment, Conversation, Feedback and
@@ -98,6 +99,39 @@ export async function getCustomerAIContext(customerProfileId: string) {
     include: { user: { select: { fullName: true } }, businessLinks: { select: { businessId: true, businessCustomerId: true, favourite: true } } },
   });
   if (!profile) return null;
+
+  // PROGRAM 2 LOOP 2: expose marketplace discovery signals so the Customer AI
+  // understands which businesses this customer favourites, follows and has
+  // recently viewed. Reads only — the LOOP 3 AI Platform is unchanged.
+  const [favourites, follows, recentViews] = await Promise.all([
+    prisma.customerBusinessLink.findMany({
+      where: { customerProfileId, favourite: true },
+      orderBy: { lastInteractionAt: "desc" },
+      take: 50,
+      select: { businessId: true },
+    }),
+    prisma.businessFollow.findMany({
+      where: { customerProfileId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { businessId: true },
+    }),
+    prisma.customerBusinessView.findMany({
+      where: { customerProfileId },
+      orderBy: { viewedAt: "desc" },
+      take: 20,
+      select: { businessId: true, viewedAt: true },
+    }),
+  ]);
+  const discoveryBusinessIds = [...new Set([...favourites, ...follows, ...recentViews].map((row) => row.businessId))];
+  const discoveryBusinesses = discoveryBusinessIds.length
+    ? await prisma.business.findMany({
+        where: { id: { in: discoveryBusinessIds } },
+        select: { id: true, name: true, publicSlug: true, industry: true, marketplaceListing: { select: { categorySlug: true } } },
+      })
+    : [];
+  const discoveryById = new Map(discoveryBusinesses.map((business) => [business.id, business]));
+
   return {
     name: profile.displayName ?? profile.user.fullName,
     preferredLanguage: profile.preferredLanguage,
@@ -106,5 +140,16 @@ export async function getCustomerAIContext(customerProfileId: string) {
     privacySettings: profile.privacySettings,
     allowAIPersonalisation: (profile.privacySettings as { allowAIPersonalisation?: boolean })?.allowAIPersonalisation !== false,
     linkedBusinesses: profile.businessLinks,
+    favouriteBusinesses: favourites.map((link) => {
+      const business = discoveryById.get(link.businessId);
+      return {
+        businessId: link.businessId,
+        name: business?.name ?? null,
+        slug: business?.publicSlug ?? null,
+        category: business?.marketplaceListing?.categorySlug ?? (business ? mapIndustryToCategory(business.industry) : null),
+      };
+    }),
+    followedBusinesses: follows.map((follow) => ({ businessId: follow.businessId, name: discoveryById.get(follow.businessId)?.name ?? null, slug: discoveryById.get(follow.businessId)?.publicSlug ?? null })),
+    recentlyViewedBusinesses: recentViews.map((view) => ({ businessId: view.businessId, name: discoveryById.get(view.businessId)?.name ?? null, slug: discoveryById.get(view.businessId)?.publicSlug ?? null, viewedAt: view.viewedAt })),
   };
 }

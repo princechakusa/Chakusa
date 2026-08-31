@@ -971,6 +971,8 @@ model Business {
   supportTickets                 SupportTicket[]
   betaFeedback                   BetaFeedback[]
   subscriptionEvents             SubscriptionEvent[]
+  marketplaceListing             BusinessMarketplaceListing?
+  marketplacePromotions          MarketplacePromotion[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -3076,10 +3078,14 @@ model CustomerProfile {
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
-  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessLinks CustomerBusinessLink[]
-  notifications CustomerNotification[]
-  activity      CustomerActivityEvent[]
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessLinks   CustomerBusinessLink[]
+  notifications   CustomerNotification[]
+  activity        CustomerActivityEvent[]
+  businessViews   CustomerBusinessView[]
+  follows         BusinessFollow[]
+  reports         BusinessReport[]
+  recentSearches  CustomerRecentSearch[]
 
   @@index([status])
   @@index([phoneE164])
@@ -3166,4 +3172,149 @@ model EmailVerificationToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("email_verification_tokens")
+}
+
+// ===========================================================================
+// PROGRAM 2 LOOP 2 — Marketplace & Business Discovery.
+//
+// Discovery reads the existing `Business` / `ServiceOffering` / `Feedback` /
+// `BusinessMember` models directly — none are modified. A
+// `BusinessMarketplaceListing` (optional, 1:1) holds *only* the
+// marketplace-specific enrichment (featured state, photos, geo, tagline,
+// social links, counters) so a business can appear with zero listing rows
+// and admin curation is purely additive. Booking is NOT implemented here.
+// String columns + @map, no new enums.
+// ===========================================================================
+
+model MarketplaceCategory {
+  id            String   @id @default(uuid())
+  slug          String   @unique
+  name          String
+  parentId      String?  @map("parent_id")
+  icon          String?
+  description   String?
+  sortOrder     Int      @default(0) @map("sort_order")
+  trending      Boolean  @default(false)
+  active        Boolean  @default(true)
+  businessCount Int      @default(0) @map("business_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  parent   MarketplaceCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children MarketplaceCategory[] @relation("CategoryTree")
+
+  @@index([active, sortOrder])
+  @@index([parentId])
+  @@map("marketplace_categories")
+}
+
+model BusinessMarketplaceListing {
+  id             String    @id @default(uuid())
+  businessId     String    @unique @map("business_id")
+  listed         Boolean   @default(true)
+  discoverable   Boolean   @default(true)
+  featured       Boolean   @default(false)
+  featuredRank   Int?      @map("featured_rank")
+  featuredUntil  DateTime? @map("featured_until")
+  categorySlug   String?   @map("category_slug")
+  subcategorySlug String?  @map("subcategory_slug")
+  shortTagline   String?   @map("short_tagline")
+  photos         Json?
+  socialLinks    Json?     @map("social_links")
+  addressLine    String?   @map("address_line")
+  city           String?
+  region         String?
+  latitude       Float?
+  longitude      Float?
+  viewCount      Int       @default(0) @map("view_count")
+  favouriteCount Int       @default(0) @map("favourite_count")
+  followerCount  Int       @default(0) @map("follower_count")
+  lastListedAt   DateTime? @map("last_listed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([listed, discoverable, featured, featuredRank])
+  @@index([categorySlug, listed, discoverable])
+  @@index([city, region])
+  @@map("business_marketplace_listings")
+}
+
+model MarketplacePromotion {
+  id              String    @id @default(uuid())
+  businessId      String    @map("business_id")
+  title           String
+  description     String?
+  badge           String?
+  startsAt        DateTime? @map("starts_at")
+  endsAt          DateTime? @map("ends_at")
+  active          Boolean   @default(true)
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, active])
+  @@index([active, endsAt])
+  @@map("marketplace_promotions")
+}
+
+model CustomerBusinessView {
+  id                String   @id @default(uuid())
+  customerProfileId String   @map("customer_profile_id")
+  businessId        String   @map("business_id")
+  viewCount         Int      @default(1) @map("view_count")
+  viewedAt          DateTime @default(now()) @map("viewed_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([customerProfileId, businessId])
+  @@index([customerProfileId, viewedAt])
+  @@map("customer_business_views")
+}
+
+model BusinessFollow {
+  id                String   @id @default(uuid())
+  customerProfileId String   @map("customer_profile_id")
+  businessId        String   @map("business_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([customerProfileId, businessId])
+  @@index([businessId])
+  @@map("business_follows")
+}
+
+model BusinessReport {
+  id                String    @id @default(uuid())
+  customerProfileId String?   @map("customer_profile_id")
+  businessId        String    @map("business_id")
+  reason            String
+  detail            String?
+  status            String    @default("OPEN")
+  resolvedByUserId  String?   @map("resolved_by_user_id")
+  resolvedAt        DateTime? @map("resolved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([businessId])
+  @@map("business_reports")
+}
+
+model CustomerRecentSearch {
+  id                String   @id @default(uuid())
+  customerProfileId String   @map("customer_profile_id")
+  query             String
+  resultCount       Int      @default(0) @map("result_count")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([customerProfileId, createdAt])
+  @@map("customer_recent_searches")
 }

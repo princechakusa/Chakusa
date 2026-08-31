@@ -2417,8 +2417,8 @@ model AIModelRegistry {
   version            String
   capabilities       Json
   pricing            Json?
-  supportedLanguages Json?
-  approvedUseCases   Json
+  supportedLanguages Json?    @map("supported_languages")
+  approvedUseCases   Json     @map("approved_use_cases")
   status             String   @default("ACTIVE")
   healthStatus       String   @default("UNKNOWN") @map("health_status")
   createdAt          DateTime @default(now()) @map("created_at")
@@ -2450,7 +2450,7 @@ model AIInvocationLedger {
   confidence          Float?
   safetyResult        String   @map("safety_result")
   outcome             String
-  toolRequests        Json?
+  toolRequests        Json?    @map("tool_requests")
   approvalStatus      String   @default("NOT_REQUIRED") @map("approval_status")
   createdAt           DateTime @default(now()) @map("created_at")
 
@@ -2474,4 +2474,213 @@ model AIConversationRun {
 
   @@index([businessId, status, updatedAt])
   @@map("ai_conversation_runs")
+}
+
+// LOOP 3B-1: Prompt Platform. Every prompt the AI control plane executes is
+// resolved from an immutable, checksum-pinned PromptVersion published through
+// an approval gate — routeAI() rejects any reference that is not a PUBLISHED
+// version. String columns + @map, no Prisma enums, to match the AI models
+// above; relations stay inside the prompt cluster (businessId/userId remain
+// plain strings, as in AIInvocationLedger).
+model PromptPackage {
+  id          String           @id @default(uuid())
+  businessId  String?          @map("business_id")
+  key         String
+  name        String
+  description String?
+  scope       String           @default("PLATFORM")
+  status      String           @default("DRAFT")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  categories  PromptCategory[]
+  templates   PromptTemplate[]
+
+  @@unique([businessId, key])
+  @@index([scope, status])
+  @@map("prompt_packages")
+}
+
+model PromptCategory {
+  id          String           @id @default(uuid())
+  packageId   String           @map("package_id")
+  key         String
+  name        String
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  package     PromptPackage    @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  templates   PromptTemplate[]
+
+  @@unique([packageId, key])
+  @@map("prompt_categories")
+}
+
+model PromptTemplate {
+  id               String             @id @default(uuid())
+  packageId        String             @map("package_id")
+  categoryId       String?            @map("category_id")
+  key              String
+  name             String
+  description      String?
+  task             String
+  status           String             @default("DRAFT")
+  currentVersionId String?            @map("current_version_id")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  package          PromptPackage      @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  category         PromptCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  versions         PromptVersion[]
+  overrides        PromptOverride[]
+  deployments      PromptDeployment[]
+  testCases        PromptTestCase[]
+
+  @@unique([packageId, key])
+  @@index([task, status])
+  @@map("prompt_templates")
+}
+
+// Immutable once created. Body/systemPrompt/checksum are never updated in
+// place; a change means a new row with an incremented version. Only status
+// (DRAFT -> PUBLISHED -> RETIRED) and the retiredAt/publishedAt timestamps
+// mutate after creation.
+model PromptVersion {
+  id                 String               @id @default(uuid())
+  templateId         String               @map("template_id")
+  version            Int
+  status             String               @default("DRAFT")
+  body               String
+  systemPrompt       String?              @map("system_prompt")
+  model              String?
+  requiredCapability String?              @map("required_capability")
+  checksum           String
+  notes              String?
+  createdByUserId    String?              @map("created_by_user_id")
+  publishedAt        DateTime?            @map("published_at")
+  retiredAt          DateTime?            @map("retired_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  template           PromptTemplate       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  variables          PromptVariable[]
+  localizations      PromptLocalization[]
+  approvals          PromptApproval[]
+  deployments        PromptDeployment[]
+  overrides          PromptOverride[]
+  testRuns           PromptTestRun[]
+
+  @@unique([templateId, version])
+  @@index([status])
+  @@map("prompt_versions")
+}
+
+model PromptVariable {
+  id           String        @id @default(uuid())
+  versionId    String        @map("version_id")
+  name         String
+  description  String?
+  type         String        @default("string")
+  required     Boolean       @default(true)
+  defaultValue String?       @map("default_value")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  version      PromptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, name])
+  @@map("prompt_variables")
+}
+
+model PromptLocalization {
+  id           String        @id @default(uuid())
+  versionId    String        @map("version_id")
+  locale       String
+  body         String
+  systemPrompt String?       @map("system_prompt")
+  checksum     String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  version      PromptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, locale])
+  @@map("prompt_localizations")
+}
+
+model PromptOverride {
+  id           String         @id @default(uuid())
+  businessId   String         @map("business_id")
+  templateId   String         @map("template_id")
+  versionId    String?        @map("version_id")
+  body         String?
+  systemPrompt String?        @map("system_prompt")
+  status       String         @default("ACTIVE")
+  checksum     String?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  template     PromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version      PromptVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, templateId])
+  @@index([businessId, status])
+  @@map("prompt_overrides")
+}
+
+model PromptDeployment {
+  id               String         @id @default(uuid())
+  templateId       String         @map("template_id")
+  versionId        String         @map("version_id")
+  businessId       String?        @map("business_id")
+  environment      String         @default("production")
+  active           Boolean        @default(true)
+  deployedByUserId String?        @map("deployed_by_user_id")
+  deployedAt       DateTime       @default(now()) @map("deployed_at")
+  supersededAt     DateTime?      @map("superseded_at")
+  template         PromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version          PromptVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, environment, active])
+  @@index([businessId, active])
+  @@map("prompt_deployments")
+}
+
+model PromptApproval {
+  id                String        @id @default(uuid())
+  versionId         String        @map("version_id")
+  status            String        @default("PENDING")
+  requestedByUserId String?       @map("requested_by_user_id")
+  reviewedByUserId  String?       @map("reviewed_by_user_id")
+  reason            String?
+  decidedAt         DateTime?     @map("decided_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  version           PromptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, status])
+  @@map("prompt_approvals")
+}
+
+model PromptTestCase {
+  id         String          @id @default(uuid())
+  templateId String          @map("template_id")
+  name       String
+  variables  Json            @default("{}")
+  context    Json?
+  assertions Json            @default("[]")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  template   PromptTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  testRuns   PromptTestRun[]
+
+  @@unique([templateId, name])
+  @@map("prompt_test_cases")
+}
+
+model PromptTestRun {
+  id         String          @id @default(uuid())
+  versionId  String          @map("version_id")
+  testCaseId String?         @map("test_case_id")
+  status     String
+  provider   String
+  model      String?
+  output     Json?
+  failures   Json?
+  durationMs Int?            @map("duration_ms")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  version    PromptVersion   @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  testCase   PromptTestCase? @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+
+  @@index([versionId, createdAt])
+  @@map("prompt_test_runs")
 }

@@ -46,6 +46,8 @@ import adminAuthPlugin from "./plugins/adminAuth.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
 import { readAutomationHealth } from "./lib/automation/automationHealth.js";
+import { registerBuiltInAIProviders } from "./lib/ai/registerProviders.js";
+import aiPromptRoutes from "./modules/aiPrompts/aiPrompts.routes.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -129,6 +131,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(adminAuthPlugin);
   await app.register(tenantPlugin);
 
+  // Make the deterministic fake AI provider available for dev/test/seed —
+  // real adapters slot in here later (see registerProviders.ts).
+  registerBuiltInAIProviders();
+
   // Cheap, DB-free liveness — "the process is up and answering HTTP," not
   // "the app is fully functional." Deployment platforms (Render, etc.)
   // should probe this frequently; it must never do real work.
@@ -193,6 +199,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(deviceRoutes, { prefix: "/devices" });
   await app.register(messageRoutes, { prefix: "/messages" });
   await app.register(automationRoutes, { prefix: "/automation" });
+  await app.register(aiPromptRoutes, { prefix: "/ai/prompts" });
   await app.register(paymentRoutes, { prefix: "/payments", provider: options.stripePaymentProvider });
   await app.register(weeklyReportRoutes, { prefix: "/weekly-reports" });
   await app.register(supportRoutes, { prefix: "/support-tickets" });

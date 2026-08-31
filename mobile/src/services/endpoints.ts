@@ -111,6 +111,7 @@ export const messagingApi = {
   templates: () => api.get<Array<{id:string;name:string;versions:Array<{id:string;status:string;locale:string;body:string}>}>>('/messages/templates'),
   updateConversation: (id:string, body:{status?:string;assignedMemberId?:string|null;automationMode?:string}) => api.patch(`/messages/conversations/${id}`,body),
   completeAnalytics: () => api.get<Record<string,unknown>>('/messages/analytics/complete'),
+  uploadAttachment: (body: { fileName: string; mimeType: string; dataBase64: string }) => api.post<{ id: string; uploadStatus: string; malwareScanStatus: string }>('/messages/attachments/mobile', body),
 };
 export const subscriptionApi = {
   getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),

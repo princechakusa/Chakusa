@@ -330,15 +330,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   fastify.get("/communications/operations", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "communication.read");
-    const [providers, credentials, templates, slas, attachments, conversations] = await Promise.all([
+    const [providers, credentials, templates, slas, attachments, conversations, scans, syncAttempts] = await Promise.all([
       prisma.messagingChannelAccount.findMany({ where: { deletedAt: null }, select: { id: true, businessId: true, provider: true, channel: true, status: true, healthStatus: true, lastHealthAt: true } }),
       prisma.providerCredential.findMany({ where: { deletedAt: null }, select: { id: true, businessId: true, channelAccountId: true, keyVersion: true, status: true, validationStatus: true, lastValidatedAt: true, expiresAt: true } }),
       prisma.messagingTemplate.findMany({ where: { deletedAt: null }, include: { versions: { orderBy: { version: "desc" }, take: 5 } } }),
       prisma.conversationSLA.groupBy({ by: ["type", "status"], _count: true }),
       prisma.messageAttachment.groupBy({ by: ["uploadStatus", "malwareScanStatus"], _count: true }),
       prisma.conversation.groupBy({ by: ["status", "priority"], where: { deletedAt: null }, _count: true }),
+      prisma.attachmentProcessingEvent.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, businessId: true, attachmentId: true, type: true, status: true, detail: true, createdAt: true } }),
+      prisma.templateSyncAttempt.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, businessId: true, providerTemplateId: true, status: true, detail: true, createdAt: true } }),
     ]);
-    reply.send({ providers, credentials, templates, slas, attachments, conversations });
+    reply.send({ providers, credentials, templates, slas, attachments, conversations, scans, syncAttempts });
   });
 
   fastify.get("/support", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

@@ -1896,6 +1896,7 @@ model MessageAttachment {
   retentionUntil       DateTime?                   @map("retention_until")
   deletedAt            DateTime?                   @map("deleted_at")
   createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
   message              Message?                    @relation(fields: [messageId], references: [id], onDelete: SetNull)
   events               AttachmentProcessingEvent[]
 
@@ -2134,14 +2135,33 @@ model ProviderTemplate {
   providerTemplateId String                   @map("provider_template_id")
   status             String                   @default("PENDING")
   category           String?
+  sourceChecksum     String?                  @map("source_checksum")
+  lastSyncAt         DateTime?                @map("last_sync_at")
+  lastError          String?                  @map("last_error")
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
   channelAccount     MessagingChannelAccount  @relation(fields: [channelAccountId], references: [id], onDelete: Cascade)
   templateVersion    MessagingTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
   approvalEvents     TemplateApprovalEvent[]
+  syncAttempts       TemplateSyncAttempt[]
 
   @@unique([channelAccountId, templateVersionId])
   @@map("provider_templates")
+}
+
+model TemplateSyncAttempt {
+  id                 String           @id @default(uuid())
+  businessId         String?          @map("business_id")
+  providerTemplateId String           @map("provider_template_id")
+  sourceChecksum     String           @map("source_checksum")
+  status             String
+  detail             String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  providerTemplate   ProviderTemplate @relation(fields: [providerTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([providerTemplateId, createdAt])
+  @@index([businessId, status, createdAt])
+  @@map("template_sync_attempts")
 }
 
 model TemplateApprovalEvent {

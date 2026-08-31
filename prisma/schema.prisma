@@ -2407,3 +2407,71 @@ model WorkerHeartbeat {
 
   @@map("worker_heartbeats")
 }
+
+// LOOP 3: provider-neutral AI control plane. Content is deliberately kept out
+// of the immutable ledger; prompts and retrieved facts are versioned elsewhere.
+model AIModelRegistry {
+  id                 String   @id @default(uuid())
+  provider           String
+  model              String
+  version            String
+  capabilities       Json
+  pricing            Json?
+  supportedLanguages Json?
+  approvedUseCases   Json
+  status             String   @default("ACTIVE")
+  healthStatus       String   @default("UNKNOWN") @map("health_status")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, model, version])
+  @@index([status, healthStatus])
+  @@map("ai_model_registry")
+}
+
+model AIInvocationLedger {
+  id                  String   @id @default(uuid())
+  businessId          String   @map("business_id")
+  customerId          String?  @map("customer_id")
+  conversationId      String?  @map("conversation_id")
+  workflowExecutionId String?  @map("workflow_execution_id")
+  provider            String
+  model               String
+  modelVersion        String?  @map("model_version")
+  promptVersion       String   @map("prompt_version")
+  promptChecksum      String   @map("prompt_checksum")
+  inputTokens         Int?     @map("input_tokens")
+  outputTokens        Int?     @map("output_tokens")
+  reasoningTokens     Int?     @map("reasoning_tokens")
+  cost                Decimal? @db.Decimal(14, 6)
+  latencyMs           Int?     @map("latency_ms")
+  correlationId       String?  @map("correlation_id")
+  causationId         String?  @map("causation_id")
+  confidence          Float?
+  safetyResult        String   @map("safety_result")
+  outcome             String
+  toolRequests        Json?
+  approvalStatus      String   @default("NOT_REQUIRED") @map("approval_status")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([businessId, createdAt])
+  @@index([conversationId, createdAt])
+  @@map("ai_invocation_ledger")
+}
+
+model AIConversationRun {
+  id             String   @id @default(uuid())
+  businessId     String   @map("business_id")
+  customerId     String?  @map("customer_id")
+  conversationId String   @map("conversation_id")
+  status         String   @default("RECEIVED")
+  mode           String   @default("DRAFT")
+  state          Json     @default("{}")
+  idempotencyKey String   @unique @map("idempotency_key")
+  lastError      String?  @map("last_error")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([businessId, status, updatedAt])
+  @@map("ai_conversation_runs")
+}

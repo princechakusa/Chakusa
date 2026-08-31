@@ -45,10 +45,11 @@ export async function recordAIEvent(input: {
   const businessId = input.businessId ?? null;
   const provider = input.provider ?? null;
   const model = input.model ?? null;
-  try {
-    // The bucket's compound-unique contains nullable columns, so a Prisma
-    // upsert cannot target it — find-then-write, tolerating a race by
-    // retrying as an increment.
+  // The bucket's compound-unique contains nullable columns, so a Prisma
+  // upsert cannot target it. LOOP 5 hardening: find-then-write, but a
+  // concurrent-create P2002 now retries as an increment instead of silently
+  // dropping the sample — the bucket stays accurate under load.
+  const write = async () => {
     const existing = await prisma.aIOperationalMetric.findFirst({
       where: { businessId, scope, metric: input.metric, provider, model, windowStart: start },
       select: { id: true, min: true, max: true },
@@ -56,32 +57,25 @@ export async function recordAIEvent(input: {
     if (existing) {
       await prisma.aIOperationalMetric.update({
         where: { id: existing.id },
-        data: {
-          count: { increment: 1 },
-          sum: { increment: value },
-          min: Math.min(existing.min ?? value, value),
-          max: Math.max(existing.max ?? value, value),
-        },
+        data: { count: { increment: 1 }, sum: { increment: value }, min: Math.min(existing.min ?? value, value), max: Math.max(existing.max ?? value, value) },
       });
-    } else {
-      await prisma.aIOperationalMetric.create({
-        data: {
-          businessId,
-          scope,
-          metric: input.metric,
-          provider,
-          model,
-          windowStart: start,
-          windowEnd: end,
-          count: 1,
-          sum: value,
-          min: value,
-          max: value,
-          dimensions: (input.dimensions ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
-      });
+      return;
     }
-  } catch {
+    await prisma.aIOperationalMetric.create({
+      data: { businessId, scope, metric: input.metric, provider, model, windowStart: start, windowEnd: end, count: 1, sum: value, min: value, max: value, dimensions: (input.dimensions ?? undefined) as Prisma.InputJsonValue | undefined },
+    });
+  };
+  try {
+    await write();
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      try {
+        await write();
+        return;
+      } catch {
+        /* fall through — metrics are best-effort */
+      }
+    }
     // Metrics are best-effort; a bucket write must never fail an AI call.
   }
 }

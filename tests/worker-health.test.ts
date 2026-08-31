@@ -28,4 +28,16 @@ describe('worker production health', () => {
     expect(healthy.statusCode).toBe(200);
     expect(healthy.json().status).toBe('ok');
   });
+
+  it('reports AI Platform health: ok with no providers, and the kill-switch state', async () => {
+    const base = await app.inject({ method: 'GET', url: '/health/ai' });
+    expect(base.statusCode).toBe(200);
+    expect(base.json()).toMatchObject({ status: 'ok', aiKillSwitchEngaged: false });
+    expect(Array.isArray(base.json().providers)).toBe(true);
+
+    await prisma.platformSetting.create({ data: { key: 'ai_enabled', value: false } });
+    const killed = await app.inject({ method: 'GET', url: '/health/ai' });
+    expect(killed.statusCode).toBe(200);
+    expect(killed.json().aiKillSwitchEngaged).toBe(true);
+  });
 });

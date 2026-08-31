@@ -10,10 +10,11 @@ This checklist contains only deployment and operational actions. Secrets must be
 - Stripe Connect: set live keys, webhook signing secret, success/cancel URLs, and register `/webhooks/stripe`.
 - App stores: set Apple/Google billing credentials, approved product IDs, environment, and webhook endpoints.
 - Sentry/Expo: set backend and mobile monitoring DSNs in deployment secrets/build profiles.
+- AI Platform (optional — the platform ships dark): set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`; add matching `AIModelRegistry` rows (`/admin/ai/models`, `ai.manage`) with real `pricing`; seed the platform prompt package + a baseline `AIPolicy` (start in **DRAFT** mode); leave `ai.customer_agent` flag **off** until per-business rollout.
 
 ## Acceptance checks
 
-- `GET /health`, `/health/ready`, and `/health/worker` return healthy results.
+- `GET /health`, `/health/ready`, `/health/worker`, `/health/automation`, and `/health/ai` return healthy results.
 - Create, reschedule, cancel, confirm, complete, and import an appointment.
 - Confirm SMS delivery status and WhatsApp opt-out behavior.
 - Create/revoke an external calendar subscription; verify the feed contains no customer PII.
@@ -22,6 +23,7 @@ This checklist contains only deployment and operational actions. Secrets must be
 - Verify Apple/Google purchase, restore, renewal, grace period, expiry, and cancellation states.
 - Test login, logout-all, password reset, device registration, and account deletion on physical iOS and Android devices.
 - Exercise support ticket creation and read-only admin support context.
+- AI (only if enabling at launch): with `ai.customer_agent` on for one pilot business and an ACTIVE DRAFT-mode policy, send an inbound SMS and confirm a draft is held (`/ai/ops/runs`), approve it (`/ai/agent/runs/:id/approve`), and confirm delivery. Toggle `PlatformSetting.ai_enabled=false` and confirm `routeAI` stops and `/health/ai` reports the kill switch.
 
 ## Beta gate
 

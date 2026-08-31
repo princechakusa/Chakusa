@@ -47,6 +47,7 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
 import { readAutomationHealth } from "./lib/automation/automationHealth.js";
 import { registerBuiltInAIProviders } from "./lib/ai/registerProviders.js";
+import { circuitBreakerSnapshot } from "./lib/ai/ops/circuitBreaker.js";
 import aiPromptRoutes from "./modules/aiPrompts/aiPrompts.routes.js";
 import aiPolicyRoutes from "./modules/aiPolicies/aiPolicies.routes.js";
 import aiMemoryRoutes from "./modules/aiMemory/aiMemory.routes.js";
@@ -173,6 +174,26 @@ export async function buildApp(options: BuildAppOptions = {}) {
     }
   });
   app.get('/health/automation', async (_request, reply) => { try { const health = await readAutomationHealth(); if (health.status !== "ok") reply.code(503); return health; } catch { reply.code(503); return { status: "unavailable" }; } });
+
+  // LOOP 5: AI Platform liveness — provider circuit-breaker state and the AI
+  // kill switch. Never 503s on "no provider configured" (that is a valid
+  // pre-rollout state); it does report an open breaker so ops can alert.
+  app.get('/health/ai', async (_request, reply) => {
+    try {
+      const [setting, flag] = await Promise.all([
+        prisma.platformSetting.findFirst({ where: { key: 'ai_enabled' }, select: { value: true } }),
+        prisma.featureFlag.findFirst({ where: { key: 'kill_switch.ai', scope: 'PLATFORM', enabled: true }, select: { id: true } }),
+      ]);
+      const killSwitchEngaged = setting?.value === false || Boolean(flag);
+      const breakers = circuitBreakerSnapshot();
+      const openBreakers = breakers.filter((b) => b.circuit === 'OPEN');
+      if (openBreakers.length) reply.code(503);
+      return { status: openBreakers.length ? 'degraded' : 'ok', aiKillSwitchEngaged: killSwitchEngaged, providers: breakers, openBreakers: openBreakers.map((b) => `${b.provider}/${b.model ?? '*'}`) };
+    } catch {
+      reply.code(503);
+      return { status: 'unavailable' };
+    }
+  });
 
   app.post('/internal/worker/tick', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
     if (!config.WORKER_TRIGGER_SECRET) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });

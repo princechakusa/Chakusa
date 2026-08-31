@@ -23,22 +23,23 @@ export function listAIProviderIds() { return [...providers.keys()]; }
 // LOOP 3B-2: every invocation is first cleared by the Policy Engine at the
 // INVOCATION checkpoint — a DENY (kill switch, injection, cross-tenant,
 // business restriction) throws before any provider call or ledger write.
-export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; runId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string; channel?: string; skipPolicy?: boolean }) {
+// LOOP 5 hardening: the Policy Engine INVOCATION check is now unconditional —
+// there is no bypass parameter. Nothing can reach a provider without a
+// policy decision on record.
+export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; runId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string; channel?: string }) {
   assertSafeAIInput(input.prompt);
-  if (!input.skipPolicy) {
-    await assertPolicyAllows({
-      businessId: input.businessId,
-      checkpoint: "INVOCATION",
-      action: input.task,
-      customerId: input.customerId,
-      conversationId: input.conversationId,
-      workflowExecutionId: input.workflowExecutionId,
-      runId: input.runId,
-      channel: input.channel,
-      promptText: input.prompt,
-      correlationId: input.correlationId,
-    });
-  }
+  await assertPolicyAllows({
+    businessId: input.businessId,
+    checkpoint: "INVOCATION",
+    action: input.task,
+    customerId: input.customerId,
+    conversationId: input.conversationId,
+    workflowExecutionId: input.workflowExecutionId,
+    runId: input.runId,
+    channel: input.channel,
+    promptText: input.prompt,
+    correlationId: input.correlationId,
+  });
   const promptVersion = await prisma.promptVersion.findUnique({ where: { id: input.promptVersionId }, select: { id: true, status: true, requiredCapability: true } });
   if (!promptVersion) throw ApiError.badRequest("routeAI requires a known prompt version");
   if (promptVersion.status !== "PUBLISHED") throw ApiError.badRequest("routeAI requires a published prompt version");

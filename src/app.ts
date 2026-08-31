@@ -51,6 +51,7 @@ import aiPromptRoutes from "./modules/aiPrompts/aiPrompts.routes.js";
 import aiPolicyRoutes from "./modules/aiPolicies/aiPolicies.routes.js";
 import aiMemoryRoutes from "./modules/aiMemory/aiMemory.routes.js";
 import aiOpsRoutes from "./modules/aiOps/aiOps.routes.js";
+import aiAgentRoutes from "./modules/aiAgent/aiAgent.routes.js";
 
 declare module "fastify" { interface FastifyRequest { rawBody?: Buffer } }
 
@@ -206,6 +207,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(aiPolicyRoutes, { prefix: "/ai/policies" });
   await app.register(aiMemoryRoutes, { prefix: "/ai/memory" });
   await app.register(aiOpsRoutes, { prefix: "/ai/ops" });
+  await app.register(aiAgentRoutes, { prefix: "/ai/agent" });
   await app.register(paymentRoutes, { prefix: "/payments", provider: options.stripePaymentProvider });
   await app.register(weeklyReportRoutes, { prefix: "/weekly-reports" });
   await app.register(supportRoutes, { prefix: "/support-tickets" });

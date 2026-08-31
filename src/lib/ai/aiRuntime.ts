@@ -11,6 +11,7 @@ import { appendToolOutput, ensureSession, getSession, setSessionContext } from "
 import { recordConversationEvent, summarizeConversation } from "./memory/summarization.js";
 import type { RetrievalPhase, RetrievalResult } from "./memory/memoryTypes.js";
 import { emitAIEvent } from "./ops/aiMetrics.js";
+import { getAgentTool, isAgentTool } from "./agent/agentTools.js";
 
 export const AI_RUN_STATES = ["RECEIVED","CONTEXT_READY","CLASSIFIED","PLANNED","TOOL_SELECTION","TOOL_EXECUTION","DRAFT_RESPONSE","HUMAN_APPROVAL","RESPONDING","COMPLETED","ESCALATED","FAILED"] as const;
 const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","CREATE_TASK","ASSIGN_STAFF","ESCALATE","PAUSE_WORKFLOW","RESUME_WORKFLOW"]);
@@ -19,11 +20,18 @@ const allowed = new Set(["UPDATE_CUSTOMER","UPDATE_LEAD","UPDATE_APPOINTMENT","C
 // REQUIRE_APPROVAL / ESCALATE block unless the caller carries an explicit
 // human approval; ALLOW runs without one. `approved` is no longer a blanket
 // requirement — the policy decides.
+// LOOP 4: the same broker also serves the AI Receptionist's tool set
+// (agentTools.ts) — automation actions and receptionist tools share this one
+// policy-gated, idempotent, ledgered path.
 export async function executeAITool(input: { businessId: string; runId: string; name: string; config: unknown; idempotencyKey: string; approved?: boolean; workflowId?: string }) {
-  if (!allowed.has(input.name)) throw ApiError.forbidden("AI tool is not allowlisted");
-  const config = z.record(z.string(), z.unknown()).parse(input.config);
-  const errors = validateActionConfig(input.name, config);
-  if (errors.length) throw ApiError.badRequest("Invalid AI tool request", errors);
+  const automationTool = allowed.has(input.name);
+  const agentTool = isAgentTool(input.name);
+  if (!automationTool && !agentTool) throw ApiError.forbidden("AI tool is not allowlisted");
+  const config = z.record(z.string(), z.unknown()).parse(input.config ?? {});
+  if (automationTool) {
+    const errors = validateActionConfig(input.name, config);
+    if (errors.length) throw ApiError.badRequest("Invalid AI tool request", errors);
+  }
   const run = await prisma.aIConversationRun.findFirst({ where: { id: input.runId, businessId: input.businessId } });
   if (!run) throw ApiError.notFound("AI conversation run not found");
 
@@ -45,11 +53,21 @@ export async function executeAITool(input: { businessId: string; runId: string; 
     throw ApiError.forbidden("AI tool execution requires human approval under the active policy", { code: "POLICY_APPROVAL_REQUIRED", decisionId: decision.decisionId, reasons: decision.reasons, strategy: decision.requiredApprovalStrategy });
   }
 
-  const handler = getAction(input.name);
-  if (!handler) throw ApiError.serviceUnavailable("AI tool handler is not configured");
   const existing = await prisma.aIInvocationLedger.findFirst({ where: { businessId: input.businessId, correlationId: input.idempotencyKey, outcome: "TOOL_COMPLETED" } });
   if (existing) return { replayed: true };
-  const result = await handler({ businessId: input.businessId, executionId: `ai:${run.id}`, nodeId: input.name, input: run.state, idempotencyKey: input.idempotencyKey, signal: AbortSignal.timeout(30_000) }, config);
+
+  let result: unknown;
+  if (agentTool) {
+    const tool = getAgentTool(input.name)!;
+    result = await tool.run(
+      { businessId: input.businessId, runId: run.id, conversationId: run.conversationId, customerId: run.customerId ?? null },
+      config,
+    );
+  } else {
+    const handler = getAction(input.name);
+    if (!handler) throw ApiError.serviceUnavailable("AI tool handler is not configured");
+    result = await handler({ businessId: input.businessId, executionId: `ai:${run.id}`, nodeId: input.name, input: run.state, idempotencyKey: input.idempotencyKey, signal: AbortSignal.timeout(30_000) }, config);
+  }
   await prisma.aIInvocationLedger.create({ data: { businessId: input.businessId, customerId: run.customerId, conversationId: run.conversationId, provider: "tool-broker", model: input.name, promptVersion: "tool-v1", promptChecksum: createHash("sha256").update(input.name).digest("hex"), correlationId: input.idempotencyKey, safetyResult: "PASSED", outcome: "TOOL_COMPLETED", approvalStatus: decision.effect, toolRequests: { name: input.name, policyDecisionId: decision.decisionId } } });
   // LOOP 3B-3: a successful tool result becomes running session memory.
   if (await getSession(input.businessId, run.id)) {

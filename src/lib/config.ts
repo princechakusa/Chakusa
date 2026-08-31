@@ -221,6 +221,20 @@ export const envSchema = z.object({
   // run must never start reporting real events).
   SENTRY_ENABLED: booleanFlag,
   SENTRY_DSN: optionalSecret,
+  // LOOP 4 — AI Customer Agent. Provider adapters register only when their
+  // key is present (same "credentials gate the adapter" shape as
+  // TWILIO_*/STRIPE_*). No key set anywhere -> the deterministic fake
+  // provider stays the only registered adapter (dev/test), and production
+  // simply has no model to route to until a key is configured.
+  OPENAI_API_KEY: optionalSecret,
+  OPENAI_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  OPENAI_DEFAULT_MODEL: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
+  ANTHROPIC_API_KEY: optionalSecret,
+  ANTHROPIC_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  ANTHROPIC_DEFAULT_MODEL: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
+  // Timeout (ms) and max retry attempts applied by every provider adapter.
+  AI_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(30_000),
+  AI_PROVIDER_MAX_RETRIES: z.coerce.number().int().min(0).max(6).default(2),
   // Free-text, not an enum — Sentry itself just groups events by whatever
   // string you send. Defaults to NODE_ENV at use-site (src/lib/sentry.ts),
   // not baked in here, so this only needs setting to override that default

@@ -11,6 +11,8 @@ import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../
 import { applyStripeEvent } from "../payments/payments.service.js";
 import { createHash } from "node:crypto";
 import { recordDeliveryReceipt, recordInboundMessage } from "../../lib/messaging/messagingPlatform.js";
+import { handleInboundAIMessage } from "../../lib/ai/agent/customerAgent.js";
+import { captureUnexpectedError } from "../../lib/sentry.js";
 
 export interface WebhookRoutesOptions {
   /** Test-only injection point — see subscription.routes.ts's SubscriptionRoutesOptions for the identical pattern. Defaults to the real store clients; never live in tests. */
@@ -85,7 +87,19 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     const phone = event.from.replace(/^whatsapp:/, "");
     const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { id: true, businessId: true } });
     const providerMessageId = typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : createHash("sha256").update(`${phone}:${event.receivedAt.toISOString()}:${event.body}`).digest("hex");
-    for (const customer of customers) await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
+    // LOOP 4: after the inbound message is durably recorded, the AI Customer
+    // Agent gets a turn for any business that has opted in. It is awaited so
+    // an autonomous reply is enqueued before this webhook acks (the run is
+    // idempotent on the inbound message id, so a Twilio retry replays
+    // safely), but a failure never blocks the ack.
+    for (const customer of customers) {
+      const inbound = await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
+      try {
+        await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId!, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
+      } catch (error) {
+        captureUnexpectedError(error);
+      }
+    }
     if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(event.body.trim().toUpperCase())) {
       for (const { businessId } of customers) {
         const channel = event.channel === "whatsapp" ? "WHATSAPP" : "SMS";

@@ -169,3 +169,47 @@ export const aiApi = {
   evaluationRuns: (suiteId: string) => api.get<AiEvaluationRunDto[]>(`/ai/ops/evaluations/suites/${suiteId}/runs`),
   evaluationRun: (id: string) => api.get<AiEvaluationRunDto & { results: Array<Record<string, unknown>> }>(`/ai/ops/evaluations/runs/${id}`),
 };
+
+import type {
+  CustomerSessionResponse, CustomerSelfProfileDto, CustomerDashboardDto,
+  CustomerNotificationDto, CustomerBusinessLinkDto,
+} from '../apiTypes';
+
+export const customerAuthApi = {
+  register: (body: { email: string; password: string; fullName: string; displayName?: string; phone?: string }) =>
+    api.post<CustomerSessionResponse>('/customer/auth/register', body, 'none'),
+  login: (body: { email: string; password: string }) => api.post<CustomerSessionResponse>('/customer/auth/login', body, 'none'),
+  google: (idToken: string) => api.post<CustomerSessionResponse>('/customer/auth/google', { idToken }, 'none'),
+  appleChallenge: () => api.post<{ challengeId: string; nonce: string; state: string }>('/customer/auth/apple/challenge', {}, 'none'),
+  apple: (body: Record<string, unknown>) => api.post<CustomerSessionResponse>('/customer/auth/apple', body, 'none'),
+  refresh: (refreshToken: string) => api.post<{ accessToken: string; refreshToken: string; expiresIn: number }>('/customer/auth/refresh', { refreshToken }, 'none'),
+  logout: (refreshToken: string) => api.post<void>('/customer/auth/logout', { refreshToken }, 'none'),
+  logoutAll: () => api.post<{ revoked: number }>('/customer/auth/logout-all'),
+  me: () => api.get<{ user: CustomerSessionResponse['user']; profile: CustomerSelfProfileDto }>('/customer/auth/me'),
+  forgotPassword: (email: string) => api.post<{ message: string }>('/customer/auth/forgot-password', { email }, 'none'),
+  resetPassword: (token: string, password: string) => api.post<{ message: string }>('/customer/auth/reset-password', { token, password }, 'none'),
+  verifyEmail: (token: string) => api.post<{ verified: boolean }>('/customer/auth/verify-email', { token }, 'none'),
+  resendVerification: () => api.post<{ sent?: boolean; alreadyVerified?: boolean }>('/customer/auth/resend-verification'),
+  listSessions: () => api.get<Array<{ id: string; ipAddress: string | null; userAgent: string | null; lastUsedAt: string | null; createdAt: string }>>('/customer/auth/sessions'),
+  revokeSession: (id: string) => api.delete<void>(`/customer/auth/sessions/${id}`),
+  registerDevice: (token: string, platform: 'ios' | 'android' | 'web') => api.post<{ id: string }>('/customer/auth/devices', { token, platform }),
+  removeDevice: (token: string) => api.delete<void>(`/customer/auth/devices/${encodeURIComponent(token)}`),
+};
+
+export const customerApi = {
+  profile: () => api.get<CustomerSelfProfileDto & { user: CustomerSessionResponse['user'] }>('/customer/profile'),
+  updateProfile: (body: Partial<{ displayName: string; avatarUrl: string | null; phone: string | null; preferredLanguage: string; preferredTimezone: string }>) => api.patch<CustomerSelfProfileDto>('/customer/profile', body),
+  updatePreferences: (body: { notificationPreferences?: Record<string, Record<string, boolean>>; privacySettings?: Record<string, unknown>; communicationPreferences?: Record<string, unknown>; marketingConsent?: boolean }) => api.patch<CustomerSelfProfileDto>('/customer/profile/preferences', body),
+  closeAccount: () => api.delete<void>('/customer/profile'),
+  businesses: () => api.get<CustomerBusinessLinkDto[]>('/customer/businesses'),
+  setFavourite: (businessId: string, favourite: boolean) => api.patch<CustomerBusinessLinkDto>(`/customer/businesses/${businessId}/favourite`, { favourite }),
+  dashboard: () => api.get<CustomerDashboardDto>('/customer/dashboard'),
+  activity: (limit = 50) => api.get<Array<{ id: string; type: string; createdAt: string }>>(`/customer/activity${query({ limit })}`),
+  notifications: (unreadOnly = false) => api.get<CustomerNotificationDto[]>(`/customer/notifications${query({ unreadOnly: unreadOnly ? 'true' : undefined })}`),
+  markNotificationRead: (id: string) => api.post<CustomerNotificationDto>(`/customer/notifications/${id}/read`),
+  markAllNotificationsRead: () => api.post<{ updated: number }>('/customer/notifications/read-all'),
+  notificationPreferences: () => api.get<{ notificationPreferences: Record<string, Record<string, boolean>>; communicationPreferences: Record<string, unknown> }>('/customer/notifications/preferences'),
+  setNotificationPreferences: (notificationPreferences: Record<string, Record<string, boolean>>) => api.patch<CustomerSelfProfileDto>('/customer/notifications/preferences', { notificationPreferences }),
+  aiConversations: () => api.get<{ conversations: Array<Record<string, unknown>> }>('/customer/ai/conversations'),
+  aiContext: () => api.get<Record<string, unknown>>('/customer/ai/context'),
+};

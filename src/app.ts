@@ -7,8 +7,11 @@ import { prisma } from "./lib/prisma.js";
 import { attachFastifySentry, captureUnexpectedError } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
 import tenantPlugin from "./plugins/tenant.js";
+import customerAuthPlugin from "./plugins/customerAuth.js";
 import errorHandlerPlugin from "./plugins/errorHandler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import customerAuthRoutes from "./modules/customerAuth/customerAuth.routes.js";
+import customerPlatformRoutes from "./modules/customer/customer.routes.js";
 import businessRoutes from "./modules/business/business.routes.js";
 import customerRoutes from "./modules/customers/customers.routes.js";
 import leadRoutes from "./modules/leads/leads.routes.js";
@@ -134,6 +137,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   attachFastifySentry(app);
   await app.register(authPlugin);
   await app.register(adminAuthPlugin);
+  await app.register(customerAuthPlugin);
   await app.register(tenantPlugin);
 
   // Make the deterministic fake AI provider available for dev/test/seed —
@@ -209,6 +213,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleCodeExchanger: options.appleCodeExchanger,
     appleCredentialRevoker: options.appleCredentialRevoker,
   });
+  await app.register(customerAuthRoutes, {
+    prefix: "/customer/auth",
+    googleTokenVerifier: options.googleTokenVerifier,
+    appleTokenVerifier: options.appleTokenVerifier,
+    appleCodeExchanger: options.appleCodeExchanger,
+  });
+  await app.register(customerPlatformRoutes, { prefix: "/customer" });
   await app.register(businessRoutes, { prefix: "/business" });
   await app.register(calendarRoutes, { prefix: "/calendar" });
   await app.register(customerRoutes, { prefix: "/customers" });

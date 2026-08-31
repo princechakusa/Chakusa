@@ -43,6 +43,13 @@ import { workflowDefinitionSchema } from "../automation/automation.schemas.js";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import {
+  adminCustomerAnalytics,
+  getAdminCustomer,
+  listAdminCustomers,
+  setAdminCustomerStatus,
+  verifyAdminCustomer,
+} from "./customerAdmin.service.js";
+import {
   adminAIAnalytics,
   adminAICostDashboard,
   adminAIEvaluationRun,
@@ -454,4 +461,35 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/ai/cost", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); const sinceHours = z.object({ sinceHours: z.coerce.number().int().min(1).max(8760).default(720) }).parse(request.query).sinceHours; reply.send(await adminAICostDashboard(sinceHours)); });
   fastify.get("/ai/memory-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIMemoryMonitoring()); });
   fastify.get("/ai/policy-monitoring", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIPolicyMonitoring()); });
+
+  // PROGRAM 2 LOOP 1: Customer Platform administration. Reads require
+  // `customer.read`; status / verify require `customer.manage` + CSRF + audit.
+  fastify.get("/customers", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "customer.read");
+    const query = z.object({ search: z.string().trim().max(120).optional(), status: z.enum(["ACTIVE", "SUSPENDED", "DELETED"]).optional(), page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(100).optional() }).parse(request.query);
+    reply.send(await listAdminCustomers(query));
+  });
+  fastify.get("/customers/analytics", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "customer.read");
+    reply.send(await adminCustomerAnalytics());
+  });
+  fastify.get<{ Params: { id: string } }>("/customers/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "customer.read");
+    reply.send(await getAdminCustomer(request.params.id));
+  });
+  fastify.patch<{ Params: { id: string } }>("/customers/:id/status", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "customer.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ status: z.enum(["ACTIVE", "SUSPENDED", "DELETED"]), reason: z.string().trim().max(500).optional() }).parse(request.body);
+    const result = await setAdminCustomerStatus(request.params.id, input.status, input.reason);
+    await recordAdminAudit({ actor: request.admin!, action: "CUSTOMER_STATUS_CHANGED", targetType: "customer_profile", targetId: request.params.id, oldValue: { status: result.previousStatus }, newValue: { status: input.status }, context: auditContext(request) });
+    reply.send(result);
+  });
+  fastify.post<{ Params: { id: string } }>("/customers/:id/verify", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "customer.manage");
+    await fastify.requireAdminCsrf(request);
+    const updated = await verifyAdminCustomer(request.params.id);
+    await recordAdminAudit({ actor: request.admin!, action: "CUSTOMER_VERIFIED", targetType: "customer_profile", targetId: request.params.id, newValue: { verifiedAt: updated.verifiedAt }, context: auditContext(request) });
+    reply.send(updated);
+  });
 }

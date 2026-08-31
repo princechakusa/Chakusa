@@ -67,6 +67,11 @@ enum UserAccountStatus {
 enum AuthSessionScope {
   PRODUCT
   ADMIN
+  // PROGRAM 2 LOOP 1: sessions for the Customer Platform. A CUSTOMER-scoped
+  // session can never authorize a business (PRODUCT) or admin route — the
+  // authenticate/authenticateAdmin plugins filter by scope, and
+  // authenticateCustomer requires this one.
+  CUSTOMER
 }
 
 enum FeatureFlagScope {
@@ -473,6 +478,8 @@ model User {
   supportTickets      SupportTicket[]
   betaFeedback        BetaFeedback[]
   adminMembership     AdminMembership?
+  customerProfile     CustomerProfile?
+  emailVerifications  EmailVerificationToken[]
 
   @@index([createdAt])
   @@map("users")
@@ -3036,4 +3043,127 @@ model AIAttributedOutcome {
   @@index([businessId, verified, createdAt])
   @@index([runId])
   @@map("ai_attributed_outcomes")
+}
+
+// ===========================================================================
+// PROGRAM 2 LOOP 1 — Customer Platform Foundation.
+//
+// A customer is a `User` (identity, credentials, sessions, devices, OAuth
+// identities are all reused) plus a 1:1 `CustomerProfile` that marks the
+// user as a customer and holds customer-specific settings. A single person
+// can be both a business owner and a customer. Relationships to businesses
+// are separate rows (`CustomerBusinessLink`) so multiple businesses, and
+// future family accounts / loyalty memberships, need no identity redesign.
+// String columns + @map, no new enums beyond the AuthSessionScope value.
+// ===========================================================================
+
+model CustomerProfile {
+  id                       String    @id @default(uuid())
+  userId                   String    @unique @map("user_id")
+  displayName              String?   @map("display_name")
+  avatarUrl                String?   @map("avatar_url")
+  phone                    String?
+  phoneE164                String?   @map("phone_e164")
+  preferredLanguage        String    @default("en") @map("preferred_language")
+  preferredTimezone        String    @default("UTC") @map("preferred_timezone")
+  status                   String    @default("ACTIVE")
+  marketingConsent         Boolean   @default(false) @map("marketing_consent")
+  notificationPreferences  Json      @default("{}") @map("notification_preferences")
+  privacySettings          Json      @default("{}") @map("privacy_settings")
+  communicationPreferences Json      @default("{}") @map("communication_preferences")
+  verifiedAt               DateTime? @map("verified_at")
+  lastSeenAt               DateTime? @map("last_seen_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessLinks CustomerBusinessLink[]
+  notifications CustomerNotification[]
+  activity      CustomerActivityEvent[]
+
+  @@index([status])
+  @@index([phoneE164])
+  @@map("customer_profiles")
+}
+
+// The relationship between one customer and one business. `businessCustomerId`
+// links to the business-scoped `Customer` contact row when it is known
+// (public booking, a matched phone/email), so bookings, conversations and AI
+// memory — all keyed on that row — attach to the authenticated customer.
+model CustomerBusinessLink {
+  id                 String    @id @default(uuid())
+  customerProfileId  String    @map("customer_profile_id")
+  businessId         String    @map("business_id")
+  businessCustomerId String?   @map("business_customer_id")
+  relationship       String    @default("CUSTOMER")
+  favourite          Boolean   @default(false)
+  blockedByBusiness  Boolean   @default(false) @map("blocked_by_business")
+  firstInteractionAt DateTime? @map("first_interaction_at")
+  lastInteractionAt  DateTime? @map("last_interaction_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([customerProfileId, businessId])
+  @@index([businessId])
+  @@index([businessCustomerId])
+  @@index([customerProfileId, favourite])
+  @@map("customer_business_links")
+}
+
+// Per-customer notification inbox. Delivery reuses the push service
+// (sendPushToUser) and, later, the Messaging Platform; this table is the
+// durable feed the dashboard reads.
+model CustomerNotification {
+  id                String    @id @default(uuid())
+  customerProfileId String    @map("customer_profile_id")
+  businessId        String?   @map("business_id")
+  category          String
+  title             String
+  body              String
+  data              Json?
+  channels          Json?
+  readAt            DateTime? @map("read_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([customerProfileId, createdAt])
+  @@index([customerProfileId, readAt])
+  @@map("customer_notifications")
+}
+
+model CustomerActivityEvent {
+  id                String   @id @default(uuid())
+  customerProfileId String   @map("customer_profile_id")
+  businessId        String?  @map("business_id")
+  type              String
+  entityType        String?  @map("entity_type")
+  entityId          String?  @map("entity_id")
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([customerProfileId, createdAt])
+  @@map("customer_activity_events")
+}
+
+// Generic email-verification token (any User). Mirrors PasswordResetToken:
+// only the SHA-256 hash of the raw token is stored.
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  email      String
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
 }

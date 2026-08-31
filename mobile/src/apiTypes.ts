@@ -277,3 +277,66 @@ export interface AiEvaluationRunDto {
   completedAt: string | null;
 }
 export type AiDraftReviewDecision = 'approve' | 'edit' | 'reject' | 'escalate';
+
+// PROGRAM 2 LOOP 1: Customer Platform (mobile)
+export type CustomerProfileStatus = 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+export interface CustomerAuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  emailVerified: boolean;
+  hasPassword: boolean;
+  linkedProviders: string[];
+}
+export interface CustomerSelfProfileDto {
+  id: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  preferredLanguage: string;
+  preferredTimezone: string;
+  status: CustomerProfileStatus;
+  verified: boolean;
+}
+export interface CustomerSessionResponse {
+  accessToken: string;
+  token: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: 'Bearer';
+  user: CustomerAuthUser;
+  profile: CustomerSelfProfileDto;
+  verificationRequired?: boolean;
+  isNewUser?: boolean;
+}
+export type CustomerNotificationCategory =
+  | 'booking_update' | 'message' | 'ai_reply' | 'promotion' | 'review_reminder' | 'appointment_reminder';
+export interface CustomerNotificationDto {
+  id: string;
+  businessId: string | null;
+  category: CustomerNotificationCategory;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  channels: string[] | null;
+  readAt: string | null;
+  createdAt: string;
+}
+export interface CustomerBusinessLinkDto {
+  id: string;
+  businessId: string;
+  favourite: boolean;
+  relationship: string;
+  lastInteractionAt: string | null;
+  business: { id: string; name: string; industry: string | null; publicSlug: string | null } | null;
+}
+export interface CustomerDashboardDto {
+  savedBusinesses: CustomerBusinessLinkDto[];
+  businesses: CustomerBusinessLinkDto[];
+  upcomingAppointments: Array<{ id: string; serviceName: string; startsAt: string; status: string; business: { name: string } | null }>;
+  recentConversations: Array<{ id: string; status: string; updatedAt: string; business: { name: string } | null }>;
+  recentReviews: Array<{ id: string; rating: number; comment: string | null; createdAt: string }>;
+  aiAssistant: { recentRuns: Array<Record<string, unknown>>; entryEnabled: boolean };
+  unreadNotifications: number;
+  activityHistory: Array<{ id: string; type: string; createdAt: string }>;
+  generatedAt: string;
+}

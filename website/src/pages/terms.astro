@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 
 const title = "Terms of Service | Chakusa";
-const description = "The terms for using Chakusa, including billing, your responsibilities when messaging your own customers, and how disputes are handled.";
+const description = "The terms for using Chakusa as a business or a customer, including the marketplace, bookings and payments, loyalty programs, AI features, and how disputes are handled.";
 const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
 <BaseLayout {title} {description}>
@@ -13,45 +13,65 @@ const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed atto
       {/* TODO(launch-blocker): engineering draft, not a legal document.
           Before this goes live: (1) attorney review, (2) fill in the
           governing-law jurisdiction below with wherever Chakusa is
-          actually incorporated, do not guess or invent one, an incorrect
-          governing-law clause is worse than an honest placeholder. */}
+          actually incorporated, do not guess or invent one. */}
       <p class="eyebrow">Terms of Service</p>
       <h1 id="terms-title">Terms of Service</h1>
       <p class="legal-draft-notice">{lastUpdated}</p>
 
       <h2>Agreement</h2>
-      <p>By creating a Chakusa account, you agree to these terms. If you're creating an account on behalf of a business, you're confirming you have the authority to bind that business to them.</p>
+      <p>By creating a Chakusa account, business or customer, you agree to these terms. If you're creating a business account on behalf of a business, you're confirming you have the authority to bind that business to them. You must be of legal age to enter into a contract in your jurisdiction.</p>
 
-      <h2>Using Chakusa</h2>
-      <p>Chakusa is a mobile app for local service businesses to track leads, review requests, and customer follow-ups. You need an account to use it, and you're responsible for what you enter, including making sure you have the right to store and message the customer information you add. You must be of legal age to enter into a contract in your jurisdiction to create an account.</p>
+      <h2>Two kinds of accounts</h2>
+      <p>Chakusa serves two roles, which can be held by the same person:</p>
+      <ul>
+        <li>A <b>business account</b> uses the CRM, and optionally lists on the marketplace, takes bookings, and runs a loyalty program.</li>
+        <li>A <b>customer account</b> discovers businesses, books appointments, earns and redeems loyalty rewards, leaves reviews, and messages businesses, including through AI-powered features.</li>
+      </ul>
 
-      <h2>Your responsibility for messaging your customers</h2>
-      <p>If you use Chakusa to send messages to your own customers (directly, or by asking Chakusa to send them on your behalf), <strong>you are solely responsible for having their consent</strong> to be contacted and for complying with whatever law governs that communication where they live (for example, the TCPA in the US, CASL in Canada, or GDPR/PECR-derived rules in the EU/UK). Chakusa is a tool for following up with people who already know you and have agreed to hear from you, not a way to acquire new contacts. If a customer asks to stop receiving messages, you must honor that yourself; Chakusa does not yet automatically enforce opt-outs (see the Privacy Policy).</p>
+      <h2>Business terms</h2>
+      <p>If you use Chakusa to send messages to your own customers, <strong>you are solely responsible for having their consent</strong> to be contacted, under whatever law governs that communication where they live. If you list your business on the marketplace, you're responsible for the accuracy of your listing, pricing, and availability. If you accept bookings, you're responsible for setting and honoring your own cancellation, rescheduling, and no-show policies, Chakusa provides the tool, not the policy. If a customer asks to stop receiving messages, you must honor that; Chakusa's own automation already checks for a STOP reply, see the Privacy Policy.</p>
 
-      <h2>Plans and billing</h2>
-      <p>Chakusa offers a Free plan with usage limits, and paid Pro and Business plans billed as auto-renewing subscriptions through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store you subscribed through, see their terms for refund and cancellation policies. Business-tier pricing is not yet finalized.</p>
+      <h2>Customer terms</h2>
+      <p>You're responsible for the accuracy of the information in your customer profile, for the conduct of your bookings (showing up, cancelling with reasonable notice), and for the content of any review you leave, reviews must be honest and based on a real interaction. You may not use a customer account to harass a business, post fake reviews, or attempt to access another person's account or another business's data.</p>
+
+      <h2>Marketplace</h2>
+      <p>The marketplace helps customers discover businesses; Chakusa is not a party to the service a business actually provides. We don't guarantee the accuracy of a listing, the quality of a business's work, or the outcome of any booking. Businesses and customers can report listings or reviews that violate these terms; we may remove content or suspend an account that does.</p>
+
+      <h2>Bookings and payments</h2>
+      <p>Where a business accepts deposits or payments through Chakusa, those payments are processed by Stripe. Chakusa facilitates the transaction; the business is the one providing the service and is responsible for refunds according to its own stated policy, subject to Stripe's own dispute and chargeback processes. We are not liable for a business's failure to perform a booked service, or for a customer's failure to show up.</p>
+
+      <h2>Messaging and AI features</h2>
+      <p>Some Chakusa features use AI to draft or send responses. AI-generated content can be inaccurate, and you should not rely on it for anything requiring professional, medical, legal, or financial advice. A business can review or take over an AI-drafted message before it sends, depending on configuration; a customer can always ask to speak with a person. Full detail on how this works is in the <a href="/ai-disclosure">AI Disclosure</a>, which is part of these terms by reference.</p>
+
+      <h2>Loyalty, memberships, and rewards</h2>
+      <p>Loyalty points and rewards have no cash value and cannot be exchanged for cash. A business sets and can change its own loyalty program, including point values, reward availability, and expiry, at its discretion, subject to honoring points already earned in good faith. We may suspend a loyalty account showing signs of fraud or abuse (for example, fake referrals).</p>
+
+      <h2>Subscriptions</h2>
+      <p>A business's own Chakusa plan (Free, Pro, or Business) is billed as an auto-renewing subscription through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store the business subscribed through. Business-tier pricing is not yet finalized.</p>
 
       <h2>Acceptable use</h2>
       <p>Don't use Chakusa to:</p>
       <ul>
         <li>send unsolicited, unlawful, or fraudulent messages</li>
+        <li>post fake reviews, fake listings, or otherwise misrepresent a business or service</li>
+        <li>harass, threaten, or spam another user</li>
         <li>store or message personal data you don't have the right to store or message</li>
-        <li>try to access another business's account or data</li>
-        <li>interfere with or attempt to reverse-engineer the service</li>
+        <li>attempt to access another account, another business's data, or reverse-engineer the service</li>
+        <li>use a loyalty, referral, or booking feature fraudulently</li>
       </ul>
-      <p>We can suspend or terminate an account that violates this, with or without notice depending on severity.</p>
+      <p>We can suspend or terminate an account that violates this, with or without notice depending on severity, and may permanently ban an account for repeated or severe violations.</p>
 
       <h2>Ownership</h2>
-      <p>The customer, lead, and message data you enter is yours. Chakusa's software, branding, and the way the product is built are ours. Using Chakusa doesn't give you any ownership over the app itself.</p>
+      <p>The customer, lead, booking, and message data in your account is yours. Chakusa's software, branding, and the way the product is built are ours. Using Chakusa doesn't give you ownership over the app itself. Reviews and other content you post remain yours, but you grant Chakusa a license to display them as part of the service.</p>
 
       <h2>No warranty</h2>
       <p>Chakusa is provided "as is." We work to keep it reliable, but we don't guarantee it will be uninterrupted, error-free, or fit for a particular purpose beyond what's described on this site.</p>
 
       <h2>Limitation of liability</h2>
-      <p>To the extent allowed by law, Chakusa isn't liable for indirect, incidental, or consequential damages arising from your use of the app, including messages sent to your customers or decisions made based on data in the app. This doesn't limit liability where the law doesn't allow it to be limited.</p>
+      <p>To the extent allowed by law, Chakusa isn't liable for indirect, incidental, or consequential damages arising from your use of the app, including messages sent, AI-generated content, bookings made or missed, or decisions made based on data in the app. This doesn't limit liability where the law doesn't allow it to be limited.</p>
 
       <h2>Indemnification</h2>
-      <p>You agree to cover any claim, cost, or damage arising from your misuse of Chakusa, including messaging a customer without proper consent or storing data you didn't have the right to store.</p>
+      <p>You agree to cover any claim, cost, or damage arising from your misuse of Chakusa, including messaging someone without proper consent, storing data you didn't have the right to store, or misrepresenting a business or booking.</p>
 
       <h2>Termination</h2>
       <p>You can stop using Chakusa and delete your account at any time. We can suspend or terminate access for violating these terms.</p>

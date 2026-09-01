@@ -3,75 +3,87 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 
 const title = "Privacy Policy | Chakusa";
-const description = "How Chakusa collects, stores, and protects your business and customer data, including every third party that ever sees it, and your rights under GDPR and CCPA.";
+const description = "How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features, including every third party involved and your rights under GDPR, UK GDPR, CCPA, and other privacy laws.";
 const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
 <BaseLayout {title} {description}>
   <SiteHeader />
   <main>
     <section class="legal-section content-shell" aria-labelledby="privacy-title" data-reveal>
-      {/* TODO(launch-blocker): this is an engineering draft grounded in the
-          actual backend implementation (see src/lib, prisma/schema.prisma),
-          not a legal document. Two things MUST happen before this can be
-          relied on as real legal protection:
-          1. Attorney review, specifically confirming which jurisdictions
-             Chakusa is actually subject to (incorporation state/country,
-             and every country/state real users are in) and whether GDPR/
-             CCPA/CASL/TCPA obligations beyond "having a policy page" are
-             being met operationally, not just documented here.
-          2. This page currently only describes the original CRM (leads,
-             review requests, comeback reminders). A 2026-09 backend audit
-             found a second, much larger product surface now exists
-             (marketplace, booking + Stripe payments, loyalty/rewards, and
-             an AI platform using OpenAI/Anthropic that processes customer
-             conversation data, with unredacted admin visibility into AI
-             chat transcripts) that this policy does not yet disclose.
-             Whether/how to reflect that here is a pending product
-             decision, not something to silently add or omit. */}
+      {/* TODO(launch-blocker): engineering draft grounded in a full backend
+          audit (src/modules/*, prisma/schema.prisma) as of 2026-09-01, not
+          a legal document. Attorney review is required before this can be
+          relied on, specifically to confirm: (1) Chakusa's actual
+          incorporation jurisdiction and every country real users are in,
+          (2) whether GDPR/UK GDPR/CCPA/CPRA/UAE PDPL/POPIA obligations are
+          met operationally, not just documented, (3) whether the AI
+          consent gap noted below needs a product fix before this policy's
+          description of it is acceptable to publish (see
+          docs/PRIVACY_ENGINEERING_FOLLOWUPS.md at the repo root). */}
       <p class="eyebrow">Privacy Policy</p>
       <h1 id="privacy-title">Privacy Policy</h1>
       <p class="legal-draft-notice">{lastUpdated}</p>
 
       <h2>Who this covers</h2>
-      <p>This policy covers the Chakusa mobile app and this website. It applies to you if you're a business owner with a Chakusa account, and it explains what happens to the data of your own customers that you enter into Chakusa on their behalf.</p>
+      <p>Chakusa has two kinds of accounts: <b>business accounts</b> (business owners running their CRM, marketplace listing, bookings, and loyalty program) and <b>customer accounts</b> (people who discover, book, and message businesses through Chakusa). One person can hold both. This policy covers both, and this website.</p>
 
-      <h2>What we collect</h2>
-      <p>When you create a Chakusa account, we collect your name, email, and business details (business name, industry). If you sign in with Google or Apple, we receive the basic profile information those providers share (name, email, a stable account identifier). We also collect basic technical information needed to run the app: device push-notification tokens, and error/diagnostic data when something breaks.</p>
-      <p>If you use Chakusa to track your own customers, the customer names, phone numbers, notes, message content, and review/feedback records you enter are stored on our systems on your behalf. That data is yours, not ours: you're the one responsible for having the right to collect and store it, and for honoring any request from your customer to have it corrected or removed.</p>
+      <h2>Information we collect</h2>
+      <h3>From business accounts</h3>
+      <p>Name, email, and business details when you sign up. If you sign in with Google or Apple, the basic profile information those providers share. If you use the CRM to track your own customers, the customer names, phone numbers, notes, message content, and review/feedback records you enter, that data is yours, not ours; you're responsible for having the right to collect and store it.</p>
+      <h3>From customer accounts</h3>
+      <p>Name, email, phone (optional), and a profile used across every business you interact with through Chakusa: booking history, loyalty points and redemptions, marketplace searches and favorites, reviews you leave, and messages and AI assistant conversations you send. Marketplace search recognizes your approximate location if you allow it, to show nearby businesses.</p>
+      <h3>Bookings and payments</h3>
+      <p>Appointment details (service, time, price, staff assigned), and payment records for deposits or balances paid through Chakusa (amount, status, refunds). Card details are handled entirely by <b>Stripe</b>; we never see or store them. A business's own cancellation, rescheduling, and no-show policies are set by that business, not by Chakusa.</p>
+      <h3>Loyalty, memberships, and referrals</h3>
+      <p>Points balances and history, redemption codes, membership plan details, and, if you refer someone, the referral code and the email address of the person you're referring (collected before they've signed up, so we can credit the referral once they do).</p>
+      <h3>Messages and AI conversations</h3>
+      <p>Content of messages sent through Chakusa (SMS/WhatsApp via Twilio), and, if you use an AI-powered feature, the content of that conversation. See <a href="/ai-disclosure">AI Disclosure</a> for the specifics of what happens to that data.</p>
+      <h3>Technical information</h3>
+      <p>Device push-notification tokens, and error/diagnostic data when something breaks. This website itself sets no tracking or advertising cookies, see the <a href="/cookies">Cookie Policy</a>.</p>
 
       <h2>How we use it</h2>
-      <p>We use your data to run the product: showing you your leads, review requests, and reminders; sending messages on your behalf when you ask us to (Pro plan) or when you copy a message we generate (Free plan); and sending you push notifications about activity in your account. We don't sell your data or your customers' data, and we don't use it to serve ads.</p>
+      <p>To run the product: showing your leads, bookings, loyalty balances, and marketplace listings; sending messages you ask us to send or that automation sends on your behalf; generating AI responses where that feature is used; and sending push notifications about activity in your account. We don't sell data, and we don't use it to serve ads.</p>
+
+      <h2>AI features</h2>
+      <p>Chakusa includes AI-powered features: a business-facing assistant that can draft or send replies to a business's customers (a business must turn this on), and an in-app assistant customers can chat with directly. Both send conversation content to a third-party AI provider (OpenAI or Anthropic, depending on configuration) to generate a response. Full detail, including an important gap in how the customer-facing assistant currently works, its data retention behavior, and who inside Chakusa can view a conversation, is in the dedicated <a href="/ai-disclosure">AI Disclosure</a>, which is part of this Privacy Policy by reference.</p>
 
       <h2>Text messages</h2>
-      <p>If you're on a plan where Chakusa sends messages on your behalf, message delivery runs through Twilio. Standard message and data rates may apply to your customers depending on their carrier. <strong>You are responsible for making sure you have your customer's consent to message them</strong> before using Chakusa to do so, under whatever law applies where they live (in the US, this generally means the TCPA; in Canada, CASL; other countries have their own rules). Chakusa is a tool you use to message people who've already given you permission to contact them, not a way to acquire new contacts to message.</p>
-      <p>If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further to them. If you send a message manually or through a channel outside Chakusa's own automation, you're still responsible for honoring that opt-out yourself.</p>
+      <p>Message delivery runs through Twilio. Standard message and data rates may apply depending on the recipient's carrier. <strong>The business is responsible for having consent</strong> to message their customer, under whatever law applies where that customer lives (in the US, generally the TCPA; in Canada, CASL; other countries have their own rules). If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further. A business sending manually or through a channel outside Chakusa's own automation is still responsible for honoring that opt-out itself.</p>
 
       <h2>Who we share it with</h2>
       <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
       <ul>
-        <li><b>Twilio</b>, sends SMS messages when you ask Chakusa to message a customer</li>
-        <li><b>Expo</b>, delivers push notifications to your phone</li>
+        <li><b>Twilio</b>, sends SMS/WhatsApp messages</li>
+        <li><b>Stripe</b>, processes booking payments and refunds; also handles payouts to businesses (Stripe Connect)</li>
+        <li><b>OpenAI</b> and/or <b>Anthropic</b>, generate AI responses when an AI feature is used</li>
+        <li><b>Expo</b>, delivers push notifications</li>
         <li><b>Sentry</b>, receives error/crash reports from our backend, configured to scrub authentication tokens and other sensitive fields before anything is sent</li>
-        <li><b>Google</b> and <b>Apple</b>, handle Sign-In if you use those options, and handle billing and payment if you subscribe to Pro or Business (we never see your card details)</li>
+        <li><b>Google</b> and <b>Apple</b>, handle Sign-In if you use those options, and handle subscription billing for a business's own Chakusa plan (we never see card details there either)</li>
         <li>Our infrastructure and database providers, who host the servers Chakusa runs on</li>
       </ul>
-      <p>Because these providers operate infrastructure in multiple countries, your data may be processed outside the country you or your customers are in. Each provider is responsible for their own compliance with applicable data-transfer rules for the services they provide.</p>
+      <p>Because these providers operate infrastructure in multiple countries, data may be processed outside the country you're in, including the United States (both AI providers' standard endpoints are US-based unless a data-residency-specific configuration is set up in the future). Each provider is responsible for its own compliance with applicable data-transfer rules.</p>
+
+      <h2>Automated decisions</h2>
+      <p>When an AI feature is enabled, Chakusa's system automatically decides whether to send an AI-generated reply, hold it for a human to approve, or escalate the conversation to a person, based on confidence and safety rules (see AI Disclosure). A person can always take over. We don't use automated decisions for anything with a legal or similarly significant effect on you (for example, we don't use AI to approve or deny a booking, a refund, or account access).</p>
 
       <h2>How long we keep it</h2>
-      <p>We keep your account and customer data for as long as your account is active, plus a reasonable period afterward in case you reactivate, unless you ask us to delete it sooner or the law requires us to keep it longer.</p>
+      <p>Account, booking, loyalty, and message data is kept for as long as the account is active, plus a reasonable period afterward, unless deletion is requested sooner or the law requires longer retention. AI conversation content is currently kept indefinitely rather than on a fixed schedule, see AI Disclosure for the specifics and the retention improvement this points to.</p>
 
       <h2>Your rights</h2>
-      <p>Depending on where you or your customers are located, you may have rights to access, correct, export, or delete personal data, and to object to or restrict certain uses of it, for example under the EU/UK <b>GDPR</b> or the California <b>CCPA/CPRA</b>. You can exercise these rights, for your own account or on behalf of a customer who's asked you to, by contacting us (see below). We'll respond within the time required by applicable law.</p>
+      <p>Depending on where you are, you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain uses of it, for example under the EU/UK <b>GDPR</b>, the California <b>CCPA/CPRA</b>, the <b>UAE PDPL</b>, or South Africa's <b>POPIA</b>. You can exercise these rights by contacting us below; we'll respond within the time required by applicable law. As Chakusa expands to more countries, this section will be updated to name the specific local law that applies.</p>
       <p>Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
 
       <h2>Children's privacy</h2>
-      <p>Chakusa is a business tool, not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
+      <p>Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
 
-      <h2>How we protect it</h2>
-      <p>Passwords are hashed, never stored in plain text. Sessions are rotated. Any linked sign-in credentials we store are encrypted at rest. Access to production data is limited to what's needed to operate the service.</p>
+      <h2>Security</h2>
+      <p>Passwords are hashed, never stored in plain text. Sessions are rotated and scoped separately for business accounts, customer accounts, and internal admin access. Any linked sign-in credentials are encrypted at rest. Internal access to production data is limited to what's needed to operate the service, and administrative actions are logged.</p>
+
+      <h2>Complaints</h2>
+      <p>If you're not satisfied with how we've handled a request, you can contact us below, or, depending on where you live, lodge a complaint with your local data protection authority.</p>
 
       <h2>Changes to this policy</h2>
-      <p>If we make a material change to how we handle your data, we'll update this page and change the date at the top.</p>
+      <p>If we make a material change to how we handle data, we'll update this page and the date at the top.</p>
 
       <h2>Contact</h2>
       <p>To exercise a data right or ask a question about this policy: <a href="mailto:privacy@chakusarecovery.com">privacy@chakusarecovery.com</a>.</p>

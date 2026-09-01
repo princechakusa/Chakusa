@@ -1,0 +1,33 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+const title = "Cookie Policy | Chakusa";
+const description = "What this website does and does not store in your browser.";
+const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
+---
+<BaseLayout {title} {description}>
+  <SiteHeader />
+  <main>
+    <section class="legal-section content-shell" aria-labelledby="cookies-title" data-reveal>
+      <p class="eyebrow">Cookie Policy</p>
+      <h1 id="cookies-title">Cookie Policy</h1>
+      <p class="legal-draft-notice">{lastUpdated}</p>
+
+      <h2>The short version</h2>
+      <p>This website (chakusarecovery.com) does not use tracking cookies, advertising cookies, or analytics cookies. There's no third-party tracking script on this site at all, so there's nothing to opt out of here.</p>
+
+      <h2>What this site does use</h2>
+      <p>Nothing beyond what your browser needs to render the page. No cookies are set to remember you between visits, run analytics, or serve ads.</p>
+
+      <h2>The mobile app is different</h2>
+      <p>The Chakusa mobile app doesn't use browser cookies at all, apps don't work that way, but it does store some information securely on your device (like your login session) to keep you signed in. That's covered in the <a href="/privacy">Privacy Policy</a>, not here.</p>
+
+      <h2>If that changes</h2>
+      <p>If we ever add analytics or a similar tool to this website, we'll update this page to say exactly what it does, before it goes live, not after.</p>
+
+      <h2>Questions</h2>
+      <p>Reach out. See the <a href="/about#contact">About page</a>.</p>
+    </section>
+  </main>
+</BaseLayout>

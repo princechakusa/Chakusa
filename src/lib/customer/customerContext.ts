@@ -12,6 +12,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = {
   promotion: { push: false, email: false },
   review_reminder: { push: true, email: false },
   appointment_reminder: { push: true, email: true },
+  loyalty: { push: true, email: false },
 } as const;
 
 export const DEFAULT_PRIVACY_SETTINGS = {

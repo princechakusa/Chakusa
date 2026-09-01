@@ -973,6 +973,12 @@ model Business {
   subscriptionEvents             SubscriptionEvent[]
   marketplaceListing             BusinessMarketplaceListing?
   marketplacePromotions          MarketplacePromotion[]
+  loyaltyProgram                 LoyaltyProgram?
+  loyaltyAccounts                LoyaltyAccount[]
+  rewards                        Reward[]
+  membershipPlans                MembershipPlan[]
+  customerMemberships            CustomerMembership[]
+  loyaltyCampaigns               LoyaltyCampaign[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -3096,6 +3102,12 @@ model CustomerProfile {
   recentSearches     CustomerRecentSearch[]
   bookedAppointments Appointment[]
   aiConversations    CustomerAIConversation[]
+  loyaltyAccounts    LoyaltyAccount[]
+  rewardRedemptions  RewardRedemption[]
+  memberships        CustomerMembership[]
+  referralCodes      ReferralCode[]
+  referralsMade      Referral[]              @relation("ReferralReferrer")
+  referralsReceived  Referral[]              @relation("ReferralReferee")
 
   @@index([status])
   @@index([phoneE164])
@@ -3146,6 +3158,269 @@ model CustomerAIMessage {
 
   @@index([conversationId, createdAt])
   @@map("customer_ai_messages")
+}
+
+// ---------------------------------------------------------------------------
+// PROGRAM 2 LOOP 5: Customer Loyalty, Memberships & Rewards. Per-business,
+// like a punch card. String columns + @map, no new Prisma enums (following
+// the AI / marketplace clusters). The customer wallet aggregates across
+// businesses read-only; there is no stored-value cash and no payment flow.
+// ---------------------------------------------------------------------------
+
+/// One loyalty program configuration per business.
+model LoyaltyProgram {
+  id                    String   @id @default(uuid())
+  businessId            String   @unique @map("business_id")
+  active                Boolean  @default(true)
+  pointsPerCurrency     Float    @default(1) @map("points_per_currency")
+  pointsPerBookingBonus Int      @default(0) @map("points_per_booking_bonus")
+  pointsPerReview       Int      @default(0) @map("points_per_review")
+  pointsPerReferral     Int      @default(0) @map("points_per_referral")
+  pointExpiryDays       Int?     @map("point_expiry_days")
+  currency              String?
+  /// [{ key, name, minPoints, perks: string[] }] — ordered ascending by minPoints.
+  tierConfig            Json?    @map("tier_config")
+  welcomeBonus          Int      @default(0) @map("welcome_bonus")
+  createdByUserId       String?  @map("created_by_user_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_programs")
+}
+
+/// A customer's loyalty standing with one business.
+model LoyaltyAccount {
+  id                String   @id @default(uuid())
+  businessId        String   @map("business_id")
+  customerProfileId String   @map("customer_profile_id")
+  pointsBalance     Int      @default(0) @map("points_balance")
+  lifetimePoints    Int      @default(0) @map("lifetime_points")
+  tierKey           String?  @map("tier_key")
+  enrolledAt        DateTime @default(now()) @map("enrolled_at")
+  lastActivityAt    DateTime? @map("last_activity_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  business        Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerProfile CustomerProfile      @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  transactions    LoyaltyTransaction[]
+  redemptions     RewardRedemption[]
+
+  @@unique([businessId, customerProfileId])
+  @@index([customerProfileId])
+  @@index([businessId, tierKey])
+  @@map("loyalty_accounts")
+}
+
+/// Append-only points ledger. Idempotent per (account, sourceType, sourceId,
+/// kind): the NULLs in a manual adjust make every manual row distinct, while
+/// an earn from appointment X can only be written once.
+model LoyaltyTransaction {
+  id                 String    @id @default(uuid())
+  accountId          String    @map("account_id")
+  businessId         String    @map("business_id")
+  kind               String
+  points             Int
+  balanceAfter       Int       @map("balance_after")
+  reason             String?
+  sourceType         String?   @map("source_type")
+  sourceId           String?   @map("source_id")
+  rewardRedemptionId String?   @map("reward_redemption_id")
+  campaignId         String?   @map("campaign_id")
+  expiresAt          DateTime? @map("expires_at")
+  expiredAt          DateTime? @map("expired_at")
+  createdByUserId    String?   @map("created_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, sourceType, sourceId, kind])
+  @@index([businessId, createdAt])
+  @@index([accountId, createdAt])
+  @@index([businessId, kind, expiresAt])
+  @@map("loyalty_transactions")
+}
+
+/// A business-defined reward customers can unlock or redeem points for.
+model Reward {
+  id                String    @id @default(uuid())
+  businessId        String    @map("business_id")
+  name              String
+  description       String?
+  type              String
+  pointsCost        Int       @default(0) @map("points_cost")
+  value             Float?
+  serviceOfferingId String?   @map("service_offering_id")
+  minTierKey        String?   @map("min_tier_key")
+  autoGrant         Boolean   @default(false) @map("auto_grant")
+  milestoneBookings Int?      @map("milestone_bookings")
+  membersOnly       Boolean   @default(false) @map("members_only")
+  active            Boolean   @default(true)
+  startsAt          DateTime? @map("starts_at")
+  endsAt            DateTime? @map("ends_at")
+  redemptionValidityDays Int? @map("redemption_validity_days")
+  createdByUserId   String?   @map("created_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  business    Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  redemptions RewardRedemption[]
+
+  @@index([businessId, active])
+  @@map("rewards")
+}
+
+/// A reward a customer has claimed. `code` is what the business scans/enters.
+model RewardRedemption {
+  id                String    @id @default(uuid())
+  rewardId          String    @map("reward_id")
+  businessId        String    @map("business_id")
+  customerProfileId String    @map("customer_profile_id")
+  accountId         String?   @map("account_id")
+  status            String    @default("issued")
+  code              String    @unique
+  pointsSpent       Int       @default(0) @map("points_spent")
+  appointmentId     String?   @map("appointment_id")
+  issuedAt          DateTime  @default(now()) @map("issued_at")
+  redeemedAt        DateTime? @map("redeemed_at")
+  expiresAt         DateTime? @map("expires_at")
+  revokedReason     String?   @map("revoked_reason")
+  sourceType        String?   @map("source_type")
+  sourceId          String?   @map("source_id")
+  createdByUserId   String?   @map("created_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  reward          Reward          @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  account         LoyaltyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([customerProfileId, sourceType, sourceId])
+  @@index([businessId, status])
+  @@index([customerProfileId, status])
+  @@map("reward_redemptions")
+}
+
+/// A membership tier a business offers to its customers.
+model MembershipPlan {
+  id                String   @id @default(uuid())
+  businessId        String   @map("business_id")
+  name              String
+  description       String?
+  billingInterval   String   @map("billing_interval")
+  priceAmount       Float    @default(0) @map("price_amount")
+  currency          String?
+  priorityBooking   Boolean  @default(false) @map("priority_booking")
+  discountPercent   Float    @default(0) @map("discount_percent")
+  includedServiceIds Json?   @map("included_service_ids")
+  perks             Json?
+  active            Boolean  @default(true)
+  createdByUserId   String?  @map("created_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  business    Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  memberships CustomerMembership[]
+
+  @@index([businessId, active])
+  @@map("membership_plans")
+}
+
+/// A customer's enrolment in one membership plan. No charge is taken here —
+/// this records the entitlement; billing is out of scope for this loop.
+model CustomerMembership {
+  id                String    @id @default(uuid())
+  businessId        String    @map("business_id")
+  customerProfileId String    @map("customer_profile_id")
+  planId            String    @map("plan_id")
+  status            String    @default("active")
+  billingInterval   String    @map("billing_interval")
+  startedAt         DateTime  @default(now()) @map("started_at")
+  currentPeriodEnd  DateTime? @map("current_period_end")
+  cancelAtPeriodEnd Boolean   @default(false) @map("cancel_at_period_end")
+  autoRenew         Boolean   @default(true) @map("auto_renew")
+  cancelledAt       DateTime? @map("cancelled_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  plan            MembershipPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, customerProfileId, status])
+  @@index([status, currentPeriodEnd])
+  @@map("customer_memberships")
+}
+
+/// A customer's shareable referral code. `businessId` null = platform-wide.
+model ReferralCode {
+  id                String   @id @default(uuid())
+  businessId        String?  @map("business_id")
+  customerProfileId String   @map("customer_profile_id")
+  code              String   @unique
+  uses              Int      @default(0)
+  maxUses           Int?     @map("max_uses")
+  referrerPoints    Int      @default(0) @map("referrer_points")
+  refereePoints     Int      @default(0) @map("referee_points")
+  referrerRewardId  String?  @map("referrer_reward_id")
+  refereeRewardId   String?  @map("referee_reward_id")
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  referrals       Referral[]
+
+  @@unique([customerProfileId, businessId])
+  @@index([customerProfileId])
+  @@map("referral_codes")
+}
+
+model Referral {
+  id                 String    @id @default(uuid())
+  codeId             String    @map("code_id")
+  businessId         String?   @map("business_id")
+  referrerProfileId  String    @map("referrer_profile_id")
+  refereeProfileId   String?   @map("referee_profile_id")
+  refereeEmail       String?   @map("referee_email")
+  status             String    @default("pending")
+  joinedAt           DateTime? @map("joined_at")
+  completedAt        DateTime? @map("completed_at")
+  rewardedReferrerAt DateTime? @map("rewarded_referrer_at")
+  rewardedRefereeAt  DateTime? @map("rewarded_referee_at")
+  firstBookingId     String?   @map("first_booking_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  code            ReferralCode     @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  referrerProfile CustomerProfile  @relation("ReferralReferrer", fields: [referrerProfileId], references: [id], onDelete: Cascade)
+  refereeProfile  CustomerProfile? @relation("ReferralReferee", fields: [refereeProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([codeId, refereeProfileId])
+  @@index([referrerProfileId, status])
+  @@index([status, createdAt])
+  @@map("referrals")
+}
+
+/// A time-boxed points boost a business runs.
+model LoyaltyCampaign {
+  id              String   @id @default(uuid())
+  businessId      String   @map("business_id")
+  name            String
+  description     String?
+  kind            String   @default("multiplier")
+  multiplier      Float    @default(1)
+  bonusPoints     Int      @default(0) @map("bonus_points")
+  rewardId        String?  @map("reward_id")
+  startsAt        DateTime @map("starts_at")
+  endsAt          DateTime @map("ends_at")
+  active          Boolean  @default(true)
+  createdByUserId String?  @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, active, startsAt, endsAt])
+  @@map("loyalty_campaigns")
 }
 
 // The relationship between one customer and one business. `businessCustomerId`

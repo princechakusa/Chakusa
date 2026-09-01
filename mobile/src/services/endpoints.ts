@@ -290,3 +290,26 @@ export const customerAssistantApi = {
     api.patch<CustomerAISettingsDto>('/customer/ai/assistant/settings', patch),
 };
 type CustomerAIMessageDtoLike = { id: string; rating: number | null };
+
+// PROGRAM 2 LOOP 5: Customer Loyalty, Memberships & Rewards. Read + a few
+// customer actions (redeem a reward, enrol/cancel a membership, referrals).
+// No payment surface.
+export const loyaltyApi = {
+  wallet: () => api.get<import('../apiTypes').WalletDto>('/customer/loyalty/wallet'),
+  accounts: () => api.get<import('../apiTypes').WalletDto['accounts']>('/customer/loyalty/accounts'),
+  account: (businessId: string) => api.get<import('../apiTypes').LoyaltyAccountSummaryDto>(`/customer/loyalty/accounts/${businessId}`),
+  transactions: (businessId: string, params: { cursor?: string; limit?: number } = {}) =>
+    api.get<{ items: import('../apiTypes').LoyaltyTransactionDto[]; nextCursor: string | null }>(`/customer/loyalty/accounts/${businessId}/transactions${query(params)}`),
+  enrol: (businessId: string) => api.post<{ id: string }>(`/customer/loyalty/accounts/${businessId}/enrol`),
+  rewards: (businessId: string) => api.get<import('../apiTypes').LoyaltyRewardDto[]>(`/customer/loyalty/accounts/${businessId}/rewards`),
+  redeemReward: (businessId: string, rewardId: string) =>
+    api.post<{ id: string; code: string; status: string; pointsSpent: number }>(`/customer/loyalty/accounts/${businessId}/rewards/${rewardId}/redeem`),
+  myRedemptions: (status?: string) => api.get<import('../apiTypes').RewardRedemptionDto[]>(`/customer/loyalty/rewards${query({ status })}`),
+  memberships: () => api.get<import('../apiTypes').CustomerMembershipDto[]>('/customer/loyalty/memberships'),
+  membershipPlans: (slug: string) => api.get<import('../apiTypes').MembershipPlanDto[]>(`/customer/loyalty/businesses/${encodeURIComponent(slug)}/membership-plans`),
+  enrolMembership: (slug: string, planId: string) => api.post<{ id: string }>(`/customer/loyalty/businesses/${encodeURIComponent(slug)}/memberships`, { planId }),
+  cancelMembership: (id: string, immediate = false) => api.post<{ id: string; status: string }>(`/customer/loyalty/memberships/${id}/cancel`, { immediate }),
+  referrals: () => api.get<import('../apiTypes').ReferralOverviewDto>('/customer/loyalty/referrals'),
+  referralCode: (businessSlug?: string) => api.post<import('../apiTypes').ReferralCodeDto>('/customer/loyalty/referrals/code', businessSlug ? { businessSlug } : {}),
+  redeemReferral: (code: string) => api.post<{ referralId: string; status: string }>('/customer/loyalty/referrals/redeem', { code }),
+};

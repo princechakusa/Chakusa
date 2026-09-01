@@ -74,6 +74,18 @@ import {
   adminSetBookingStatus,
 } from "./bookingAdmin.service.js";
 import {
+  adminLoyaltyAnalytics,
+  adminLoyaltyCampaigns,
+  adminLoyaltyFraudReview,
+  adminLoyaltyMemberships,
+  adminLoyaltyPrograms,
+  adminLoyaltyRedemptions,
+  adminLoyaltyReferrals,
+  adminLoyaltyRewards,
+  adminRevokeLoyaltyTransaction,
+  adminRevokeRedemption,
+} from "./loyaltyAdmin.service.js";
+import {
   adminAIAnalytics,
   adminAICostDashboard,
   adminAIEvaluationRun,
@@ -664,5 +676,34 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const updated = await adminSetBookingStatus(request.admin!.userId, request.params.id, input.status);
     await recordAdminAudit({ actor: request.admin!, action: "BOOKING_STATUS_CHANGED", targetType: "appointment", targetId: request.params.id, newValue: { status: input.status, reason: input.reason ?? null }, context: auditContext(request) });
     reply.send(updated);
+  });
+
+  // PROGRAM 2 LOOP 5: platform loyalty oversight. Reads need `loyalty.read`;
+  // reversals need `loyalty.manage` + CSRF + audit.
+  const loyaltyRead = { preHandler: fastify.authenticateAdmin } as const;
+  const paged = { page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).max(200).optional() };
+  fastify.get("/loyalty/analytics", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyAnalytics()); });
+  fastify.get("/loyalty/fraud-review", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyFraudReview()); });
+  fastify.get("/loyalty/programs", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyPrograms(z.object(paged).parse(request.query))); });
+  fastify.get("/loyalty/memberships", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyMemberships(z.object({ status: z.string().max(20).optional(), ...paged }).parse(request.query))); });
+  fastify.get("/loyalty/rewards", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyRewards(z.object(paged).parse(request.query))); });
+  fastify.get("/loyalty/redemptions", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyRedemptions(z.object({ status: z.string().max(20).optional(), ...paged }).parse(request.query))); });
+  fastify.get("/loyalty/referrals", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyReferrals(z.object({ status: z.string().max(20).optional(), ...paged }).parse(request.query))); });
+  fastify.get("/loyalty/campaigns", loyaltyRead, async (request, reply) => { fastify.requireAdminPermission(request, "loyalty.read"); reply.send(await adminLoyaltyCampaigns(z.object({ activeOnly: z.coerce.boolean().optional(), ...paged }).parse(request.query))); });
+  fastify.post<{ Params: { id: string } }>("/loyalty/transactions/:id/revoke", loyaltyRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "loyalty.manage");
+    await fastify.requireAdminCsrf(request);
+    const { reason } = z.object({ reason: z.string().trim().min(1).max(500) }).parse(request.body);
+    const result = await adminRevokeLoyaltyTransaction(request.params.id, reason, request.admin!.userId);
+    await recordAdminAudit({ actor: request.admin!, action: "LOYALTY_TRANSACTION_REVOKED", targetType: "loyalty_transaction", targetId: request.params.id, newValue: { reason }, context: auditContext(request) });
+    reply.send(result);
+  });
+  fastify.post<{ Params: { id: string } }>("/loyalty/redemptions/:id/revoke", loyaltyRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "loyalty.manage");
+    await fastify.requireAdminCsrf(request);
+    const { reason } = z.object({ reason: z.string().trim().min(1).max(500) }).parse(request.body);
+    const result = await adminRevokeRedemption(request.params.id, reason);
+    await recordAdminAudit({ actor: request.admin!, action: "LOYALTY_REDEMPTION_REVOKED", targetType: "reward_redemption", targetId: request.params.id, newValue: { reason }, context: auditContext(request) });
+    reply.send(result);
   });
 }

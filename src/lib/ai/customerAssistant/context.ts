@@ -172,7 +172,18 @@ export interface CustomerAssistantContext {
   recentSearches: string[];
   reviews: Array<{ businessName: string; rating: number; comment: string | null; createdAt: Date }>;
   reviewedBusinessIds: string[];
-  loyalty: { tier: "new" | "returning" | "loyal" | "vip"; completedBookings: number };
+  loyalty: {
+    tier: "new" | "returning" | "loyal" | "vip";
+    engagementTier: "new" | "returning" | "loyal" | "vip";
+    completedBookings: number;
+    totalPoints: number;
+    lifetimePoints: number;
+    accounts: unknown[];
+    activeMemberships: number;
+    memberships: unknown[];
+    rewards: { issued: number; redeemed: number; list: unknown[] };
+    referrals: { total: number; joined: number; completed: number };
+  };
   achievements: AssistantAchievement[];
   conversationSummaries: string[];
 }
@@ -218,7 +229,11 @@ export async function buildCustomerAssistantContext(customerProfileId: string): 
   const nameById = new Map([...favBusinesses, ...otherBusinesses].map((b) => [b.id, b]));
 
   const completedBookings = bookings.historyCount;
-  const tier = completedBookings >= 15 ? "vip" : completedBookings >= 5 ? "loyal" : completedBookings >= 1 ? "returning" : "new";
+  const heuristicTier = completedBookings >= 15 ? "vip" : completedBookings >= 5 ? "loyal" : completedBookings >= 1 ? "returning" : "new";
+
+  // PROGRAM 2 LOOP 5: real loyalty standing from the stored ledger.
+  const { getWallet } = await import("../../loyalty/wallet.js");
+  const wallet = await getWallet(customerProfileId).catch(() => null);
 
   const summaries = await prisma.aIMemoryRecord.findMany({
     where: { businessId: { in: [...new Set(links.map((l) => l.businessId))].length ? [...new Set(links.map((l) => l.businessId))] : ["__none__"] }, scope: "CONVERSATION", kind: "summary", customerId: { in: customerRowIds.length ? customerRowIds : ["__none__"] }, supersededById: null },
@@ -238,7 +253,18 @@ export async function buildCustomerAssistantContext(customerProfileId: string): 
     recentSearches: recentSearchRows.map((r) => r.query),
     reviews: feedbackRows.map((f) => ({ businessName: nameById.get(f.businessId)?.name ?? "Unknown", rating: f.rating, comment: f.comment, createdAt: f.createdAt })),
     reviewedBusinessIds: reviewBusinessIds,
-    loyalty: { tier, completedBookings },
+    loyalty: {
+      tier: heuristicTier,
+      engagementTier: heuristicTier,
+      completedBookings,
+      totalPoints: wallet?.totalPoints ?? 0,
+      lifetimePoints: wallet?.lifetimePoints ?? 0,
+      accounts: wallet?.accounts ?? [],
+      activeMemberships: wallet?.activeMemberships ?? 0,
+      memberships: wallet?.memberships ?? [],
+      rewards: wallet?.rewards ?? { issued: 0, redeemed: 0, list: [] },
+      referrals: wallet?.referrals ?? { total: 0, joined: 0, completed: 0 },
+    },
     achievements: deriveAchievements({ completedBookings, reviews: feedbackRows.length, favourites: favBusinessIds.length, memberSince: profile.createdAt }),
     conversationSummaries: summaries.map((s) => s.content),
   };

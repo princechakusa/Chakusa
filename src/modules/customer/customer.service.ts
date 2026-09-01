@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { unreadNotificationCount } from "../../lib/customer/customerNotifications.js";
 import { mapIndustryToCategory } from "../../lib/marketplace/categories.js";
 import { customerBookingAIContext } from "../../lib/booking/customerBooking.js";
+import { getWallet } from "../../lib/loyalty/wallet.js";
 
 // PROGRAM 2 LOOP 1: read-only aggregation for the customer dashboard. It
 // reuses the Business, Appointment, Conversation, Feedback and
@@ -66,6 +67,9 @@ export async function getCustomerDashboard(customerProfileId: string) {
     prisma.customerActivityEvent.findMany({ where: { customerProfileId }, orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
 
+  // PROGRAM 2 LOOP 5: loyalty summary for the dashboard.
+  const wallet = await getWallet(customerProfileId).catch(() => null);
+
   const byId = new Map(businesses.map((business) => [business.id, business]));
   const withBusiness = <T extends { businessId: string }>(row: T) => ({ ...row, business: byId.get(row.businessId) ?? null });
 
@@ -76,6 +80,18 @@ export async function getCustomerDashboard(customerProfileId: string) {
     recentConversations: recentConversations.map(withBusiness),
     recentReviews: recentReviews.map(withBusiness),
     aiAssistant: { recentRuns: aiRuns.map(withBusiness), entryEnabled: aiRuns.length > 0 || links.length > 0 },
+    loyalty: wallet
+      ? {
+          totalPoints: wallet.totalPoints,
+          lifetimePoints: wallet.lifetimePoints,
+          tiers: wallet.accounts.map((a) => ({ businessId: a.businessId, business: a.business, tier: a.tier, pointsBalance: a.pointsBalance })),
+          activeMemberships: wallet.activeMemberships,
+          memberships: wallet.memberships,
+          rewards: wallet.rewards,
+          referrals: wallet.referrals,
+          recentTransactions: wallet.recentTransactions.slice(0, 10),
+        }
+      : null,
     unreadNotifications: unread,
     activityHistory: activity,
     generatedAt: new Date().toISOString(),

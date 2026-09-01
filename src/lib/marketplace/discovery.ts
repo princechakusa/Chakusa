@@ -28,7 +28,11 @@ async function ratingSummaries(businessIds: string[]) {
   return new Map(rows.map((row) => [row.businessId, { average: row._avg.rating ? Number(row._avg.rating.toFixed(2)) : null, count: row._count._all }]));
 }
 
-function serializeCard(business: BusinessWithListing, rating: { average: number | null; count: number } | undefined) {
+function serializeCard(
+  business: BusinessWithListing,
+  rating: { average: number | null; count: number } | undefined,
+  badges?: { loyalty: boolean; membership: boolean },
+) {
   const listing = business.marketplaceListing;
   return {
     slug: business.publicSlug,
@@ -42,6 +46,8 @@ function serializeCard(business: BusinessWithListing, rating: { average: number 
     photo: Array.isArray(listing?.photos) && listing.photos.length ? String(listing.photos[0]) : null,
     verified: Boolean(business.verifiedAt),
     featured: Boolean(listing?.featured && (!listing.featuredUntil || listing.featuredUntil > new Date())),
+    loyaltyBadge: badges?.loyalty ?? false,
+    membershipBadge: badges?.membership ?? false,
     rating: rating?.average ?? null,
     reviewCount: rating?.count ?? 0,
     viewCount: listing?.viewCount ?? 0,
@@ -151,9 +157,16 @@ export async function discoverBusinesses(input: DiscoverInput) {
     filtered = rows.filter((business) => (business.marketplaceListing?.categorySlug ?? mapIndustryToCategory(business.industry)) === input.categorySlug);
   }
   const page = filtered.slice(0, limit);
-  const ratings = await ratingSummaries(page.map((business) => business.id));
+  const pageIds = page.map((business) => business.id);
+  const [ratings, loyaltyPrograms, membershipPlans] = await Promise.all([
+    ratingSummaries(pageIds),
+    pageIds.length ? prisma.loyaltyProgram.findMany({ where: { businessId: { in: pageIds }, active: true }, select: { businessId: true } }) : [],
+    pageIds.length ? prisma.membershipPlan.findMany({ where: { businessId: { in: pageIds }, active: true }, select: { businessId: true }, distinct: ["businessId"] }) : [],
+  ]);
+  const loyaltySet = new Set(loyaltyPrograms.map((row) => row.businessId));
+  const membershipSet = new Set(membershipPlans.map((row) => row.businessId));
   return {
-    items: page.map((business) => serializeCard(business, ratings.get(business.id))),
+    items: page.map((business) => serializeCard(business, ratings.get(business.id), { loyalty: loyaltySet.has(business.id), membership: membershipSet.has(business.id) })),
     nextCursor: filtered.length > limit ? page[page.length - 1]?.id ?? null : null,
   };
 }
@@ -203,6 +216,27 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     following = Boolean(follow);
   }
 
+  // PROGRAM 2 LOOP 5: loyalty / membership badges + member offers, computed
+  // from the existing loyalty tables. Reuses the marketplace profile shape —
+  // no new discovery query.
+  const [loyaltyProgram, membershipPlans, memberRewards, viewerAccount, viewerMembership] = await Promise.all([
+    prisma.loyaltyProgram.findUnique({ where: { businessId: business.id }, select: { active: true, pointsPerCurrency: true, tierConfig: true } }),
+    prisma.membershipPlan.findMany({ where: { businessId: business.id, active: true }, orderBy: { priceAmount: "asc" }, select: { id: true, name: true, billingInterval: true, priceAmount: true, currency: true, discountPercent: true, priorityBooking: true, perks: true } }),
+    prisma.reward.findMany({ where: { businessId: business.id, active: true }, orderBy: { pointsCost: "asc" }, take: 10, select: { id: true, name: true, type: true, pointsCost: true, membersOnly: true } }),
+    viewer?.customerProfileId ? prisma.loyaltyAccount.findUnique({ where: { businessId_customerProfileId: { businessId: business.id, customerProfileId: viewer.customerProfileId } }, select: { pointsBalance: true, tierKey: true } }) : Promise.resolve(null),
+    viewer?.customerProfileId ? prisma.customerMembership.findFirst({ where: { businessId: business.id, customerProfileId: viewer.customerProfileId, status: "active" }, select: { id: true, planId: true } }) : Promise.resolve(null),
+  ]);
+  const loyalty = {
+    hasProgram: Boolean(loyaltyProgram?.active),
+    hasMemberships: membershipPlans.length > 0,
+    pointsPerCurrency: loyaltyProgram?.active ? loyaltyProgram.pointsPerCurrency : null,
+    membershipPlans: membershipPlans.map((plan) => ({ ...plan })),
+    rewards: memberRewards,
+    viewer: viewer?.customerProfileId
+      ? { pointsBalance: viewerAccount?.pointsBalance ?? 0, tierKey: viewerAccount?.tierKey ?? null, isMember: Boolean(viewerMembership), memberPlanId: viewerMembership?.planId ?? null }
+      : null,
+  };
+
   return {
     slug: business.publicSlug,
     name: business.name,
@@ -234,6 +268,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
       recent: recentReviews.map((review) => ({ rating: review.rating, comment: review.comment, sentiment: review.sentiment, createdAt: review.createdAt })),
     },
     viewer: { favourite, following },
+    loyalty,
     shareUrl: buildShareUrl(business.publicSlug!),
     businessId: business.id,
   };

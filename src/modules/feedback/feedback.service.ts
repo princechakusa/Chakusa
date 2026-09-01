@@ -3,6 +3,7 @@ import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
 import { notifyFeedbackReceived } from "../../lib/notifications/notificationTriggers.js";
 import { markReviewRequestFeedbackReceived } from "../reviews/reviews.service.js";
+import { accrueForReview } from "../../lib/loyalty/accrual.js";
 import type { CreateFeedbackInput, UpdateFeedbackStatusInput } from "./feedback.schemas.js";
 import type { FeedbackSentiment, Prisma } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
@@ -100,6 +101,10 @@ export async function createFeedback(
   // since createFeedback already triggers it internally when reviewRequestId
   // is set, and double-notifying for one submission would be a duplicate.
   await notifyFeedbackReceived(businessId, feedback, pushProvider);
+
+  // PROGRAM 2 LOOP 5: a submitted review can earn loyalty points. Best-effort
+  // and idempotent per feedback row.
+  await accrueForReview(feedback.id).catch(() => undefined);
 
   return feedback;
 }

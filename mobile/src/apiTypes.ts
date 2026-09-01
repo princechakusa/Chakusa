@@ -550,3 +550,105 @@ export interface CustomerAISettingsDto {
   notifyOnReply: boolean;
   notifyRecommendations: boolean;
 }
+
+// --- PROGRAM 2 LOOP 5: Loyalty, Memberships & Rewards -----------------
+export interface LoyaltyTierDto {
+  key: string;
+  name: string;
+  minPoints?: number;
+  perks?: string[];
+}
+export interface LoyaltyAccountSummaryDto {
+  business: { id: string; name: string; publicSlug: string | null } | null;
+  enrolled: boolean;
+  programActive: boolean;
+  pointsBalance: number;
+  lifetimePoints: number;
+  tier: LoyaltyTierDto;
+  nextTier: { key: string; name: string; pointsAway: number } | null;
+  allTiers: LoyaltyTierDto[];
+  availableRewards: LoyaltyRewardDto[];
+  pointExpiryDays: number | null;
+}
+export interface LoyaltyRewardDto {
+  id: string;
+  name: string;
+  description: string | null;
+  type: 'free_service' | 'percent_discount' | 'fixed_discount' | 'promo' | 'birthday' | 'milestone';
+  pointsCost: number;
+  value: number | null;
+  minTierKey: string | null;
+  membersOnly: boolean;
+  affordable: boolean;
+  pointsShort: number;
+  tierEligible: boolean;
+  memberEligible: boolean;
+  redeemable: boolean;
+}
+export interface RewardRedemptionDto {
+  id: string;
+  code: string;
+  status: 'issued' | 'reserved' | 'redeemed' | 'expired' | 'revoked';
+  pointsSpent: number;
+  issuedAt: string;
+  redeemedAt?: string | null;
+  expiresAt: string | null;
+  reward: { name: string; type: string; value: number | null } | null;
+  business: { id: string; name: string; publicSlug: string | null } | null;
+}
+export interface LoyaltyTransactionDto {
+  id: string;
+  kind: 'earn' | 'redeem' | 'expire' | 'adjust' | 'revoke';
+  points: number;
+  balanceAfter: number;
+  reason: string | null;
+  sourceType: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+export interface MembershipPlanDto {
+  id: string;
+  name: string;
+  description: string | null;
+  billingInterval: 'monthly' | 'annual' | 'unlimited';
+  priceAmount: number;
+  currency: string | null;
+  priorityBooking: boolean;
+  discountPercent: number;
+  perks?: string[] | null;
+  active?: boolean;
+}
+export interface CustomerMembershipDto {
+  id: string;
+  status: 'active' | 'cancelled' | 'expired' | 'paused';
+  billingInterval: string;
+  startedAt: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  autoRenew: boolean;
+  plan: { id: string; name: string; priceAmount: number; currency: string | null; discountPercent: number; priorityBooking: boolean; perks?: unknown };
+  business: { id: string; name: string; publicSlug: string | null } | null;
+}
+export interface WalletDto {
+  totalPoints: number;
+  lifetimePoints: number;
+  accounts: Array<{ businessId: string; business: { id: string; name: string; publicSlug: string | null } | null; pointsBalance: number; lifetimePoints: number; tier: { key: string; name: string }; lastActivityAt: string | null }>;
+  memberships: Array<{ id: string; businessId: string; business: { id: string; name: string; publicSlug: string | null } | null; status: string; billingInterval: string; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; plan: { name: string; discountPercent: number; priorityBooking: boolean; priceAmount: number; currency: string | null } }>;
+  activeMemberships: number;
+  rewards: { issued: number; redeemed: number; list: Array<{ id: string; code: string; status: string; businessId: string; business: { id: string; name: string; publicSlug: string | null } | null; reward: { name: string; type: string } | null; issuedAt: string; expiresAt: string | null }> };
+  referrals: { total: number; joined: number; completed: number };
+  recentTransactions: Array<LoyaltyTransactionDto & { businessId: string; business: { id: string; name: string; publicSlug: string | null } | null }>;
+  generatedAt: string;
+}
+export interface ReferralOverviewDto {
+  codes: Array<{ code: string; businessId: string | null; uses: number; referrerPoints: number }>;
+  referrals: Array<{ id: string; status: 'pending' | 'joined' | 'completed' | 'expired' | 'rejected'; refereeName: string; joinedAt: string | null; completedAt: string | null }>;
+  summary: { total: number; joined: number; completed: number };
+}
+export interface ReferralCodeDto {
+  id: string;
+  code: string;
+  businessId: string | null;
+  uses: number;
+  inviteUrl: string;
+}

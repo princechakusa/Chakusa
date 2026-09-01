@@ -279,6 +279,82 @@ const tools: Record<string, CustomerAssistantTool> = {
       return { output: { recommendations: await recommendForCustomer(ctx.customerProfileId, input) } };
     },
   },
+
+  // --- PROGRAM 2 LOOP 5: loyalty, memberships, rewards (customer-safe) ---
+  loyalty_balance: {
+    name: "loyalty_balance",
+    description: "Show the customer's loyalty points balance, tier and membership status across all businesses (their wallet).",
+    mutating: false,
+    schema: z.object({}).passthrough(),
+    async run(ctx) {
+      const { getWallet } = await import("../../loyalty/wallet.js");
+      return { output: await getWallet(ctx.customerProfileId) };
+    },
+  },
+  list_rewards: {
+    name: "list_rewards",
+    description: "List the rewards a customer can unlock or redeem at a business, with how many points each needs and whether it is affordable.",
+    mutating: false,
+    schema: z.object({ businessId: z.string().uuid() }),
+    async run(ctx, args) {
+      const { businessId } = this.schema.parse(args) as { businessId: string };
+      const { listAvailableRewards } = await import("../../loyalty/rewards.js");
+      return { output: { rewards: await listAvailableRewards(businessId, ctx.customerProfileId) } };
+    },
+  },
+  redeem_reward: {
+    name: "redeem_reward",
+    description: "Redeem one of the customer's own reward options for points. Confirm the reward with the customer first.",
+    mutating: true,
+    schema: z.object({ businessId: z.string().uuid(), rewardId: z.string().uuid() }),
+    async run(ctx, args) {
+      const input = this.schema.parse(args) as { businessId: string; rewardId: string };
+      const { redeemReward } = await import("../../loyalty/rewards.js");
+      return { output: await redeemReward(input.businessId, ctx.customerProfileId, input.rewardId) };
+    },
+  },
+  membership_options: {
+    name: "membership_options",
+    description: "List the membership plans a business offers, with price, member discount and priority booking.",
+    mutating: false,
+    schema: z.object({ slug: z.string().trim().min(1).max(200) }),
+    async run(_ctx, args) {
+      const { slug } = this.schema.parse(args) as { slug: string };
+      const profile = await getMarketplaceBusinessProfile(slug);
+      return { output: { businessId: profile.businessId, loyalty: profile.loyalty } };
+    },
+  },
+  my_memberships: {
+    name: "my_memberships",
+    description: "List the customer's active and past memberships.",
+    mutating: false,
+    schema: z.object({}).passthrough(),
+    async run(ctx) {
+      const { listMyMemberships } = await import("../../loyalty/memberships.js");
+      return { output: { memberships: await listMyMemberships(ctx.customerProfileId) } };
+    },
+  },
+  referral_status: {
+    name: "referral_status",
+    description: "Show the customer's referral code, invite link and referral progress.",
+    mutating: false,
+    schema: z.object({}).passthrough(),
+    async run(ctx) {
+      const { myReferrals, getOrCreateReferralCode } = await import("../../loyalty/referrals.js");
+      const [code, referrals] = await Promise.all([getOrCreateReferralCode(ctx.customerProfileId, null), myReferrals(ctx.customerProfileId)]);
+      return { output: { code, ...referrals } };
+    },
+  },
+  loyalty_recommendations: {
+    name: "loyalty_recommendations",
+    description: "Recommend the best next loyalty action: rewards the customer is close to affording, tier upgrades, and membership savings.",
+    mutating: false,
+    schema: z.object({}).passthrough(),
+    async run(ctx) {
+      const { loyaltyRecommendations } = await import("../../loyalty/loyaltyRecommendations.js");
+      return { output: { recommendations: await loyaltyRecommendations(ctx.customerProfileId) } };
+    },
+  },
 };
 
 export const CUSTOMER_ASSISTANT_TOOL_NAMES = Object.keys(tools);

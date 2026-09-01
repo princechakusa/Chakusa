@@ -7,6 +7,7 @@ import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "../
 import { findOrCreateCustomerByPhone } from "../../modules/customers/customers.service.js";
 import { linkCustomerToBusiness, recordCustomerActivity, findMatchingBusinessCustomers } from "../customer/customerContext.js";
 import { notifyCustomer } from "../customer/customerNotifications.js";
+import { accrueForBookingCreated } from "../loyalty/accrual.js";
 
 // PROGRAM 2 LOOP 3: the authenticated-customer booking experience. Every
 // scheduling decision, conflict check, outbox event and reminder is the
@@ -34,25 +35,39 @@ async function resolveBookableBusiness(slug: string) {
   return business;
 }
 
-export async function listBookableServices(slug: string) {
+export async function listBookableServices(slug: string, customerProfileId?: string) {
   const business = await resolveBookableBusiness(slug);
   const services = await prisma.serviceOffering.findMany({
     where: { businessId: business.id, active: true, publiclyBookable: true },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: { id: true, name: true, description: true, category: true, durationMinutes: true, price: true, depositAmount: true },
   });
+  // PROGRAM 2 LOOP 5: member pricing is a computed discount surfaced here —
+  // never a charge. `membershipPricing` returns list == member when there is
+  // no active membership.
+  const membership = customerProfileId
+    ? await prisma.customerMembership.findFirst({ where: { businessId: business.id, customerProfileId, status: "active" }, include: { plan: true } })
+    : null;
+  const discountPercent = membership?.plan.discountPercent ?? 0;
   return {
     businessName: business.name,
     currency: business.currency,
-    services: services.map((service) => ({
-      id: service.id,
-      name: service.name,
-      description: service.description,
-      category: service.category,
-      durationMinutes: service.durationMinutes,
-      price: service.price ? Number(service.price) : null,
-      depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
-    })),
+    membership: membership
+      ? { planName: membership.plan.name, discountPercent, priorityBooking: membership.plan.priorityBooking }
+      : null,
+    services: services.map((service) => {
+      const price = service.price ? Number(service.price) : null;
+      return {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        category: service.category,
+        durationMinutes: service.durationMinutes,
+        price,
+        memberPrice: price != null && discountPercent > 0 ? Number((price * (1 - discountPercent / 100)).toFixed(2)) : price,
+        depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
+      };
+    }),
   };
 }
 
@@ -176,6 +191,9 @@ export async function createCustomerBooking(customerProfileId: string, input: { 
     data: { appointmentId: appointment.id },
   }).catch(() => undefined);
   await sendAppointmentConfirmation(appointment.id).catch(() => undefined);
+  // PROGRAM 2 LOOP 5: a referred customer's first booking completes their
+  // referral. Best-effort, idempotent.
+  await accrueForBookingCreated(appointment.id).catch(() => undefined);
 
   return {
     appointment: enriched,

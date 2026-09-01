@@ -3,6 +3,7 @@ import { z } from "zod";
 import { appointmentListSchema, appointmentPaymentSchema, bulkImportAppointmentsSchema, createAppointmentSchema, transitionAppointmentSchema, updateAppointmentSchema } from "./appointments.schemas.js";
 import { bulkImportAppointments, createAppointment, getAppointment, listAppointments, transitionAppointment, updateAppointment, updateAppointmentPayment } from "./appointments.service.js";
 import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "./appointmentReminders.js";
+import { accrueForCompletedBooking } from "../../lib/loyalty/accrual.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 const idParams = z.object({ id: z.string().uuid() });
@@ -33,6 +34,9 @@ export default async function appointmentRoutes(fastify: FastifyInstance) {
     const status = transitionAppointmentSchema.parse(request.body).status;
     const appointment = await transitionAppointment(request.businessId!, request.user.userId, id, status);
     if (status === "CANCELED") await sendCustomerAppointmentMessage(id, "canceled").catch(error => request.log.error(error, "automatic cancellation confirmation failed"));
+    // PROGRAM 2 LOOP 5: a completed booking earns loyalty points. Best-effort
+    // and idempotent — never blocks or fails the transition.
+    if (status === "COMPLETED") await accrueForCompletedBooking(id).catch(error => request.log.error(error, "loyalty accrual failed"));
     reply.send(appointment);
   });
   fastify.patch("/:id/payment", async (request, reply) => reply.send(await updateAppointmentPayment(request.businessId!, request.user.userId, idParams.parse(request.params).id, appointmentPaymentSchema.parse(request.body).paidAmount)));

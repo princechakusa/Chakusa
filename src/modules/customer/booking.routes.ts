@@ -23,7 +23,7 @@ export default async function customerBookingRoutes(fastify: FastifyInstance) {
 
   fastify.get("/businesses/:slug/services", async (request) => {
     const { slug: s } = z.object({ slug }).parse(request.params);
-    return listBookableServices(s);
+    return listBookableServices(s, request.customer!.profileId);
   });
 
   fastify.get("/businesses/:slug/availability", async (request) => {

@@ -313,3 +313,20 @@ export const loyaltyApi = {
   referralCode: (businessSlug?: string) => api.post<import('../apiTypes').ReferralCodeDto>('/customer/loyalty/referrals/code', businessSlug ? { businessSlug } : {}),
   redeemReferral: (code: string) => api.post<{ referralId: string; status: string }>('/customer/loyalty/referrals/redeem', { code }),
 };
+
+// PROGRAM 2 LOOP 4: the legal-acceptance platform's mobile surface. The
+// document-fetch call is public (no account needed, matches
+// src/modules/legal/legal.routes.ts). Acceptance-status/accept calls are
+// scoped per account type, since a person can hold both a customer and a
+// business account with independent acceptance records — see
+// src/lib/legal/legalDocuments.service.ts's LegalAcceptanceScope.
+export const legalApi = {
+  document: (type: import('../apiTypes').LegalDocumentType) =>
+    api.get<import('../apiTypes').LegalDocumentDto>(`/legal/documents/${type}`, 'none'),
+  customerStatus: () => api.get<import('../apiTypes').LegalAcceptanceStatusDto>('/customer/legal/status'),
+  customerAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
+    api.post<{ id: string }>('/customer/legal/accept', { type, ...body }),
+  businessStatus: () => api.get<import('../apiTypes').LegalAcceptanceStatusDto>('/business/legal/status'),
+  businessAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string } = { source: 'app' }) =>
+    api.post<{ id: string }>('/business/legal/accept', { type, ...body }),
+};

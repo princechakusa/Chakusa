@@ -652,3 +652,17 @@ export interface ReferralCodeDto {
   uses: number;
   inviteUrl: string;
 }
+
+export type LegalDocumentType = 'PRIVACY_POLICY' | 'TERMS_OF_SERVICE' | 'COOKIE_POLICY' | 'AI_DISCLOSURE';
+export interface LegalDocumentDto {
+  type: LegalDocumentType;
+  version: number;
+  title: string;
+  content: string;
+  summary: string | null;
+  effectiveAt: string | null;
+  publishedAt: string | null;
+}
+export interface LegalAcceptanceStatusDto {
+  pending: Array<{ type: LegalDocumentType; currentVersionId: string; currentVersion: number }>;
+}

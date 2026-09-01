@@ -1,0 +1,4 @@
+---
+import { journeySteps } from "../../data/product";
+---
+<section class="product-journey container" id="product-journey" aria-labelledby="journey-title"><div class="product-section-heading"><p class="product-kicker">One connected lifecycle</p><h2 id="journey-title">Every step gives the next step context.</h2><p>A customer should not disappear when a conversation, appointment, or visit ends. Chakusa keeps the relationship moving.</p></div><ol>{journeySteps.map((step, index) => <li><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong></li>)}</ol></section>

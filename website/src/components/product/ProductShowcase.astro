@@ -1,0 +1,5 @@
+---
+import ProductFeature from "./ProductFeature.astro";
+import { productStories } from "../../data/product";
+---
+<div class="product-showcase">{productStories.map((story, index) => <ProductFeature {story} {index} />)}</div>

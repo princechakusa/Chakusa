@@ -1,0 +1,4 @@
+---
+import { productFaqs } from "../../data/product";
+---
+<section class="product-faq container" aria-labelledby="product-faq-title"><div class="product-section-heading"><p class="product-kicker">Product questions</p><h2 id="product-faq-title">What Chakusa connects.</h2></div><div>{productFaqs.map(item => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></section>

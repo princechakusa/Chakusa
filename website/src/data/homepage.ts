@@ -1,9 +1,9 @@
 export const primaryNavigation = [
   { label: "Product", href: "/product", children: [
-    { label: "Customer response", href: "/product", description: "Respond to enquiries with human oversight." },
-    { label: "Automation", href: "/product", description: "Keep follow-ups and reminders moving." },
-    { label: "Bookings", href: "/product", description: "Manage appointments and availability." },
-    { label: "Customer growth", href: "/product", description: "Understand and bring customers back." },
+    { label: "Customer response", href: "/product#customer-response", description: "Respond to enquiries with human oversight." },
+    { label: "Automation", href: "/product#automation", description: "Keep follow-ups and reminders moving." },
+    { label: "Bookings", href: "/product#booking", description: "Manage appointments and availability." },
+    { label: "Customer growth", href: "/product#customer-growth", description: "Understand and bring customers back." },
   ] },
   { label: "Solutions", href: "/product" },
   { label: "Industries", href: "/industries", children: [
@@ -17,8 +17,8 @@ export const primaryNavigation = [
 ];
 
 export const footerGroups = [
-  { title: "Product", links: [{ label: "Customer response", href: "/product" }, { label: "Automation", href: "/product" }, { label: "Bookings", href: "/product" }, { label: "Pricing", href: "/pricing" }] },
-  { title: "Solutions", links: [{ label: "Recover opportunities", href: "/product#recover" }, { label: "Customer follow-up", href: "/product#retain" }, { label: "Reviews", href: "/product#review" }, { label: "Industries", href: "/industries" }] },
+  { title: "Product", links: [{ label: "Customer response", href: "/product#customer-response" }, { label: "Automation", href: "/product#automation" }, { label: "Bookings", href: "/product#booking" }, { label: "Pricing", href: "/pricing" }] },
+  { title: "Solutions", links: [{ label: "Recover opportunities", href: "/product#customer-response" }, { label: "Customer follow-up", href: "/product#reviews" }, { label: "Reviews", href: "/product#reviews" }, { label: "Industries", href: "/industries" }] },
   { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Cookies", href: "/cookies" }, { label: "AI disclosure", href: "/ai-disclosure" }] },
 ];

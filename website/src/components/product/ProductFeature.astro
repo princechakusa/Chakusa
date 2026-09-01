@@ -1,0 +1,6 @@
+---
+import ProductScreenshot from "./ProductScreenshot.astro";
+interface Props { story: { id:string; step:string; eyebrow:string; title:string; copy:string; features:string[]; next:string; visual:string|null; visualLabel:string }; index:number; }
+const { story, index } = Astro.props;
+---
+<section class:list={["product-feature", { "product-feature--reverse": index % 2 === 1 }]} id={story.id} aria-labelledby={`${story.id}-title`}><div class="container product-feature__grid"><div class="product-feature__copy"><span class="product-feature__step">{story.step}</span><p class="product-kicker">{story.eyebrow}</p><h2 id={`${story.id}-title`}>{story.title}</h2><p>{story.copy}</p><ul>{story.features.map(feature => <li>{feature}</li>)}</ul><p class="product-feature__next">Next: {story.next}</p></div><ProductScreenshot src={story.visual} label={story.visualLabel} /></div></section>

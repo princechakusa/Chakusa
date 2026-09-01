@@ -2162,6 +2162,13 @@ model LegalAcceptanceEvent {
   ipAddress  String?  @map("ip_address")
   sessionId  String?  @map("session_id")
   source     String
+  // Category-level choices for COOKIE_POLICY acceptance (necessary is
+  // always implied true; analytics/functional/marketing reflect what the
+  // user actually chose via Accept All / Reject Optional / Customize).
+  // Nullable and unused for the other three document types, this is not a
+  // second consent mechanism, it's detail attached to the same immutable
+  // acceptance row so cookie consent never needs its own separate table.
+  metadata Json?
 
   @@index([userId, documentVersionId])
   @@index([documentVersionId])

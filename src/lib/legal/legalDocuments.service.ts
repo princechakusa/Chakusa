@@ -113,6 +113,8 @@ export interface RecordAcceptanceInput {
   device?: string;
   ipAddress?: string;
   sessionId?: string;
+  /** Cookie-category choices (analytics/functional/marketing booleans), only meaningful for type === "COOKIE_POLICY". */
+  cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean };
 }
 
 /** Insert-only. Never update an existing row, a re-acceptance is always a new row. */
@@ -131,6 +133,7 @@ export async function recordAcceptance(input: RecordAcceptanceInput) {
       device: input.device,
       ipAddress: input.ipAddress,
       sessionId: input.sessionId,
+      metadata: input.cookiePreferences ? { cookiePreferences: input.cookiePreferences } : undefined,
     },
   });
 }
@@ -150,9 +153,15 @@ export interface PendingAcceptance {
  * distinct from the general Terms, hence the scope-based filter below
  * rather than checking all four types for everyone.
  */
+// A business that turns on the AI customer agent is acting on AI's behalf
+// toward its own customers, so AI_DISCLOSURE acceptance applies to
+// business accounts too, not just customers using the in-app assistant.
+// Subscription/billing terms are sections inside TERMS_OF_SERVICE (see the
+// locked "4 documents, not 13" decision), not separate document types, so
+// there's nothing additional to require for those here.
 const TYPES_BY_SCOPE: Record<LegalAcceptanceScope, readonly LegalDocumentType[]> = {
   CUSTOMER: ["TERMS_OF_SERVICE", "PRIVACY_POLICY", "AI_DISCLOSURE"],
-  BUSINESS: ["TERMS_OF_SERVICE", "PRIVACY_POLICY"],
+  BUSINESS: ["TERMS_OF_SERVICE", "PRIVACY_POLICY", "AI_DISCLOSURE"],
   ADMIN: [],
 };
 

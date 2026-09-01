@@ -89,6 +89,7 @@ import {
   archiveLegalVersion,
   createLegalDraft,
   forceReacceptance,
+  getCookieConsentAnalytics,
   getLegalAcceptanceStats,
   listLegalVersions,
   publishLegalVersion,
@@ -732,6 +733,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>("/legal/versions/:id/stats", legalRead, async (request, reply) => {
     fastify.requireAdminPermission(request, "legal.read");
     reply.send(await getLegalAcceptanceStats(request.params.id));
+  });
+  fastify.get<{ Params: { id: string } }>("/legal/versions/:id/cookie-analytics", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.read");
+    reply.send(await getCookieConsentAnalytics(request.params.id));
   });
   fastify.get("/legal/acceptance", legalRead, async (request, reply) => {
     fastify.requireAdminPermission(request, "legal.read");

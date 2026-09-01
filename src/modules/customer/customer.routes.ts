@@ -25,10 +25,15 @@ const preferencesSchema = z.object({
 });
 const favouriteSchema = z.object({ favourite: z.boolean() });
 const notificationsQuery = z.object({ unreadOnly: z.coerce.boolean().optional(), limit: z.coerce.number().int().min(1).max(200).optional() });
+const cookiePreferencesSchema = z.object({ analytics: z.boolean(), functional: z.boolean(), marketing: z.boolean() });
 const legalAcceptSchema = z.object({
   type: z.enum(LEGAL_DOCUMENT_TYPES),
   platform: z.string().trim().max(40).optional(),
   source: z.string().trim().max(60).default("app"),
+  // Only meaningful when type === "COOKIE_POLICY". "accept_all"/"reject_optional"/
+  // "customize" as the source value plus these booleans covers the brief's
+  // required cookie-consent actions without a second consent mechanism.
+  cookiePreferences: cookiePreferencesSchema.optional(),
 });
 
 export default async function customerRoutes(fastify: FastifyInstance) {
@@ -78,6 +83,7 @@ export default async function customerRoutes(fastify: FastifyInstance) {
       language: request.customer!.preferredLanguage,
       device: request.headers["user-agent"],
       ipAddress: request.ip,
+      cookiePreferences: input.cookiePreferences,
       sessionId: request.customer!.sessionId,
     });
   });

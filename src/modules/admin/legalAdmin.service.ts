@@ -130,3 +130,28 @@ export async function getLegalAcceptanceStats(versionId: string) {
 export async function searchLegalAcceptance(filter: { userId?: string; documentVersionId?: string; type?: LegalDocumentType }) {
   return searchAcceptanceEvents(filter);
 }
+
+/**
+ * Breakdown of cookie-consent choices for the currently published Cookie
+ * Policy version: how many chose Accept All / Reject Optional / Customize,
+ * and how many enabled each optional category. A simple in-memory
+ * aggregation over the acceptance rows, not a new analytics table, cookie
+ * consent volume doesn't warrant one yet.
+ */
+export async function getCookieConsentAnalytics(versionId: string) {
+  const version = await getVersionOrThrow(versionId);
+  if (version.type !== "COOKIE_POLICY") throw new Error("Cookie consent analytics only apply to COOKIE_POLICY versions");
+  const events = await searchAcceptanceEvents({ documentVersionId: versionId }, 5000);
+  const bySource: Record<string, number> = {};
+  const categoryCounts = { analytics: 0, functional: 0, marketing: 0 };
+  let total = 0;
+  for (const event of events) {
+    total += 1;
+    bySource[event.source] = (bySource[event.source] ?? 0) + 1;
+    const prefs = (event.metadata as { cookiePreferences?: { analytics?: boolean; functional?: boolean; marketing?: boolean } } | null)?.cookiePreferences;
+    if (prefs?.analytics) categoryCounts.analytics += 1;
+    if (prefs?.functional) categoryCounts.functional += 1;
+    if (prefs?.marketing) categoryCounts.marketing += 1;
+  }
+  return { versionId, total, bySource, categoryCounts };
+}

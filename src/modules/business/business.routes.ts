@@ -13,10 +13,12 @@ import { syncServiceOfferingsFromLegacyNames } from '../services/services.servic
 import { getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 import { z } from "zod";
 
+const cookiePreferencesSchema = z.object({ analytics: z.boolean(), functional: z.boolean(), marketing: z.boolean() });
 const legalAcceptSchema = z.object({
   type: z.enum(LEGAL_DOCUMENT_TYPES),
   platform: z.string().trim().max(40).optional(),
   source: z.string().trim().max(60).default("app"),
+  cookiePreferences: cookiePreferencesSchema.optional(),
 });
 
 export default async function businessRoutes(fastify: FastifyInstance) {
@@ -44,6 +46,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
       platform: input.platform,
       device: request.headers["user-agent"],
       ipAddress: request.ip,
+      cookiePreferences: input.cookiePreferences,
     });
   });
 

@@ -1,13 +1,15 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import Hero from "../components/Hero.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import HeroSection from "../components/hero/HeroSection.astro";
+import Footer from "../components/footer/Footer.astro";
 import FAQAccordion from "../components/FAQAccordion.astro";
 import FaqSchema from "../components/FaqSchema.astro";
 import CTASection from "../components/CTASection.astro";
 
-const title = "Chakusa: Recover customers and bring them back";
-const description = "Follow up with missed opportunities, request reviews, and keep customers coming back from one simple app.";
+const title = "Chakusa — AI Receptionist and Customer Growth Platform";
+const description = "Respond to customer enquiries, manage bookings, automate follow-ups, request reviews, and bring customers back with Chakusa.";
 
 const pillars = [
   {
@@ -49,9 +51,11 @@ const faqs = [
   },
 ];
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader />
-  <Hero />
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content"><HeroSection /></main>
+  {false && <>
 
   <section class="problem" aria-labelledby="problem-title" data-reveal>
     <div class="content-shell">
@@ -97,4 +101,6 @@ const faqs = [
   </section>
 
   <CTASection heading="Stop losing customers you've already earned." support="Start tracking every missed call, review, and reminder today." />
-</BaseLayout>
+  </>}
+  <Footer />
+</MarketingLayout>

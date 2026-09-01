@@ -1,0 +1,13 @@
+---
+import { primaryNavigation } from "../../data/homepage";
+---
+<button class="mobile-menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation" data-mobile-trigger>
+  <span></span><span></span><span></span>
+</button>
+<div class="mobile-menu" id="mobile-menu" hidden data-mobile-panel>
+  <nav aria-label="Mobile navigation">
+    {primaryNavigation.map((item) => <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>)}
+    <a href="/login">Sign in</a>
+    <a class="ui-button ui-button--primary" href="/get-started">Start free</a>
+  </nav>
+</div>

@@ -1,0 +1,11 @@
+.marketing-header nav > .container {
+  min-height: 4.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+@media (min-width: 64rem) {
+  .marketing-header nav > .container { min-height: 5.25rem; }
+}

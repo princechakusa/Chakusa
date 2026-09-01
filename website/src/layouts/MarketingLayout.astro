@@ -1,0 +1,5 @@
+---
+import "@fontsource-variable/inter/wght.css"; import "../styles/homepage/tokens.css"; import "../styles/homepage/foundation.css"; import "../styles/homepage/header.css"; import "../styles/homepage/header-layout.css"; import "../styles/homepage/hero.css"; import "../styles/homepage/poster.css"; import "../styles/homepage/footer.css"; import "../styles/homepage/responsive.css"; import SeoHead from "../components/seo/SeoHead.astro";
+interface Props { title: string; description: string } const { title, description } = Astro.props;
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#f7f7fb"/><link rel="icon" href="/favicon.svg" type="image/svg+xml"/><SeoHead {title} {description}/><title>{title}</title></head><body><slot/></body></html>

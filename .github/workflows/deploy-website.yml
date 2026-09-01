@@ -1,8 +1,14 @@
-name: Deploy website to Cloudflare Pages
+name: Deploy website to GitHub Pages
 
-# Only runs on changes under website/ — this workflow builds and deploys
-# the static marketing site (chakusarecovery.com), completely separate
-# from the backend (/src) and mobile app (/mobile).
+# Builds and deploys the static marketing site (chakusarecovery.com) to
+# GitHub Pages. Only runs on changes under website/, completely separate
+# from the backend (/src) and mobile app (/mobile). No API tokens needed —
+# GitHub Pages deploys are authorized via the built-in GITHUB_TOKEN and
+# this repo's own Pages permissions, not an external credential.
+#
+# One-time manual step required before this can succeed: in this repo's
+# Settings -> Pages -> "Build and deployment" -> Source, select
+# "GitHub Actions" (not a branch).
 on:
   push:
     branches: [master]
@@ -13,17 +19,16 @@ on:
 
 permissions:
   contents: read
-  deployments: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://chakusarecovery.com
-    defaults:
-      run:
-        working-directory: website
     steps:
       - uses: actions/checkout@v4
 
@@ -33,20 +38,24 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
-      - run: npm ci
-      - run: npm run build
+      - working-directory: website
+        run: npm ci
 
-      # Requires two repository secrets, added by a repo admin under
-      # Settings -> Secrets and variables -> Actions (never pasted into
-      # code, chat, or this file):
-      #   CLOUDFLARE_API_TOKEN   — a token scoped to "Cloudflare Pages: Edit"
-      #                            for this account only
-      #   CLOUDFLARE_ACCOUNT_ID  — found on the right sidebar of any page
-      #                            in the Cloudflare dashboard
-      - name: Publish to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      - working-directory: website
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: website
-          command: pages deploy dist --project-name=chakusa-website --branch=master
+          path: website/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

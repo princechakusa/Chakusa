@@ -47,21 +47,36 @@ image reference.
 
 ## Deploying to chakusarecovery.com
 
-This is a static site (`output: "static"`), so any static host works, but
-since the domain was bought through Cloudflare, Cloudflare Pages is the
-natural fit and needs no origin server:
+Hosted on **GitHub Pages**, not Cloudflare — Cloudflare's only job here is
+DNS for the domain, which was bought through Cloudflare but doesn't need
+to host anything. `.github/workflows/deploy-website.yml` builds `/website`
+and deploys it to GitHub Pages on every push to `master` that touches
+`website/`. No API tokens or secrets required — GitHub Pages deploys
+authorize themselves via the repo's own built-in permissions.
 
-1. In the Cloudflare dashboard: **Workers & Pages → Create → Pages →
-   Connect to Git**, pick this repo.
-2. Build settings: root directory `website`, build command `npm run
-   build`, output directory `dist`.
-3. Once the Pages project deploys to its `*.pages.dev` URL, add
-   `chakusarecovery.com` (and `www` if wanted) as a **Custom domain** on
-   that Pages project — Cloudflare wires the DNS automatically since the
-   domain already lives in the same account.
-4. No secrets or environment variables are needed for this build; it's a
-   pure static site with no backend calls.
+One-time setup (two manual steps, one per platform):
 
-This whole flow happens inside the Cloudflare dashboard the user already
-has access to, and doesn't require sharing any account credentials with
-an assistant.
+1. **GitHub** — repo **Settings → Pages → Build and deployment → Source**,
+   select **GitHub Actions** (not a branch). This is required once before
+   the workflow can successfully deploy.
+2. **Cloudflare (DNS only)** — in the DNS tab for `chakusarecovery.com`,
+   add:
+   - Four `A` records at the apex (`@`) pointing to GitHub Pages' IPs:
+     `185.199.108.153`, `185.199.109.153`, `185.199.110.153`,
+     `185.199.111.153`
+   - (Optional, for IPv6) four `AAAA` records at `@`: `2606:50c0:8000::153`,
+     `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`
+   - If `www` should also work, a `CNAME` record for `www` pointing to
+     `princechakusa.github.io`
+   - Set these records to **DNS only** (grey cloud, not proxied) at first,
+     so GitHub can issue its own HTTPS certificate for the domain. Once
+     "Enforce HTTPS" shows working in GitHub's Pages settings, proxying
+     (orange cloud) can be turned on if wanted.
+3. Back in GitHub's Pages settings, add `chakusarecovery.com` as the
+   custom domain (this reads the `public/CNAME` file already committed in
+   this repo, which contains just `chakusarecovery.com`) and wait for the
+   DNS check to go green.
+
+This whole flow happens in the GitHub and Cloudflare dashboards the user
+already has access to, and needs no account credentials shared with an
+assistant.

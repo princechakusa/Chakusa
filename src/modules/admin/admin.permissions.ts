@@ -48,6 +48,8 @@ export const ADMIN_PERMISSIONS = [
   "settings.read",
   "settings.manage",
   "admin.manage",
+  "legal.read",
+  "legal.manage",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -72,6 +74,7 @@ const READ_ONLY = new Set<AdminPermission>([
   "feedback.read",
   "audit.read",
   "settings.read",
+  "legal.read",
 ]);
 
 const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
@@ -96,6 +99,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "feedback.manage",
     "support.impersonate.read",
     "audit.read",
+    "legal.read",
   ]),
   FINANCE: new Set([
     "platform.read",
@@ -143,6 +147,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "feedback.manage",
     "audit.read",
     "settings.read",
+    "legal.read",
+    "legal.manage",
   ]),
   READ_ONLY,
 };

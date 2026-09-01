@@ -10,6 +10,14 @@ import { completeBusinessOnboarding } from "./business.service.js";
 import { exportBusinessData } from './businessExport.service.js';
 import { requireOwner } from '../../lib/authorization.js';
 import { syncServiceOfferingsFromLegacyNames } from '../services/services.service.js';
+import { getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
+import { z } from "zod";
+
+const legalAcceptSchema = z.object({
+  type: z.enum(LEGAL_DOCUMENT_TYPES),
+  platform: z.string().trim().max(40).optional(),
+  source: z.string().trim().max(60).default("app"),
+});
 
 export default async function businessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -18,6 +26,25 @@ export default async function businessRoutes(fastify: FastifyInstance) {
     const business = await prisma.business.findUnique({ where: { id: request.businessId } });
     if (!business) throw ApiError.notFound("Business not found");
     reply.send(business);
+  });
+
+  // --- Legal acceptance (Program 2 Loop 4) ---
+  fastify.get("/legal/status", async (request) => {
+    const pending = await getPendingAcceptances(request.user.userId, "BUSINESS");
+    return { pending };
+  });
+
+  fastify.post("/legal/accept", async (request) => {
+    const input = legalAcceptSchema.parse(request.body);
+    return recordAcceptance({
+      userId: request.user.userId,
+      type: input.type,
+      scope: "BUSINESS",
+      source: input.source,
+      platform: input.platform,
+      device: request.headers["user-agent"],
+      ipAddress: request.ip,
+    });
   });
 
   // MVP: one business per user, created during registration. This allows

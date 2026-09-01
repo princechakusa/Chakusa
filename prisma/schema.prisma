@@ -2093,6 +2093,81 @@ model CustomerConsentEvent {
   @@map("customer_consent_events")
 }
 
+// PROGRAM 2 LOOP 4: legal document versioning + immutable acceptance
+// records. Deliberately NOT built on CustomerConsentEvent above — that
+// model is messaging-channel consent scoped to a business, a different
+// purpose and shape from "this user accepted Terms of Service v3". Status
+// mirrors MessagingTemplateVersion's convention (plain String lifecycle
+// state, not a Prisma enum) since the same "DRAFT -> PUBLISHED -> ARCHIVED"
+// shape applies. `type` is a true enum since the set of legal document
+// kinds is fixed and rarely changes.
+enum LegalDocumentType {
+  PRIVACY_POLICY
+  TERMS_OF_SERVICE
+  COOKIE_POLICY
+  AI_DISCLOSURE
+}
+
+model LegalDocumentVersion {
+  id     String            @id @default(uuid())
+  type   LegalDocumentType
+  // Sequential per type, not globally, enforced by @@unique below.
+  version Int
+  status String @default("DRAFT") @map("status")
+  title   String
+  content String
+  summary String?
+  // Publishing a new version always requires fresh acceptance from anyone
+  // who accepted an older version, that's what "acceptance is tied to a
+  // specific version id" already means. This flag exists for the opposite
+  // case: a minor/typo-fix publish an admin wants to NOT force
+  // re-acceptance for, see getPendingAcceptances in legalDocuments.service.ts.
+  requiresReacceptance Boolean @default(true) @map("requires_reacceptance")
+
+  effectiveAt DateTime? @map("effective_at")
+  publishedAt DateTime? @map("published_at")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  createdByAdminMembershipId String? @map("created_by_admin_membership_id")
+
+  acceptanceEvents LegalAcceptanceEvent[]
+
+  @@unique([type, version])
+  @@index([type, status])
+  @@map("legal_document_versions")
+}
+
+enum LegalAcceptanceScope {
+  CUSTOMER
+  BUSINESS
+  ADMIN
+}
+
+// Append-only by convention: no service function in
+// legalDocuments.service.ts ever updates or deletes a row here. Never add
+// one, "immutable" is the entire point of this table.
+model LegalAcceptanceEvent {
+  id                String               @id @default(uuid())
+  userId            String               @map("user_id")
+  documentVersionId String               @map("document_version_id")
+  documentVersion   LegalDocumentVersion @relation(fields: [documentVersionId], references: [id])
+  scope             LegalAcceptanceScope
+
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+  platform   String?
+  language   String?
+  country    String?
+  device     String?
+  ipAddress  String?  @map("ip_address")
+  sessionId  String?  @map("session_id")
+  source     String
+
+  @@index([userId, documentVersionId])
+  @@index([documentVersionId])
+  @@map("legal_acceptance_events")
+}
+
 model Suppression {
   id         String    @id @default(uuid())
   businessId String    @map("business_id")

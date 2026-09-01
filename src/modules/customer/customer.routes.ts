@@ -7,6 +7,7 @@ import { getCustomerProfileOrThrow, linkCustomerToBusiness, recordCustomerActivi
 import { listCustomerNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/customer/customerNotifications.js";
 import { revokeAllCustomerSessions } from "../customerAuth/customerAuth.service.js";
 import { getCustomerAIContext, getCustomerAIConversations, getCustomerDashboard } from "./customer.service.js";
+import { getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 
 const updateProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(80).optional(),
@@ -24,6 +25,11 @@ const preferencesSchema = z.object({
 });
 const favouriteSchema = z.object({ favourite: z.boolean() });
 const notificationsQuery = z.object({ unreadOnly: z.coerce.boolean().optional(), limit: z.coerce.number().int().min(1).max(200).optional() });
+const legalAcceptSchema = z.object({
+  type: z.enum(LEGAL_DOCUMENT_TYPES),
+  platform: z.string().trim().max(40).optional(),
+  source: z.string().trim().max(60).default("app"),
+});
 
 export default async function customerRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticateCustomer);
@@ -53,6 +59,27 @@ export default async function customerRoutes(fastify: FastifyInstance) {
     await prisma.customerProfile.update({ where: { id: request.customer!.profileId }, data: { status: "DELETED" } });
     await revokeAllCustomerSessions(request.customer!.userId, "customer_account_closed");
     reply.status(204).send();
+  });
+
+  // --- Legal acceptance ---
+  fastify.get("/legal/status", async (request) => {
+    const pending = await getPendingAcceptances(request.customer!.userId, "CUSTOMER");
+    return { pending };
+  });
+
+  fastify.post("/legal/accept", async (request) => {
+    const input = legalAcceptSchema.parse(request.body);
+    return recordAcceptance({
+      userId: request.customer!.userId,
+      type: input.type,
+      scope: "CUSTOMER",
+      source: input.source,
+      platform: input.platform,
+      language: request.customer!.preferredLanguage,
+      device: request.headers["user-agent"],
+      ipAddress: request.ip,
+      sessionId: request.customer!.sessionId,
+    });
   });
 
   // --- Business relationships & favourites ---

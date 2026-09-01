@@ -17,6 +17,7 @@ export const NOTIFICATION_CATEGORIES = [
   "review_reminder",
   "appointment_reminder",
   "loyalty",
+  "legal_update",
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 

@@ -35,6 +35,7 @@ import messageRoutes from "./modules/messages/messages.routes.js";
 import automationRoutes from "./modules/automation/automation.routes.js";
 import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import publicReviewRoutes from "./modules/public/public.routes.js";
+import legalRoutes from "./modules/legal/legal.routes.js";
 import publicBusinessProfileRoutes from "./modules/public/publicBusinessProfile.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
 import teamRoutes from "./modules/team/team.routes.js";
@@ -263,6 +264,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // No fastify.authenticate/requireBusiness hooks here — see
   // public.routes.ts's top-level doc comment.
   await app.register(publicReviewRoutes, { prefix: "/public/reviews" });
+  await app.register(legalRoutes, { prefix: "/legal" });
   // Same unauthenticated, rate-limited discipline — see
   // publicBusinessProfile.routes.ts's top-level doc comment.
   await app.register(publicBusinessProfileRoutes, { prefix: "/public/business" });

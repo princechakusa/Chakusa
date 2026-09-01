@@ -86,6 +86,17 @@ import {
   adminRevokeRedemption,
 } from "./loyaltyAdmin.service.js";
 import {
+  archiveLegalVersion,
+  createLegalDraft,
+  forceReacceptance,
+  getLegalAcceptanceStats,
+  listLegalVersions,
+  publishLegalVersion,
+  rollbackLegalVersion,
+  searchLegalAcceptance,
+} from "./legalAdmin.service.js";
+import { LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
+import {
   adminAIAnalytics,
   adminAICostDashboard,
   adminAIEvaluationRun,
@@ -705,5 +716,60 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const result = await adminRevokeRedemption(request.params.id, reason);
     await recordAdminAudit({ actor: request.admin!, action: "LOYALTY_REDEMPTION_REVOKED", targetType: "reward_redemption", targetId: request.params.id, newValue: { reason }, context: auditContext(request) });
     reply.send(result);
+  });
+
+  // PROGRAM 2 LOOP 4: legal document version management + acceptance
+  // search. Reads need `legal.read`; version mutations need `legal.manage`
+  // + CSRF + audit, following the same shape as the loyalty admin block
+  // above.
+  const legalRead = { preHandler: fastify.authenticateAdmin } as const;
+  const legalDocumentTypeSchema = z.enum(LEGAL_DOCUMENT_TYPES);
+  fastify.get("/legal/versions", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.read");
+    const { type } = z.object({ type: legalDocumentTypeSchema }).parse(request.query);
+    reply.send({ items: await listLegalVersions(type) });
+  });
+  fastify.get<{ Params: { id: string } }>("/legal/versions/:id/stats", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.read");
+    reply.send(await getLegalAcceptanceStats(request.params.id));
+  });
+  fastify.get("/legal/acceptance", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.read");
+    const query = z.object({ userId: z.string().uuid().optional(), documentVersionId: z.string().uuid().optional(), type: legalDocumentTypeSchema.optional() }).parse(request.query);
+    reply.send({ items: await searchLegalAcceptance(query) });
+  });
+  fastify.post("/legal/versions", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({
+      type: legalDocumentTypeSchema,
+      title: z.string().trim().min(1).max(200),
+      content: z.string().trim().min(1),
+      summary: z.string().trim().max(2000).optional(),
+      effectiveAt: z.coerce.date().optional(),
+      requiresReacceptance: z.boolean().optional(),
+    }).parse(request.body);
+    const created = await createLegalDraft(request.admin!, input, auditContext(request));
+    reply.code(201).send(created);
+  });
+  fastify.post<{ Params: { id: string } }>("/legal/versions/:id/publish", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.manage");
+    await fastify.requireAdminCsrf(request);
+    reply.send(await publishLegalVersion(request.admin!, request.params.id, auditContext(request)));
+  });
+  fastify.post<{ Params: { id: string } }>("/legal/versions/:id/archive", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.manage");
+    await fastify.requireAdminCsrf(request);
+    reply.send(await archiveLegalVersion(request.admin!, request.params.id, auditContext(request)));
+  });
+  fastify.post<{ Params: { id: string } }>("/legal/versions/:id/rollback", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.manage");
+    await fastify.requireAdminCsrf(request);
+    reply.send(await rollbackLegalVersion(request.admin!, request.params.id, auditContext(request)));
+  });
+  fastify.post<{ Params: { id: string } }>("/legal/versions/:id/force-reacceptance", legalRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "legal.manage");
+    await fastify.requireAdminCsrf(request);
+    reply.send(await forceReacceptance(request.admin!, request.params.id, auditContext(request)));
   });
 }

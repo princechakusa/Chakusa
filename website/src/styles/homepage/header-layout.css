@@ -1,4 +1,4 @@
-.marketing-header nav > .container {
+.marketing-header > .header-shell > .container {
   min-height: 4.75rem;
   display: flex;
   align-items: center;
@@ -7,5 +7,5 @@
 }
 
 @media (min-width: 64rem) {
-  .marketing-header nav > .container { min-height: 5.25rem; }
+  .marketing-header > .header-shell > .container { min-height: 5.25rem; }
 }

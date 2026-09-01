@@ -6,12 +6,12 @@ import HeaderActions from "./HeaderActions.astro";
 import MobileNavigation from "./MobileNavigation.astro";
 ---
 <header class="marketing-header" data-header>
-  <nav aria-label="Primary navigation"><Container>
+  <div class="header-shell"><Container>
     <BrandMark />
     <DesktopNavigation />
     <HeaderActions />
     <MobileNavigation />
-  </Container></nav>
+  </Container></div>
 </header>
 <script>
   const roots = document.querySelectorAll<HTMLElement>("[data-menu-root]");
@@ -22,5 +22,5 @@ import MobileNavigation from "./MobileNavigation.astro";
   mobileTrigger?.addEventListener("click", () => { if (!mobilePanel) return; const open = mobileTrigger.getAttribute("aria-expanded") === "true"; open ? closeMobile() : (mobilePanel.hidden = false, mobileTrigger.setAttribute("aria-expanded", "true"), mobileTrigger.setAttribute("aria-label", "Close navigation"), document.body.classList.add("menu-open")); });
   mobilePanel?.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMobile));
   document.addEventListener("click", (event) => { const target = event.target; if (!(target instanceof Node)) return; if (![...roots].some((root) => root.contains(target))) closeMenus(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeMenus(); closeMobile(); } });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { const openTrigger = document.querySelector<HTMLButtonElement>('[data-menu-trigger][aria-expanded="true"]'); const mobileWasOpen = mobileTrigger?.getAttribute("aria-expanded") === "true"; closeMenus(); closeMobile(); if (openTrigger) openTrigger.focus(); else if (mobileWasOpen) mobileTrigger?.focus(); } });
 </script>

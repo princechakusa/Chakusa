@@ -2,6 +2,6 @@
 import NavigationDropdown from "./NavigationDropdown.astro";
 import { primaryNavigation } from "../../data/homepage";
 ---
-<div class="desktop-navigation" aria-label="Primary">
+<nav class="desktop-navigation" aria-label="Primary navigation">
   {primaryNavigation.map((item, index) => item.children ? <NavigationDropdown {...item} id={`primary-${index}`} /> : <a href={item.href}>{item.label}</a>)}
-</div>
+</nav>

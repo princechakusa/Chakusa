@@ -39,7 +39,29 @@ image reference.
   `EXPO_PUBLIC_*` flag state in `mobile/PRODUCTION_ENVIRONMENT.md` and the
   entitlement values in `src/lib/entitlements.ts`, see the Handbook's
   Part 2 acceptance criteria per page.
-- Two known placeholders block launch until replaced: the canonical domain
-  in `astro.config.mjs` (`chakusa.example`) and the support email in
-  `src/pages/about.astro` (`CONTACT_EMAIL@chakusa.com`), both are marked
-  with `TODO(launch-blocker)` comments.
+- Canonical domain is set to the real `chakusarecovery.com` (purchased via
+  Cloudflare 2026-09-01) in `astro.config.mjs`, `public/sitemap.xml`, and
+  `public/robots.txt`. One placeholder still blocks launch: the support
+  email in `src/pages/about.astro` (`CONTACT_EMAIL@chakusa.com`), marked
+  with a `TODO(launch-blocker)` comment.
+
+## Deploying to chakusarecovery.com
+
+This is a static site (`output: "static"`), so any static host works, but
+since the domain was bought through Cloudflare, Cloudflare Pages is the
+natural fit and needs no origin server:
+
+1. In the Cloudflare dashboard: **Workers & Pages → Create → Pages →
+   Connect to Git**, pick this repo.
+2. Build settings: root directory `website`, build command `npm run
+   build`, output directory `dist`.
+3. Once the Pages project deploys to its `*.pages.dev` URL, add
+   `chakusarecovery.com` (and `www` if wanted) as a **Custom domain** on
+   that Pages project — Cloudflare wires the DNS automatically since the
+   domain already lives in the same account.
+4. No secrets or environment variables are needed for this build; it's a
+   pure static site with no backend calls.
+
+This whole flow happens inside the Cloudflare dashboard the user already
+has access to, and doesn't require sharing any account credentials with
+an assistant.

@@ -1,0 +1,52 @@
+name: Deploy website to Cloudflare Pages
+
+# Only runs on changes under website/ — this workflow builds and deploys
+# the static marketing site (chakusarecovery.com), completely separate
+# from the backend (/src) and mobile app (/mobile).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy-website.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://chakusarecovery.com
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+      # Requires two repository secrets, added by a repo admin under
+      # Settings -> Secrets and variables -> Actions (never pasted into
+      # code, chat, or this file):
+      #   CLOUDFLARE_API_TOKEN   — a token scoped to "Cloudflare Pages: Edit"
+      #                            for this account only
+      #   CLOUDFLARE_ACCOUNT_ID  — found on the right sidebar of any page
+      #                            in the Cloudflare dashboard
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy dist --project-name=chakusa-website --branch=master

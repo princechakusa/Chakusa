@@ -3,30 +3,66 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 
 const title = "Terms of Service | Chakusa";
-const description = "The terms for using Chakusa, including how billing through the App Store or Google Play works, acceptable use, and how these terms can change.";
-const lastUpdated = "This draft has not yet been reviewed by counsel. Do not treat as final.";
+const description = "The terms for using Chakusa, including billing, your responsibilities when messaging your own customers, and how disputes are handled.";
+const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
 <BaseLayout {title} {description}>
   <SiteHeader />
   <main>
     <section class="legal-section content-shell" aria-labelledby="terms-title" data-reveal>
-      {/* TODO(launch-blocker): same status as privacy.astro, factual draft,
-          not counsel-reviewed. Replace or approve before launch. */}
+      {/* TODO(launch-blocker): engineering draft, not a legal document.
+          Before this goes live: (1) attorney review, (2) fill in the
+          governing-law jurisdiction below with wherever Chakusa is
+          actually incorporated, do not guess or invent one, an incorrect
+          governing-law clause is worse than an honest placeholder. */}
       <p class="eyebrow">Terms of Service</p>
       <h1 id="terms-title">Terms of Service</h1>
       <p class="legal-draft-notice">{lastUpdated}</p>
 
+      <h2>Agreement</h2>
+      <p>By creating a Chakusa account, you agree to these terms. If you're creating an account on behalf of a business, you're confirming you have the authority to bind that business to them.</p>
+
       <h2>Using Chakusa</h2>
-      <p>Chakusa is a mobile app for local service businesses to track leads, review requests, and customer follow-ups. You need an account to use it, and you're responsible for what you enter, including making sure you have the right to store and message the customer information you add.</p>
+      <p>Chakusa is a mobile app for local service businesses to track leads, review requests, and customer follow-ups. You need an account to use it, and you're responsible for what you enter, including making sure you have the right to store and message the customer information you add. You must be of legal age to enter into a contract in your jurisdiction to create an account.</p>
+
+      <h2>Your responsibility for messaging your customers</h2>
+      <p>If you use Chakusa to send messages to your own customers (directly, or by asking Chakusa to send them on your behalf), <strong>you are solely responsible for having their consent</strong> to be contacted and for complying with whatever law governs that communication where they live (for example, the TCPA in the US, CASL in Canada, or GDPR/PECR-derived rules in the EU/UK). Chakusa is a tool for following up with people who already know you and have agreed to hear from you, not a way to acquire new contacts. If a customer asks to stop receiving messages, you must honor that yourself; Chakusa does not yet automatically enforce opt-outs (see the Privacy Policy).</p>
 
       <h2>Plans and billing</h2>
-      <p>Chakusa offers a Free plan with usage limits, and paid Pro and Business plans billed as auto-renewing subscriptions through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store you subscribed through. See their terms for refund and cancellation policies.</p>
+      <p>Chakusa offers a Free plan with usage limits, and paid Pro and Business plans billed as auto-renewing subscriptions through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store you subscribed through, see their terms for refund and cancellation policies. Business-tier pricing is not yet finalized.</p>
 
       <h2>Acceptable use</h2>
-      <p>Don't use Chakusa to send unsolicited or unlawful messages, to store data you don't have the right to store, or to try to access another business's account.</p>
+      <p>Don't use Chakusa to:</p>
+      <ul>
+        <li>send unsolicited, unlawful, or fraudulent messages</li>
+        <li>store or message personal data you don't have the right to store or message</li>
+        <li>try to access another business's account or data</li>
+        <li>interfere with or attempt to reverse-engineer the service</li>
+      </ul>
+      <p>We can suspend or terminate an account that violates this, with or without notice depending on severity.</p>
+
+      <h2>Ownership</h2>
+      <p>The customer, lead, and message data you enter is yours. Chakusa's software, branding, and the way the product is built are ours. Using Chakusa doesn't give you any ownership over the app itself.</p>
+
+      <h2>No warranty</h2>
+      <p>Chakusa is provided "as is." We work to keep it reliable, but we don't guarantee it will be uninterrupted, error-free, or fit for a particular purpose beyond what's described on this site.</p>
+
+      <h2>Limitation of liability</h2>
+      <p>To the extent allowed by law, Chakusa isn't liable for indirect, incidental, or consequential damages arising from your use of the app, including messages sent to your customers or decisions made based on data in the app. This doesn't limit liability where the law doesn't allow it to be limited.</p>
+
+      <h2>Indemnification</h2>
+      <p>You agree to cover any claim, cost, or damage arising from your misuse of Chakusa, including messaging a customer without proper consent or storing data you didn't have the right to store.</p>
+
+      <h2>Termination</h2>
+      <p>You can stop using Chakusa and delete your account at any time. We can suspend or terminate access for violating these terms.</p>
+
+      <h2>Governing law</h2>
+      {/* TODO(launch-blocker): placeholder, not invented, fill in with
+          Chakusa's actual jurisdiction of incorporation once known. */}
+      <p class="legal-draft-notice">Placeholder: the governing law and jurisdiction for disputes has not been set yet, pending confirmation of where Chakusa is legally incorporated. This must be filled in correctly, not guessed, before this page is final.</p>
 
       <h2>Changes</h2>
-      <p>We'll update these terms as the product changes. Material changes will be reflected on this page.</p>
+      <p>We'll update these terms as the product changes. Material changes will be reflected on this page and the date at the top.</p>
 
       <h2>Questions</h2>
       <p>Reach out. See the <a href="/about#contact">About page</a>.</p>

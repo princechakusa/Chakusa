@@ -856,6 +856,17 @@ section.problem {
   color: var(--color-coral-text);
   font-weight: 500;
 }
+.legal-section ul {
+  max-width: 38rem;
+  margin: 0 0 var(--space-5);
+  padding-left: 1.25rem;
+  color: var(--color-text-secondary-accessible);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+.legal-section ul li {
+  margin-bottom: .5rem;
+}
 .legal-draft-notice {
   display: inline-block;
   margin: var(--space-3) 0 0;

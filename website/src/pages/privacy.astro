@@ -3,35 +3,77 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 
 const title = "Privacy Policy | Chakusa";
-const description = "How Chakusa collects, stores, and protects your business and customer data, including which third parties (like Twilio and Sentry) ever see it.";
-const lastUpdated = "This draft has not yet been reviewed by counsel. Do not treat as final.";
+const description = "How Chakusa collects, stores, and protects your business and customer data, including every third party that ever sees it, and your rights under GDPR and CCPA.";
+const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
 <BaseLayout {title} {description}>
   <SiteHeader />
   <main>
     <section class="legal-section content-shell" aria-labelledby="privacy-title" data-reveal>
-      {/* TODO(launch-blocker): this page is a factual draft grounded in the
-          actual backend implementation, written by engineering. It has not
-          been reviewed by counsel and must not go live as-is. Replace or
-          approve before launch. */}
+      {/* TODO(launch-blocker): this is an engineering draft grounded in the
+          actual backend implementation (see src/lib, prisma/schema.prisma),
+          not a legal document. Two things MUST happen before this can be
+          relied on as real legal protection:
+          1. Attorney review, specifically confirming which jurisdictions
+             Chakusa is actually subject to (incorporation state/country,
+             and every country/state real users are in) and whether GDPR/
+             CCPA/CASL/TCPA obligations beyond "having a policy page" are
+             being met operationally, not just documented here.
+          2. Building the SMS opt-out handling this policy describes as a
+             product goal, see the honest caveat in the "Text messages"
+             section below. Do not silently change that caveat to claim
+             automated STOP-keyword handling exists until it actually does
+             (see src/lib re: CustomerOptOut having no producer/consumer
+             yet, as of this draft). */}
       <p class="eyebrow">Privacy Policy</p>
       <h1 id="privacy-title">Privacy Policy</h1>
       <p class="legal-draft-notice">{lastUpdated}</p>
 
+      <h2>Who this covers</h2>
+      <p>This policy covers the Chakusa mobile app and this website. It applies to you if you're a business owner with a Chakusa account, and it explains what happens to the data of your own customers that you enter into Chakusa on their behalf.</p>
+
       <h2>What we collect</h2>
-      <p>When you create a Chakusa account, we collect your name, email, and business details. If you sign in with Google or Apple, we receive the basic profile information those providers share. If you use Chakusa to track your own customers, the customer names, phone numbers, and notes you enter are stored on your behalf. That data belongs to your business, not to us.</p>
+      <p>When you create a Chakusa account, we collect your name, email, and business details (business name, industry). If you sign in with Google or Apple, we receive the basic profile information those providers share (name, email, a stable account identifier). We also collect basic technical information needed to run the app: device push-notification tokens, and error/diagnostic data when something breaks.</p>
+      <p>If you use Chakusa to track your own customers, the customer names, phone numbers, notes, message content, and review/feedback records you enter are stored on our systems on your behalf. That data is yours, not ours: you're the one responsible for having the right to collect and store it, and for honoring any request from your customer to have it corrected or removed.</p>
 
       <h2>How we use it</h2>
-      <p>We use your data to run the product: showing you your leads, review requests, and reminders, sending messages on your behalf when you ask us to (Pro plan), and sending you push notifications about activity in your account. We don't sell your data, and we don't use it to serve you ads.</p>
+      <p>We use your data to run the product: showing you your leads, review requests, and reminders; sending messages on your behalf when you ask us to (Pro plan) or when you copy a message we generate (Free plan); and sending you push notifications about activity in your account. We don't sell your data or your customers' data, and we don't use it to serve ads.</p>
 
-      <h2>Third parties we work with</h2>
-      <p>Message delivery runs through Twilio. Push notifications run through Expo's notification service. Error monitoring on our backend runs through Sentry, which is configured to scrub authentication tokens and other sensitive fields before anything is sent. If you subscribe to Pro or Business, Apple or Google handles your payment. We never see your card details.</p>
+      <h2>Text messages</h2>
+      <p>If you're on a plan where Chakusa sends messages on your behalf, message delivery runs through Twilio. Standard message and data rates may apply to your customers depending on their carrier. <strong>You are responsible for making sure you have your customer's consent to message them</strong> before using Chakusa to do so, under whatever law applies where they live (in the US, this generally means the TCPA; in Canada, CASL; other countries have their own rules). Chakusa is a tool you use to message people who've already given you permission to contact them, not a way to acquire new contacts to message.</p>
+      <p class="legal-draft-notice">Honest gap, not yet resolved: as of this draft, Chakusa does not yet have automated reply-STOP opt-out handling. If a customer asks to stop receiving messages, you (the business) need to honor that manually and stop messaging them through Chakusa. Automated opt-out handling is a planned product improvement, not something to claim as already built until it is.</p>
+
+      <h2>Who we share it with</h2>
+      <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
+      <ul>
+        <li><b>Twilio</b>, sends SMS messages when you ask Chakusa to message a customer</li>
+        <li><b>Expo</b>, delivers push notifications to your phone</li>
+        <li><b>Sentry</b>, receives error/crash reports from our backend, configured to scrub authentication tokens and other sensitive fields before anything is sent</li>
+        <li><b>Google</b> and <b>Apple</b>, handle Sign-In if you use those options, and handle billing and payment if you subscribe to Pro or Business (we never see your card details)</li>
+        <li>Our infrastructure and database providers, who host the servers Chakusa runs on</li>
+      </ul>
+      <p>Because these providers operate infrastructure in multiple countries, your data may be processed outside the country you or your customers are in. Each provider is responsible for their own compliance with applicable data-transfer rules for the services they provide.</p>
+
+      <h2>How long we keep it</h2>
+      <p>We keep your account and customer data for as long as your account is active, plus a reasonable period afterward in case you reactivate, unless you ask us to delete it sooner or the law requires us to keep it longer.</p>
+
+      <h2>Your rights</h2>
+      <p>Depending on where you or your customers are located, you may have rights to access, correct, export, or delete personal data, and to object to or restrict certain uses of it, for example under the EU/UK <b>GDPR</b> or the California <b>CCPA/CPRA</b>. You can exercise these rights, for your own account or on behalf of a customer who's asked you to, by contacting us (see below). We'll respond within the time required by applicable law.</p>
+      <p>Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
+
+      <h2>Children's privacy</h2>
+      <p>Chakusa is a business tool, not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
 
       <h2>How we protect it</h2>
       <p>Passwords are hashed, never stored in plain text. Sessions are rotated. Any linked sign-in credentials we store are encrypted at rest. Access to production data is limited to what's needed to operate the service.</p>
 
-      <h2>Your choices</h2>
-      <p>You can request a copy of your data or ask us to delete your account by contacting us. See the <a href="/about#contact">About page</a>.</p>
+      <h2>Changes to this policy</h2>
+      <p>If we make a material change to how we handle your data, we'll update this page and change the date at the top.</p>
+
+      <h2>Contact</h2>
+      {/* TODO(launch-blocker): CONTACT_EMAIL is a placeholder, replace with
+          the real support address before this page ships. */}
+      <p>To exercise a data right or ask a question about this policy: <a href="mailto:CONTACT_EMAIL@chakusa.com">CONTACT_EMAIL@chakusa.com</a>.</p>
     </section>
   </main>
 </BaseLayout>

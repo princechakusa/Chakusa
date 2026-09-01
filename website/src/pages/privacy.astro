@@ -19,12 +19,15 @@ const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed atto
              and every country/state real users are in) and whether GDPR/
              CCPA/CASL/TCPA obligations beyond "having a policy page" are
              being met operationally, not just documented here.
-          2. Building the SMS opt-out handling this policy describes as a
-             product goal, see the honest caveat in the "Text messages"
-             section below. Do not silently change that caveat to claim
-             automated STOP-keyword handling exists until it actually does
-             (see src/lib re: CustomerOptOut having no producer/consumer
-             yet, as of this draft). */}
+          2. This page currently only describes the original CRM (leads,
+             review requests, comeback reminders). A 2026-09 backend audit
+             found a second, much larger product surface now exists
+             (marketplace, booking + Stripe payments, loyalty/rewards, and
+             an AI platform using OpenAI/Anthropic that processes customer
+             conversation data, with unredacted admin visibility into AI
+             chat transcripts) that this policy does not yet disclose.
+             Whether/how to reflect that here is a pending product
+             decision, not something to silently add or omit. */}
       <p class="eyebrow">Privacy Policy</p>
       <h1 id="privacy-title">Privacy Policy</h1>
       <p class="legal-draft-notice">{lastUpdated}</p>
@@ -41,7 +44,7 @@ const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed atto
 
       <h2>Text messages</h2>
       <p>If you're on a plan where Chakusa sends messages on your behalf, message delivery runs through Twilio. Standard message and data rates may apply to your customers depending on their carrier. <strong>You are responsible for making sure you have your customer's consent to message them</strong> before using Chakusa to do so, under whatever law applies where they live (in the US, this generally means the TCPA; in Canada, CASL; other countries have their own rules). Chakusa is a tool you use to message people who've already given you permission to contact them, not a way to acquire new contacts to message.</p>
-      <p class="legal-draft-notice">Honest gap, not yet resolved: as of this draft, Chakusa does not yet have automated reply-STOP opt-out handling. If a customer asks to stop receiving messages, you (the business) need to honor that manually and stop messaging them through Chakusa. Automated opt-out handling is a planned product improvement, not something to claim as already built until it is.</p>
+      <p>If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further to them. If you send a message manually or through a channel outside Chakusa's own automation, you're still responsible for honoring that opt-out yourself.</p>
 
       <h2>Who we share it with</h2>
       <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>

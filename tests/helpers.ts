@@ -141,6 +141,9 @@ export async function resetDatabase() {
     prisma.adminMembership.deleteMany(),
     prisma.platformSetting.deleteMany(),
     prisma.subscription.deleteMany(),
+    // legalAcceptanceEvent references legalDocumentVersion, must delete first.
+    prisma.legalAcceptanceEvent.deleteMany(),
+    prisma.legalDocumentVersion.deleteMany(),
     prisma.business.deleteMany(),
     prisma.user.deleteMany(),
   ]);

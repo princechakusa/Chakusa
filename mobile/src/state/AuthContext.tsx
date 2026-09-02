@@ -1,17 +1,19 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AuthResponse, BusinessDto, UserDto } from '../apiTypes';
+import { AuthResponse, BusinessDto, LegalDocumentType, UserDto } from '../apiTypes';
 import { ApiError, setUnauthorizedHandler } from '../services/api';
-import { authApi, businessApi } from '../services/endpoints';
+import { authApi, businessApi, legalApi } from '../services/endpoints';
 import { clearStoredSession, getStoredSession, storeSession } from '../services/tokenStorage';
 import { requestGoogleIdToken } from '../services/googleAuth';
 import { requestAppleCredential } from '../services/appleAuth';
 import { unregisterCurrentPushToken } from '../services/pushNotifications';
 import { usePreferences } from './PreferencesContext';
 import { hasCompletedBusinessSetup } from '../domain/authenticationFlow';
+import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
 
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
   status: AuthStatus; restoreError: string | null; user: UserDto | null; business: BusinessDto | null; role: string | null; isOnboarded: boolean;
+  pendingLegalDocuments: PendingLegalDocument[]; refreshLegalStatus: () => Promise<void>; acceptLegalDocument: (type: LegalDocumentType) => Promise<void>;
   restore: () => Promise<void>; login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string }) => Promise<void>;
   googleSignIn: (invitationToken?: string) => Promise<boolean>; linkGoogle: () => Promise<boolean>;
@@ -47,14 +49,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [business, setBusiness] = useState<BusinessDto | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [pendingLegalDocuments, setPendingLegalDocuments] = useState<PendingLegalDocument[]>([]);
   const clearSession = useCallback(async () => {
-    await clearStoredSession(); await preferencesRef.current.activateScope(null, false); setUser(null); setBusiness(null); setRole(null); setStatus('anonymous');
+    await clearStoredSession(); await preferencesRef.current.activateScope(null, false); setUser(null); setBusiness(null); setRole(null); setPendingLegalDocuments([]); setStatus('anonymous');
+  }, []);
+  // PROGRAM 2 LOOP 4: a business account's legal-acceptance status is a
+  // server fact, not a device preference like onboardingComplete — so it's
+  // re-fetched here rather than cached in PreferencesContext's local
+  // storage. Failures are swallowed: this must never block sign-in or
+  // session restore just because the legal-status check couldn't reach the
+  // network; AppNavigator simply won't show the LegalAcceptance gate until
+  // a subsequent successful check finds something pending.
+  const refreshLegalStatus = useCallback(async () => {
+    try { setPendingLegalDocuments((await legalApi.businessStatus()).pending); }
+    catch { /* best-effort; see comment above */ }
   }, []);
   const applySession = useCallback(async (response: AuthResponse) => {
     await preferencesRef.current.activateScope(response.user.id, hasCompletedBusinessSetup(response.business), response.business?.industry);
     await storeSession({ accessToken: response.accessToken, refreshToken: response.refreshToken });
     setUser(response.user); setBusiness(response.business); setRole(response.role ?? null); setStatus('authenticated');
-  }, []);
+    void refreshLegalStatus();
+  }, [refreshLegalStatus]);
 
   useEffect(() => { preferencesRef.current = preferences; }, [preferences]);
   useEffect(() => { setUnauthorizedHandler(clearSession); return () => setUnauthorizedHandler(undefined); }, [clearSession]);
@@ -63,16 +78,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!await getStoredSession()) { setStatus('anonymous'); return; }
     try {
       const me = await authApi.me(); await preferencesRef.current.activateScope(me.user.id, hasCompletedBusinessSetup(me.business), me.business?.industry); setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
+      void refreshLegalStatus();
     } catch (error) {
       if (error instanceof ApiError && error.kind === 'unauthorized') return;
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.'); setStatus('restore-error');
     }
-  }, []);
+  }, [refreshLegalStatus]);
   useEffect(() => { void restore(); }, [restore]);
+
+  const acceptLegalDocument = useCallback(async (type: LegalDocumentType) => {
+    await legalApi.businessAccept(type);
+    setPendingLegalDocuments(current => withoutAccepted(current, type));
+  }, []);
 
   const value = useMemo<AuthValue>(() => ({
     status, restoreError, user, business, role, restore,
     isOnboarded: hasCompletedBusinessSetup(business),
+    pendingLegalDocuments, refreshLegalStatus, acceptLegalDocument,
     login: async (email, password) => applySession(await authApi.login({ email, password })),
     register: async input => applySession(await authApi.register(input)),
     googleSignIn: async invitationToken => { const idToken = await requestGoogleIdToken(); if (!idToken) return false; await applySession(await authApi.google(idToken, invitationToken)); return true; },
@@ -89,7 +111,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     deleteAccountWithGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.deleteAccountWithGoogle(idToken); preferencesRef.current.resetOnboarding(); await clearSession(); return true; },
     deleteAccountWithApple: async () => { const challenge = await authApi.appleDeleteChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.deleteAccountWithApple(credential); preferencesRef.current.resetOnboarding(); await clearSession(); return true; },
     refreshBusiness: async () => { const next = await businessApi.get(); setBusiness(next); return next; },
-  }), [applySession, business, clearSession, restore, restoreError, role, status, user]);
+  }), [acceptLegalDocument, applySession, business, clearSession, pendingLegalDocuments, refreshLegalStatus, restore, restoreError, role, status, user]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

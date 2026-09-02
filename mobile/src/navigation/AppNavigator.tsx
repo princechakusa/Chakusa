@@ -15,6 +15,7 @@ import { AppointmentsImportScreen } from '../screens/AppointmentsImportScreen';
 import { LeadDetailCorrectScreen as LeadDetailScreen } from '../screens/LeadDetailCorrectScreen';
 import { LeadsScreen } from '../screens/LeadsScreen';
 import { PremiumFtueScreen } from '../screens/PremiumFtueScreen';
+import { LegalAcceptanceScreen } from '../screens/LegalAcceptanceScreen';
 import { ReviewDetailScreen } from '../screens/ReviewDetailScreen';
 import { ReviewsScreen } from '../screens/ReviewsScreen';
 import { AccountHubScreen as SettingsScreen } from '../screens/AccountHubScreen';
@@ -69,8 +70,8 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
 }
 
 export function AppNavigator() {
-  const { status, role, restoreError, restore } = useAuth(); const preferences = usePreferences();
-  const routes = authenticationRoutes(status, preferences.onboardingComplete);
+  const { status, role, restoreError, restore, pendingLegalDocuments } = useAuth(); const preferences = usePreferences();
+  const routes = authenticationRoutes(status, preferences.onboardingComplete, pendingLegalDocuments.length > 0);
   useEffect(() => { if (status === 'authenticated' && (role === 'ADMIN' || role === 'STAFF') && !preferences.onboardingComplete) preferences.completeOnboarding(); }, [preferences, role, status]);
   if (routes.restoring || preferences.restoring) return <View style={styles.restoring}><ActivityIndicator color={colors.primary} /><Text style={styles.restoringText}>Restoring your workspace…</Text></View>;
   if (routes.restoreError) return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
@@ -81,10 +82,11 @@ export function AppNavigator() {
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}
     {status === 'authenticated' && routes.onboarding ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
-    {status === 'authenticated' && preferences.onboardingComplete ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AppointmentEditor" component={AppointmentEditorScreen} /><Root.Screen name="AppointmentsImport" component={AppointmentsImportScreen} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="ServiceCatalog" component={ServiceCatalogScreen} /><Root.Screen name="ExternalCalendar" component={ExternalCalendarScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
-    {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="AvailabilitySettings" component={AvailabilitySettingsScreen} /> : null}
+    {routes.legalAcceptance ? <Root.Screen name="LegalAcceptance" component={LegalAcceptanceScreen} options={{ headerShown: false }} /> : null}
+    {routes.main ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AppointmentEditor" component={AppointmentEditorScreen} /><Root.Screen name="AppointmentsImport" component={AppointmentsImportScreen} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="ServiceCatalog" component={ServiceCatalogScreen} /><Root.Screen name="ExternalCalendar" component={ExternalCalendarScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
+    {routes.main ? <Root.Screen name="AvailabilitySettings" component={AvailabilitySettingsScreen} /> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
-    {status === 'authenticated' && preferences.onboardingComplete ? <Root.Screen name="Team" component={TeamScreen} /> : null}
+    {routes.main ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />
     <Root.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset password' }} />
     <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>

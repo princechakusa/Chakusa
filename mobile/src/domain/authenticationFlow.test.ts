@@ -12,4 +12,7 @@ describe('authentication flow', () => {
   it('builds new-owner registration details', () => expect(registrationInput({ email: ' owner@example.com ', password: 'secret', fullName: ' Owner ', businessName: ' Studio ', defaultIndustry: 'salon' })).toEqual({ email: 'owner@example.com', password: 'secret', fullName: 'Owner', businessName: 'Studio', industry: 'salon' }));
   it('recognises an explicitly completed business setup', () => expect(hasCompletedBusinessSetup({ onboardingCompletedAt: '2026-08-24T12:00:00.000Z' } as never)).toBe(true));
   it('does not infer completion from partial business fields', () => expect(hasCompletedBusinessSetup({ name: 'Studio', phone: '+15551234567', defaultServices: ['Haircut'], onboardingCompletedAt: null } as never)).toBe(false));
+  it('routes an onboarded owner with a pending legal document to legalAcceptance instead of Main', () => expect(authenticationRoutes('authenticated', true, true)).toMatchObject({ main: false, onboarding: false, legalAcceptance: true }));
+  it('defaults to no pending legal acceptance so every pre-existing caller is unaffected', () => expect(authenticationRoutes('authenticated', true)).toMatchObject({ main: true, legalAcceptance: false }));
+  it('never shows legalAcceptance before business onboarding is complete, onboarding still takes priority', () => expect(authenticationRoutes('authenticated', false, true)).toMatchObject({ onboarding: true, legalAcceptance: false, main: false }));
 });

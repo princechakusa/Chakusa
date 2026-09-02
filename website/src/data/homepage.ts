@@ -1,14 +1,15 @@
 // PROGRAM: POWERFUL FEATURES PROGRAM. The first standalone feature page
 // (see src/pages/features/enquiries.astro). Kept as its own top-level nav
-// entry, distinct from "Product", so future feature pages (bookings,
-// customers, reviews, and so on, see that page's final report for
-// recommended routes) have one place to live without needing a nav
-// redesign each time one ships.
+// entry, distinct from "Product". Plain link, not a dropdown: with only
+// one feature page live, a dropdown whose single child pointed at the
+// same URL as the parent label was genuinely confusing (clicking either
+// looked identical, and clicking the child a second time did nothing
+// since the browser was already there). Revisit as a dropdown once a
+// second feature page exists (see that page's final report for
+// recommended routes) and there's an actual choice to present.
 export const primaryNavigation = [
   { label: "How it works", href: "/how-it-works" },
-  { label: "Features", href: "/features/enquiries", children: [
-    { label: "Enquiries & leads", href: "/features/enquiries", description: "Turn a missed call or a new enquiry into a lead you can follow up on." },
-  ] },
+  { label: "Features", href: "/features/enquiries" },
   { label: "Product", href: "/product", children: [
     { label: "Customer response", href: "/product#customer-response", description: "Respond to enquiries with human oversight." },
     { label: "Automation", href: "/product#automation", description: "Keep follow-ups and reminders moving." },

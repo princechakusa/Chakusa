@@ -145,7 +145,7 @@ export const businessAttention = {
   title: "See what needs your attention, in one place.",
   copy: "Leads, bookings, reviews, and customers due back all surface in one working view, so the team can act on what's actually happening instead of checking five different tools.",
   points: ["Total customers and new customers this month", "Review requests sent and received", "Private feedback", "Recent activity across the whole journey"],
-  visual: null,
+  visual: "/images/how-it-works/chakusa-dashboard-desktop.png",
   visualLabel: "Business dashboard and recent activity",
 };
 

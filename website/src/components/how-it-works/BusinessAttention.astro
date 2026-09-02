@@ -1,0 +1,5 @@
+---
+import { businessAttention } from "../../data/how-it-works";
+import ProductScreenshot from "../product/ProductScreenshot.astro";
+---
+<section class="hiw-attention container" aria-labelledby="attention-title"><div class="hiw-attention__grid"><div class="hiw-attention__copy"><p class="hiw-kicker">{businessAttention.eyebrow}</p><h2 id="attention-title">{businessAttention.title}</h2><p>{businessAttention.copy}</p><ul>{businessAttention.points.map(point => <li>{point}</li>)}</ul></div><ProductScreenshot src={businessAttention.visual} label={businessAttention.visualLabel} /></div></section>

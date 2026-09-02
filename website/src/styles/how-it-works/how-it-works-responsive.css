@@ -1,0 +1,24 @@
+@media(min-width:42rem){
+.hiw-hero__path{grid-template-columns:repeat(3,1fr)}
+.hiw-overview__path{grid-template-columns:repeat(3,1fr)}
+.hiw-calendar__grid{gap:.5rem}
+}
+@media(min-width:64rem){
+.hiw-hero{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:5rem;align-items:center;padding-block:7rem 6rem}
+.hiw-hero__path{grid-template-columns:repeat(2,1fr)}
+.hiw-overview{padding-block:8rem}
+.hiw-overview__path{grid-template-columns:repeat(9,1fr)}
+.hiw-overview__path a{min-height:8rem}
+.hiw-step{padding-block:9rem}
+.hiw-step__grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:6rem}
+.hiw-step--reverse .hiw-step__copy{order:2}
+.hiw-step--reverse .product-screenshot,.hiw-step--reverse .hiw-calendar{order:1}
+.hiw-service{padding-block:8rem}
+.hiw-attention{padding-block:8rem}
+.hiw-attention__grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:6rem}
+.hiw-loop{padding-block:8rem}
+.hiw-example{padding-block:8rem}
+.hiw-faq{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);gap:6rem;padding-block:9rem}
+.hiw-faq>div:last-child{margin-top:0}
+}
+@media(prefers-reduced-motion:reduce){.hiw-hero__copy,.hiw-hero__path,.hiw-section-heading,.hiw-step__copy,.hiw-service__inner,.hiw-attention__copy,.hiw-loop__ring,.hiw-example__card,.hiw-calendar{animation:none}}

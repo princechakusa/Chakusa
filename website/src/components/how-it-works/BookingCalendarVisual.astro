@@ -1,0 +1,5 @@
+---
+const days = Array.from({ length: 30 }, (_, i) => i + 1);
+const bookedDay = 14;
+---
+<div class="hiw-calendar" role="img" aria-label="Illustrative calendar showing a confirmed appointment"><div class="hiw-calendar__head"><span>Availability</span><strong>September</strong></div><div class="hiw-calendar__grid">{days.map(day => <span class:list={["hiw-calendar__day", { "hiw-calendar__day--booked": day === bookedDay }]}>{day}</span>)}</div><div class="hiw-calendar__note"><span class="hiw-calendar__dot" aria-hidden="true"></span>Confirmed appointment</div></div>

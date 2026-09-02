@@ -1,0 +1,4 @@
+---
+import { connectedLoop } from "../../data/how-it-works";
+---
+<section class="hiw-loop container" aria-labelledby="loop-title"><div class="hiw-section-heading"><p class="hiw-kicker">{connectedLoop.eyebrow}</p><h2 id="loop-title">{connectedLoop.title}</h2><p>{connectedLoop.copy}</p></div><ol class="hiw-loop__ring" aria-label="The Chakusa customer relationship loop">{connectedLoop.stages.map(stage => <li>{stage}</li>)}</ol></section>

@@ -1,0 +1,7 @@
+---
+import { howItWorksFaqs, journeyStages } from "../../data/how-it-works";
+const breadcrumb = { "@context":"https://schema.org", "@type":"BreadcrumbList", itemListElement:[{ "@type":"ListItem", position:1, name:"Home", item:String(Astro.site) },{ "@type":"ListItem", position:2, name:"How it works", item:new URL("/how-it-works", Astro.site).toString() }] };
+const faq = { "@context":"https://schema.org", "@type":"FAQPage", mainEntity: howItWorksFaqs.map(item => ({ "@type": "Question", name: item.question, acceptedAnswer: { "@type": "Answer", text: item.answer } })) };
+const howTo = { "@context":"https://schema.org", "@type":"HowTo", name:"How Chakusa works", description:"How a local service business uses Chakusa, from setting up a business profile to bringing a customer back for another visit.", step: journeyStages.map(stage => ({ "@type": "HowToStep", position: Number(stage.number), name: stage.label, url: `${new URL("/how-it-works", Astro.site).toString()}#${stage.id}` })) };
+---
+<script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumb)} /><script type="application/ld+json" is:inline set:html={JSON.stringify(faq)} /><script type="application/ld+json" is:inline set:html={JSON.stringify(howTo)} />

@@ -1,0 +1,4 @@
+---
+import { howItWorksFaqs } from "../../data/how-it-works";
+---
+<section class="hiw-faq container" aria-labelledby="hiw-faq-title"><div class="hiw-section-heading"><p class="hiw-kicker">How it works, in detail</p><h2 id="hiw-faq-title">Common questions about the process.</h2></div><div>{howItWorksFaqs.map(item => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></section>

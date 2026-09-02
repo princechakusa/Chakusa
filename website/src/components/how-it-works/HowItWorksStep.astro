@@ -1,0 +1,7 @@
+---
+import ProductScreenshot from "../product/ProductScreenshot.astro";
+import BookingCalendarVisual from "./BookingCalendarVisual.astro";
+interface Props { step: { id: string; number: string; eyebrow: string; title: string; copy: string; points: string[]; next: string; visual: string | null; visualLabel: string }; index: number; }
+const { step, index } = Astro.props;
+---
+<section class:list={["hiw-step", { "hiw-step--reverse": index % 2 === 1 }]} id={step.id} aria-labelledby={`${step.id}-title`}><div class="container hiw-step__grid"><div class="hiw-step__copy"><span class="hiw-step__number">{step.number}</span><p class="hiw-kicker">{step.eyebrow}</p><h2 id={`${step.id}-title`}>{step.title}</h2><p>{step.copy}</p><ul>{step.points.map(point => <li>{point}</li>)}</ul><p class="hiw-step__next">Next: {step.next}</p></div>{step.id === "book" ? <BookingCalendarVisual /> : <ProductScreenshot src={step.visual} label={step.visualLabel} />}</div></section>

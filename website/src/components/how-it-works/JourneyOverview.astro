@@ -1,0 +1,4 @@
+---
+import { journeyStages } from "../../data/how-it-works";
+---
+<section class="hiw-overview container" id="hiw-journey" aria-labelledby="hiw-overview-title"><div class="hiw-section-heading"><p class="hiw-kicker">The journey at a glance</p><h2 id="hiw-overview-title">One connected path, from setup to return visit.</h2><p>Every stage below is covered in detail further down the page.</p></div><ol class="hiw-overview__path">{journeyStages.map(stage => <li><a href={`#${stage.id}`}><span aria-hidden="true">{stage.number}</span><strong>{stage.label}</strong></a></li>)}</ol></section>

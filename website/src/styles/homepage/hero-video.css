@@ -1,13 +1,12 @@
 .hero-section>.container{display:block;min-height:0}
-.hero-banner{position:relative;width:100%;overflow:hidden;background:#171923;min-height:26rem;height:80vh;max-height:46rem}
+.hero-banner{position:relative;overflow:hidden;background:#171923}
 .hero-video,.hero-video-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
 .hero-video-fallback{display:none}
-.hero-overlay{position:absolute;inset:0;display:flex;align-items:flex-end;padding:2.5rem 1.5rem;background:linear-gradient(180deg,rgba(8,10,14,0) 0%,rgba(8,10,14,.32) 45%,rgba(8,10,14,.84) 100%)}
+.hero-overlay{position:relative;z-index:1;min-height:26rem;display:flex;align-items:flex-end;padding:2.5rem 1.5rem;background:linear-gradient(180deg,rgba(8,10,14,0) 0%,rgba(8,10,14,.32) 45%,rgba(8,10,14,.84) 100%)}
 .hero-overlay h1,.hero-overlay .hero-lead,.hero-overlay .eyebrow{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .hero-overlay .container{width:100%}
 .hero-overlay .hero-content{max-width:34rem;margin:0;text-align:left}
 .hero-overlay .eyebrow{color:#fff}
-.hero-overlay .eyebrow::before{background:#fff}
 .hero-overlay h1{color:#fff}
 .hero-overlay h1 em{color:#ffb0ac}
 .hero-overlay .hero-lead{color:rgba(255,255,255,.88)}
@@ -15,5 +14,7 @@
 .hero-overlay .hero-trust svg{color:#ffb0ac}
 .hero-overlay .hero-actions{justify-content:flex-start}
 .hero-overlay .hero-trust{justify-content:flex-start}
+@media(min-width:48rem){.hero-overlay{min-height:32rem}}
+@media(min-width:64rem){.hero-overlay{min-height:40rem}}
 @media(max-width:47.99rem){.hero-video,.hero-video-fallback{object-position:22% center}}
 @media(prefers-reduced-motion:reduce){.hero-video{display:none}.hero-video-fallback{display:block}}

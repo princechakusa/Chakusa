@@ -9,7 +9,6 @@
 .hero-actions .ui-button{min-height:3.15rem;padding-inline:1.4rem}
 .hero-orb,.hero-grid{display:none}
 .eyebrow{color:var(--ink);font-size:.78rem;letter-spacing:.01em;text-transform:none}
-.eyebrow::before{content:"";width:1.75rem;height:2px;border-radius:999px;background:var(--violet)}
 .hero-poster{border-color:rgba(255,92,92,.16);border-radius:1.5rem;background:linear-gradient(145deg,#fff 35%,#fff3f3);box-shadow:0 34px 90px rgba(32,36,43,.14),0 1px 0 rgba(255,255,255,.9) inset}
 .hero-poster{min-height:36rem}
 .dashboard-frame{display:none;background:#fff;transform:none;animation:none}

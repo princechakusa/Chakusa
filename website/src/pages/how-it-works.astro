@@ -5,19 +5,22 @@ import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
 import HowItWorksHero from "../components/how-it-works/HowItWorksHero.astro";
 import JourneyOverview from "../components/how-it-works/JourneyOverview.astro";
-import HowItWorksChapter from "../components/how-it-works/HowItWorksChapter.astro";
+import HowItWorksStep from "../components/how-it-works/HowItWorksStep.astro";
 import ServiceMoment from "../components/how-it-works/ServiceMoment.astro";
+import BusinessAttention from "../components/how-it-works/BusinessAttention.astro";
+import ConnectedLoop from "../components/how-it-works/ConnectedLoop.astro";
 import RealWorldExample from "../components/how-it-works/RealWorldExample.astro";
 import HowItWorksFaq from "../components/how-it-works/HowItWorksFaq.astro";
 import HowItWorksCta from "../components/how-it-works/HowItWorksCta.astro";
 import HowItWorksSchemas from "../components/how-it-works/HowItWorksSchemas.astro";
-import { journeyChapters } from "../data/how-it-works";
+import { setupStep, discoveryStep, enquiryStep, responseStep, bookingStep, followUpStep, reviewStep, returnStep } from "../data/how-it-works";
 import "../styles/product/product.css";
 import "../styles/product/product-responsive.css";
 import "../styles/how-it-works/how-it-works.css";
 import "../styles/how-it-works/how-it-works-responsive.css";
-import "../styles/how-it-works/how-it-works-five-chapter.css";
 const title = "How Chakusa Works | From First Enquiry to the Next Visit";
 const description = "See how Chakusa turns a customer enquiry into a booking, a completed visit, a review, and a returning customer, all in one connected workflow for local service businesses.";
+const beforeService = [setupStep, discoveryStep, enquiryStep, responseStep, bookingStep];
+const afterService = [followUpStep, reviewStep, returnStep];
 ---
-<MarketingLayout {title} {description}><HowItWorksSchemas /><SkipLink /><Header /><main id="main-content"><HowItWorksHero /><JourneyOverview />{journeyChapters.slice(0, 3).map((chapter, index) => <HowItWorksChapter {chapter} {index} />)}<ServiceMoment />{journeyChapters.slice(3).map((chapter, index) => <HowItWorksChapter {chapter} index={index + 3} />)}<RealWorldExample /><HowItWorksFaq /><HowItWorksCta /></main><Footer /></MarketingLayout>
+<MarketingLayout {title} {description}><HowItWorksSchemas /><SkipLink /><Header /><main id="main-content"><HowItWorksHero /><JourneyOverview />{beforeService.map((step, index) => <HowItWorksStep {step} {index} />)}<ServiceMoment />{afterService.map((step, index) => <HowItWorksStep step={step} index={index + 5} />)}<BusinessAttention /><ConnectedLoop /><RealWorldExample /><HowItWorksFaq /><HowItWorksCta /></main><Footer /></MarketingLayout>

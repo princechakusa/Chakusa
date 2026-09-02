@@ -1,0 +1,5 @@
+---
+import ProductScreenshot from "./ProductScreenshot.astro";
+import { businessControl } from "../../data/product";
+---
+<section class="product-feature" id="business-control" aria-labelledby="business-control-title"><div class="container product-feature__grid"><div class="product-feature__copy"><p class="product-kicker">{businessControl.eyebrow}</p><h2 id="business-control-title">{businessControl.title}</h2><p>{businessControl.copy}</p><ul>{businessControl.points.map(point => <li>{point}</li>)}</ul></div><ProductScreenshot src={businessControl.visual} label="Business dashboard" /></div></section>

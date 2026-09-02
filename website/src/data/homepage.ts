@@ -3,7 +3,7 @@ export const primaryNavigation = [
     { label: "Customer response", href: "/product#customer-response", description: "Respond to enquiries with human oversight." },
     { label: "Automation", href: "/product#automation", description: "Keep follow-ups and reminders moving." },
     { label: "Bookings", href: "/product#booking", description: "Manage appointments and availability." },
-    { label: "Customer growth", href: "/product#customer-growth", description: "Understand and bring customers back." },
+    { label: "Customer growth", href: "/product#business-control", description: "Understand and bring customers back." },
   ] },
   { label: "Industries", href: "/industries", children: [
     { label: "Beauty & wellness", href: "/industries/beauty", description: "Salons, barbers, spas and clinics." },

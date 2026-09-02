@@ -653,6 +653,174 @@ export interface ReferralCodeDto {
   inviteUrl: string;
 }
 
+// --- PROGRAM 2 LOOP 6: business loyalty management (mobile business app) ---
+export type LoyaltyRewardType = 'free_service' | 'percent_discount' | 'fixed_discount' | 'promo' | 'birthday' | 'milestone';
+export type MembershipBillingInterval = 'monthly' | 'annual' | 'unlimited';
+export type LoyaltyCampaignKind = 'bonus_points' | 'multiplier' | 'bonus_reward';
+
+export interface LoyaltyProgramDto {
+  id?: string;
+  businessId: string;
+  active: boolean;
+  configured?: boolean;
+  pointsPerCurrency?: number;
+  pointsPerBookingBonus?: number;
+  pointsPerReview?: number;
+  pointsPerReferral?: number;
+  pointExpiryDays?: number | null;
+  currency?: string | null;
+  welcomeBonus?: number;
+  tierConfig?: LoyaltyTierDto[] | null;
+  updatedAt?: string;
+}
+export interface LoyaltyProgramInput {
+  active?: boolean;
+  pointsPerCurrency?: number;
+  pointsPerBookingBonus?: number;
+  pointsPerReview?: number;
+  pointsPerReferral?: number;
+  pointExpiryDays?: number | null;
+  currency?: string | null;
+  welcomeBonus?: number;
+  tierConfig?: Array<{ key: string; name: string; minPoints: number; perks?: string[] }> | null;
+}
+export interface BusinessRewardDto {
+  id: string;
+  businessId: string;
+  name: string;
+  description: string | null;
+  type: LoyaltyRewardType;
+  pointsCost: number;
+  value: number | null;
+  serviceOfferingId: string | null;
+  minTierKey: string | null;
+  autoGrant: boolean;
+  milestoneBookings: number | null;
+  membersOnly: boolean;
+  active: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  redemptionValidityDays: number | null;
+  createdAt: string;
+}
+export interface BusinessRewardInput {
+  name: string;
+  description?: string;
+  type: LoyaltyRewardType;
+  pointsCost?: number;
+  value?: number;
+  serviceOfferingId?: string;
+  minTierKey?: string;
+  autoGrant?: boolean;
+  milestoneBookings?: number;
+  membersOnly?: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  redemptionValidityDays?: number;
+}
+export interface BusinessMembershipPlanDto {
+  id: string;
+  businessId: string;
+  name: string;
+  description: string | null;
+  billingInterval: MembershipBillingInterval;
+  priceAmount: number;
+  currency: string | null;
+  priorityBooking: boolean;
+  discountPercent: number;
+  includedServiceIds: string[] | null;
+  perks: string[] | null;
+  active: boolean;
+  createdAt: string;
+}
+export interface BusinessMembershipPlanInput {
+  name: string;
+  description?: string;
+  billingInterval: MembershipBillingInterval;
+  priceAmount: number;
+  currency?: string;
+  priorityBooking?: boolean;
+  discountPercent?: number;
+  includedServiceIds?: string[];
+  perks?: string[];
+}
+export interface LoyaltyCampaignDto {
+  id: string;
+  businessId: string;
+  name: string;
+  description: string | null;
+  kind: LoyaltyCampaignKind;
+  multiplier: number;
+  bonusPoints: number;
+  rewardId: string | null;
+  startsAt: string;
+  endsAt: string;
+  active: boolean;
+  createdAt: string;
+}
+export interface LoyaltyCampaignInput {
+  name: string;
+  description?: string;
+  kind?: LoyaltyCampaignKind;
+  multiplier?: number;
+  bonusPoints?: number;
+  rewardId?: string;
+  startsAt: string;
+  endsAt: string;
+}
+export interface BusinessRedemptionDto {
+  id: string;
+  rewardId: string;
+  businessId: string;
+  customerProfileId: string;
+  status: 'issued' | 'reserved' | 'redeemed' | 'expired' | 'revoked';
+  code: string;
+  pointsSpent: number;
+  appointmentId: string | null;
+  issuedAt: string;
+  redeemedAt: string | null;
+  expiresAt: string | null;
+  revokedReason: string | null;
+  sourceType: string | null;
+  reward: { name: string; type: LoyaltyRewardType; value: number | null } | null;
+}
+export interface LoyaltyMemberDto {
+  id: string;
+  customerProfileId: string;
+  name: string;
+  email: string | null;
+  pointsBalance: number;
+  lifetimePoints: number;
+  tierKey: string | null;
+  lastActivityAt: string | null;
+}
+export interface LoyaltyMemberPageDto {
+  items: LoyaltyMemberDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+export interface PointAdjustmentResultDto {
+  applied: boolean;
+  replayed: boolean;
+  transactionId?: string;
+  balanceAfter: number;
+  lifetimePoints: number;
+  tierKey: string;
+  tierChanged: boolean;
+}
+export interface LoyaltyBusinessAnalyticsDto {
+  programActive: boolean;
+  members: number;
+  tierBreakdown: Record<string, number>;
+  outstandingPoints: number;
+  lifetimePointsIssued: number;
+  last30Days: { pointsEarned: number; earnEvents: number; pointsRedeemed: number; redeemEvents: number };
+  redemptions: Record<string, number>;
+  memberships: Record<string, number>;
+  activeCampaigns: number;
+}
+
 export type LegalDocumentType = 'PRIVACY_POLICY' | 'TERMS_OF_SERVICE' | 'COOKIE_POLICY' | 'AI_DISCLOSURE';
 export interface LegalDocumentDto {
   type: LegalDocumentType;

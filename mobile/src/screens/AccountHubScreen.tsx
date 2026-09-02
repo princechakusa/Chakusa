@@ -69,6 +69,8 @@ export function AccountHubScreen() {
       <MenuRow icon="notifications-outline" tone="amber" title="Notifications" detail="Choose what Chakusa highlights for you" onPress={() => navigation.navigate('NotificationPreferences')} />
       <MenuRow icon="chatbubble-ellipses-outline" tone="green" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
       {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
+      <MenuRow icon="ribbon-outline" tone="purple" title="Loyalty & rewards" detail="Points, tiers, rewards, memberships and campaigns" onPress={() => navigation.navigate('LoyaltyManagement')} />
+      <MenuRow icon="qr-code-outline" tone="green" title="Redeem a reward" detail="Look up a customer's reward code" onPress={() => navigation.navigate('LoyaltyRedemptions')} />
       {canManageBusiness ? <MenuRow icon="calendar-outline" tone="green" title="Booking availability" detail="Hours, leave and blocked time" onPress={() => navigation.navigate('AvailabilitySettings')} /> : null}
       {canManageBusiness ? <MenuRow icon="cloud-upload-outline" tone="blue" title="Import appointments" detail="Preview and import an existing calendar CSV" onPress={() => navigation.navigate('AppointmentsImport')} /> : null}
       {owner ? <MenuRow icon="calendar-outline" tone="green" title="External calendar" detail="Subscribe from Apple, Google, or Outlook" onPress={() => navigation.navigate('ExternalCalendar')} /> : null}

@@ -86,6 +86,7 @@ export function AccountHubScreen() {
       {owner ? <MenuRow icon="download-outline" tone="blue" title={exporting ? 'Preparing your export…' : 'Export business data'} detail="Download a copy of your Chakusa data" disabled={exporting} onPress={() => void exportBusiness()} /> : null}
       <MenuRow icon="document-text-outline" tone="slate" title="Terms of use" detail="Read inside Chakusa" onPress={() => navigation.navigate('LegalDocument', { page: 'terms' })} />
       <MenuRow icon="lock-closed-outline" tone="slate" title="Privacy policy" detail="Read inside Chakusa" onPress={() => navigation.navigate('LegalDocument', { page: 'privacy' })} />
+      <MenuRow icon="options-outline" tone="slate" title="Cookie preferences" detail="Analytics and marketing choices" onPress={() => navigation.navigate('CookiePreferences')} />
       <MenuRow icon="log-out-outline" tone="red" title={sessionAction === 'all' ? 'Signing out everywhere…' : 'Sign out of all devices'} detail="Revoke every active Chakusa session" disabled={Boolean(sessionAction)} onPress={confirmLogoutAll} />
       <MenuRow icon="trash-outline" tone="red" title="Delete account" detail="Permanently remove your Chakusa account" onPress={() => navigation.navigate('DeleteAccount')} destructive last />
     </MenuSection>

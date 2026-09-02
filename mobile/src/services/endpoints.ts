@@ -327,6 +327,6 @@ export const legalApi = {
   customerAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
     api.post<{ id: string }>('/customer/legal/accept', { type, ...body }),
   businessStatus: () => api.get<import('../apiTypes').LegalAcceptanceStatusDto>('/business/legal/status'),
-  businessAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string } = { source: 'app' }) =>
+  businessAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
     api.post<{ id: string }>('/business/legal/accept', { type, ...body }),
 };

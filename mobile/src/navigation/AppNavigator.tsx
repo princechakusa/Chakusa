@@ -16,6 +16,7 @@ import { LeadDetailCorrectScreen as LeadDetailScreen } from '../screens/LeadDeta
 import { LeadsScreen } from '../screens/LeadsScreen';
 import { PremiumFtueScreen } from '../screens/PremiumFtueScreen';
 import { LegalAcceptanceScreen } from '../screens/LegalAcceptanceScreen';
+import { CookiePreferencesScreen } from '../screens/CookiePreferencesScreen';
 import { ReviewDetailScreen } from '../screens/ReviewDetailScreen';
 import { ReviewsScreen } from '../screens/ReviewsScreen';
 import { AccountHubScreen as SettingsScreen } from '../screens/AccountHubScreen';
@@ -85,6 +86,7 @@ export function AppNavigator() {
     {routes.legalAcceptance ? <Root.Screen name="LegalAcceptance" component={LegalAcceptanceScreen} options={{ headerShown: false }} /> : null}
     {routes.main ? <><Root.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /><Root.Screen name="AppointmentEditor" component={AppointmentEditorScreen} /><Root.Screen name="AppointmentsImport" component={AppointmentsImportScreen} /><Root.Screen name="AttentionCenter" component={AttentionCenterScreen} /><Root.Screen name="Insights" component={InsightsScreen} /><Root.Screen name="LeadDetail" component={LeadDetailScreen} /><Root.Screen name="CustomerProfile" component={CustomerProfileScreen} /><Root.Screen name="CustomersImport" component={CustomersImportScreen} /><Root.Screen name="ReviewDetail" component={ReviewDetailScreen} /><Root.Screen name="Comeback" component={ComebackScreen} /><Root.Screen name="Templates" component={TemplatesScreen} /><Root.Screen name="BusinessSettings" component={BusinessSettingsScreen} /><Root.Screen name="ServiceCatalog" component={ServiceCatalogScreen} /><Root.Screen name="ExternalCalendar" component={ExternalCalendarScreen} /><Root.Screen name="Pro" component={ProScreen} /><Root.Screen name="Automation" component={AutomationScreen} /><Root.Screen name="DeleteAccount" component={DeleteAccountScreen} /><Root.Screen name="AccountInformation" component={AccountInformationScreen} /><Root.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} /><Root.Screen name="Help" component={HelpScreen} /></> : null}
     {routes.main ? <Root.Screen name="AvailabilitySettings" component={AvailabilitySettingsScreen} /> : null}
+    {routes.main ? <Root.Screen name="CookiePreferences" component={CookiePreferencesScreen} /> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
     {routes.main ? <Root.Screen name="Team" component={TeamScreen} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />

@@ -36,6 +36,70 @@ export interface JourneyStep {
   visualLabel: string;
 }
 
+export interface JourneyChapter {
+  id: string;
+  number: string;
+  title: string;
+  headline: string;
+  copy: string;
+  points: string[];
+  visual: string | null;
+  visualLabel: string;
+}
+
+export const journeyChapters: JourneyChapter[] = [
+  {
+    id: "prepare",
+    number: "01",
+    title: "Prepare",
+    headline: "Build the foundation every customer interaction relies on.",
+    copy: "Set up the business profile, services, team, and preferences once. That information stays available when customers discover the business, ask questions, and book.",
+    points: ["Business profile and services", "Team and availability", "Business preferences"],
+    visual: null,
+    visualLabel: "Business setup and profile",
+  },
+  {
+    id: "attract-respond",
+    number: "02",
+    title: "Attract and respond",
+    headline: "Turn customer interest into a conversation while it is still fresh.",
+    copy: "Marketplace discovery, public business profiles, enquiries, missed calls, and customer context work together. Chakusa can prepare a response while a team member remains in control.",
+    points: ["Marketplace and public profile", "Enquiries and missed calls", "Owner-reviewed responses"],
+    visual: "/images/product/chakusa-dashboard.png",
+    visualLabel: "Customer enquiries and attention dashboard",
+  },
+  {
+    id: "book-deliver",
+    number: "03",
+    title: "Book and deliver",
+    headline: "Move from conversation to confirmed service without losing context.",
+    copy: "Services, availability, customer details, and the team calendar connect the enquiry to an appointment. Confirmations and reminders keep the visit clear before the work begins.",
+    points: ["Services and availability", "Booking and calendar", "Confirmations and reminders"],
+    visual: null,
+    visualLabel: "Booking and calendar",
+  },
+  {
+    id: "review-reconnect",
+    number: "04",
+    title: "Review and reconnect",
+    headline: "Continue the relationship after the service is complete.",
+    copy: "Follow up with the customer, request a review without sentiment gating, collect private feedback, and keep their history ready for the next conversation.",
+    points: ["Follow-up with context", "Reviews and private feedback", "Customers due back"],
+    visual: "/images/product/chakusa-dashboard.png",
+    visualLabel: "Review and return opportunities",
+  },
+  {
+    id: "understand-grow",
+    number: "05",
+    title: "Understand and grow",
+    headline: "See what needs attention and act with the full customer story.",
+    copy: "The dashboard brings leads, bookings, reviews, customer activity, and return opportunities into one working view. Your team sees what happened and decides what happens next.",
+    points: ["Needs-attention work", "Customer and booking activity", "Team oversight"],
+    visual: "/images/how-it-works/chakusa-dashboard-desktop.png",
+    visualLabel: "Chakusa business dashboard",
+  },
+];
+
 export const setupStep: JourneyStep = {
   id: "setup",
   number: "01",
@@ -171,8 +235,5 @@ export const howItWorksFaqs = [
   { question: "How do customer enquiries enter Chakusa?", answer: "Missed calls and enquiries become leads with the customer's details and service context attached, flagged for attention." },
   { question: "Can customers book appointments through Chakusa?", answer: "Yes. Services, availability, and the calendar connect an enquiry to a confirmed appointment, with reminders ahead of the visit." },
   { question: "Does Chakusa send messages automatically?", answer: "Chakusa can prepare responses, reminders, and follow-ups using the business's information. Automation is owner-reviewed, and a team member can take over any conversation at any point." },
-  { question: "How do review requests work?", answer: "Chakusa helps prepare a review request while the visit is still fresh and collects private feedback alongside it, for every visit. Requests are never withheld based on how a visit is expected to go." },
-  { question: "How does Chakusa know when a customer may be due back?", answer: "Chakusa tracks each customer's visit history and surfaces a reminder when they haven't rebooked in the expected window. It cannot guarantee a customer returns." },
-  { question: "Can I see everything that needs attention in one place?", answer: "Yes. The dashboard brings leads, bookings, reviews, and customers due back into one working view." },
-  { question: "Does Chakusa work for different service businesses?", answer: "Yes. Barbers, salons, dentists, mechanics, cleaners, photographers, and similar local service businesses that rely on repeat customers." },
+  { question: "How do reviews and return reminders work?", answer: "Chakusa helps prepare a review request, collects private feedback without sentiment gating, and surfaces customers who may be due back based on their visit history. It cannot guarantee that a customer returns." },
 ];

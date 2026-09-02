@@ -15,103 +15,13 @@ import "../styles/homepage/story-complete.css";
 import "../styles/homepage/hero-product-clean.css";
 import "../styles/homepage/stage-2b.css";
 import "../styles/homepage/editorial-hierarchy.css";
-import FAQAccordion from "../components/FAQAccordion.astro";
-import FaqSchema from "../components/FaqSchema.astro";
-import CTASection from "../components/CTASection.astro";
 
 const title = "Chakusa | Customer Growth Platform for Service Businesses";
 const description = "Respond to customer enquiries, manage bookings, automate follow-ups, request reviews, and bring customers back with Chakusa.";
-
-const pillars = [
-  {
-    id: "recover",
-    title: "Recover",
-    headline: "Catch the customer before they call someone else.",
-    copy: "A missed call becomes a lead the moment it happens, tracked, not forgotten.",
-  },
-  {
-    id: "review",
-    title: "Review",
-    headline: "Turn a good visit into a public review.",
-    copy: "Ask for a review while the visit is still fresh, and catch an unhappy customer privately first.",
-  },
-  {
-    id: "retain",
-    title: "Retain",
-    headline: "Know exactly who's due to come back.",
-    copy: "See who hasn't rebooked before they quietly stop coming back at all.",
-  },
-];
-
-const faqs = [
-  {
-    question: "Is Chakusa a CRM?",
-    answer: "No. Chakusa doesn't do scheduling, dispatch, or invoicing. It's focused on one thing: making sure a missed call, an un-asked review, or a lapsed customer never gets forgotten.",
-  },
-  {
-    question: "Do I need a special phone number?",
-    answer: "No. On the Free plan, Chakusa tracks everything and you send messages yourself. On Pro, Chakusa can send messages for you through its own number. You don't need to set anything up.",
-  },
-  {
-    question: "Does it work for my type of business?",
-    answer: "Chakusa is built for appointment- and visit-driven local businesses. See the Industries page for specifics.",
-  },
-  {
-    question: "What if I'm not ready for automation?",
-    answer: "You don't need it to get value. The Free plan lets you track every missed call, review request, and reminder by hand, right from your phone.",
-  },
-];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content"><HeroSection /><DiscoveryExperience /><ConnectedJourney /><PlatformCapabilities /><BusinessControl /><HomepageFAQ /><HomepageFinalCTA /></main>
-  {false && <>
-
-  <section class="problem" aria-labelledby="problem-title" data-reveal>
-    <div class="content-shell">
-      <p class="eyebrow">The problem</p>
-      <h2 id="problem-title">You're losing customers you never even see leave.</h2>
-      <div class="problem-grid">
-        <div class="problem-card">
-          <svg class="problem-card-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M4 5c0 7 6 13 13 13l1.5-3-4-2-1.5 1.5c-2-1-3.5-2.5-4.5-4.5L10 8 8 4 5 5.5A1 1 0 0 0 4 5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>
-          <p>A missed call that never gets a callback.</p>
-        </div>
-        <div class="problem-card">
-          <svg class="problem-card-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 3.5 13.2 8l5 .7-3.6 3.4.9 4.9-4.5-2.3-4.5 2.3.9-4.9L3.8 8.7l5-.7L11 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /></svg>
-          <p>A happy customer who's never asked for a review.</p>
-        </div>
-        <div class="problem-card">
-          <svg class="problem-card-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 5v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><circle cx="11" cy="11" r="7.5" stroke="currentColor" stroke-width="1.5" /></svg>
-          <p>A regular who quietly stops coming back.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="pillars-teaser content-shell" id="dashboard" aria-labelledby="pillars-teaser-title" data-reveal>
-    <p class="eyebrow">How Chakusa helps</p>
-    <h2 id="pillars-teaser-title">Three things. Done properly.</h2>
-    <div class="pillars-teaser-grid">
-      {pillars.map((pillar) => (
-        <div class="pillars-teaser-card">
-          <p class="pillars-teaser-label">{pillar.title}</p>
-          <p class="pillars-teaser-headline">{pillar.headline}</p>
-          <p class="pillars-teaser-copy">{pillar.copy}</p>
-        </div>
-      ))}
-    </div>
-    <a class="pillars-teaser-link" href="/product">See how it works →</a>
-  </section>
-
-  <section class="faq content-shell" aria-labelledby="faq-title" data-reveal>
-    <p class="eyebrow">Questions</p>
-    <h2 id="faq-title">Frequently asked</h2>
-    <FAQAccordion items={faqs} />
-    <FaqSchema items={faqs} />
-  </section>
-
-  <CTASection heading="Stop losing customers you've already earned." support="Start tracking every missed call, review, and reminder today." />
-  </>}
   <Footer />
 </MarketingLayout>

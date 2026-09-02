@@ -1,5 +1,5 @@
 ---
-import chakusaAppIcon from "../../../../mobile/assets/chakusa-app-icon.png";
+import chakusaAppIcon from "../../assets/chakusa-app-icon.png";
 const schema = { "@context": "https://schema.org", "@type": "Organization", name: "Chakusa", url: String(Astro.site), logo: new URL(chakusaAppIcon.src, Astro.site).toString(), description: "Chakusa is a customer growth platform for service businesses." };
 ---
 <script type="application/ld+json" is:inline set:html={JSON.stringify(schema)} />

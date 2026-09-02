@@ -5,7 +5,6 @@ export const primaryNavigation = [
     { label: "Bookings", href: "/product#booking", description: "Manage appointments and availability." },
     { label: "Customer growth", href: "/product#customer-growth", description: "Understand and bring customers back." },
   ] },
-  { label: "Solutions", href: "/product" },
   { label: "Industries", href: "/industries", children: [
     { label: "Beauty & wellness", href: "/industries/beauty", description: "Salons, barbers, spas and clinics." },
     { label: "Home services", href: "/industries/home-services", description: "Cleaners, plumbers and electricians." },
@@ -13,7 +12,7 @@ export const primaryNavigation = [
     { label: "Professional services", href: "/industries/professional", description: "Dentists, photographers and consultants." },
   ] },
   { label: "Pricing", href: "/pricing" },
-  { label: "Resources", href: "/about" },
+  { label: "About", href: "/about" },
 ];
 
 export const footerGroups = [

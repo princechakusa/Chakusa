@@ -1,0 +1,10 @@
+---
+const steps = [
+  { title: "Respond", copy: "Keep the enquiry moving." },
+  { title: "Book", copy: "Turn interest into a visit." },
+  { title: "Remind", copy: "Keep the appointment clear." },
+  { title: "Review", copy: "Listen after the service." },
+  { title: "Return", copy: "Know who is due back." },
+];
+---
+<section class="connected-journey" aria-labelledby="connected-title"><div class="container"><div class="connected-journey__heading"><p class="story-kicker">One relationship, not separate tools</p><h2 id="connected-title">The next customer step is already connected.</h2><p>Chakusa brings conversations, bookings, reminders, reviews, follow-ups, and customer history into one journey. AI can assist where it helps, while the business remains in control.</p></div><ol>{steps.map((step, index) => <li><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{step.title}</strong><p>{step.copy}</p></div>{index < steps.length - 1 && <i aria-hidden="true">→</i>}</li>)}</ol><a class="connected-journey__link" href="/product#product-journey">See the complete product journey <span aria-hidden="true">→</span></a></div></section>

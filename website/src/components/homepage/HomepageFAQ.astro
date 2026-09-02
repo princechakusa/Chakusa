@@ -1,0 +1,10 @@
+---
+const questions = [
+  { question: "What is Chakusa?", answer: "Chakusa is a customer growth platform for service businesses. It connects enquiries, customer records, bookings, messaging, reviews, follow-ups, automation, and business insight." },
+  { question: "Is Chakusa only a booking app?", answer: "No. Booking is one step in a broader customer journey that begins with discovery and continues through reminders, reviews, follow-up, and repeat visits." },
+  { question: "Does Chakusa replace the business team?", answer: "No. Chakusa supports the team with organised customer context, prepared actions, and eligible automation. The business remains in control." },
+  { question: "Who is Chakusa built for?", answer: "Chakusa is designed for service businesses that manage enquiries, appointments, customer relationships, reviews, and repeat visits." },
+];
+const schema = { "@context":"https://schema.org", "@type":"FAQPage", mainEntity:questions.map(item => ({ "@type":"Question", name:item.question, acceptedAnswer:{ "@type":"Answer", text:item.answer } })) };
+---
+<section class="homepage-faq" aria-labelledby="homepage-faq-title"><div class="container homepage-faq__grid"><div><p class="story-kicker">Questions</p><h2 id="homepage-faq-title">A connected platform, clearly explained.</h2></div><div class="homepage-faq__list">{questions.map(item => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></div></section><script type="application/ld+json" is:inline set:html={JSON.stringify(schema)} />

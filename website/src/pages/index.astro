@@ -4,6 +4,14 @@ import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import HeroSection from "../components/hero/HeroSection.astro";
 import Footer from "../components/footer/Footer.astro";
+import DiscoveryExperience from "../components/homepage/DiscoveryExperience.astro";
+import ConnectedJourney from "../components/homepage/ConnectedJourney.astro";
+import PlatformCapabilities from "../components/homepage/PlatformCapabilities.astro";
+import BusinessControl from "../components/homepage/BusinessControl.astro";
+import HomepageFAQ from "../components/homepage/HomepageFAQ.astro";
+import HomepageFinalCTA from "../components/homepage/HomepageFinalCTA.astro";
+import "../styles/homepage/story.css";
+import "../styles/homepage/story-complete.css";
 import FAQAccordion from "../components/FAQAccordion.astro";
 import FaqSchema from "../components/FaqSchema.astro";
 import CTASection from "../components/CTASection.astro";
@@ -54,7 +62,7 @@ const faqs = [
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
-  <main id="main-content"><HeroSection /></main>
+  <main id="main-content"><HeroSection /><DiscoveryExperience /><ConnectedJourney /><PlatformCapabilities /><BusinessControl /><HomepageFAQ /><HomepageFinalCTA /></main>
   {false && <>
 
   <section class="problem" aria-labelledby="problem-title" data-reveal>

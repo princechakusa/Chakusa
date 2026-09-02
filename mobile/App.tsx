@@ -19,6 +19,8 @@ import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
 import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfileScreen';
 import { PublicBookingManagementScreen } from './src/screens/PublicBookingManagementScreen';
 import { MobileMonitoringIdentity } from './src/components/MobileMonitoringIdentity';
+import { APP_VARIANT } from './src/config';
+import { CustomerRoot } from './src/customer/CustomerRoot';
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['chakusa://'],
@@ -26,6 +28,11 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function App() {
+  // PROGRAM 2 LOOP 7: a customer build boots a completely separate root.
+  // The business path below is unchanged when APP_VARIANT is 'business'
+  // (the default for every existing build and test).
+  if (APP_VARIANT === 'customer') return <CustomerRoot />;
+
   // React Native defines `window` (it aliases `global`) but has no
   // `window.location`, so guarding on `window` alone still dereferences
   // undefined and throws a fatal render-time TypeError before any UI

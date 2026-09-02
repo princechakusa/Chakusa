@@ -4,6 +4,15 @@ import { normalizeApiUrl, publicFeatureEnabled } from './domain/mobileProduction
 
 const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
+// PROGRAM 2 LOOP 7: which application this build is. 'business' is the
+// long-standing owner app and the default when nothing is set, so every
+// existing build and every existing test keeps its exact behaviour. A
+// build sets EXPO_PUBLIC_APP_VARIANT=customer (see eas.json `customer`
+// profile) to boot the customer shell instead. See CUSTOMER_APP.md.
+export type AppVariant = 'business' | 'customer';
+const rawVariant = process.env.EXPO_PUBLIC_APP_VARIANT?.trim().toLowerCase();
+export const APP_VARIANT: AppVariant = rawVariant === 'customer' ? 'customer' : 'business';
+
 // Required per build/environment through the process, EAS, or CI secret manager.
 // There is deliberately no repository file or source fallback.
 export const API_URL = configuredUrl;

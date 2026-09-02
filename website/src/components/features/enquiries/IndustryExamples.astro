@@ -1,0 +1,14 @@
+---
+import { industryEnquiryExamples } from "../../../data/enquiries";
+---
+<section class="enq-industries container" aria-labelledby="enq-industries-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Built for real service businesses</p>
+    <h2 id="enq-industries-title">The same moment, across different trades.</h2>
+    <p>A missed enquiry looks the same whether you cut hair, fix cars, or clean homes.</p>
+  </div>
+  <div class="enq-industries__grid">
+    {industryEnquiryExamples.map((item) => <div class="enq-industries__card"><strong>{item.title}</strong><p>{item.example}</p></div>)}
+  </div>
+  <p><a href="/industries">See supported industries <span aria-hidden="true">→</span></a></p>
+</section>

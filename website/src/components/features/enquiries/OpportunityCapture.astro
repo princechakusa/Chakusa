@@ -1,0 +1,20 @@
+---
+const flow = [
+  { label: "Customer interest", detail: "A call, a public profile message, or a walk-in enquiry." },
+  { label: "Lead record", detail: "Customer details and the service requested attached." },
+  { label: "Context", detail: "Urgency, timing, and estimated value, where known." },
+  { label: "Attention state", detail: "Stays marked New until someone follows up." },
+  { label: "Next action", detail: "Prepare a message or update the status." },
+];
+---
+<section class="enq-capture container" id="capture" aria-labelledby="enq-capture-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Capture the opportunity</p>
+    <h2 id="enq-capture-title">How an enquiry becomes a lead you can act on.</h2>
+    <p>A message sent through your public Chakusa business profile becomes a lead automatically. On Android, a missed call can too, once you turn on the Recovery Engine permission. Every other channel, a walk-in, a WhatsApp message, a referral, is added as a lead in a few taps.</p>
+  </div>
+  <ol class="enq-capture__flow">
+    {flow.map((step) => <li><span>{step.label}</span><strong>{step.detail}</strong></li>)}
+  </ol>
+  <p class="enq-capture__note">Chakusa doesn't claim to capture every phone call or message on every platform automatically. iOS has no way for any app to read a missed-call log, and channels outside your public profile and Android's Recovery Engine are added by hand, deliberately, not silently assumed.</p>
+</section>

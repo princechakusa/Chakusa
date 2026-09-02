@@ -1,0 +1,85 @@
+/* PROGRAM: POWERFUL FEATURES, FEATURE PAGE 01, ENQUIRIES & LEADS.
+   Reuses .product-kicker, .product-section-heading, .product-feature,
+   .product-screenshot, .product-faq, .product-final-cta from
+   ../product/product.css (imported alongside this file on the page) so the
+   FAQ, final CTA, and split feature sections match the rest of the site
+   without duplicating that CSS. Everything below is new composition
+   specific to this page: the hero, the lifecycle line, the capture flow,
+   the missed-call story, and the industry example cards. */
+
+.enq-hero{display:grid;gap:3rem;padding-block:5rem 4rem}
+.enq-hero__copy{max-width:40rem}
+.enq-hero__copy>p{margin-top:1.25rem;color:var(--ink-soft);font-size:1.05rem;line-height:1.7}
+.enq-hero h1{margin:0;font-size:clamp(2.4rem,6vw,4.2rem);line-height:.98;letter-spacing:-.045em}
+.enq-hero__actions{display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem}
+
+.enq-cta{margin-block:3rem 8rem;padding:clamp(2rem,6vw,5rem);border-radius:1.5rem;background:var(--ink);color:#fff;text-align:center}
+.enq-cta h2{margin:0;font-size:clamp(2.15rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.045em}
+.enq-cta>p{margin:1.25rem auto 2rem;max-width:34rem;color:#dfe1e6}
+.enq-cta .product-kicker{color:#dfe1e6}
+.enq-cta .product-kicker::before{background:var(--violet)}
+.enq-cta__actions{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem}
+.enq-cta .ui-button--primary{background:#fff;color:var(--ink)}
+.enq-hero__visual{display:grid;gap:1rem}
+
+.enq-lifecycle-pills{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;margin:0;padding:0}
+.enq-lifecycle-pills li{padding:.55rem .9rem;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:.75rem;font-weight:700;color:var(--ink-soft)}
+.enq-lifecycle-pills li[data-active="true"]{border-color:var(--violet);color:var(--ink);background:#fff4f4}
+.enq-lifecycle-pills li:not(:last-child)::after{content:"→";margin-left:.5rem;color:var(--ink-soft);font-weight:400}
+
+.enq-problem{padding-block:6rem;border-top:1px solid var(--border)}
+.enq-problem__grid{display:grid;gap:1.5rem;margin-top:3rem}
+.enq-problem__card{padding:1.75rem;border:1px solid var(--border);border-radius:1.25rem;background:#fff}
+.enq-problem__card p{margin:0;color:var(--ink-soft);font-size:.92rem;line-height:1.65}
+
+.enq-capture{padding-block:6rem;border-top:1px solid var(--border)}
+.enq-capture__flow{list-style:none;display:grid;gap:1px;margin:3rem 0 0;padding:1px;background:var(--border);border:1px solid var(--border);border-radius:1.3rem;overflow:hidden}
+.enq-capture__flow li{min-height:6rem;display:grid;align-content:center;gap:.35rem;padding:1.1rem;background:#fff}
+.enq-capture__flow span{color:var(--violet);font-size:.68rem;font-weight:750}
+.enq-capture__flow strong{font-size:.88rem}
+.enq-capture__note{max-width:40rem;margin-top:1.5rem;color:var(--ink-soft);font-size:.85rem;line-height:1.65}
+
+.enq-lifecycle{padding-block:6rem;border-top:1px solid var(--border);text-align:center}
+.enq-lifecycle .product-section-heading{margin-inline:auto}
+.enq-lifecycle__line{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:.75rem;margin:3rem 0 0;padding:0}
+.enq-lifecycle__line li{max-width:12rem;padding:1rem 1.35rem;border:1px solid var(--border);border-radius:1rem;background:#fff;text-align:left}
+.enq-lifecycle__line li strong{display:block;font-size:.95rem}
+.enq-lifecycle__line li p{margin:.4rem 0 0;color:var(--ink-soft);font-size:.75rem;line-height:1.5}
+.enq-lifecycle__line li:not(:last-child)::after{content:"→";display:block;margin-top:.6rem;color:var(--ink-soft);font-weight:400;text-align:center}
+
+.enq-missed-call{padding-block:7rem;border-top:1px solid var(--border);background:var(--ink);color:#fff}
+.enq-missed-call__grid{display:grid;gap:3rem;align-items:center}
+.enq-missed-call__copy{max-width:38rem}
+.enq-missed-call h2{margin:0;font-size:clamp(2.15rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.045em}
+.enq-missed-call__copy>p{margin-top:1.25rem;color:#c9ccd3;font-size:1rem;line-height:1.7}
+.enq-missed-call__note{margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,.16);color:#9ba0ac;font-size:.8rem;line-height:1.6}
+.enq-missed-call__visual{border:1px solid rgba(255,255,255,.16);border-radius:1.5rem;background:rgba(255,255,255,.04);min-height:20rem;display:grid;place-content:center;justify-items:center;gap:.75rem;text-align:center;padding:2rem}
+.enq-missed-call__visual span{color:var(--violet);font-size:.7rem;font-weight:750}
+.enq-missed-call__visual strong{font-size:1.1rem}
+.enq-missed-call__visual small{color:#9ba0ac;font-size:.72rem}
+
+.enq-connection{padding-block:6rem;border-top:1px solid var(--border)}
+.enq-connection__grid{display:grid;gap:1.5rem;margin-top:3rem}
+.enq-connection__card{padding:1.75rem;border:1px solid var(--border);border-radius:1.25rem;background:#fff}
+.enq-connection__card h3{margin:0;font-size:1.1rem}
+.enq-connection__card p{margin:.75rem 0 0;color:var(--ink-soft);font-size:.9rem;line-height:1.65}
+.enq-connection__card a{display:inline-flex;margin-top:1rem;color:var(--ink);font-weight:700;font-size:.85rem}
+
+.enq-industries{padding-block:6rem;border-top:1px solid var(--border)}
+.enq-industries__grid{display:grid;gap:1.25rem;margin-top:3rem}
+.enq-industries__card{padding:1.5rem;border:1px solid var(--border);border-radius:1.15rem;background:#fff}
+.enq-industries__card strong{display:block;font-size:.9rem;color:var(--violet)}
+.enq-industries__card p{margin:.6rem 0 0;color:var(--ink-soft);font-size:.85rem;line-height:1.6}
+
+.enq-connected{padding-block:6rem;border-top:1px solid var(--border)}
+.enq-connected__list{list-style:none;display:grid;gap:1px;margin:3rem 0 0;padding:1px;background:var(--border);border:1px solid var(--border);border-radius:1.3rem;overflow:hidden}
+.enq-connected__list li{padding:1.25rem 1.5rem;background:#fff}
+.enq-connected__list a{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem;color:inherit}
+.enq-connected__list strong{font-size:.92rem}
+.enq-connected__list span{color:var(--ink-soft);font-size:.8rem}
+.enq-connected__list li[data-future="true"]{color:var(--ink-soft)}
+.enq-connected__list li[data-future="true"] strong{color:var(--ink-soft)}
+
+.enq-hero__copy,.enq-hero__visual,.enq-problem__card,.enq-capture__flow,.enq-lifecycle__line,.enq-missed-call__copy,.enq-missed-call__visual,.enq-connection__card,.enq-industries__card,.enq-connected__list{animation:enq-reveal .7s var(--ease) both;animation-timeline:view();animation-range:entry 5% cover 28%}
+@keyframes enq-reveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.enq-hero__copy,.enq-hero__visual,.enq-problem__card,.enq-capture__flow,.enq-lifecycle__line,.enq-missed-call__copy,.enq-missed-call__visual,.enq-connection__card,.enq-industries__card,.enq-connected__list{animation:none}}

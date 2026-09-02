@@ -1,0 +1,22 @@
+---
+import Button from "../../foundation/Button.astro";
+import ProductScreenshot from "../../product/ProductScreenshot.astro";
+import { lifecycleStages } from "../../../data/enquiries";
+---
+<section class="enq-hero container" aria-labelledby="enq-title">
+  <div class="enq-hero__copy">
+    <p class="product-kicker">Enquiries & leads</p>
+    <h1 id="enq-title">Keep every customer enquiry moving.</h1>
+    <p>A missed call, a message through your public profile, or a walk-in enquiry becomes a lead the moment it happens, with the customer's details and what they asked about attached, so it stays visible until someone follows up.</p>
+    <div class="enq-hero__actions">
+      <Button href="/get-started">Start free</Button>
+      <Button href="#capture" variant="secondary">See how it works</Button>
+    </div>
+  </div>
+  <div class="enq-hero__visual">
+    <ProductScreenshot src={null} label="Leads waiting for a response" />
+    <ul class="enq-lifecycle-pills" aria-label="Lead status progression">
+      {lifecycleStages.map((stage, index) => <li data-active={index === 0 ? "true" : "false"}>{stage.label}</li>)}
+    </ul>
+  </div>
+</section>

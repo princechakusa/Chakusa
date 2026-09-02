@@ -1,0 +1,17 @@
+---
+const scenarios = [
+  "A customer calls while you're already with someone else. The call ends, and with it goes the only record that they were interested at all.",
+  "A customer asks about a service through your public profile after hours. By the time you're back at your phone, it's easy to forget who reached out.",
+  "A quote request comes in mid-job. It's not urgent enough to stop for, but it still needs an answer before the customer looks elsewhere.",
+];
+---
+<section class="enq-problem container" aria-labelledby="enq-problem-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Customer interest shouldn't disappear</p>
+    <h2 id="enq-problem-title">You're usually busy serving the customer in front of you.</h2>
+    <p>That's the job. It also means a new customer can reach out while you have no way to answer right away. Chakusa's job is to make sure that moment is still there when you do.</p>
+  </div>
+  <div class="enq-problem__grid">
+    {scenarios.map((scenario) => <div class="enq-problem__card"><p>{scenario}</p></div>)}
+  </div>
+</section>

@@ -1,0 +1,16 @@
+@media(min-width:42rem){
+  .enq-problem__grid{grid-template-columns:repeat(3,1fr)}
+  .enq-capture__flow{grid-template-columns:repeat(3,1fr)}
+  .enq-connection__grid{grid-template-columns:repeat(2,1fr)}
+  .enq-industries__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:64rem){
+  .enq-hero{grid-template-columns:1fr .85fr;gap:5rem;align-items:center;padding-block:6rem}
+  .enq-capture__flow{grid-template-columns:repeat(5,1fr)}
+  .enq-missed-call__grid{grid-template-columns:1fr .85fr;gap:5rem}
+  .enq-connection__grid{grid-template-columns:repeat(2,1fr);gap:2rem}
+  .enq-industries__grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+  .enq-hero__copy,.enq-hero__visual,.enq-problem__card,.enq-capture__flow,.enq-lifecycle__line,.enq-missed-call__copy,.enq-missed-call__visual,.enq-connection__card,.enq-industries__card,.enq-connected__list{animation:none}
+}

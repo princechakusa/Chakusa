@@ -1,0 +1,44 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import EnquiriesHero from "../../components/features/enquiries/EnquiriesHero.astro";
+import EnquiryProblem from "../../components/features/enquiries/EnquiryProblem.astro";
+import OpportunityCapture from "../../components/features/enquiries/OpportunityCapture.astro";
+import ProductFeature from "../../components/product/ProductFeature.astro";
+import LeadProgression from "../../components/features/enquiries/LeadProgression.astro";
+import MissedCallStory from "../../components/features/enquiries/MissedCallStory.astro";
+import EnquiryConnections from "../../components/features/enquiries/EnquiryConnections.astro";
+import IndustryExamples from "../../components/features/enquiries/IndustryExamples.astro";
+import ConnectedFeatures from "../../components/features/enquiries/ConnectedFeatures.astro";
+import EnquiriesFaq from "../../components/features/enquiries/EnquiriesFaq.astro";
+import EnquiriesCta from "../../components/features/enquiries/EnquiriesCta.astro";
+import EnquiriesSchemas from "../../components/features/enquiries/EnquiriesSchemas.astro";
+import { enquiryStories } from "../../data/enquiries";
+import "../../styles/product/product.css";
+import "../../styles/product/product-responsive.css";
+import "../../styles/features/enquiries.css";
+import "../../styles/features/enquiries-responsive.css";
+const title = "Customer Enquiries & Lead Management | Chakusa";
+const description = "See how Chakusa turns a missed call or a new enquiry into a lead you can track, from first contact to a follow-up you prepare and send yourself, for local service businesses.";
+---
+<MarketingLayout {title} {description}>
+  <EnquiriesSchemas />
+  <SkipLink />
+  <Header />
+  <main id="main-content">
+    <EnquiriesHero />
+    <EnquiryProblem />
+    <OpportunityCapture />
+    {enquiryStories.map((story, index) => <ProductFeature {story} {index} />)}
+    <LeadProgression />
+    <MissedCallStory />
+    <EnquiryConnections />
+    <IndustryExamples />
+    <ConnectedFeatures />
+    <EnquiriesFaq />
+    <EnquiriesCta />
+  </main>
+  <Footer />
+</MarketingLayout>

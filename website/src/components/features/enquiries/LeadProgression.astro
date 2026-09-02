@@ -1,0 +1,13 @@
+---
+import { lifecycleStages } from "../../../data/enquiries";
+---
+<section class="enq-lifecycle container" aria-labelledby="enq-lifecycle-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Move the lead forward</p>
+    <h2 id="enq-lifecycle-title">Leads aren't an undifferentiated inbox.</h2>
+    <p>Every lead sits in exactly one stage, and moving it forward is always a deliberate tap, never automatic.</p>
+  </div>
+  <ol class="enq-lifecycle__line" aria-label="Lead status progression, from New to Won or Lost">
+    {lifecycleStages.map((stage) => <li><strong>{stage.label}</strong><p>{stage.description}</p></li>)}
+  </ol>
+</section>

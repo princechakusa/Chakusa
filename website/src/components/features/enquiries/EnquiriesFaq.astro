@@ -1,0 +1,12 @@
+---
+import { enquiriesFaqs } from "../../../data/enquiries";
+---
+<section class="product-faq container" aria-labelledby="enq-faq-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Enquiries & leads questions</p>
+    <h2 id="enq-faq-title">How lead follow-up actually works.</h2>
+  </div>
+  <div>
+    {enquiriesFaqs.map((item) => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}
+  </div>
+</section>

@@ -1,0 +1,14 @@
+---
+import { enquiriesFaqs } from "../../../data/enquiries";
+// No Organization or SoftwareApplication schema here, SeoHead.astro
+// already includes both on every page (see layouts/MarketingLayout.astro).
+// No "/features" hub page exists yet, so the breadcrumb stays two levels
+// rather than pointing at a URL that doesn't resolve.
+const breadcrumb = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+  { "@type": "ListItem", position: 1, name: "Home", item: String(Astro.site) },
+  { "@type": "ListItem", position: 2, name: "Enquiries & Leads", item: new URL("/features/enquiries", Astro.site).toString() },
+] };
+const faq = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: enquiriesFaqs.map((item) => ({ "@type": "Question", name: item.question, acceptedAnswer: { "@type": "Answer", text: item.answer } })) };
+---
+<script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumb)} />
+<script type="application/ld+json" is:inline set:html={JSON.stringify(faq)} />

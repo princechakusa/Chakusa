@@ -1,0 +1,25 @@
+---
+// PROGRAM: POWERFUL FEATURES. Bookings, Customers, and AI assistant each
+// have a standalone feature page on the roadmap (see the final report for
+// recommended routes: /features/bookings, /features/customers,
+// /features/ai-assistant). None of those pages exist yet, so every link
+// below points at real, live content on /product rather than a dead URL.
+// When a standalone page ships, swap only that one `href` here.
+const connections = [
+  { title: "Bookings", detail: "Turn a responded-to lead into a confirmed appointment.", href: "/product#booking" },
+  { title: "Customer management", detail: "Every lead becomes part of one customer record over time.", href: "/product#customer-profiles" },
+  { title: "Automation", detail: "See what's owner-reviewed today, and what automation adds when it's on.", href: "/product#automation" },
+  { title: "AI-assisted conversations", detail: "Chakusa's AI-drafted replies work on the wider conversation, always with a human approving before anything sends.", href: "/product#ai-assistant" },
+  { title: "Business control", detail: "See leads alongside bookings, reviews, and customers due back, in one view.", href: "/how-it-works#attention-title" },
+];
+---
+<section class="enq-connected container" aria-labelledby="enq-connected-title">
+  <div class="product-section-heading">
+    <p class="product-kicker">Connected capabilities</p>
+    <h2 id="enq-connected-title">Enquiries connect to the rest of Chakusa.</h2>
+    <p>Leads aren't an isolated sales inbox. Here's where they lead next.</p>
+  </div>
+  <ul class="enq-connected__list">
+    {connections.map((item) => <li><a href={item.href}><strong>{item.title}</strong><span>{item.detail}</span></a></li>)}
+  </ul>
+</section>

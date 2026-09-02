@@ -1,4 +1,9 @@
 ---
+import HeroVideo from "./HeroVideo.astro";
 import HeroPoster from "./HeroPoster.astro";
 ---
-<div class="hero-media"><HeroPoster /><p class="poster-caption">Missed calls, return reminders, and review opportunities in one clear view.</p></div>
+<div class="hero-media">
+  <HeroVideo />
+  <div class="hero-media__fallback"><HeroPoster /></div>
+  <p class="poster-caption">Missed calls, return reminders, and review opportunities in one clear view.</p>
+</div>

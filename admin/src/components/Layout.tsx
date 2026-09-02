@@ -1,6 +1,6 @@
 import {
   Activity, BarChart3, Building2, ChevronDown, CircleHelp, CreditCard, FileClock, LayoutDashboard,
-  LogOut, Menu, MessageSquareText, Moon, Search, Settings, ShieldCheck, Sun, Users, Workflow, X,
+  LogOut, Menu, MessageSquareText, Moon, Scale, Search, Settings, ShieldCheck, Sun, Users, Workflow, X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ const navigation = [
   { to: "/support", label: "Support", icon: CircleHelp, permission: "support.read" },
   { to: "/feedback", label: "Beta feedback", icon: MessageSquareText, permission: "feedback.read" },
   { to: "/audit", label: "Audit log", icon: FileClock, permission: "audit.read" },
+  { to: "/legal", label: "Legal", icon: Scale, permission: "legal.read" },
   { to: "/security", label: "Security", icon: ShieldCheck, permission: null },
   { to: "/settings", label: "Settings", icon: Settings, permission: "settings.read" },
 ];

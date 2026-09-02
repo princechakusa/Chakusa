@@ -18,7 +18,7 @@ export interface PricingTier {
 export const pricingTiers: PricingTier[] = [
   {
     name: "Free",
-    tagline: "Everything you need to start recovering customers.",
+    tagline: "Everything you need to start bringing customers back.",
     price: "$0",
     priceNote: "No card required",
     features: [

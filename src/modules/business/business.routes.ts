@@ -10,7 +10,7 @@ import { completeBusinessOnboarding } from "./business.service.js";
 import { exportBusinessData } from './businessExport.service.js';
 import { requireOwner } from '../../lib/authorization.js';
 import { syncServiceOfferingsFromLegacyNames } from '../services/services.service.js';
-import { getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
+import { getOwnAcceptanceHistory, getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 import { z } from "zod";
 
 const cookiePreferencesSchema = z.object({ analytics: z.boolean(), functional: z.boolean(), marketing: z.boolean() });
@@ -34,6 +34,11 @@ export default async function businessRoutes(fastify: FastifyInstance) {
   fastify.get("/legal/status", async (request) => {
     const pending = await getPendingAcceptances(request.user.userId, "BUSINESS");
     return { pending };
+  });
+
+  fastify.get("/legal/history", async (request) => {
+    const events = await getOwnAcceptanceHistory(request.user.userId, "BUSINESS");
+    return { events };
   });
 
   fastify.post("/legal/accept", async (request) => {

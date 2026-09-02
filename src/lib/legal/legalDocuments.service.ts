@@ -183,15 +183,33 @@ export async function acceptanceStatsForVersion(versionId: string) {
   return { versionId, acceptanceCount: count };
 }
 
-export async function searchAcceptanceEvents(filter: { userId?: string; documentVersionId?: string; type?: LegalDocumentType }, take = 100) {
+export async function searchAcceptanceEvents(filter: { userId?: string; documentVersionId?: string; type?: LegalDocumentType; scope?: LegalAcceptanceScope }, take = 100) {
   return prisma.legalAcceptanceEvent.findMany({
     where: {
       userId: filter.userId,
       documentVersionId: filter.documentVersionId,
+      scope: filter.scope,
       documentVersion: filter.type ? { type: filter.type } : undefined,
     },
     orderBy: { acceptedAt: "desc" },
     take: Math.min(take, 500),
     include: { documentVersion: { select: { type: true, version: true } } },
   });
+}
+
+/**
+ * Self-service acceptance history for a signed-in user (own scope only —
+ * not the admin search above, which can query any user/version). Backs
+ * GET /business/legal/history and GET /customer/legal/history so a person
+ * can see what they accepted and when, not just what's currently pending.
+ */
+export async function getOwnAcceptanceHistory(userId: string, scope: LegalAcceptanceScope) {
+  const events = await searchAcceptanceEvents({ userId, scope }, 100);
+  return events.map((event) => ({
+    id: event.id,
+    type: event.documentVersion.type,
+    version: event.documentVersion.version,
+    acceptedAt: event.acceptedAt,
+    source: event.source,
+  }));
 }

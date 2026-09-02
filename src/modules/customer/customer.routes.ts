@@ -7,7 +7,7 @@ import { getCustomerProfileOrThrow, linkCustomerToBusiness, recordCustomerActivi
 import { listCustomerNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/customer/customerNotifications.js";
 import { revokeAllCustomerSessions } from "../customerAuth/customerAuth.service.js";
 import { getCustomerAIContext, getCustomerAIConversations, getCustomerDashboard } from "./customer.service.js";
-import { getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
+import { getOwnAcceptanceHistory, getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 
 const updateProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(80).optional(),
@@ -70,6 +70,11 @@ export default async function customerRoutes(fastify: FastifyInstance) {
   fastify.get("/legal/status", async (request) => {
     const pending = await getPendingAcceptances(request.customer!.userId, "CUSTOMER");
     return { pending };
+  });
+
+  fastify.get("/legal/history", async (request) => {
+    const events = await getOwnAcceptanceHistory(request.customer!.userId, "CUSTOMER");
+    return { events };
   });
 
   fastify.post("/legal/accept", async (request) => {

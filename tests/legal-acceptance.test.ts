@@ -220,6 +220,24 @@ describe("legal document platform", () => {
       const event = await prisma.legalAcceptanceEvent.findFirstOrThrow({ where: { userId: account.userId } });
       expect(event.scope).toBe("BUSINESS");
     });
+
+    it("lists a business's own acceptance history, most recent first, without leaking another scope's events", async () => {
+      const session = await admin(app);
+      await publishVersion(app, session, "TERMS_OF_SERVICE");
+      await publishVersion(app, session, "PRIVACY_POLICY");
+      const account = await registerAccount(app);
+      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "TERMS_OF_SERVICE" } });
+      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "PRIVACY_POLICY" } });
+
+      const history = await app.inject({ method: "GET", url: "/business/legal/history", headers: authHeader(account.accessToken) });
+      expect(history.statusCode).toBe(200);
+      const types = history.json().events.map((e: { type: string }) => e.type);
+      expect(types).toEqual(["PRIVACY_POLICY", "TERMS_OF_SERVICE"]); // most recent first
+
+      const customer = await registerCustomer(app);
+      const customerHistory = await app.inject({ method: "GET", url: "/customer/legal/history", headers: authHeader(customer.token) });
+      expect(customerHistory.json().events).toEqual([]);
+    });
   });
 
   describe("admin analytics", () => {

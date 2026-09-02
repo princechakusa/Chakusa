@@ -71,9 +71,9 @@ export function CustomerAccountScreen() {
 
       <SectionHeader title="Rewards" />
       <View style={styles.group}>
-        {/* Loop 7 leaves this navigation location in place on purpose; the
-            full customer rewards experience ships in Loop 8. */}
-        <MenuRow icon="gift-outline" label="My Rewards" detail="Coming soon" onPress={() => navigation.navigate('CustomerRewards')} />
+        <MenuRow icon="gift-outline" label="My Rewards" onPress={() => navigation.navigate('CustomerRewards')} />
+        <Divider />
+        <MenuRow icon="people-outline" label="Invite friends" onPress={() => navigation.navigate('CustomerReferrals')} />
       </View>
 
       <SectionHeader title="Legal" />

@@ -72,6 +72,31 @@ describe('parseCustomerDeepLink', () => {
   });
 });
 
+describe('parseCustomerDeepLink — loyalty (Loop 8)', () => {
+  it('parses loyalty destinations', () => {
+    expect(parseCustomerDeepLink('chakusa://loyalty/biz-123')).toEqual({ route: 'CustomerLoyaltyBusiness', params: { businessId: 'biz-123' } });
+    expect(parseCustomerDeepLink('chakusa://loyalty')).toEqual({ route: 'CustomerRewards', params: {} });
+    expect(parseCustomerDeepLink('chakusa://redemptions')).toEqual({ route: 'CustomerRedemptions', params: {} });
+    expect(parseCustomerDeepLink('chakusa://memberships')).toEqual({ route: 'CustomerMemberships', params: {} });
+    expect(parseCustomerDeepLink('chakusa://referrals')).toEqual({ route: 'CustomerReferrals', params: {} });
+  });
+
+  it('still refuses business loyalty-management deep links', () => {
+    expect(parseCustomerDeepLink('chakusa://loyalty-management')).toBeNull();
+    expect(parseCustomerDeepLink('chakusa://loyalty-members')).toBeNull();
+    expect(isBusinessOnlyRoute('LoyaltyManagement')).toBe(true);
+    expect(isBusinessOnlyRoute('LoyaltyMembers')).toBe(true);
+    expect(canNavigateCustomer('LoyaltyRewards')).toBe(false);
+  });
+
+  it('keeps the new customer loyalty routes navigable', () => {
+    for (const route of ['CustomerLoyaltyBusiness', 'CustomerRewardDetail', 'CustomerRedemptions', 'CustomerMemberships', 'CustomerReferrals']) {
+      expect(canNavigateCustomer(route)).toBe(true);
+      expect(isBusinessOnlyRoute(route)).toBe(false);
+    }
+  });
+});
+
 describe('isSafeCustomerDeepLink', () => {
   it('is true only for links that stay inside the customer app', () => {
     expect(isSafeCustomerDeepLink('chakusa://business/glow-studio')).toBe(true);

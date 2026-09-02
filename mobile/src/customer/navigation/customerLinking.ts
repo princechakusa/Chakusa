@@ -28,6 +28,10 @@ export const customerLinking: LinkingOptions<CustomerRootStackParamList> = {
       CustomerNotifications: 'notifications',
       CustomerAssistant: 'assistant',
       CustomerRewards: 'my-rewards',
+      CustomerLoyaltyBusiness: 'loyalty/:businessId',
+      CustomerRedemptions: 'redemptions',
+      CustomerMemberships: 'memberships',
+      CustomerReferrals: 'referrals',
     },
   },
   getStateFromPath: (path) => {
@@ -46,6 +50,14 @@ export const customerLinking: LinkingOptions<CustomerRootStackParamList> = {
         return { routes: [{ name: 'CustomerNotifications' }] };
       case 'CustomerRewards':
         return { routes: [{ name: 'CustomerRewards' }] };
+      case 'CustomerLoyaltyBusiness':
+        return { routes: [{ name: 'CustomerLoyaltyBusiness', params: parsed.params }] };
+      case 'CustomerRedemptions':
+        return { routes: [{ name: 'CustomerRedemptions' }] };
+      case 'CustomerMemberships':
+        return { routes: [{ name: 'CustomerMemberships' }] };
+      case 'CustomerReferrals':
+        return { routes: [{ name: 'CustomerReferrals' }] };
       case 'CustomerHome':
         return { routes: [{ name: 'CustomerTabs', state: { routes: [{ name: 'CustomerHome' }] } }] };
       default:

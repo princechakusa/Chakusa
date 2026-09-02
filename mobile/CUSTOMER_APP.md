@@ -41,14 +41,56 @@ src/customer/
     customerLinking.ts       deep links, filtered through domain/customerNav
     customerNavigationRef.ts
   domain/
-    customerNav.ts (+test)   deep-link parsing + customer/business boundary guard
-    customerHome.ts (+test)  /customer/dashboard shaping
-  components/cards.tsx       BusinessCard · ServiceRow · BookingCard
+    customerNav.ts (+test)      deep-link parsing + customer/business boundary guard
+    customerHome.ts (+test)     /customer/dashboard shaping
+    customerLoyalty.ts (+test)  wallet/hub shaping, reward/redemption/membership
+                                display, loyalty-notification deep-link mapping
+  components/
+    cards.tsx                BusinessCard (loyalty badges) · ServiceRow · BookingCard
+    loyalty.tsx              PointsSummary · LoyaltyBusinessCard · TierProgressBar ·
+                             RewardCard · MembershipCard · RedemptionCodeCard ·
+                             ReferralProgressCard
   screens/                   Auth, LegalGate, LegalDocument, Home, Explore,
                              BusinessProfile, BookingFlow, Bookings,
                              BookingDetail, Account, EditProfile,
-                             Notifications, Assistant, Rewards (placeholder)
+                             Notifications, Assistant, and the loyalty set:
+                             Rewards (hub), LoyaltyBusiness, LoyaltyHistory,
+                             RewardDetail, Redemptions, RedemptionDetail,
+                             Memberships, MembershipPlans, Referrals
 ```
+
+## Loyalty experience (Program 2 Loop 8)
+
+Account → **My Rewards** opens `CustomerRewardsScreen`, the loyalty hub.
+Every screen binds to an existing `/customer/loyalty/*` route (Program 2
+Loop 5) through `loyaltyApi` in `src/customer/endpoints.ts` — same customer
+transport, no business session.
+
+| Screen | Route(s) |
+| --- | --- |
+| Rewards hub | `/customer/loyalty/wallet` |
+| Business loyalty detail | `/customer/loyalty/accounts/:businessId` (+ `/enrol`) |
+| Points history | `/customer/loyalty/accounts/:businessId/transactions` (cursor paginated) |
+| Reward detail / redeem | `POST /customer/loyalty/accounts/:businessId/rewards/:rewardId/redeem` |
+| Issued rewards + code | `/customer/loyalty/rewards` |
+| Memberships | `/customer/loyalty/memberships` (+ `/memberships/:id/cancel`) |
+| Membership plans / join | `/customer/loyalty/businesses/:slug/membership-plans` (+ `POST …/memberships`) |
+| Referrals | `/customer/loyalty/referrals`, `/referrals/code`, `/referrals/redeem` |
+
+Cross-surface: marketplace cards show Rewards/Membership badges
+(`loyaltyBadge` / `membershipBadge`); the business profile shows a loyalty
+block with a Join/View action; the booking flow shows server-computed
+member prices; loyalty notifications deep-link into the customer loyalty
+screens only (never business loyalty-management).
+
+**Points are not money.** Each business's points stay with that business —
+the hub copy says so explicitly. There is no cash-out, transfer, top-up or
+stored-value anywhere.
+
+**Membership takes no payment.** Loop 5 records the entitlement without a
+charge; the app shows plan prices only alongside the statement that
+Chakusa is not collecting the payment. No Stripe / Apple IAP / Google Play
+Billing / card form / checkout.
 
 Reused from the business app without modification: `src/theme.ts`,
 `src/components/ui.tsx`, `src/domain/booking.ts`,

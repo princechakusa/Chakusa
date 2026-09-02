@@ -20,13 +20,22 @@ export type CustomerRouteName =
   | 'CustomerNotifications'
   | 'CustomerAssistant'
   | 'CustomerRewards'
+  | 'CustomerLoyaltyBusiness'
+  | 'CustomerLoyaltyHistory'
+  | 'CustomerRewardDetail'
+  | 'CustomerRedemptions'
+  | 'CustomerMemberships'
+  | 'CustomerMembershipPlans'
+  | 'CustomerReferrals'
   | 'EditCustomerProfile'
   | 'CustomerLegalDocument';
 
 export const CUSTOMER_ROUTES: readonly CustomerRouteName[] = [
   'CustomerTabs', 'CustomerHome', 'CustomerExplore', 'CustomerBookings', 'CustomerAccount',
   'BusinessProfile', 'BookingFlow', 'BookingDetail', 'CustomerNotifications', 'CustomerAssistant',
-  'CustomerRewards', 'EditCustomerProfile', 'CustomerLegalDocument',
+  'CustomerRewards', 'CustomerLoyaltyBusiness', 'CustomerLoyaltyHistory', 'CustomerRewardDetail',
+  'CustomerRedemptions', 'CustomerMemberships', 'CustomerMembershipPlans', 'CustomerReferrals',
+  'EditCustomerProfile', 'CustomerLegalDocument',
 ];
 
 // Anything the business owner app owns. A customer build has no screen for
@@ -50,6 +59,10 @@ export type CustomerDeepLink =
   | { route: 'CustomerAssistant'; params: { conversationId?: string } }
   | { route: 'CustomerNotifications'; params: Record<string, never> }
   | { route: 'CustomerRewards'; params: Record<string, never> }
+  | { route: 'CustomerLoyaltyBusiness'; params: { businessId: string } }
+  | { route: 'CustomerRedemptions'; params: Record<string, never> }
+  | { route: 'CustomerMemberships'; params: Record<string, never> }
+  | { route: 'CustomerReferrals'; params: Record<string, never> }
   | { route: 'CustomerHome'; params: Record<string, never> };
 
 function stripPrefix(raw: string): string {
@@ -94,6 +107,17 @@ export function parseCustomerDeepLink(raw: string): CustomerDeepLink | null {
     case 'rewards':
     case 'my-rewards':
       return { route: 'CustomerRewards', params: {} };
+    case 'loyalty':
+      // `loyalty/<businessId>` opens that business's loyalty detail. The
+      // id is a public business id already used by /customer/loyalty/* —
+      // no business-owner route is reachable from here.
+      return a ? { route: 'CustomerLoyaltyBusiness', params: { businessId: a } } : { route: 'CustomerRewards', params: {} };
+    case 'redemptions':
+      return { route: 'CustomerRedemptions', params: {} };
+    case 'memberships':
+      return { route: 'CustomerMemberships', params: {} };
+    case 'referrals':
+      return { route: 'CustomerReferrals', params: {} };
     case 'home':
       return { route: 'CustomerHome', params: {} };
     default:

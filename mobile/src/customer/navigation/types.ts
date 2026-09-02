@@ -19,9 +19,18 @@ export type CustomerRootStackParamList = {
   BookingDetail: { bookingId: string };
   CustomerNotifications: undefined;
   CustomerAssistant: { conversationId?: string } | undefined;
-  // Loop 7 leaves this location intentionally in place; the full rewards
-  // experience is Loop 8. The screen currently explains that.
+  // PROGRAM 2 LOOP 8: the customer loyalty experience. `CustomerRewards` is
+  // the hub reached from Account → My Rewards; the rest push onto this same
+  // stack.
   CustomerRewards: undefined;
+  CustomerLoyaltyBusiness: { businessId: string; slug?: string; businessName?: string };
+  CustomerLoyaltyHistory: { businessId: string; businessName?: string };
+  CustomerRewardDetail: { businessId: string; businessName?: string; reward: import('../../apiTypes').LoyaltyRewardDto };
+  CustomerRedemptions: undefined;
+  CustomerRedemptionDetail: { redemption: import('../../apiTypes').RewardRedemptionDto };
+  CustomerMemberships: undefined;
+  CustomerMembershipPlans: { slug: string; businessName?: string };
+  CustomerReferrals: undefined;
   EditCustomerProfile: undefined;
   CustomerLegalDocument: { type: import('../../apiTypes').LegalDocumentType };
 };

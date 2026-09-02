@@ -5,6 +5,7 @@ import type { CustomerBookingDto, MarketplaceCardDto } from '../../apiTypes';
 import { bookingStatusLabel } from '../../domain/booking';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
+import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
 
 // PROGRAM 2 LOOP 7: small presentational pieces for the customer app,
 // built from the shared theme tokens and `ui.tsx` primitives just like
@@ -28,6 +29,13 @@ export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPr
         {card.verified ? <Ionicons name="shield-checkmark" size={16} color={colors.success} /> : null}
       </View>
       {card.tagline ? <Text style={styles.tagline} numberOfLines={2}>{card.tagline}</Text> : null}
+      {marketplaceLoyaltyBadges(card).length ? (
+        <View style={styles.badgeRow}>
+          {marketplaceLoyaltyBadges(card).map((badge) => (
+            <View key={badge} style={styles.loyaltyBadge}><Text style={styles.loyaltyBadgeText}>{badge}</Text></View>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.cardFooter}>
         <Text style={styles.rating}>
           {card.rating != null ? `★ ${card.rating.toFixed(1)} (${card.reviewCount})` : 'New to Chakusa'}
@@ -100,6 +108,9 @@ const styles = StyleSheet.create({
   cardName: { ...typography.bodyStrong, color: colors.text },
   cardMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   tagline: { ...typography.caption, color: colors.text },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs },
+  loyaltyBadge: { borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primary },
+  loyaltyBadgeText: { ...typography.micro, color: colors.primary },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.sm },
   rating: { ...typography.caption, color: colors.textSecondary },
   cardAction: { ...typography.caption, color: colors.primary },

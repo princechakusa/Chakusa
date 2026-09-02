@@ -11,6 +11,7 @@ import {
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { ServiceRow } from '../components/cards';
+import { memberPriceDisplay } from '../domain/customerLoyalty';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -99,18 +100,32 @@ export function BookingFlowScreen({ route, navigation }: Props) {
     <Screen>
       <AppHeader eyebrow="NEW BOOKING" title={services?.businessName ?? 'Book'} subtitle={stepLabel(step)} />
 
+      {services?.membership ? (
+        <View style={styles.memberBanner}>
+          <Text style={styles.memberBannerText}>
+            {services.membership.planName} member — {services.membership.discountPercent}% off{services.membership.priorityBooking ? ' · priority booking' : ''}. Member prices shown below.
+          </Text>
+        </View>
+      ) : null}
+
       {/* Service */}
       <Text style={styles.groupLabel}>Service</Text>
       <View style={styles.list}>
-        {(services?.services ?? []).map((service) => (
-          <ServiceRow
-            key={service.id}
-            name={service.name}
-            meta={formatServiceMeta(service, services?.currency ?? '')}
-            selected={draft.serviceId === service.id}
-            onPress={() => setDraft((d) => ({ ...emptyDraft, serviceId: service.id, staffId: 'any' }))}
-          />
-        ))}
+        {(services?.services ?? []).map((service) => {
+          const member = memberPriceDisplay(service, services?.currency ?? null);
+          const meta = member.hasMemberPrice
+            ? `${formatServiceMeta(service, services?.currency ?? '')} · member ${member.member}`
+            : formatServiceMeta(service, services?.currency ?? '');
+          return (
+            <ServiceRow
+              key={service.id}
+              name={service.name}
+              meta={meta}
+              selected={draft.serviceId === service.id}
+              onPress={() => setDraft(() => ({ ...emptyDraft, serviceId: service.id, staffId: 'any' }))}
+            />
+          );
+        })}
       </View>
 
       {draft.serviceId && staff.length > 1 ? (
@@ -206,6 +221,8 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
+  memberBanner: { padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  memberBannerText: { ...typography.caption, color: colors.text },
   groupLabel: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
   list: { gap: spacing.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },

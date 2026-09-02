@@ -20,6 +20,14 @@ import { CustomerLegalDocumentScreen } from '../screens/CustomerLegalDocumentScr
 import { CustomerLegalGateScreen } from '../screens/CustomerLegalGateScreen';
 import { CustomerNotificationsScreen } from '../screens/CustomerNotificationsScreen';
 import { CustomerRewardsScreen } from '../screens/CustomerRewardsScreen';
+import { CustomerLoyaltyBusinessScreen } from '../screens/CustomerLoyaltyBusinessScreen';
+import { CustomerLoyaltyHistoryScreen } from '../screens/CustomerLoyaltyHistoryScreen';
+import { CustomerRewardDetailScreen } from '../screens/CustomerRewardDetailScreen';
+import { CustomerRedemptionsScreen } from '../screens/CustomerRedemptionsScreen';
+import { CustomerRedemptionDetailScreen } from '../screens/CustomerRedemptionDetailScreen';
+import { CustomerMembershipsScreen } from '../screens/CustomerMembershipsScreen';
+import { CustomerMembershipPlansScreen } from '../screens/CustomerMembershipPlansScreen';
+import { CustomerReferralsScreen } from '../screens/CustomerReferralsScreen';
 import { EditCustomerProfileScreen } from '../screens/EditCustomerProfileScreen';
 import { navigationRef } from './customerNavigationRef';
 import type { CustomerRootStackParamList, CustomerTabParamList } from './types';
@@ -121,6 +129,14 @@ export function CustomerNavigator() {
           <Stack.Screen name="CustomerNotifications" component={CustomerNotificationsScreen} />
           <Stack.Screen name="CustomerAssistant" component={CustomerAssistantScreen} />
           <Stack.Screen name="CustomerRewards" component={CustomerRewardsScreen} />
+          <Stack.Screen name="CustomerLoyaltyBusiness" component={CustomerLoyaltyBusinessScreen} />
+          <Stack.Screen name="CustomerLoyaltyHistory" component={CustomerLoyaltyHistoryScreen} />
+          <Stack.Screen name="CustomerRewardDetail" component={CustomerRewardDetailScreen} />
+          <Stack.Screen name="CustomerRedemptions" component={CustomerRedemptionsScreen} />
+          <Stack.Screen name="CustomerRedemptionDetail" component={CustomerRedemptionDetailScreen} />
+          <Stack.Screen name="CustomerMemberships" component={CustomerMembershipsScreen} />
+          <Stack.Screen name="CustomerMembershipPlans" component={CustomerMembershipPlansScreen} />
+          <Stack.Screen name="CustomerReferrals" component={CustomerReferralsScreen} />
           <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
           <Stack.Screen name="CustomerLegalDocument" component={CustomerLegalDocumentScreen} />
         </>

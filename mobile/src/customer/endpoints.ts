@@ -19,6 +19,9 @@ import type {
   CustomerAIConversationDto, CustomerAIConversationListDto, CustomerAIConversationDetailDto,
   CustomerAITurnResponseDto, CustomerAIRecommendationDto, CustomerAISettingsDto,
   LegalAcceptanceStatusDto, LegalDocumentDto, LegalDocumentType,
+  WalletDto, LoyaltyAccountSummaryDto, LoyaltyRewardDto, LoyaltyTransactionDto,
+  RewardRedemptionDto, CustomerMembershipDto, MembershipPlanDto,
+  ReferralOverviewDto, ReferralCodeDto,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -134,4 +137,34 @@ export const legalApi = {
   customerStatus: () => customerHttp.get<LegalAcceptanceStatusDto>('/customer/legal/status'),
   customerAccept: (type: LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
     customerHttp.post<{ id: string }>('/customer/legal/accept', { type, ...body }),
+};
+
+// PROGRAM 2 LOOP 8: customer loyalty, rewards, memberships & referrals.
+// Same `/customer/loyalty/*` routes as Program 2 Loop 5, routed through the
+// customer transport. Read + a handful of customer actions (enrol, redeem a
+// reward, enrol/cancel a membership, referral code/redeem). No payment
+// surface: membership enrolment records the entitlement without a charge.
+export const loyaltyApi = {
+  wallet: () => customerHttp.get<WalletDto>('/customer/loyalty/wallet'),
+  accounts: () => customerHttp.get<WalletDto['accounts']>('/customer/loyalty/accounts'),
+  account: (businessId: string) => customerHttp.get<LoyaltyAccountSummaryDto>(`/customer/loyalty/accounts/${businessId}`),
+  transactions: (businessId: string, params: { cursor?: string; limit?: number } = {}) =>
+    customerHttp.get<{ items: LoyaltyTransactionDto[]; nextCursor: string | null }>(`/customer/loyalty/accounts/${businessId}/transactions${query(params)}`),
+  enrol: (businessId: string) => customerHttp.post<{ id: string }>(`/customer/loyalty/accounts/${businessId}/enrol`),
+  rewards: (businessId: string) => customerHttp.get<LoyaltyRewardDto[]>(`/customer/loyalty/accounts/${businessId}/rewards`),
+  redeemReward: (businessId: string, rewardId: string) =>
+    customerHttp.post<{ id: string; code: string; status: RewardRedemptionDto['status']; pointsSpent: number; reward: { name: string; type: string; value: number | null } | null; expiresAt: string | null }>(`/customer/loyalty/accounts/${businessId}/rewards/${rewardId}/redeem`),
+  myRedemptions: (status?: RewardRedemptionDto['status']) =>
+    customerHttp.get<RewardRedemptionDto[]>(`/customer/loyalty/rewards${query({ status })}`),
+  memberships: () => customerHttp.get<CustomerMembershipDto[]>('/customer/loyalty/memberships'),
+  membershipPlans: (slug: string) => customerHttp.get<MembershipPlanDto[]>(`/customer/loyalty/businesses/${encodeURIComponent(slug)}/membership-plans`),
+  enrolMembership: (slug: string, planId: string) =>
+    customerHttp.post<{ id: string; status: string }>(`/customer/loyalty/businesses/${encodeURIComponent(slug)}/memberships`, { planId }),
+  cancelMembership: (id: string, immediate = false) =>
+    customerHttp.post<{ id: string; status: string; cancelAtPeriodEnd?: boolean }>(`/customer/loyalty/memberships/${id}/cancel`, { immediate }),
+  referrals: () => customerHttp.get<ReferralOverviewDto>('/customer/loyalty/referrals'),
+  referralCode: (businessSlug?: string) =>
+    customerHttp.post<ReferralCodeDto>('/customer/loyalty/referrals/code', businessSlug ? { businessSlug } : {}),
+  redeemReferral: (code: string) =>
+    customerHttp.post<{ referralId: string; status: string }>('/customer/loyalty/referrals/redeem', { code }),
 };

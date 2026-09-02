@@ -309,7 +309,8 @@ export interface CustomerSessionResponse {
   isNewUser?: boolean;
 }
 export type CustomerNotificationCategory =
-  | 'booking_update' | 'message' | 'ai_reply' | 'promotion' | 'review_reminder' | 'appointment_reminder';
+  | 'booking_update' | 'message' | 'ai_reply' | 'promotion' | 'review_reminder' | 'appointment_reminder'
+  | 'loyalty' | 'legal_update';
 export interface CustomerNotificationDto {
   id: string;
   businessId: string | null;
@@ -355,6 +356,10 @@ export interface MarketplaceCardDto {
   photo: string | null;
   verified: boolean;
   featured: boolean;
+  // PROGRAM 2 LOOP 5 (surfaced in the customer app by Loop 8): true when the
+  // business runs an active loyalty program / offers membership plans.
+  loyaltyBadge?: boolean;
+  membershipBadge?: boolean;
   rating: number | null;
   reviewCount: number;
   viewCount: number;
@@ -410,6 +415,15 @@ export interface MarketplaceBusinessProfileDto {
   promotions: Array<{ id: string; title: string; description: string | null; badge: string | null; endsAt: string | null }>;
   reviewsSummary: { averageRating: number | null; totalReviews: number; recent: Array<{ rating: number; comment: string | null; sentiment: string | null; createdAt: string }> };
   viewer: { favourite: boolean; following: boolean };
+  // PROGRAM 2 LOOP 5 loyalty block (surfaced in the customer app by Loop 8).
+  loyalty?: {
+    hasProgram: boolean;
+    hasMemberships: boolean;
+    pointsPerCurrency: number | null;
+    membershipPlans: Array<{ id: string; name: string; billingInterval: string; priceAmount: number; currency: string | null; discountPercent: number; priorityBooking: boolean; perks?: unknown }>;
+    rewards: Array<{ id: string; name: string; type: string; pointsCost: number; membersOnly: boolean }>;
+    viewer: { pointsBalance: number; tierKey: string | null; isMember: boolean; memberPlanId: string | null } | null;
+  };
   shareUrl: string;
   businessId: string;
 }
@@ -437,10 +451,15 @@ export interface BookableServiceDto {
   durationMinutes: number;
   price: number | null;
   depositAmount: number | null;
+  // PROGRAM 2 LOOP 5: server-computed member price (equals `price` when the
+  // customer has no active membership). Never a charge. Surfaced in the
+  // customer booking UI by Loop 8.
+  memberPrice?: number | null;
 }
 export interface BookableServicesDto {
   businessName: string;
   currency: string | null;
+  membership?: { planName: string; discountPercent: number; priorityBooking: boolean } | null;
   services: BookableServiceDto[];
 }
 export interface AvailabilitySlotDto {

@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -7,14 +9,19 @@ import type { CustomerNotificationDto } from '../../apiTypes';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
+import { loyaltyNotificationTarget } from '../domain/customerLoyalty';
 import { customerApi } from '../endpoints';
+import type { CustomerRootStackParamList } from '../navigation/types';
 import { enableCustomerPush, getCustomerPushStatus } from '../push';
+
+type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
 // PROGRAM 2 LOOP 7: notifications list + the device-registration entry
 // point. Reads `/customer/notifications`; the "Turn on" button asks for OS
 // permission and registers the Expo token against `/customer/auth/devices`.
 
 export function CustomerNotificationsScreen() {
+  const navigation = useNavigation<Nav>();
   const [items, setItems] = useState<CustomerNotificationDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -49,6 +56,16 @@ export function CustomerNotificationsScreen() {
     try { await customerApi.markAllNotificationsRead(); } catch { void load(); }
   };
 
+  // A loyalty notification tap deep-links inside the customer app only.
+  // `loyaltyNotificationTarget` never returns a business-owner destination.
+  const openNotification = (notification: CustomerNotificationDto) => {
+    if (!notification.readAt) void markRead(notification.id);
+    if (notification.category !== 'loyalty') return;
+    const target = loyaltyNotificationTarget(notification);
+    if (target.route === 'CustomerLoyaltyBusiness') navigation.navigate('CustomerLoyaltyBusiness', { businessId: target.businessId });
+    else navigation.navigate(target.route);
+  };
+
   const unread = items.filter((n) => !n.readAt).length;
 
   return (
@@ -80,7 +97,7 @@ export function CustomerNotificationsScreen() {
                 key={notification.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${notification.title}. ${notification.readAt ? 'Read.' : 'Unread.'}`}
-                onPress={() => !notification.readAt && void markRead(notification.id)}
+                onPress={() => openNotification(notification)}
                 style={[styles.item, !notification.readAt && styles.itemUnread]}
               >
                 <Text style={styles.itemTitle}>{notification.title}</Text>

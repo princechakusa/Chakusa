@@ -113,6 +113,8 @@ const CATEGORY_LABEL: Record<CustomerNotificationCategory, string> = {
   promotion: 'Offers',
   review_reminder: 'Reviews',
   appointment_reminder: 'Reminders',
+  loyalty: 'Rewards',
+  legal_update: 'Legal',
 };
 
 export function notificationCategoryLabel(category: CustomerNotificationCategory | string): string {

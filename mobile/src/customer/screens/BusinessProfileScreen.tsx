@@ -8,6 +8,8 @@ import type { MarketplaceBusinessProfileDto } from '../../apiTypes';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { formatMoney } from '../../utils/format';
+import { formatPoints } from '../../domain/loyalty';
+import { profileLoyaltyState } from '../domain/customerLoyalty';
 import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -99,6 +101,41 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         <SecondaryButton fullWidth label={following ? 'Following' : 'Follow'} icon={following ? 'checkmark' : 'add'} onPress={() => void toggleFollow()} />
       </View>
 
+      {(() => {
+        const loyalty = profileLoyaltyState(profile);
+        if (!loyalty.show) return null;
+        return (
+          <View style={styles.loyaltyCard}>
+            <View style={styles.loyaltyHeader}>
+              <Ionicons name="gift-outline" size={18} color={colors.primary} />
+              <Text style={styles.loyaltyTitle}>Rewards{loyalty.hasMemberships ? ' & membership' : ''}</Text>
+            </View>
+            {loyalty.enrolled ? (
+              <Text style={styles.loyaltyMeta}>
+                You have {formatPoints(loyalty.pointsBalance)}{loyalty.tierKey ? ` · ${loyalty.tierKey} tier` : ''}{loyalty.isMember ? ' · member' : ''}
+              </Text>
+            ) : (
+              <Text style={styles.loyaltyMeta}>
+                {loyalty.hasProgram ? 'Earn points when you book here.' : 'Membership plans available.'}
+                {loyalty.rewardCount ? ` ${loyalty.rewardCount} reward${loyalty.rewardCount === 1 ? '' : 's'} to unlock.` : ''}
+              </Text>
+            )}
+            <View style={styles.loyaltyActions}>
+              {loyalty.hasProgram ? (
+                <SecondaryButton
+                  compact
+                  label={loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}
+                  onPress={() => navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name })}
+                />
+              ) : null}
+              {loyalty.hasMemberships ? (
+                <SecondaryButton compact label="Membership" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} />
+              ) : null}
+            </View>
+          </View>
+        );
+      })()}
+
       {profile.services.length ? (
         <>
           <SectionHeader title="Services" />
@@ -156,4 +193,9 @@ const styles = StyleSheet.create({
   cardName: { ...typography.bodyStrong, color: colors.text },
   cardMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   reviewCard: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.xxs },
+  loyaltyCard: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface, gap: spacing.xs },
+  loyaltyHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  loyaltyTitle: { ...typography.bodyStrong, color: colors.text },
+  loyaltyMeta: { ...typography.caption, color: colors.textSecondary },
+  loyaltyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
 });

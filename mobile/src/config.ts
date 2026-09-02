@@ -4,11 +4,13 @@ import { normalizeApiUrl, publicFeatureEnabled } from './domain/mobileProduction
 
 const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
-// PROGRAM 2 LOOP 7: which application this build is. 'business' is the
-// long-standing owner app and the default when nothing is set, so every
-// existing build and every existing test keeps its exact behaviour. A
-// build sets EXPO_PUBLIC_APP_VARIANT=customer (see eas.json `customer`
-// profile) to boot the customer shell instead. See CUSTOMER_APP.md.
+// PROGRAM 2 LOOP 9: production Chakusa is ONE app and chooses the
+// customer/business experience at RUNTIME (see src/experience/). This
+// build-time flag is now only an INTERNAL DEVELOPMENT OVERRIDE: setting
+// EXPO_PUBLIC_APP_VARIANT=customer forces the customer shell for focused
+// QA / storybook-style builds. Unset (the default for every production and
+// CI build) means "let the ExperienceRouter decide". Production must never
+// depend on this. See CUSTOMER_APP.md.
 export type AppVariant = 'business' | 'customer';
 const rawVariant = process.env.EXPO_PUBLIC_APP_VARIANT?.trim().toLowerCase();
 export const APP_VARIANT: AppVariant = rawVariant === 'customer' ? 'customer' : 'business';

@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, Avatar, Divider, Screen, SectionHeader } from '../../components/ui';
+import { useExperience } from '../../experience/experienceContext';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { useCustomerAuth } from '../CustomerAuthContext';
@@ -31,6 +32,7 @@ function MenuRow({ icon, label, detail, onPress }: { icon: IconName; label: stri
 export function CustomerAccountScreen() {
   const navigation = useNavigation<Nav>();
   const { user, profile, logout, closeAccount } = useCustomerAuth();
+  const { switchExperience } = useExperience();
 
   const confirmClose = () => {
     Alert.alert(
@@ -74,6 +76,11 @@ export function CustomerAccountScreen() {
         <MenuRow icon="gift-outline" label="My Rewards" onPress={() => navigation.navigate('CustomerRewards')} />
         <Divider />
         <MenuRow icon="people-outline" label="Invite friends" onPress={() => navigation.navigate('CustomerReferrals')} />
+      </View>
+
+      <SectionHeader title="Chakusa" />
+      <View style={styles.group}>
+        <MenuRow icon="swap-horizontal-outline" label="Switch to business" onPress={() => switchExperience('business')} />
       </View>
 
       <SectionHeader title="Legal" />

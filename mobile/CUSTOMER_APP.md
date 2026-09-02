@@ -1,26 +1,87 @@
-# Chakusa Customer Mobile Application
+# Chakusa Mobile — one app, two experiences
 
-_Program 2 · Loop 7 — foundation & core customer experience._
+_Program 2 · Loop 7 (customer foundation) · Loop 8 (customer loyalty) ·
+Loop 9 (unified runtime experience router)._
 
 ## What this is
 
-The `mobile/` codebase now builds **two** applications from one Expo
-project:
+**Chakusa is ONE public app.** One installation, one bundle id, one store
+listing. Inside it a person can use the **customer experience** (find &
+book services, rewards) or the **business experience** (the original
+owner app). The two are chosen at **runtime**, and their security
+boundaries stay fully separate.
 
-| Variant    | Who it is for            | Selected by                              |
-| ---------- | ------------------------ | ---------------------------------------- |
-| `business` | Business owners & staff  | default — nothing set                    |
-| `customer` | End customers            | `EXPO_PUBLIC_APP_VARIANT=customer`       |
-
-The business application is untouched by Loop 7 except for **one guarded
-branch** at the top of [`App.tsx`](App.tsx):
-
-```tsx
-if (APP_VARIANT === 'customer') return <CustomerRoot />;
+```
+App.tsx
+  └─ (web-only public routes short-circuit — unchanged)
+  └─ ExperienceRouter               src/experience/ExperienceRouter.tsx
+       ├─ <BusinessRoot/>           src/BusinessRoot.tsx   (exactly one
+       ├─ <CustomerRoot/>           src/customer/CustomerRoot.tsx   mounted
+       └─ <ExperienceSelectScreen/> src/experience/ExperienceSelectScreen.tsx  at a time)
 ```
 
-When `APP_VARIANT` is `business` (the default for every existing build,
-every CI run and every test) the file behaves exactly as before.
+`ExperienceRouter` holds **no token**. It reads a small preference
+(`chakusa.experience.v1` — the string `customer` / `business`, nothing
+else), probes whether each session store has something, classifies any
+incoming deep link, then mounts one shell. `BusinessRoot` /
+`CustomerRoot` own all auth, session, transport and navigation — the
+router never touches them.
+
+### Cold-start decision (`resolveInitialExperience`, pure + tested)
+
+1. dev `EXPO_PUBLIC_APP_VARIANT=customer` override (internal builds only)
+2. a trusted incoming deep link that names an experience
+3. the saved `chakusa.experience.v1` preference
+4. **existing-user migration**: exactly one session present → that
+   experience (an existing logged-in business owner upgrading sees the
+   business app immediately, never the selector)
+5. otherwise → the experience selector
+
+A corrupt/unknown preference reads back as "unselected" and never crashes.
+
+### Switching
+
+`useExperience().switchExperience('business' | 'customer')` (wired into
+**Account → Switch to …** on both sides) persists the preference and
+swaps the mounted shell. Each shell restores its own session on mount; if
+there is none, that shell shows its own auth screen. Switching never
+re-authenticates the other side and never carries a screen path across.
+
+### Logout
+
+Unchanged and independent: customer logout clears
+`chakusa.customer.session.v1` only; business logout clears
+`chakusa.auth.session.v2` only. The business "Sign out of all devices"
+still only revokes business sessions. The other identity is never touched.
+
+### Deep links & notifications
+
+`classifyDeepLinkExperience(url)` (pure) → `customer` (via Loop 7/8's
+`parseCustomerDeepLink`, which still refuses business routes) /
+`business` (an allowlist) / `null` (unknown → no switch). At cold start it
+biases the initial experience; at runtime, a link for the *other*
+experience switches only when that experience already has a session.
+`classifyNotificationExperience(data)` maps `data.experience` or a known
+customer `data.category` to an experience, else `null` (never guesses from
+title/body).
+
+### `APP_VARIANT` today
+
+Retained as an **internal development override** only
+([`src/config.ts`](src/config.ts)). Production never sets it and never
+depends on it — the runtime router decides. The `eas.json` `customer`
+profile stays for focused internal QA builds.
+
+### Store identity
+
+**One public Chakusa application.** No second bundle identifier, Android
+package, App Store record, Google Play record or EAS project was created.
+A future marketing rename, if wanted, is a store-side decision and is not
+made here.
+
+---
+
+## Customer experience internals (Loop 7 / 8)
 
 ## Architecture (Stage 2 decision — Option C)
 

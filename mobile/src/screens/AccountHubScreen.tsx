@@ -8,6 +8,7 @@ import { AppHeader, Screen } from '../components/ui';
 import { formatAppVersion } from '../domain/trustSettings';
 import { businessApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
+import { useExperience } from '../experience/experienceContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
@@ -21,6 +22,7 @@ const version = formatAppVersion(expoConfig.version, expoConfig.ios?.buildNumber
 export function AccountHubScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { business, user, role, logout, logoutAll } = useAuth();
+  const { switchExperience } = useExperience();
   const { plan, status, features } = usePlanExperience();
   const [sessionAction, setSessionAction] = useState<'logout'|'all'|null>(null);
   const [exporting, setExporting] = useState(false);
@@ -80,6 +82,7 @@ export function AccountHubScreen() {
     <MenuSection title="ACCOUNT">
       <MenuRow icon="card-outline" tone="red" title="Subscription and billing" detail={`${planLabel} plan`} onPress={() => navigation.navigate('Pro')} />
       <MenuRow icon="shield-checkmark-outline" tone="blue" title="Security and sign-in" detail="Profile, password and connected accounts" onPress={() => navigation.navigate('AccountInformation')} />
+      <MenuRow icon="swap-horizontal-outline" tone="green" title="Switch to customer" detail="Find and book services, and view your rewards" onPress={() => switchExperience('customer')} />
       <MenuRow icon="help-circle-outline" tone="purple" title="Help and support" detail="Answers and contact options" onPress={() => navigation.navigate('Help')} />
       <MenuRow icon="information-circle-outline" tone="slate" title="About Chakusa" detail={version} last />
     </MenuSection>

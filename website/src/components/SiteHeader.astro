@@ -93,7 +93,7 @@ const links: NavLink[] = [
 </header>
 
 <script>
-  // Dropdown triggers: click/tap toggle, not CSS :hover — hover never fires
+  // Dropdown triggers use click or tap. CSS hover never fires here.
   // on touch devices, which made the menu unusable on mobile/tablet.
   const triggers = document.querySelectorAll<HTMLButtonElement>("[data-nav-trigger]");
 

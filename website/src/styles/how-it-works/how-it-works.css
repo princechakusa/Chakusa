@@ -1,7 +1,5 @@
 .hiw-kicker{margin:0 0 1rem;color:var(--ink);font-size:.75rem;font-weight:750;letter-spacing:.02em}
-.hiw-kicker::before{content:"";display:inline-block;width:1.5rem;height:2px;margin-right:.65rem;vertical-align:middle;border-radius:2px;background:var(--violet)}
 .hiw-kicker--light{color:#dfe1e6}
-.hiw-kicker--light::before{background:var(--violet)}
 .hiw-section-heading{max-width:48rem}
 .hiw-section-heading>p:last-child{margin-top:1rem;color:var(--ink-soft);line-height:1.7}
 
@@ -64,7 +62,6 @@
 .hiw-cta{margin-block:3rem 8rem;padding:clamp(2rem,6vw,5rem);border-radius:1.5rem;background:var(--ink);color:#fff;text-align:center}
 .hiw-cta h2{margin:0;font-size:clamp(2.15rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.045em}
 .hiw-cta>p{margin:1.25rem auto 2rem;max-width:34rem;color:#dfe1e6}
-.hiw-cta .hiw-kicker::before{background:var(--violet)}
 .hiw-cta__actions{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem}
 .hiw-cta .ui-button--primary{background:#fff;color:var(--ink)}
 

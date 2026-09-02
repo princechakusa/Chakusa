@@ -17,7 +17,6 @@
 .enq-cta h2{margin:0;font-size:clamp(2.15rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.045em}
 .enq-cta>p{margin:1.25rem auto 2rem;max-width:34rem;color:#dfe1e6}
 .enq-cta .product-kicker{color:#dfe1e6}
-.enq-cta .product-kicker::before{background:var(--violet)}
 .enq-cta__actions{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem}
 .enq-cta .ui-button--primary{background:#fff;color:var(--ink)}
 .enq-hero__visual{display:grid;gap:1rem}

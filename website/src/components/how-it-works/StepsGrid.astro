@@ -1,0 +1,8 @@
+---
+import HowItWorksIcon from "./HowItWorksIcon.astro";
+import { stepIcons } from "../../data/how-it-works";
+interface Step { id: string; number: string; eyebrow: string; title: string; copy: string; points: string[] }
+interface Props { steps: Step[]; label: string; heading: string; intro: string; anchor: string }
+const { steps, label, heading, intro, anchor } = Astro.props;
+---
+<section class="hiw-stepsgrid container" id={anchor} aria-labelledby={`${anchor}-title`}><div class="hiw-section-heading"><p class="hiw-kicker">{label}</p><h2 id={`${anchor}-title`}>{heading}</h2><p>{intro}</p></div><div class="hiw-stepsgrid__grid">{steps.map((step) => <div class="hiw-stepsgrid__card" id={step.id}><span class="hiw-stepsgrid__number">{step.number}</span><div class="hiw-icon"><HowItWorksIcon name={stepIcons[step.id]}/></div><strong>{step.title}</strong><p>{step.copy}</p><ul>{step.points.slice(0, 3).map((point) => <li>{point}</li>)}</ul></div>)}</div></section>

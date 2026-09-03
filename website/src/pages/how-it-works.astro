@@ -5,7 +5,7 @@ import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
 import HowItWorksHero from "../components/how-it-works/HowItWorksHero.astro";
 import JourneyOverview from "../components/how-it-works/JourneyOverview.astro";
-import HowItWorksStep from "../components/how-it-works/HowItWorksStep.astro";
+import StepsGrid from "../components/how-it-works/StepsGrid.astro";
 import ServiceMoment from "../components/how-it-works/ServiceMoment.astro";
 import BusinessAttention from "../components/how-it-works/BusinessAttention.astro";
 import ConnectedLoop from "../components/how-it-works/ConnectedLoop.astro";
@@ -23,4 +23,4 @@ const description = "See how Chakusa turns a customer enquiry into a booking, a 
 const beforeService = [setupStep, discoveryStep, enquiryStep, responseStep, bookingStep];
 const afterService = [followUpStep, reviewStep, returnStep];
 ---
-<MarketingLayout {title} {description}><HowItWorksSchemas /><SkipLink /><Header /><main id="main-content"><HowItWorksHero /><JourneyOverview />{beforeService.map((step, index) => <HowItWorksStep {step} {index} />)}<ServiceMoment />{afterService.map((step, index) => <HowItWorksStep step={step} index={index + 5} />)}<BusinessAttention /><ConnectedLoop /><RealWorldExample /><HowItWorksFaq /><HowItWorksCta /></main><Footer /></MarketingLayout>
+<MarketingLayout {title} {description}><HowItWorksSchemas /><SkipLink /><Header /><main id="main-content"><HowItWorksHero /><JourneyOverview /><StepsGrid steps={beforeService} label="Before the visit" heading="From first contact to a confirmed booking." intro="Five steps connect a customer's first search to a confirmed appointment." anchor="before-service" /><ServiceMoment /><StepsGrid steps={afterService} label="After the visit" heading="The relationship doesn't end at checkout." intro="Three steps keep the business connected to the customer after the work is done." anchor="after-service" /><BusinessAttention /><ConnectedLoop /><RealWorldExample /><HowItWorksFaq /><HowItWorksCta /></main><Footer /></MarketingLayout>

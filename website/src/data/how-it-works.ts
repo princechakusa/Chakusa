@@ -161,6 +161,20 @@ export const businessAttention = {
 export const journeySteps: JourneyStep[] = [setupStep, discoveryStep, enquiryStep, responseStep, bookingStep];
 export const journeyStepsAfterService: JourneyStep[] = [followUpStep, reviewStep, returnStep];
 
+// Icon keys for the compact step-card grid (replaces the old full-bleed
+// alternating vertical layout with Stitch's denser card rhythm). Maps
+// 1:1 by step id, same verified copy.
+export const stepIcons: Record<string, string> = {
+  setup: "task",
+  discover: "storefront",
+  enquiry: "chat",
+  respond: "note",
+  book: "calendar",
+  followup: "history",
+  review: "star",
+  return: "repeat",
+};
+
 export const realWorldExample = {
   eyebrow: "Illustrative example",
   title: "One missed call, followed through.",

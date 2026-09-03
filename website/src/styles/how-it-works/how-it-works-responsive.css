@@ -1,12 +1,15 @@
 @media(max-width:42rem){
 .hiw-hero__proof{grid-template-columns:1fr}
+.hiw-stepsgrid__grid{grid-template-columns:1fr}
 }
 @media(min-width:42rem){
 .hiw-hero__path{grid-template-columns:repeat(3,1fr)}
 .hiw-overview__path{grid-template-columns:repeat(3,1fr)}
 .hiw-calendar__grid{gap:.5rem}
+.hiw-stepsgrid__grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:64rem){
+.hiw-stepsgrid__grid{grid-template-columns:repeat(3,1fr)}
 .hiw-hero{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:5rem;align-items:center;padding-block:7rem 6rem}
 .hiw-hero__path{grid-template-columns:repeat(2,1fr)}
 .hiw-overview{padding-block:8rem}

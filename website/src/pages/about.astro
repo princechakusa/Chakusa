@@ -3,38 +3,191 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import CTASection from "../components/CTASection.astro";
-import "../styles/global.css";
+import Button from "../components/foundation/Button.astro";
+import TradeCharacter from "../components/homepage/TradeCharacter.astro";
+import StoryIcon from "../components/homepage/StoryIcon.astro";
+import { lifecycleSteps } from "../data/homepageStory";
 
 const title = "About | Chakusa";
-const description = "Why Chakusa exists, exactly what it does today, who it's built for, and how it handles your data. Plain, honest answers, not marketing gloss.";
+const description = "Why Chakusa exists, exactly what it does today, who it's built for, and how it connects customers and businesses. Plain, honest answers, not marketing gloss.";
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content">
-    <section class="about-section content-shell" aria-labelledby="about-title" data-reveal>
-      <p class="eyebrow">About</p>
-      <h1 id="about-title">Why we built Chakusa</h1>
-      <p>Most local businesses lose customers quietly: a call that never gets a callback, a happy visit that never turns into a review, a regular who just stops showing up. None of it shows up as a single dramatic failure. It just adds up, unnoticed, month after month.</p>
-      <p>Chakusa exists to make that loss visible and easy to act on, from a phone, without needing a dashboard, a login for six different tools, or a team dedicated to marketing.</p>
-
-      <h2>What Chakusa does today</h2>
-      <p>Chakusa tracks missed-call leads, review requests, and comeback reminders for local service businesses in beauty, home services, automotive, and professional services. Some of it is manual today and some of it is automated, and we'd rather tell you plainly which is which than let the marketing get ahead of the product. Check the <a href="/product">Product</a> page for the specifics.</p>
-      <p>One note on the name: when we talk about "recovering" a customer, we mean catching a missed enquiry or a lapsed regular before you lose them for good. Chakusa is software for managing your own business and customers. It is not a financial, debt, cryptocurrency, or asset recovery service.</p>
-
-      <h2>Who it's for, and who it isn't yet</h2>
-      <p>Chakusa is built for solo and small-team local service businesses that live on repeat customers: barbers, salons, dentists, cleaners, contractors, mechanics, photographers. If that's you, it's worth ten minutes.</p>
-      <p>It's not built for multi-location chains, and it doesn't do job scheduling, dispatch, or invoicing. If that's what you need today, a tool like Jobber or Housecall Pro will serve you better than Chakusa will. We'd rather say that plainly than have you find out after signing up.</p>
-
-      <h2>Security and privacy</h2>
-      <p>Your account uses standard, rotated session security, and any linked sign-in credentials are stored encrypted, never in plain text. We collect what the product needs to work and nothing beyond that.</p>
-
-      <h2 id="contact">Get in touch</h2>
-      <p>Questions, a Business-tier inquiry, or something that isn't working the way this page says it should: <a href="mailto:support@chakusarecovery.com">support@chakusarecovery.com</a> reaches a real person, not a ticket queue.</p>
+    <section class="ab-hero container">
+      <div class="ab-hero__copy">
+        <p class="ab-badge">About Chakusa</p>
+        <h1>The connected operating system for local service businesses.</h1>
+        <p>Most local businesses lose customers quietly: a call that never gets a callback, a happy visit that never turns into a review, a regular who just stops showing up. Chakusa exists to make that loss visible and easy to act on.</p>
+        <div class="ab-hero__actions">
+          <Button href="/get-started">Start free</Button>
+          <Button href="/product" variant="secondary">See the product</Button>
+        </div>
+      </div>
+      <div class="ab-hero__illustration" aria-hidden="true"><TradeCharacter /></div>
     </section>
 
-    <CTASection heading="Try Chakusa free for 14 days." />
+    <section class="ab-what container">
+      <div class="ab-section-heading">
+        <p class="ab-label">What Chakusa is</p>
+        <h2>One app, connecting customer discovery to business operations.</h2>
+        <p>Chakusa is software for managing customer relationships at a local service business: enquiries, bookings, customer records, reviews, and comeback reminders, all in one connected system, not five separate tools.</p>
+      </div>
+    </section>
+
+    <section class="ab-problem container">
+      <div class="ab-section-heading">
+        <p class="ab-label">The local-service problem</p>
+        <h2>None of it shows up as one dramatic failure. It just adds up.</h2>
+      </div>
+      <div class="ab-problem__grid">
+        <div><strong>A missed call</strong><p>that never gets a callback becomes a customer who found someone else.</p></div>
+        <div><strong>A happy visit</strong><p>that never turns into a review leaves the business's reputation understated.</p></div>
+        <div><strong>A regular</strong><p>who just stops showing up, with no one noticing until months later.</p></div>
+      </div>
+    </section>
+
+    <section class="ab-connect container">
+      <div class="ab-section-heading">
+        <p class="ab-label">How Chakusa connects them</p>
+        <h2>The same event updates both sides at once.</h2>
+        <p>A customer's enquiry reaches the business immediately. A business's response, booking, or review reply reaches the customer the same way. Nothing sits in a separate inbox.</p>
+      </div>
+    </section>
+
+    <section class="ab-lifecycle container">
+      <div class="ab-section-heading ab-section-heading--center">
+        <p class="ab-label">The full loop</p>
+        <h2>Discover, enquire, book, serve, review, return, grow.</h2>
+      </div>
+      <ol class="ab-lifecycle__grid">
+        {lifecycleSteps.map((step) => <li>
+          <span class="ab-lifecycle__number">{step.number}</span>
+          <StoryIcon name={step.icon} class="ab-lifecycle__icon" />
+          <strong>{step.label}</strong>
+          <p>{step.copy}</p>
+        </li>)}
+      </ol>
+    </section>
+
+    <section class="ab-audience container">
+      <div class="ab-section-heading ab-section-heading--center">
+        <p class="ab-label">Who it's for, and who it isn't yet</p>
+        <h2>Built for solo and small-team local service businesses.</h2>
+        <p>Barbers, salons, dentists, cleaners, contractors, mechanics, photographers, and similar trades that live on repeat customers. It's not built for multi-location chains, and it doesn't do job scheduling, dispatch, or invoicing.</p>
+      </div>
+      <div class="ab-audience__grid">
+        <div class="ab-audience__card">
+          <span class="ab-audience__label"><StoryIcon name="person" class="ab-audience__icon" />Customer experience</span>
+          <strong>Discover, book, and keep track of visits.</strong>
+          <p>Find nearby businesses, see real availability, and book directly from a public profile, no account required.</p>
+        </div>
+        <div class="ab-audience__card ab-audience__card--dark">
+          <span class="ab-audience__label"><StoryIcon name="storefront" class="ab-audience__icon" />Business experience</span>
+          <strong>Run the day from one dashboard.</strong>
+          <p>Today's schedule, new enquiries, and customers due back, in one working view instead of five tools.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ab-principles container">
+      <div class="ab-section-heading ab-section-heading--center">
+        <p class="ab-label">Product principles</p>
+        <h2>What we build, and what we won't.</h2>
+      </div>
+      <div class="ab-principles__grid">
+        <div><strong>No sentiment-gated reviews</strong><p>Every completed visit gets a review request, never filtered by expected rating.</p></div>
+        <div><strong>Never fully automatic</strong><p>The AI assistant drafts in Draft mode by default. A human reviews before anything sends.</p></div>
+        <div><strong>Your data, exportable</strong><p>CSV export, anytime, no lock-in to leave with your customer records.</p></div>
+        <div><strong>One app, not two</strong><p>Customers and businesses use the same Chakusa app, never two separate products.</p></div>
+      </div>
+    </section>
+
+    <section class="ab-security container">
+      <div class="ab-section-heading">
+        <p class="ab-label">Security and privacy</p>
+        <h2>Standard, rotated session security.</h2>
+        <p>Any linked sign-in credentials are stored encrypted, never in plain text. We collect what the product needs to work, and nothing beyond that. Chakusa is software for managing your own business and customers, not a financial, debt, cryptocurrency, or asset recovery service, despite what the name might suggest.</p>
+      </div>
+    </section>
+
+    <section class="ab-cta container" id="contact">
+      <div class="ab-cta__panel">
+        <p class="ab-label ab-label--light">Get in touch</p>
+        <h2>Questions about the product, billing, or your data?</h2>
+        <p><a href="mailto:support@chakusarecovery.com">support@chakusarecovery.com</a> reaches a real person, not a ticket queue. See the <a href="/contact">Contact page</a> for more ways to reach us.</p>
+        <div class="ab-cta__actions">
+          <Button href="/get-started">Start free</Button>
+          <Button href="/contact" variant="secondary">Contact us</Button>
+        </div>
+      </div>
+    </section>
   </main>
   <Footer />
 </MarketingLayout>
+<style>
+.ab-badge,.ab-label{margin:0;color:var(--secondary);font:700 .7rem/1.2 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.ab-label--light{color:#7dd8cc}
+.ab-badge{display:inline-flex;padding:.42rem .75rem;border-radius:999px;background:#fff0ed;color:var(--primary);letter-spacing:.04em}
+.ab-section-heading{max-width:44rem;margin-bottom:2rem}
+.ab-section-heading--center{max-width:38rem;margin-inline:auto;text-align:center}
+.ab-section-heading h2{margin:.5rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
+.ab-section-heading>p:last-child{margin-top:.75rem;color:var(--body-text);font-size:.98rem;line-height:1.65}
+
+.ab-hero{display:grid;grid-template-columns:1fr auto;gap:3rem;align-items:center;padding-block:5rem 4rem}
+.ab-hero h1{margin:.75rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.2rem,4.4vw,3rem);line-height:1.2;letter-spacing:-.025em}
+.ab-hero__copy>p{margin:1rem 0 0;max-width:34rem;color:var(--body-text);font-size:1.05rem;line-height:1.6}
+.ab-hero__actions{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1.75rem}
+.ab-hero__illustration{width:9rem;padding:1.25rem 1.25rem 2rem;border:1px solid var(--hairline);border-radius:var(--r-xl);background:linear-gradient(160deg,#fff,var(--page-surface));box-shadow:var(--shadow-overlay)}
+
+.ab-what,.ab-connect{padding-block:3rem}
+.ab-problem{padding-block:3rem}
+.ab-problem__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2rem}
+.ab-problem__grid>div{padding:1.5rem;border-radius:var(--r-lg);background:var(--page-surface)}
+.ab-problem__grid strong{display:block;margin-bottom:.5rem;font-family:var(--font-heading);color:var(--heading);font-size:1rem}
+.ab-problem__grid p{margin:0;color:var(--body-text);font-size:.88rem;line-height:1.55}
+
+.ab-lifecycle{padding-block:3rem 4rem}
+.ab-lifecycle__grid{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin:2rem 0 0;padding:1px;background:var(--hairline);border:1px solid var(--hairline);border-radius:var(--r-xl);overflow:hidden}
+.ab-lifecycle__grid li{padding:1.5rem;background:#fff;display:grid;gap:.3rem;align-content:start}
+.ab-lifecycle__number{color:var(--body-text);font-size:.72rem;font-weight:700}
+.ab-lifecycle__icon{width:1.4rem;height:1.4rem;color:var(--primary);margin:.2rem 0}
+.ab-lifecycle__grid strong{font-family:var(--font-heading);font-size:.92rem;color:var(--heading)}
+.ab-lifecycle__grid p{margin:0;color:var(--body-text);font-size:.78rem;line-height:1.5}
+
+.ab-audience{padding-block:4rem;background:var(--page-surface)}
+.ab-audience__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-top:1rem}
+.ab-audience__card{padding:1.75rem;border-radius:var(--r-xl);background:#fff}
+.ab-audience__card--dark{background:var(--heading);color:#fff}
+.ab-audience__label{display:flex;align-items:center;gap:.5rem;color:var(--secondary);font-size:.72rem;font-weight:700;text-transform:uppercase}
+.ab-audience__icon{width:1.1rem;height:1.1rem}
+.ab-audience__card strong{display:block;margin:1rem 0;font-family:var(--font-heading);font-size:1.15rem}
+.ab-audience__card:not(.ab-audience__card--dark) strong{color:var(--heading)}
+.ab-audience__card p{margin:0;font-size:.88rem;line-height:1.55}
+.ab-audience__card:not(.ab-audience__card--dark) p{color:var(--body-text)}
+.ab-audience__card--dark p{color:#c9ccd3}
+
+.ab-principles{padding-block:4rem}
+.ab-principles__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-top:1rem}
+.ab-principles__grid>div{padding:1.5rem;border-radius:var(--r-lg);background:var(--page-surface)}
+.ab-principles__grid strong{display:block;margin-bottom:.5rem;font-family:var(--font-heading);color:var(--heading);font-size:.92rem}
+.ab-principles__grid p{margin:0;color:var(--body-text);font-size:.8rem;line-height:1.5}
+
+.ab-security{padding-block:3rem}
+.ab-cta{padding-block:2rem 6rem}
+.ab-cta__panel{padding:3rem;border-radius:var(--r-xl);background:var(--heading);color:#fff;text-align:center}
+.ab-cta__panel h2{margin:.5rem auto;max-width:30rem;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
+.ab-cta__panel>p{max-width:30rem;margin:.75rem auto 1.5rem;color:#c9ccd3;font-size:.94rem;line-height:1.6}
+.ab-cta__panel a{color:#7dd8cc;font-weight:700}
+.ab-cta__actions{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem}
+
+@media (max-width:64rem){.ab-lifecycle__grid{grid-template-columns:repeat(2,1fr)}.ab-principles__grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:42rem){
+  .ab-hero{grid-template-columns:1fr}.ab-hero__illustration{margin:0 auto}
+  .ab-problem__grid{grid-template-columns:1fr}
+  .ab-lifecycle__grid{grid-template-columns:1fr}
+  .ab-audience__grid{grid-template-columns:1fr}
+  .ab-principles__grid{grid-template-columns:1fr}
+}
+</style>

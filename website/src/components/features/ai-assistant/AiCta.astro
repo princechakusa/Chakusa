@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import AiIcon from "./AiIcon.astro";
+import { aiCta } from "../../../data/aiAssistant";
+---
+<section class="ai-cta" aria-labelledby="ai-cta-title"><div class="ai-shell"><div class="ai-cta__panel"><p class="ai-label">{aiCta.label}</p><h2 id="ai-cta-title">{aiCta.title}</h2><p>{aiCta.body}</p><div class="ai-actions"><Button href="/get-started"><span>Start free</span><AiIcon name="arrow-right"/></Button><Button href="/product" variant="secondary">Explore all features</Button></div><ul><li>No credit card required</li><li>Draft mode by default</li><li>Human takeover, anytime</li></ul></div></div></section>

@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import AiIcon from "./AiIcon.astro";
+import { aiHero, aiProof } from "../../../data/aiAssistant";
+---
+<section class="ai-hero" aria-labelledby="ai-title"><div class="ai-shell ai-hero__inner"><p class="ai-badge">{aiHero.badge}</p><h1 id="ai-title">{aiHero.title}</h1><p>{aiHero.body}</p><div class="ai-actions"><Button href="#roles"><span>See practical roles</span><AiIcon name="arrow-right"/></Button><Button href="#governance" variant="secondary"><span>How oversight works</span></Button></div><dl class="ai-proof">{aiProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

@@ -1,0 +1,10 @@
+@media (max-width:64rem){
+  .ai-governance__grid{grid-template-columns:1fr}
+  .ai-industries__grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:42rem){
+  .ai-roles__grid{grid-template-columns:1fr}
+  .ai-industries__grid{grid-template-columns:1fr}
+  .ai-proof{grid-template-columns:1fr}
+  .ai-cta__panel{padding:2rem 1.5rem}
+}

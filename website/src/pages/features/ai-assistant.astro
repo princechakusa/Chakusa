@@ -1,0 +1,17 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import AiHero from "../../components/features/ai-assistant/AiHero.astro";
+import AiRoles from "../../components/features/ai-assistant/AiRoles.astro";
+import AiGovernance from "../../components/features/ai-assistant/AiGovernance.astro";
+import AiIndustries from "../../components/features/ai-assistant/AiIndustries.astro";
+import AiCta from "../../components/features/ai-assistant/AiCta.astro";
+import AiSchemas from "../../components/features/ai-assistant/AiSchemas.astro";
+import "../../styles/features/ai-assistant.css";
+import "../../styles/features/ai-assistant-responsive.css";
+const title = "AI Customer Assistant with Human Oversight | Chakusa";
+const description = "Chakusa's AI assistant drafts replies and can check availability or book appointments, starting in Draft mode so your team reviews before anything reaches a customer.";
+---
+<MarketingLayout {title} {description}><AiSchemas/><SkipLink/><Header/><main id="main-content"><AiHero/><AiRoles/><AiGovernance/><AiIndustries/><AiCta/></main><Footer/></MarketingLayout>

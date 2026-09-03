@@ -1,0 +1,5 @@
+---
+import AiIcon from "./AiIcon.astro";
+import { governance } from "../../../data/aiAssistant";
+---
+<section class="ai-governance" id="governance" aria-labelledby="ai-governance-title"><div class="ai-shell ai-governance__grid"><div><p class="ai-label">{governance.label}</p><h2 id="ai-governance-title">{governance.title}</h2><p>{governance.body}</p></div><div class="ai-governance__card"><header><span>Oversight controls</span><b>Configurable</b></header><ul>{governance.points.map((point) => <li><AiIcon name="check"/><div><strong>{point.title}</strong><p>{point.body}</p></div></li>)}</ul></div></div></section>

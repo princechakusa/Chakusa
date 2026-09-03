@@ -1,0 +1,5 @@
+---
+import AiIcon from "./AiIcon.astro";
+import { aiIndustries } from "../../../data/aiAssistant";
+---
+<section class="ai-industries" aria-labelledby="ai-industries-title"><div class="ai-shell"><div class="ai-heading ai-heading--center"><p class="ai-label">Domain adapted</p><h2 id="ai-industries-title">Tuned to the vocabulary of your trade.</h2><p>The assistant answers using terms and services specific to your business, not generic chatbot copy.</p></div><div class="ai-industries__grid">{aiIndustries.map((item, i) => <article><div class:list={["ai-icon", i % 2 === 1 && "ai-icon--alt"]}><AiIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p></article>)}</div></div></section>

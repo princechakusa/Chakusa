@@ -1,0 +1,5 @@
+---
+import AiIcon from "./AiIcon.astro";
+import { aiRoles } from "../../../data/aiAssistant";
+---
+<section class="ai-roles" id="roles" aria-labelledby="ai-roles-title"><div class="ai-shell"><div class="ai-heading"><p class="ai-label">Real shop scenarios</p><h2 id="ai-roles-title">Three practical roles in daily operations.</h2><p>The assistant works from your real services, hours, and pricing, not open-ended conversation.</p></div><div class="ai-roles__grid">{aiRoles.map((role) => <article><div class="ai-icon"><AiIcon name={role.icon}/></div><h3>{role.title}</h3><p>{role.body}</p></article>)}</div></div></section>

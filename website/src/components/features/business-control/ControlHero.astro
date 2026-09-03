@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import BusinessControlIcon from "./BusinessControlIcon.astro";
+import { controlHero, controlProof } from "../../../data/businessControl";
+---
+<section class="bc-hero" aria-labelledby="control-title"><div class="bc-shell bc-hero__inner"><p class="bc-badge">{controlHero.badge}</p><h1 id="control-title">{controlHero.title}</h1><p>{controlHero.body}</p><div class="bc-actions"><Button href="#attention"><span>See what needs attention</span><BusinessControlIcon name="arrow-right"/></Button><Button href="#cards" variant="secondary"><span>What's on the dashboard</span></Button></div><dl class="bc-proof">{controlProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

@@ -1,0 +1,5 @@
+---
+import BusinessControlIcon from "./BusinessControlIcon.astro";
+import { attentionCategories, dayFlow } from "../../../data/businessControl";
+---
+<section class="bc-attention" id="attention" aria-labelledby="control-attention-title"><div class="bc-shell"><div class="bc-heading"><p class="bc-label">{dayFlow.label}</p><h2 id="control-attention-title">{dayFlow.title}</h2><p>{dayFlow.body}</p></div><div class="bc-attention__grid">{attentionCategories.map((item) => <article><div class="bc-icon"><BusinessControlIcon name={item.icon}/></div><strong>{item.title}</strong><p>{item.body}</p></article>)}</div></div></section>

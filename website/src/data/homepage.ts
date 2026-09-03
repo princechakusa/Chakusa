@@ -48,6 +48,7 @@ export const primaryNavigation = [
     { label: "Automation", href: "/features/automation", description: "Task-creating workflows your team reviews." },
     { label: "AI Assistant", href: "/features/ai-assistant", description: "Drafts replies, with your team in the loop." },
     { label: "Marketplace", href: "/features/marketplace", description: "Public profiles customers can book directly." },
+    { label: "Business Control", href: "/features/business-control", description: "One dashboard for what needs attention." },
   ] },
   { label: "How it works", href: "/how-it-works" },
   { label: "Industries", href: "/industries", children: [
@@ -68,7 +69,7 @@ export const primaryNavigation = [
 // appear below.
 export const footerGroups = [
   { title: "Product", links: [{ label: "How it works", href: "/how-it-works" }, { label: "Customer response", href: "/product#customer-response" }, { label: "Automation", href: "/product#automation" }, { label: "Bookings", href: "/product#booking" }, { label: "Pricing", href: "/pricing" }] },
-  { title: "Features", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Industries", href: "/industries" }] },
+  { title: "Features", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Industries", href: "/industries" }] },
   { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Cookies", href: "/cookies" }, { label: "AI disclosure", href: "/ai-disclosure" }] },
 ];

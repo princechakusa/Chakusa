@@ -1,0 +1,5 @@
+---
+import BusinessControlIcon from "./BusinessControlIcon.astro";
+import { controlCards } from "../../../data/businessControl";
+---
+<section class="bc-cards" id="cards" aria-labelledby="control-cards-title"><div class="bc-shell"><div class="bc-heading bc-heading--center"><p class="bc-label">On the dashboard</p><h2 id="control-cards-title">Built for how a working day actually moves.</h2></div><div class="bc-cards__grid">{controlCards.map((card) => <div class="bc-cards__card"><div class="bc-icon"><BusinessControlIcon name={card.icon}/></div><strong>{card.title}</strong><ul>{card.points.map((point) => <li>{point}</li>)}</ul></div>)}</div></div></section>

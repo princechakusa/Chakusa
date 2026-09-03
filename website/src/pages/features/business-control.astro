@@ -1,0 +1,16 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import ControlHero from "../../components/features/business-control/ControlHero.astro";
+import AttentionCenter from "../../components/features/business-control/AttentionCenter.astro";
+import ControlCards from "../../components/features/business-control/ControlCards.astro";
+import ControlCta from "../../components/features/business-control/ControlCta.astro";
+import ControlSchemas from "../../components/features/business-control/ControlSchemas.astro";
+import "../../styles/features/business-control.css";
+import "../../styles/features/business-control-responsive.css";
+const title = "One Dashboard for Enquiries, Bookings and Reviews | Chakusa";
+const description = "Chakusa's dashboard surfaces missed calls, overdue rebooks, review opportunities, and outstanding payments in one attention list, never sent automatically.";
+---
+<MarketingLayout {title} {description}><ControlSchemas/><SkipLink/><Header/><main id="main-content"><ControlHero/><AttentionCenter/><ControlCards/><ControlCta/></main><Footer/></MarketingLayout>

@@ -1,5 +1,11 @@
 ---
 import { industryEnquiryExamples } from "../../../data/enquiries";
+const paths: Record<string, string> = {
+  cut: "m4 4 16 16M4 20 20 4M7 7a3 3 0 1 1-3-3m3 13a3 3 0 1 1-3 3",
+  car: "M4 16V9l2-4h12l2 4v7 M4 16h16 M7 16v2 M17 16v2 M6 12h12",
+  health: "M8 3h8v5h5v8h-5v5H8v-5H3V8h5V3Z",
+  clean: "M12 3v6m0 0-3 3v9h6v-9l-3-3Z M9 12h6",
+};
 ---
 <section class="enq-industries container" aria-labelledby="enq-industries-title">
   <div class="product-section-heading">
@@ -8,7 +14,13 @@ import { industryEnquiryExamples } from "../../../data/enquiries";
     <p>A missed enquiry looks the same whether you cut hair, fix cars, or clean homes.</p>
   </div>
   <div class="enq-industries__grid">
-    {industryEnquiryExamples.map((item) => <div class="enq-industries__card"><strong>{item.title}</strong><p>{item.example}</p></div>)}
+    {industryEnquiryExamples.map((item, i) => <div class="enq-industries__card">
+      <div class:list={["enq-industries__icon", i % 2 === 1 && "enq-industries__icon--alt"]}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d={paths[item.icon] ?? paths.cut} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <strong>{item.title}</strong>
+      <p>{item.example}</p>
+    </div>)}
   </div>
   <p><a href="/industries">See supported industries <span aria-hidden="true">→</span></a></p>
 </section>

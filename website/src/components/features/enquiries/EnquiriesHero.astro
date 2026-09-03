@@ -1,7 +1,7 @@
 ---
 import Button from "../../foundation/Button.astro";
 import ProductScreenshot from "../../product/ProductScreenshot.astro";
-import { lifecycleStages } from "../../../data/enquiries";
+import { lifecycleStages, enquiriesProof } from "../../../data/enquiries";
 ---
 <section class="enq-hero container" aria-labelledby="enq-title">
   <div class="enq-hero__copy">
@@ -12,6 +12,7 @@ import { lifecycleStages } from "../../../data/enquiries";
       <Button href="/get-started">Start free</Button>
       <Button href="#capture" variant="secondary">See how it works</Button>
     </div>
+    <dl class="enq-hero__proof">{enquiriesProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
   </div>
   <div class="enq-hero__visual">
     <ProductScreenshot src={null} label="Leads waiting for a response" />

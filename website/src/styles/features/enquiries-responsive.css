@@ -1,3 +1,6 @@
+@media(max-width:42rem){
+  .enq-hero__proof{grid-template-columns:1fr}
+}
 @media(min-width:42rem){
   .enq-problem__grid{grid-template-columns:repeat(3,1fr)}
   .enq-capture__flow{grid-template-columns:repeat(3,1fr)}

@@ -58,6 +58,15 @@
 //   capability rather than describing it as part of how a lead's message
 //   gets prepared.
 
+// Hero proof strip, added for structural parity with every other
+// migrated feature page's stat-strip pattern. Values are the same
+// verified facts from the audit above, not new claims.
+export const enquiriesProof = [
+  { label: "Missed calls (Android)", value: "Queued automatically" },
+  { label: "Who sends the reply", value: "You do, always" },
+  { label: "Stays visible until", value: "You act on it" },
+];
+
 export interface EnquiryStory { id: string; step: string; eyebrow: string; title: string; copy: string; features: string[]; next: string; visual: string | null; visualLabel: string }
 
 // Same shape as data/product.ts's ProductStory, reusing
@@ -127,13 +136,13 @@ export const enquiriesFaqs: EnquiryFaq[] = [
   { question: "Does Chakusa work for different service businesses?", answer: "Yes. Barbers, salons, dentists, mechanics, cleaners, spas, and similar local service businesses all use the same lead workflow, since a missed enquiry looks the same regardless of trade." },
 ];
 
-export interface IndustryEnquiryExample { title: string; example: string }
+export interface IndustryEnquiryExample { icon: string; title: string; example: string }
 
 export const industryEnquiryExamples: IndustryEnquiryExample[] = [
-  { title: "Barber", example: "A customer calls mid-cut. Chakusa keeps the missed call as a lead so it isn't just gone by closing time." },
-  { title: "Salon", example: "A client asks about a colour appointment while the front desk is with someone else. The enquiry waits as a lead, not a missed message." },
-  { title: "Dentist", example: "A treatment enquiry comes in between patients. It sits ready for the front desk to follow up between appointments." },
-  { title: "Mechanic", example: "A repair enquiry arrives while the workshop is mid-job. It's still there, with the requested service attached, once there's a moment to call back." },
-  { title: "Cleaner", example: "A quote request comes in during a job. It's logged as a lead instead of relying on someone remembering to call back later." },
-  { title: "Spa", example: "A customer asks about treatment availability outside opening hours. The enquiry is waiting, not lost overnight." },
+  { icon: "cut", title: "Barber", example: "A customer calls mid-cut. Chakusa keeps the missed call as a lead so it isn't just gone by closing time." },
+  { icon: "cut", title: "Salon", example: "A client asks about a colour appointment while the front desk is with someone else. The enquiry waits as a lead, not a missed message." },
+  { icon: "health", title: "Dentist", example: "A treatment enquiry comes in between patients. It sits ready for the front desk to follow up between appointments." },
+  { icon: "car", title: "Mechanic", example: "A repair enquiry arrives while the workshop is mid-job. It's still there, with the requested service attached, once there's a moment to call back." },
+  { icon: "clean", title: "Cleaner", example: "A quote request comes in during a job. It's logged as a lead instead of relying on someone remembering to call back later." },
+  { icon: "health", title: "Spa", example: "A customer asks about treatment availability outside opening hours. The enquiry is waiting, not lost overnight." },
 ];

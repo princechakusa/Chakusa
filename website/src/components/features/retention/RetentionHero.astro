@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import RetentionIcon from "./RetentionIcon.astro";
+import { retentionHero, retentionProof } from "../../../data/retention";
+---
+<section class="rt-hero" aria-labelledby="retention-title"><div class="rt-shell rt-hero__inner"><p class="rt-badge">{retentionHero.badge}</p><h1 id="retention-title">{retentionHero.title}</h1><p>{retentionHero.body}</p><div class="rt-actions"><Button href="#anatomy"><span>See the workflow</span><RetentionIcon name="arrow-right"/></Button><Button href="#cadences" variant="secondary"><span>Cadences by trade</span></Button></div><dl class="rt-proof">{retentionProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

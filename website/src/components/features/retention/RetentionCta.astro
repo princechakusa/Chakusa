@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import RetentionIcon from "./RetentionIcon.astro";
+import { retentionCta } from "../../../data/retention";
+---
+<section class="rt-cta" aria-labelledby="retention-cta-title"><div class="rt-shell"><div class="rt-cta__panel"><p class="rt-label">{retentionCta.label}</p><h2 id="retention-cta-title">{retentionCta.title}</h2><p>{retentionCta.body}</p><div class="rt-actions"><Button href="/get-started"><span>Start free</span><RetentionIcon name="arrow-right"/></Button><Button href="/product" variant="secondary">Explore all features</Button></div><ul><li>No credit card required</li><li>Your own templates</li><li>No lock-in</li></ul></div></div></section>

@@ -1,0 +1,16 @@
+@media (max-width:64rem){
+  .rt-industries__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:42rem){
+  .rt-anatomy__grid{grid-template-columns:1fr!important}
+  .rt-industries__grid{grid-template-columns:1fr}
+  .rt-proof{grid-template-columns:1fr}
+  .rt-example__card header{flex-direction:column;gap:.25rem}
+  .rt-cta__panel{padding:2rem 1.5rem}
+}
+@media (min-width:42rem) and (max-width:64rem){
+  .rt-anatomy__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (min-width:64rem){
+  .rt-anatomy__grid{grid-template-columns:repeat(5,1fr)}
+}

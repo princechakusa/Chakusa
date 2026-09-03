@@ -1,0 +1,5 @@
+---
+import RetentionIcon from "./RetentionIcon.astro";
+import { retentionSteps, reminderExample } from "../../../data/retention";
+---
+<section class="rt-anatomy" id="anatomy" aria-labelledby="retention-anatomy-title"><div class="rt-shell"><div class="rt-heading"><p class="rt-label">The anatomy of a rebook</p><h2 id="retention-anatomy-title">From first appointment to returning regular.</h2><p>Retention isn't aggressive marketing. It's a well-timed reminder, sent when a customer is actually overdue.</p></div><ol class="rt-anatomy__grid">{retentionSteps.map((step) => <li><span class="rt-anatomy__number">{step.number}</span><div class="rt-anatomy__icon"><RetentionIcon name={step.icon}/></div><strong>{step.title}</strong><p>{step.body}</p><span class="rt-anatomy__tag">{step.tag}</span></li>)}</ol><div class="rt-example"><p class="rt-label">{reminderExample.label}</p><div class="rt-example__card"><header><span>{reminderExample.customer}</span><span>Last visit: {reminderExample.lastVisit}</span></header><p>&ldquo;{reminderExample.message}&rdquo;</p></div><p class="rt-example__note">{reminderExample.note}</p></div></div></section>

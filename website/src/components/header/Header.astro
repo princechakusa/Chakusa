@@ -15,13 +15,23 @@ import MobileNavigation from "./MobileNavigation.astro";
 </header>
 <script>
   const roots = document.querySelectorAll<HTMLElement>("[data-menu-root]");
-  const closeMenus = (except?: HTMLElement) => roots.forEach((root) => { if (root === except) return; const trigger = root.querySelector<HTMLButtonElement>("[data-menu-trigger]"); const panel = root.querySelector<HTMLElement>("[data-menu-panel]"); if (trigger && panel) { trigger.setAttribute("aria-expanded", "false"); panel.hidden = true; } });
+  const closeMenus = (except?: HTMLElement) => roots.forEach((root) => { if (root === except) return; const trigger = root.querySelector<HTMLButtonElement>("[data-menu-trigger]"); const panel = root.querySelector<HTMLElement>("[data-menu-panel]"); if (trigger && panel) { trigger.setAttribute("aria-expanded", "false"); trigger.setAttribute("aria-label", `Open ${trigger.textContent?.trim() || "navigation"} menu`); panel.hidden = true; } });
   roots.forEach((root) => { const trigger = root.querySelector<HTMLButtonElement>("[data-menu-trigger]"); const panel = root.querySelector<HTMLElement>("[data-menu-panel]"); trigger?.addEventListener("click", () => { const open = trigger.getAttribute("aria-expanded") === "true"; closeMenus(root); trigger.setAttribute("aria-expanded", String(!open)); if (panel) panel.hidden = open; }); });
   const mobileTrigger = document.querySelector<HTMLButtonElement>("[data-mobile-trigger]"); const mobilePanel = document.querySelector<HTMLElement>("[data-mobile-panel]"); const pageRegions = [...document.querySelectorAll<HTMLElement>("main, footer")];
   const closeMobile = (restoreFocus = false) => { if (!mobileTrigger || !mobilePanel) return; mobilePanel.hidden = true; mobileTrigger.setAttribute("aria-expanded", "false"); mobileTrigger.setAttribute("aria-label", "Open navigation"); document.body.classList.remove("menu-open"); pageRegions.forEach((region) => region.removeAttribute("inert")); if (restoreFocus) mobileTrigger.focus(); };
   const openMobile = () => { if (!mobileTrigger || !mobilePanel) return; mobilePanel.hidden = false; mobileTrigger.setAttribute("aria-expanded", "true"); mobileTrigger.setAttribute("aria-label", "Close navigation"); document.body.classList.add("menu-open"); pageRegions.forEach((region) => region.setAttribute("inert", "")); mobilePanel.querySelector<HTMLElement>("a, button")?.focus(); };
   mobileTrigger?.addEventListener("click", () => mobileTrigger.getAttribute("aria-expanded") === "true" ? closeMobile(true) : openMobile());
   mobilePanel?.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => closeMobile()));
+  roots.forEach((root) => {
+    root.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => closeMenus()));
+    root.addEventListener("focusout", (event) => {
+      const next = event.relatedTarget;
+      if (!(next instanceof Node) || !root.contains(next)) closeMenus();
+    });
+  });
   document.addEventListener("click", (event) => { const target = event.target; if (!(target instanceof Node)) return; if (![...roots].some((root) => root.contains(target))) closeMenus(); });
+  window.addEventListener("scroll", () => closeMenus(), { passive: true });
+  window.addEventListener("resize", () => closeMenus(), { passive: true });
+  window.addEventListener("pageshow", () => { closeMenus(); closeMobile(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { const openTrigger = document.querySelector<HTMLButtonElement>('[data-menu-trigger][aria-expanded="true"]'); const mobileWasOpen = mobileTrigger?.getAttribute("aria-expanded") === "true"; closeMenus(); closeMobile(mobileWasOpen); if (openTrigger) openTrigger.focus(); } if (event.key === "Tab" && mobileTrigger?.getAttribute("aria-expanded") === "true" && mobilePanel) { const items = [...mobilePanel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')]; if (!items.length) return; const first = items[0]; const last = items[items.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); mobileTrigger.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); mobileTrigger.focus(); } else if (event.shiftKey && document.activeElement === mobileTrigger) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === mobileTrigger) { event.preventDefault(); first.focus(); } } });
 </script>

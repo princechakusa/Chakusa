@@ -1,14 +1,18 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import "../styles/global.css";
 
 const title = "AI Disclosure | Chakusa";
 const description = "How Chakusa's AI features actually work, what they can and cannot do, which providers process your data, and who inside Chakusa can see an AI conversation.";
 const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader />
-  <main>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
     <section class="legal-section content-shell" aria-labelledby="ai-title" data-reveal>
       {/* TODO(launch-blocker): engineering draft grounded in a full backend
           audit (src/lib/ai/*) as of 2026-09-01. See
@@ -65,4 +69,5 @@ const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed atto
       <p>Reach out. See the <a href="/about#contact">About page</a>.</p>
     </section>
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>

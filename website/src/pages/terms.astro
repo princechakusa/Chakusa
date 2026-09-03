@@ -1,14 +1,18 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import "../styles/global.css";
 
 const title = "Terms of Service | Chakusa";
 const description = "The terms for using Chakusa as a business or a customer, including the marketplace, bookings and payments, loyalty programs, AI features, and how disputes are handled.";
 const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader />
-  <main>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
     <section class="legal-section content-shell" aria-labelledby="terms-title" data-reveal>
       {/* TODO(launch-blocker): engineering draft, not a legal document.
           Before this goes live: (1) attorney review, (2) fill in the
@@ -88,4 +92,5 @@ const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed atto
       <p>Reach out. See the <a href="/about#contact">About page</a>.</p>
     </section>
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>

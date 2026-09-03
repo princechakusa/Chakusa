@@ -1,31 +1,104 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import Button from "../components/foundation/Button.astro";
+import TradeCharacter from "../components/homepage/TradeCharacter.astro";
+import StoryIcon from "../components/homepage/StoryIcon.astro";
 
-const title = "Start your free trial | Chakusa";
-const description = "Chakusa is a mobile app. Download it to create your account and start your 14-day free trial of Starter.";
+const title = "Get started | Chakusa";
+const description = "One Chakusa app, two experiences: customers discover and book local services, businesses run their day. Download the app to start your 14-day free trial of Starter.";
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader />
-  <main>
-    <section class="page-hero content-shell" aria-labelledby="get-started-title">
-      <p class="eyebrow">Start your free trial</p>
-      <h1 id="get-started-title">Chakusa runs on your phone.</h1>
-      <p class="page-hero-support">There's no separate web account to create. Download the app and sign up in a couple of minutes to start your 14-day free trial of Starter.</p>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
+    <section class="gs-hero container">
+      <p class="gs-badge">One Chakusa, two experiences</p>
+      <h1>Step into Chakusa, whichever side you're on.</h1>
+      <p>Whether you're discovering a local business or running one, Chakusa is the same connected app.</p>
     </section>
 
-    <section class="get-started-steps content-shell" aria-label="How to get started" data-reveal>
-      <ol class="get-started-list">
-        <li><span class="get-started-step-num">1</span><div><b>Download Chakusa</b><p>Available for iPhone and Android.</p></div></li>
-        <li><span class="get-started-step-num">2</span><div><b>Create your account</b><p>Tell us your business name and industry, takes about two minutes.</p></div></li>
-        <li><span class="get-started-step-num">3</span><div><b>Start tracking</b><p>Add your first customer, lead, or reminder right away, during your 14-day free trial.</p></div></li>
-      </ol>
-
-      <div class="app-badges" aria-label="Download links">
-        <span class="app-badge" aria-disabled="true">App Store: coming soon</span>
-        <span class="app-badge" aria-disabled="true">Google Play: coming soon</span>
+    <section class="gs-panels container">
+      <div class="gs-panels__grid">
+        <div class="gs-panel">
+          <span class="gs-panel__badge">For customers</span>
+          <h2>Discover & book local services.</h2>
+          <p>Browse nearby businesses, see real availability, and book directly, no account required upfront.</p>
+          <ul>
+            <li><StoryIcon name="storefront" />Public business profiles with real services and pricing</li>
+            <li><StoryIcon name="event_available" />Book straight into the business's calendar</li>
+            <li><StoryIcon name="rate_review" />Ungated reviews from other customers</li>
+          </ul>
+          <Button href="/industries" variant="secondary">Explore local businesses</Button>
+        </div>
+        <div class="gs-panel gs-panel--dark">
+          <span class="gs-panel__badge">For businesses</span>
+          <h2>Run your entire operation.</h2>
+          <p>Enquiries, bookings, customer records, and reviews in one dashboard. Start your 14-day free trial of Starter.</p>
+          <ul>
+            <li><StoryIcon name="contact_phone" />Missed calls and enquiries flagged for follow-up</li>
+            <li><StoryIcon name="tune" />One calendar and dashboard for the working day</li>
+            <li><StoryIcon name="repeat" />Comeback reminders for customers who go quiet</li>
+          </ul>
+          <Button href="#steps">Start 14-day free trial</Button>
+        </div>
       </div>
-      <p class="provisional-note">Store listings aren't live yet. This page will link directly to them once they are.</p>
+      <div class="gs-illustration" aria-hidden="true"><TradeCharacter /></div>
+    </section>
+
+    <section class="gs-steps container" id="steps">
+      <div class="gs-section-heading">
+        <p class="gs-label">How to get started</p>
+        <h2>Three steps, a couple of minutes.</h2>
+      </div>
+      <ol class="gs-steps__list">
+        <li><span>1</span><div><strong>Download Chakusa</strong><p>Available for iPhone and Android.</p></div></li>
+        <li><span>2</span><div><strong>Create your account</strong><p>Tell us your business name and industry, takes about two minutes.</p></div></li>
+        <li><span>3</span><div><strong>Start tracking</strong><p>Add your first customer, lead, or reminder right away, during your 14-day free trial.</p></div></li>
+      </ol>
+      <div class="gs-badges">
+        <span>App Store: coming soon</span>
+        <span>Google Play: coming soon</span>
+      </div>
+      <p class="gs-note">Store listings aren't live yet. This page will link directly to them once they are.</p>
     </section>
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>
+<style>
+.gs-badge,.gs-label{margin:0;color:var(--secondary);font:700 .7rem/1.2 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.gs-badge{display:inline-flex;padding:.42rem .75rem;border-radius:999px;background:#fff0ed;color:var(--primary);letter-spacing:.04em}
+.gs-hero{padding-block:5rem 3rem;text-align:center;max-width:34rem}
+.gs-hero h1{margin:.75rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.2rem,4.4vw,3rem);line-height:1.2;letter-spacing:-.025em}
+.gs-hero>p:not(.gs-badge){margin:1rem 0 0;color:var(--body-text);font-size:1.05rem;line-height:1.6}
+.gs-panels{padding-block:1rem 4rem;position:relative}
+.gs-panels__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}
+.gs-panel{padding:2rem;border-radius:var(--r-xl);background:#fff;box-shadow:var(--shadow-hover)}
+.gs-panel--dark{background:var(--heading);color:#fff}
+.gs-panel__badge{display:inline-block;margin-bottom:.75rem;padding:.3rem .7rem;border-radius:999px;background:var(--page-surface);color:var(--heading);font-size:.7rem;font-weight:700;text-transform:uppercase}
+.gs-panel--dark .gs-panel__badge{background:rgba(255,255,255,.12);color:#7dd8cc}
+.gs-panel h2{margin:0 0 .5rem;font-family:var(--font-heading);font-size:1.4rem;letter-spacing:-.02em}
+.gs-panel:not(.gs-panel--dark) h2{color:var(--heading)}
+.gs-panel>p{margin:0 0 1.25rem;font-size:.92rem;line-height:1.55}
+.gs-panel:not(.gs-panel--dark)>p{color:var(--body-text)}
+.gs-panel--dark>p{color:#c9ccd3}
+.gs-panel ul{list-style:none;display:grid;gap:.65rem;margin:0 0 1.5rem;padding:0}
+.gs-panel li{display:flex;align-items:flex-start;gap:.5rem;font-size:.85rem;line-height:1.45}
+.gs-panel li :global(svg){flex:none;width:1.1rem;margin-top:.15rem;color:var(--secondary)}
+.gs-panel--dark li{color:#e4e6eb}
+.gs-panel:not(.gs-panel--dark) li{color:var(--heading)}
+.gs-illustration{width:7rem;margin:2rem auto 0;padding:1rem 1rem 1.75rem;border:1px solid var(--hairline);border-radius:var(--r-xl);background:linear-gradient(160deg,#fff,var(--page-surface));box-shadow:var(--shadow-overlay)}
+.gs-steps{padding-block:3rem 6rem;max-width:36rem}
+.gs-section-heading h2{margin:.5rem 0 2rem;color:var(--heading);font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
+.gs-steps__list{list-style:none;display:grid;gap:1rem;margin:0 0 2rem;padding:0}
+.gs-steps__list li{display:grid;grid-template-columns:2.25rem 1fr;gap:1rem;padding:1.25rem;border-radius:var(--r-lg);background:var(--page-surface)}
+.gs-steps__list span{display:grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;font-family:var(--font-heading)}
+.gs-steps__list strong{display:block;color:var(--heading);font-family:var(--font-heading);font-size:.98rem}
+.gs-steps__list p{margin:.3rem 0 0;color:var(--body-text);font-size:.85rem}
+.gs-badges{display:flex;flex-wrap:wrap;gap:1rem}
+.gs-badges span{padding:.6rem 1rem;border:1px solid var(--hairline);border-radius:var(--r-sm);color:var(--body-text);font-size:.82rem;font-weight:600}
+.gs-note{margin-top:1rem;color:var(--body-text);font-size:.8rem}
+@media (max-width:42rem){.gs-panels__grid{grid-template-columns:1fr}}
+</style>

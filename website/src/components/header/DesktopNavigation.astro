@@ -1,12 +1,16 @@
 ---
 import NavigationDropdown from "./NavigationDropdown.astro";
 import MegaMenu from "./MegaMenu.astro";
+import SimpleMegaMenu from "./SimpleMegaMenu.astro";
 import { primaryNavigation } from "../../data/homepage";
+import { productMegaLinks, industriesMegaLinks } from "../../data/megaMenu";
 ---
 <nav class="desktop-navigation" aria-label="Primary navigation">
   {primaryNavigation.map((item, index) => {
     const id = `primary-${index}`;
     if (item.label === "Features") return <MegaMenu id={id} />;
+    if (item.label === "Product") return <SimpleMegaMenu id={id} triggerLabel="Product" label="Explore the product" links={productMegaLinks} allHref="/product" allLabel="See the full product" />;
+    if (item.label === "Industries") return <SimpleMegaMenu id={id} triggerLabel="Industries" label="Built for your trade" links={industriesMegaLinks} allHref="/industries" allLabel="See all supported industries" />;
     return item.children ? <NavigationDropdown {...item} id={id} /> : <a href={item.href}>{item.label}</a>;
   })}
 </nav>

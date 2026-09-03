@@ -1,0 +1,31 @@
+---
+// Generic mega-menu, reusing the exact same visual system as Features'
+// MegaMenu.astro (.mega-menu / .mega-menu__list / .mega-menu__item,
+// already styled in header.css) so Product and Industries open with
+// the same glass panel, spacing, radius, shadow, and icon treatment as
+// Features, per the "Product/Industries must match Features' premium
+// quality" directive. No new CSS, no new visual language, just the
+// same component pattern applied to different real content.
+import MegaMenuIcon from "./MegaMenuIcon.astro";
+interface Link { label: string; href: string; icon: string; group: string }
+interface Props { id: string; label: string; triggerLabel: string; links: Link[]; allHref: string; allLabel: string }
+const { id, label, triggerLabel, links, allHref, allLabel } = Astro.props;
+---
+<div class="nav-menu" data-menu-root>
+  <button class="nav-menu__trigger nav-menu__trigger--label" type="button" aria-expanded="false" aria-controls={`menu-${id}`} aria-label={`Open ${triggerLabel} menu`} data-menu-trigger>
+    <span>{triggerLabel}</span>
+    <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </button>
+  <div class="mega-menu" id={`menu-${id}`} hidden data-menu-panel>
+    <div class="mega-menu__label">
+      <span>{label}</span>
+    </div>
+    <div class="mega-menu__list">
+      {links.map((link, index) => <a class:list={["mega-menu__item", { "mega-menu__item--active": index === 0 }]} href={link.href}>
+        <span class="mega-menu__icon"><MegaMenuIcon name={link.icon}/></span>
+        <span><strong>{link.label}</strong><small>{link.group}</small></span>
+      </a>)}
+    </div>
+    <a class="mega-menu__all" href={allHref}><span>{allLabel}</span><MegaMenuIcon name="arrow-right"/></a>
+  </div>
+</div>

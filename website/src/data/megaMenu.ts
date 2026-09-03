@@ -42,7 +42,7 @@ export const megaMenuQuadrants: MegaMenuQuadrant[] = [
     tags: ["Client records", "Ungated reviews"],
     links: [
       { label: "Customers", href: "/features/customers" },
-      { label: "Customer retention", href: "/features/customer-retention" },
+      { label: "Customer retention", href: "/features/retention" },
       { label: "Reviews", href: "/features/reviews" },
     ],
   },
@@ -66,3 +66,30 @@ export const megaMenuPromo = {
   linkLabel: "See how it works",
   linkHref: "/how-it-works",
 };
+
+// Product mega menu - same visual system as Features (SimpleMegaMenu
+// reuses the identical .mega-menu markup/CSS), real product-capability
+// destinations, no dead links.
+export const productMegaLinks = [
+  { label: "Product overview", href: "/product", icon: "storefront", group: "Overview" },
+  { label: "Enquiries", href: "/features/enquiries", icon: "inbox", group: "Customer growth" },
+  { label: "Bookings", href: "/features/bookings", icon: "calendar", group: "Operations" },
+  { label: "Customers", href: "/features/customers", icon: "users", group: "Relationships" },
+  { label: "Reviews", href: "/features/reviews", icon: "star", group: "Relationships" },
+  { label: "Retention", href: "/features/retention", icon: "repeat", group: "Relationships" },
+  { label: "Automation", href: "/features/automation", icon: "sparkle", group: "Automation & AI" },
+  { label: "AI assistant", href: "/features/ai-assistant", icon: "chat", group: "Automation & AI" },
+  { label: "Business control", href: "/features/business-control", icon: "shield", group: "Operations" },
+  { label: "Mobile app", href: "/features/mobile-app", icon: "smartphone", group: "Automation & AI" },
+];
+
+// Industries mega menu - the 4 real, working industry category pages
+// (src/data/industries.ts). Per the directive: present industries as
+// product-use categories without creating dead links for specific
+// trades that don't have their own dedicated URL.
+export const industriesMegaLinks = [
+  { label: "Beauty & wellness", href: "/industries/beauty", icon: "spa", group: "Salons, barbers, spas & clinics" },
+  { label: "Home services", href: "/industries/home-services", icon: "clean", group: "Cleaners, plumbers & electricians" },
+  { label: "Automotive", href: "/industries/automotive", icon: "car", group: "Mechanics, detailers & car washes" },
+  { label: "Professional services", href: "/industries/professional", icon: "camera", group: "Dentists, photographers & consultants" },
+];

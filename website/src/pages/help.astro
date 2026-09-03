@@ -1,0 +1,101 @@
+---
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import Button from "../components/foundation/Button.astro";
+import TradeCharacter from "../components/homepage/TradeCharacter.astro";
+import { helpHero, helpCategories, helpFaqs, helpContact } from "../data/help";
+
+const title = "Help Center | Chakusa";
+const description = "Guides and answers for setting up your business, managing enquiries and bookings, customers, reviews, automation, billing, and privacy on Chakusa.";
+
+const paths: Record<string, string> = {
+  calendar: "M5 3v3m14-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z",
+  inbox: "M4 4h16v16H4Z M4 13h4l2 3h4l2-3h4",
+  calendar2: "M5 3v3m14-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z M9 13h2v2H9z",
+  users: "M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-1a3 3 0 1 0 0-6m-7 9c-4 0-6 2-6 5v2h12v-2c0-3-2-5-6-5Zm7-1c4 0 7 2 7 6v1h-6",
+  star: "m12 3 2.8 5.9 6.2.9-4.5 4.5 1.1 6.2L12 17.6 6.4 20.5l1.1-6.2L3 9.8l6.2-.9Z",
+  sparkle: "m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8Z",
+  shield: "M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6l-8-3Z",
+  csvexport: "M12 3v10m0 0-3-3m3 3 3-3 M4 17v3h16v-3",
+};
+---
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
+    <section class="help-hero container">
+      <div class="help-hero__copy">
+        <p class="help-badge">{helpHero.badge}</p>
+        <h1>{helpHero.title}</h1>
+        <p>{helpHero.body}</p>
+        <form class="help-search" action="#faq" role="search">
+          <input type="search" name="q" placeholder={helpHero.searchPlaceholder} aria-label="Search help topics" />
+          <button type="submit">Search</button>
+        </form>
+      </div>
+      <div class="help-hero__illustration" aria-hidden="true"><TradeCharacter /></div>
+    </section>
+    <section class="help-categories container">
+      <div class="help-categories__grid">
+        {helpCategories.map((c) => <a class="help-categories__card" href={c.href}>
+          <div class="help-categories__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={paths[c.icon]} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <strong>{c.title}</strong>
+          <p>{c.body}</p>
+        </a>)}
+      </div>
+    </section>
+    <section class="help-faq container" id="faq">
+      <div class="help-faq__heading">
+        <p class="help-label">Frequently asked</p>
+        <h2>Essential questions.</h2>
+      </div>
+      <div class="help-faq__list">
+        {helpFaqs.map((item) => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}
+      </div>
+    </section>
+    <section class="help-cta container">
+      <div class="help-cta__panel">
+        <p class="help-label help-label--light">{helpContact.label}</p>
+        <h2>{helpContact.title}</h2>
+        <p>{helpContact.body}</p>
+        <Button href="/contact">Contact support</Button>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</MarketingLayout>
+<style>
+.help-badge,.help-label{margin:0;color:var(--secondary);font:700 .7rem/1.2 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.help-label--light{color:#7dd8cc}
+.help-hero{display:grid;grid-template-columns:1fr auto;gap:3rem;align-items:center;padding-block:5rem 4rem}
+.help-hero h1{margin:.75rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.1rem,4.2vw,2.9rem);line-height:1.2;letter-spacing:-.025em}
+.help-hero__copy>p{margin:1rem 0 0;max-width:32rem;color:var(--body-text);font-size:1.05rem;line-height:1.6}
+.help-search{display:flex;gap:.5rem;margin-top:1.75rem;max-width:28rem}
+.help-search input{flex:1;padding:.75rem 1rem;border:1px solid var(--hairline);border-radius:var(--r-sm);font-size:.9rem}
+.help-search button{padding:.75rem 1.25rem;border:0;border-radius:var(--r-sm);background:var(--primary);color:#fff;font-weight:700;font-size:.85rem}
+.help-hero__illustration{width:9rem;padding:1.25rem 1.25rem 2rem;border:1px solid var(--hairline);border-radius:var(--r-xl);background:linear-gradient(160deg,#fff,var(--page-surface));box-shadow:var(--shadow-overlay)}
+.help-categories{padding-block:2rem 4rem}
+.help-categories__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem}
+.help-categories__card{display:block;padding:1.5rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff;color:inherit;transition:box-shadow 160ms ease,transform 160ms ease}
+.help-categories__card:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px)}
+.help-categories__icon{display:grid;place-items:center;width:2.5rem;height:2.5rem;margin-bottom:.85rem;border-radius:.5rem;background:#fff0ed;color:var(--primary)}
+.help-categories__icon svg{width:1.3rem}
+.help-categories__card strong{display:block;margin-bottom:.4rem;font-family:var(--font-heading);font-size:.95rem;color:var(--heading)}
+.help-categories__card p{margin:0;color:var(--body-text);font-size:.78rem;line-height:1.5}
+.help-faq{padding-block:4rem;max-width:44rem}
+.help-faq__heading h2{margin:.5rem 0 2rem;color:var(--heading);font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
+.help-faq__list{border-top:1px solid var(--hairline)}
+.help-faq__list details{border-bottom:1px solid var(--hairline)}
+.help-faq__list summary{min-height:3.5rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:.9rem 0;cursor:pointer;font-family:var(--font-heading);font-weight:700;color:var(--heading);list-style:none}
+.help-faq__list summary::-webkit-details-marker{display:none}
+.help-faq__list summary span{font-size:1.2rem;font-weight:400;color:var(--secondary)}
+.help-faq__list details p{margin:0;padding:0 0 1rem;color:var(--body-text);font-size:.9rem;line-height:1.6}
+.help-cta{padding-block:2rem 6rem}
+.help-cta__panel{padding:3rem;border-radius:var(--r-xl);background:var(--heading);color:#fff;text-align:center}
+.help-cta__panel h2{margin:.5rem 0 0;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
+.help-cta__panel>p{max-width:30rem;margin:.75rem auto 1.5rem;color:#c9ccd3;font-size:.94rem;line-height:1.6}
+@media (max-width:64rem){.help-categories__grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:42rem){.help-hero{grid-template-columns:1fr}.help-hero__illustration{margin:0 auto}.help-categories__grid{grid-template-columns:1fr}}
+</style>

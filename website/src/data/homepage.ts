@@ -68,9 +68,13 @@ export const primaryNavigation = [
 // pages yet. The fabricated "Chakusa Technologies Inc." copyright
 // line, replaced by FooterLegal.astro's real one. Only real destinations
 // appear below.
+// Column structure matches the newest Stitch export's footer exactly
+// (Navigation / Solutions / Trust & Compliance), with real destinations
+// only - Stitch's own footer additionally lists "Client & Partner
+// Portal" and "Operational AI Ethics," neither of which is a real page,
+// so those are not reproduced.
 export const footerGroups = [
-  { title: "Product", links: [{ label: "How it works", href: "/how-it-works" }, { label: "Customer response", href: "/product#customer-response" }, { label: "Automation", href: "/product#automation" }, { label: "Bookings", href: "/product#booking" }, { label: "Pricing", href: "/pricing" }] },
-  { title: "Features", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/customer-retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
-  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Contact", href: "/contact" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
-  { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Cookies", href: "/cookies" }, { label: "AI disclosure", href: "/ai-disclosure" }] },
+  { title: "Navigation", links: [{ label: "About Us", href: "/about" }, { label: "Contact Support", href: "/contact" }, { label: "Help Center", href: "/help" }, { label: "How it works", href: "/how-it-works" }, { label: "Pricing", href: "/pricing" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
+  { title: "Solutions", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
+  { title: "Trust & Compliance", links: [{ label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "AI Disclosure", href: "/ai-disclosure" }, { label: "Cookie Policy", href: "/cookies" }] },
 ];

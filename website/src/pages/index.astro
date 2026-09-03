@@ -2,27 +2,31 @@
 import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
-import HeroSection from "../components/hero/HeroSection.astro";
 import Footer from "../components/footer/Footer.astro";
-import DiscoveryExperience from "../components/homepage/DiscoveryExperience.astro";
-import ConnectedJourney from "../components/homepage/ConnectedJourney.astro";
-import PlatformCapabilities from "../components/homepage/PlatformCapabilities.astro";
-import BusinessControl from "../components/homepage/BusinessControl.astro";
-import HomepageFAQ from "../components/homepage/HomepageFAQ.astro";
+import HomepageHero from "../components/homepage/HomepageHero.astro";
+import ClosedLoopLifecycle from "../components/homepage/ClosedLoopLifecycle.astro";
+import IndustryDiscipline from "../components/homepage/IndustryDiscipline.astro";
+import PlatformModules from "../components/homepage/PlatformModules.astro";
+import IndependentStory from "../components/homepage/IndependentStory.astro";
+import UnifiedEcosystem from "../components/homepage/UnifiedEcosystem.astro";
 import HomepageFinalCTA from "../components/homepage/HomepageFinalCTA.astro";
 import "../styles/homepage/story.css";
 import "../styles/homepage/story-complete.css";
-import "../styles/homepage/hero-product-clean.css";
-import "../styles/homepage/hero-video.css";
-import "../styles/homepage/stage-2b.css";
-import "../styles/homepage/editorial-hierarchy.css";
 
 const title = "Chakusa | Customer Growth Platform for Service Businesses";
-const description = "Respond to customer enquiries, manage bookings, automate follow-ups, request reviews, and bring customers back with Chakusa.";
+const description = "Chakusa connects customer discovery with full business management for local service businesses: enquiries, bookings, customer records, reviews, and comeback reminders, all in one place.";
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
-  <main id="main-content"><HeroSection /><DiscoveryExperience /><ConnectedJourney /><PlatformCapabilities /><BusinessControl /><HomepageFAQ /><HomepageFinalCTA /></main>
+  <main id="main-content">
+    <HomepageHero />
+    <ClosedLoopLifecycle />
+    <IndustryDiscipline />
+    <PlatformModules />
+    <IndependentStory />
+    <UnifiedEcosystem />
+    <HomepageFinalCTA />
+  </main>
   <Footer />
 </MarketingLayout>

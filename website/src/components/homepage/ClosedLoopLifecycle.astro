@@ -1,0 +1,20 @@
+---
+import StoryIcon from "./StoryIcon.astro";
+import { lifecycleSteps } from "../../data/homepageStory";
+---
+<section class="story-lifecycle container" aria-labelledby="story-lifecycle-title">
+  <div class="story-section-heading">
+    <p class="story-kicker">The closed-loop engine</p>
+    <h2 id="story-lifecycle-title">The 7-step Chakusa lifecycle.</h2>
+    <p>From the first search to a repeat visit, Chakusa keeps every step of the relationship connected.</p>
+  </div>
+  <ol class="story-lifecycle__grid">
+    {lifecycleSteps.map((step) => <li>
+      <span class="story-lifecycle__number">{step.number}</span>
+      <StoryIcon name={step.icon} class="story-lifecycle__icon" />
+      <strong>{step.label}</strong>
+      <p>{step.copy}</p>
+      <span class="story-lifecycle__tag">{step.tag}</span>
+    </li>)}
+  </ol>
+</section>

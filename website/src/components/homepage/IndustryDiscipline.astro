@@ -1,0 +1,19 @@
+---
+import StoryIcon from "./StoryIcon.astro";
+import { industryCards } from "../../data/homepageStory";
+---
+<section class="story-industries container" aria-labelledby="story-industries-title">
+  <div class="story-section-heading">
+    <p class="story-kicker">Purpose-built, not generic</p>
+    <h2 id="story-industries-title">Engineered for every local service discipline.</h2>
+    <p>Chakusa adapts to how each trade actually books, follows up, and brings customers back.</p>
+  </div>
+  <div class="story-industries__grid">
+    {industryCards.map((card) => <a class="story-industries__card" href={card.href}>
+      <StoryIcon name={card.icon} class="story-industries__icon" />
+      <strong>{card.title}</strong>
+      <p>{card.copy}</p>
+    </a>)}
+  </div>
+  <p><a href="/industries">See all supported industries <span aria-hidden="true">→</span></a></p>
+</section>

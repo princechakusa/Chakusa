@@ -1,0 +1,16 @@
+---
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3.
+// Replaces Stitch's fabricated testimonial ("Maya Lin... Chakusa gave me
+// my evenings back while doubling repeat bookings", "14 hrs saved
+// weekly", "92% client retention") in the same visual rhythm — a single
+// large statement plus a two-up supporting stat row — but with real
+// product storytelling instead of an invented quote and invented
+// outcomes. No customer name, no photo, no numbers presented as measured
+// results.
+import { independentStory } from "../../data/homepageStory";
+---
+<section class="story-independent container" aria-labelledby="story-independent-title">
+  <p class="story-kicker">{independentStory.eyebrow}</p>
+  <h2 id="story-independent-title">{independentStory.title}</h2>
+  <p class="story-independent__body">{independentStory.body}</p>
+</section>

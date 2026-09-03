@@ -1,0 +1,21 @@
+---
+import StoryIcon from "./StoryIcon.astro";
+import { ecosystemCopy } from "../../data/homepageStory";
+---
+<section class="story-ecosystem" aria-labelledby="story-ecosystem-title">
+  <div class="container story-ecosystem__inner">
+    <p class="story-kicker story-kicker--light">{ecosystemCopy.eyebrow}</p>
+    <h2 id="story-ecosystem-title">{ecosystemCopy.title}</h2>
+    <p>{ecosystemCopy.body}</p>
+    <div class="story-ecosystem__modes">
+      <div class="story-ecosystem__mode">
+        <span><StoryIcon name="person" class="story-ecosystem__icon" />Customer mode</span>
+        <p>Browse nearby businesses, see real availability, and book directly.</p>
+      </div>
+      <div class="story-ecosystem__mode">
+        <span><StoryIcon name="storefront" class="story-ecosystem__icon" />Business mode</span>
+        <p>See today's schedule, new enquiries, and customers due for a follow-up.</p>
+      </div>
+    </div>
+  </div>
+</section>

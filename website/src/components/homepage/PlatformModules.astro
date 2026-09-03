@@ -1,0 +1,18 @@
+---
+import StoryIcon from "./StoryIcon.astro";
+import { platformModules } from "../../data/homepageStory";
+---
+<section class="story-modules container" aria-labelledby="story-modules-title">
+  <div class="story-section-heading">
+    <p class="story-kicker">Core platform modules</p>
+    <h2 id="story-modules-title">Built to run operations without friction.</h2>
+    <p>Six connected modules, instead of six separate subscriptions that don't talk to each other.</p>
+  </div>
+  <div class="story-modules__grid">
+    {platformModules.map((module) => <div class="story-modules__card">
+      <StoryIcon name={module.icon} class="story-modules__icon" />
+      <strong>{module.title}</strong>
+      <p>{module.copy}</p>
+    </div>)}
+  </div>
+</section>

@@ -1,12 +1,25 @@
 ---
 import { primaryNavigation } from "../../data/homepage";
+import { megaMenuQuadrants } from "../../data/megaMenu";
 ---
 <button class="mobile-menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation" data-mobile-trigger>
   <span></span><span></span><span></span>
 </button>
 <div class="mobile-menu" id="mobile-menu" hidden data-mobile-panel>
   <nav aria-label="Mobile navigation">
-    {primaryNavigation.map((item) => <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>)}
+    {primaryNavigation.map((item) => item.label === "Features" ? (
+      <details class="mobile-menu__details" open>
+        <summary>Features</summary>
+        <div class="mobile-menu__sections">
+          {megaMenuQuadrants.map((group) => <section>
+            <strong>{group.title}</strong>
+            {group.links.map((link) => <a class="mobile-menu__child" href={link.href}>{link.label}</a>)}
+          </section>)}
+        </div>
+      </details>
+    ) : (
+      <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>
+    ))}
     <a href="/login">Sign in</a>
     <a class="ui-button ui-button--primary" href="/get-started">Start free</a>
   </nav>

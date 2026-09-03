@@ -1,8 +1,11 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import SiteHeader from "../../components/SiteHeader.astro";
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
 import CTASection from "../../components/CTASection.astro";
 import { industries } from "../../data/industries";
+import "../../styles/global.css";
 
 export function getStaticPaths() {
   return industries.map((industry) => ({
@@ -27,9 +30,10 @@ const workflowIcons = [
   '<path d="M11 5v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><circle cx="11" cy="11" r="7.5" stroke="currentColor" stroke-width="1.5" />',
 ];
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader current="industries" />
-  <main>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
     <section class="page-hero content-shell" aria-labelledby="industry-detail-title">
       <a class="industry-detail-back" href="/industries">All industries</a>
       <p class="eyebrow">{industry.title}</p>
@@ -56,4 +60,5 @@ const workflowIcons = [
 
     <CTASection heading={`Try Starter free for your ${industry.title.toLowerCase()} business.`} support="14-day free trial." />
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>

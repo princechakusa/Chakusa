@@ -1,14 +1,18 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
 import CTASection from "../components/CTASection.astro";
+import "../styles/global.css";
 
 const title = "About | Chakusa";
 const description = "Why Chakusa exists, exactly what it does today, who it's built for, and how it handles your data. Plain, honest answers, not marketing gloss.";
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader current="about" />
-  <main>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
     <section class="about-section content-shell" aria-labelledby="about-title" data-reveal>
       <p class="eyebrow">About</p>
       <h1 id="about-title">Why we built Chakusa</h1>
@@ -32,4 +36,5 @@ const description = "Why Chakusa exists, exactly what it does today, who it's bu
 
     <CTASection heading="Try Chakusa free for 14 days." />
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>

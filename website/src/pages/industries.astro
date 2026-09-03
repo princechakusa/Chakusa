@@ -1,16 +1,20 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
 import IndustryCard from "../components/IndustryCard.astro";
 import CTASection from "../components/CTASection.astro";
 import { industries } from "../data/industries";
+import "../styles/global.css";
 
 const title = "Industries | Chakusa";
 const description = "Chakusa is built for local, appointment-driven businesses in beauty, home services, automotive, and professional services.";
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader current="industries" />
-  <main>
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content">
     <section class="page-hero content-shell" aria-labelledby="industries-hero-title">
       <p class="eyebrow">Industries</p>
       <h1 id="industries-hero-title">Built for businesses that live on repeat customers.</h1>
@@ -25,4 +29,5 @@ const description = "Chakusa is built for local, appointment-driven businesses i
 
     <CTASection heading="Don't see your exact business?" support="If you run appointments or repeat visits, Chakusa most likely fits. Try Starter free for 14 days and see for yourself." />
   </main>
-</BaseLayout>
+  <Footer />
+</MarketingLayout>

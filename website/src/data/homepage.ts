@@ -12,7 +12,7 @@
 // 1. The Features dropdown in Stitch lists all 9 other feature pages
 //    (Bookings, Customers, Retention, Reviews, Automation, AI Assistant,
 //    Marketplace, Business Control, Mobile App). None of those routes
-//    exist yet — only /features/enquiries does. The dropdown lists only
+//    exist yet: only /features/enquiries does. The dropdown lists only
 //    the pages that are real right now; add one entry per feature page
 //    as each one ships in a later stage. The shape (label, href,
 //    description) already matches Stitch's own copy for Enquiries
@@ -29,7 +29,7 @@
 //    literal "Find Services" button needs a real page behind it.
 //
 // Industries and About are real, working destinations that predate this
-// migration and aren't part of the Stitch export at all — kept rather
+// migration and aren't part of the Stitch export at all: kept rather
 // than dropped, per Stage 1/2's "preserve valid existing navigation
 // destinations" requirement.
 export const primaryNavigation = [
@@ -64,8 +64,8 @@ export const primaryNavigation = [
 
 // Footer reconciled the same way: Stitch's footer additionally lists
 // Enterprise Solutions, Partner Program, Security & Compliance, Trust
-// Center, and Help Center — none of which are real products, plans, or
-// pages yet — and a fabricated "Chakusa Technologies Inc." copyright
+// Center, and Help Center: none of which are real products, plans, or
+// pages yet. The fabricated "Chakusa Technologies Inc." copyright
 // line, replaced by FooterLegal.astro's real one. Only real destinations
 // appear below.
 export const footerGroups = [

@@ -1,0 +1,12 @@
+---
+interface Props { name: string; class?: string; }
+const { name, class: className } = Astro.props;
+const paths: Record<string, string> = {
+  check: "M20 6 9 17l-5-5",
+  shield: "M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6l-8-3Zm-3 9 2 2 4-5",
+  csvexport: "M12 3v10m0 0-3-3m3 3 3-3 M4 17v3h16v-3",
+  dash: "M5 12h14",
+  "arrow-right": "M5 12h14m0 0-6-6m6 6-6 6",
+};
+---
+<svg class={className} viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name] ?? paths.check} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>

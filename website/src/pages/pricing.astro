@@ -1,70 +1,18 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import PricingCard from "../components/PricingCard.astro";
-import PricingTable from "../components/PricingTable.astro";
-import FAQAccordion from "../components/FAQAccordion.astro";
-import FaqSchema from "../components/FaqSchema.astro";
-import CTASection from "../components/CTASection.astro";
-import { pricingTiers } from "../data/pricing";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import PricingHero from "../components/pricing/PricingHero.astro";
+import PricingPlans from "../components/pricing/PricingPlans.astro";
+import PricingComparison from "../components/pricing/PricingComparison.astro";
+import PricingFaq from "../components/pricing/PricingFaq.astro";
+import PricingCta from "../components/pricing/PricingCta.astro";
+import PricingSchemas from "../components/pricing/PricingSchemas.astro";
+import "../styles/pricing/pricing.css";
+import "../styles/pricing/pricing-responsive.css";
 
 const title = "Pricing | Chakusa";
 const description = "Compare Chakusa's Free, Pro, and Business plans for local service businesses. Real limits, real prices, no hidden tiers. Start free, no card required.";
-
-const faqs = [
-  {
-    question: "How does billing work?",
-    answer: "Pro and Business are billed as a native subscription through the App Store or Google Play, not a separate web checkout. The price shown on this page is directional, and the store's localized price is always the final one.",
-  },
-  {
-    question: "What happens if I go over my Free plan limits?",
-    answer: "You'll be prompted to upgrade to Pro to add more. Nothing you've already tracked is ever deleted or hidden.",
-  },
-  {
-    question: "Is Business pricing available yet?",
-    answer: "Not yet. Business tier pricing hasn't been finalized. Reach out and we'll follow up once it is.",
-  },
-];
 ---
-<BaseLayout {title} {description}>
-  <SiteHeader current="pricing" />
-  <main>
-    <section class="page-hero content-shell" aria-labelledby="pricing-hero-title">
-      <p class="eyebrow">Pricing</p>
-      <h1 id="pricing-hero-title">Simple pricing. Start for free.</h1>
-      <p class="page-hero-support">No hidden tiers, no "book a demo" to see a number.</p>
-    </section>
-
-    <section class="pricing-full content-shell" aria-label="Plans" data-reveal>
-      <div class="pricing-grid">
-        {pricingTiers.map((tier) => (
-          <PricingCard
-            name={tier.name}
-            tagline={tier.tagline}
-            price={tier.price}
-            priceNote={tier.priceNote}
-            features={tier.features}
-            ctaLabel={tier.ctaLabel}
-            ctaHref={tier.ctaHref}
-            featured={tier.featured}
-          />
-        ))}
-      </div>
-    </section>
-
-    <section class="pricing-comparison content-shell" aria-labelledby="pricing-comparison-title" data-reveal>
-      <p class="eyebrow">Compare plans</p>
-      <h2 id="pricing-comparison-title">Every plan, side by side</h2>
-      <PricingTable />
-    </section>
-
-    <section class="faq content-shell" aria-labelledby="pricing-faq-title" data-reveal>
-      <p class="eyebrow">Questions</p>
-      <h2 id="pricing-faq-title">Billing, answered</h2>
-      <FAQAccordion items={faqs} />
-      <FaqSchema items={faqs} />
-    </section>
-
-    <CTASection heading="Start free, no card required." />
-  </main>
-</BaseLayout>
+<MarketingLayout {title} {description}><PricingSchemas/><SkipLink/><Header/><main id="main-content"><PricingHero/><PricingPlans/><PricingComparison/><PricingFaq/><PricingCta/></main><Footer/></MarketingLayout>

@@ -1,0 +1,18 @@
+---
+// Real values, mirrored from src/lib/entitlements.ts, re-verify before
+// every release per docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 2 (kept
+// identical to the pre-migration PricingTable.astro this replaces).
+const rows = [
+  { label: "Leads per month", free: "40", pro: "Unlimited", business: "Unlimited" },
+  { label: "Review requests per month", free: "40", pro: "Unlimited", business: "Unlimited" },
+  { label: "Customers", free: "200", pro: "Unlimited", business: "Unlimited" },
+  { label: "Open reminders", free: "40", pro: "Unlimited", business: "Unlimited" },
+  { label: "Custom templates per type", free: "1", pro: "Unlimited", business: "Unlimited" },
+  { label: "Team seats", free: "1", pro: "1", business: "Multiple" },
+  { label: "Missed-call follow-up automation", free: "No", pro: "Rolling out", business: "Rolling out" },
+  { label: "Send messages directly through Chakusa", free: "No", pro: "Yes", business: "Yes" },
+  { label: "Advanced analytics & extended history", free: "No", pro: "Yes", business: "Yes" },
+  { label: "Team management (roles & invitations)", free: "No", pro: "No", business: "Yes" },
+];
+---
+<section class="pr-compare" aria-labelledby="pricing-compare-title"><div class="pr-shell"><div class="pr-heading pr-heading--center"><p class="pr-label">Compare plans</p><h2 id="pricing-compare-title">Every plan, side by side.</h2></div><div class="pr-compare__wrap"><table class="pr-compare__table"><thead><tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Pro</th><th scope="col">Business</th></tr></thead><tbody>{rows.map((row) => <tr><th scope="row">{row.label}</th><td>{row.free}</td><td>{row.pro}</td><td>{row.business}</td></tr>)}</tbody></table></div></div></section>

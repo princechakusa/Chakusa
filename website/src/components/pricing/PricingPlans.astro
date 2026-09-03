@@ -1,0 +1,6 @@
+---
+import Button from "../foundation/Button.astro";
+import PricingIcon from "./PricingIcon.astro";
+import { pricingTiers } from "../../data/pricing";
+---
+<section class="pr-plans" id="plans" aria-labelledby="pricing-plans-title"><div class="pr-shell"><h2 class="visually-hidden" id="pricing-plans-title">Plans</h2><div class="pr-plans__grid">{pricingTiers.map((tier) => <div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}>{tier.featured && <p class="pr-plan__badge">Most popular</p>}<strong>{tier.name}</strong><p class="pr-plan__tagline">{tier.tagline}</p><p class="pr-plan__price">{tier.price}</p>{tier.priceNote && <p class="pr-plan__note">{tier.priceNote}</p>}<ul>{tier.features.map((feature) => <li><PricingIcon name="check"/>{feature}</li>)}</ul><Button href={tier.ctaHref} variant={tier.featured ? "primary" : "secondary"}>{tier.ctaLabel}</Button></div>)}</div></div></section>

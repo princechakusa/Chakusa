@@ -1,10 +1,10 @@
-// MARKETING PRICING PRESENTATION — deliberately separate from live
+// MARKETING PRICING PRESENTATION - deliberately separate from live
 // billing implementation (no billing/entitlement enforcement is being
 // built or changed by this file; see "FINAL STITCH FIDELITY DIRECTIVE",
 // sections 7-9). The entry tier is now presented as "Starter" at
 // $9.99/month with a 14-day free trial, an explicit owner-approved
 // business decision superseding the earlier permanent-free "Free" tier
-// shown on this page. This is a marketing-copy change only — it does
+// shown on this page. This is a marketing-copy change only - it does
 // NOT reflect src/lib/entitlements.ts's current PLAN_LIMITS (still
 // "free" there) and does NOT imply the billing/trial/entitlement
 // architecture has been built; that is separate, later work per the

@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Reviews feature page.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - Reviews feature page.
 // Structure reproduced from the Stitch export
 // (chakusa_reviews_transparent_un_gated_reputation_engine/code.html):
 // hero + proof strip, 4-step lifecycle, "gating vs. Chakusa" comparison,
@@ -7,18 +7,18 @@
 // Fabricated content from the Stitch source removed, not replaced with
 // different fabricated content:
 // - The hero's "100% Un-Gated / 0% Fake Review Risk / <3 Sec Sync"
-//   stat strip — specific, unverifiable numbers. Replaced with the
+//   stat strip - specific, unverifiable numbers. Replaced with the
 //   actual policy facts (every visit gets a request; no rating-based
 //   filtering; the business owns its profile).
-// - "FTC ... Section 5" and "Google Business Profile" sync claims — no
+// - "FTC ... Section 5" and "Google Business Profile" sync claims - no
 //   confirmed integration exists; removed rather than asserted.
 // - The named reviewers ("Marcus Vance", "Elena Rostova", "David
 //   Chen"), their stock photos, specific star counts, invented
 //   business name ("Heritage Trade Co. & Guild Partners"), and the
-//   "4.96 / 5.0" and "1,428 bookings" aggregate stats — all fabricated.
+//   "4.96 / 5.0" and "1,428 bookings" aggregate stats - all fabricated.
 //   Replaced with one clearly-labeled illustrative example, no invented
 //   identity or photo attached.
-// - "14-day fully featured testbed" — no trial exists; real plans are
+// - "14-day fully featured testbed" - no trial exists; real plans are
 //   Free / Pro / Business (see src/data/pricing.ts).
 export const reviewsHero = {
   badge: "Reviews, without the gate",
@@ -63,7 +63,7 @@ export const chakusaStandard = {
 
 export const reviewExample = {
   label: "Illustrative example",
-  note: "Not a real business or customer — shown to demonstrate the format a business sees.",
+  note: "Not a real business or customer - shown to demonstrate the format a business sees.",
   reviewer: "A customer",
   rating: 5,
   quote: "Showed up on time, explained the work clearly, and the price matched what I was quoted.",

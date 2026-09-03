@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B — pixel-level
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B - pixel-level
 // correction pass. Structure and section rhythm from the approved Stitch
 // homepage (chakusa_local_service_platform_growth_engine), re-extracted
 // directly from its code.html this time (not approximated from the
@@ -6,18 +6,18 @@
 // the copy is real Chakusa capability, not Stitch's fabricated claims.
 //
 // Fabricated content removed, not replaced with different fabricated
-// content — this list is unchanged from Stage 3, still locked:
+// content - this list is unchanged from Stage 3, still locked:
 // - "Connecting trusted local businesses with thousands of daily
-//   customers" (top bar) — removed.
+//   customers" (top bar) - removed.
 // - The "Maya Lin" testimonial + photo + "14 hrs saved weekly" + "92%
-//   retention after 3 months" — removed entirely.
+//   retention after 3 months" - removed entirely.
 // - Every card's embedded fake conversation/mock-data content ("Can you
 //   fit in 2 brake rotor replacements", "Rescue Rate +38% Off-Hours
 //   Rev", "Compounding MRR", specific "Cadence Engine" cadences like
-//   "Every 3-4 Weeks" presented as measured facts) — the STRUCTURE (a
+//   "Every 3-4 Weeks" presented as measured facts) - the STRUCTURE (a
 //   small nested preview panel, a bottom stat row) is reproduced; the
 //   specific fabricated numbers/dialogue inside it are not.
-// - The final CTA's "14-day free trial" — no trial exists.
+// - The final CTA's "14-day free trial" - no trial exists.
 
 export const heroCopy = {
   eyebrow: "The 2-in-1 platform for local services",

@@ -1,7 +1,7 @@
-/* PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3 — homepage body.
+/* PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3 - homepage body.
    Reproduces the approved Stitch homepage's 7-section rhythm using the
    Stage 2 tokens. Replaces the previous video-hero homepage entirely
-   (also resolves the earlier "homepage feels too heavy" note — the
+   (also resolves the earlier "homepage feels too heavy" note - the
    removed 7.1MB autoplaying hero video was the largest single
    contributor to that). */
 .story-kicker{margin:0 0 1rem;color:var(--heading);font-family:var(--font-heading);font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}

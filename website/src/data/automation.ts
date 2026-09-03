@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Automation feature page.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - Automation feature page.
 // Structure reproduced from the Stitch export
 // (chakusa_automation_practical_workflows_for_working_artisans/code.html):
 // hero + proof strip, 4 everyday workflow cards, a "what the system
@@ -7,7 +7,7 @@
 // The core reframe, same as retention: Stitch's premise is workflows
 // that send messages to customers automatically and "on autopilot."
 // The real workflow engine (src/modules/automation/workflowTemplates.ts)
-// has one action type — CREATE_TASK — meaning every workflow creates a
+// has one action type - CREATE_TASK - meaning every workflow creates a
 // task for a team member to review and act on; it does not message a
 // customer on its own. EXPO_PUBLIC_AUTOMATION_ENABLED is false in
 // mobile/eas.json. The four workflows below map to real template keys
@@ -18,13 +18,13 @@
 // Fabricated content from the Stitch source removed, not replaced with
 // different fabricated content:
 // - "0 Complicated Builders / 4 Minutes One-Click Activation / 100%
-//   On-Brand Automatic Messages" — replaced with the real facts.
+//   On-Brand Automatic Messages" - replaced with the real facts.
 // - Per-workflow fabricated stats ("21% All-Day Fills," "3.5-star
 //   review increase," "35% recurring revenue uplift") and a specific
-//   phone number and named text exchange ("Marcus L") — removed.
-// - The "Dean Kowalski" testimonial with photo — a fabricated identity.
+//   phone number and named text exchange ("Marcus L") - removed.
+// - The "Dean Kowalski" testimonial with photo - a fabricated identity.
 //   Removed, not replaced with a different fabricated one.
-// - "Start 30-Day Business Trial" and "Put busywork on autopilot" —
+// - "Start 30-Day Business Trial" and "Put busywork on autopilot" -
 //   no trial exists and sending is never autonomous; replaced.
 export const automationHero = {
   badge: "Practical workflows",
@@ -57,7 +57,7 @@ export const systemSpotlight = {
 export interface AutomationRecipe { icon: string; title: string; cadence: string; body: string }
 export const automationRecipes: AutomationRecipe[] = [
   { icon: "car", title: "Auto & Independent Garages", cadence: "Mileage or seasonal", body: "Comeback tasks track service intervals instead of a flat calendar date." },
-  { icon: "cut", title: "Salons & Barbers", cadence: "Every 3–4 weeks", body: "Comeback tasks follow typical chair-appointment cadence." },
+  { icon: "cut", title: "Salons & Barbers", cadence: "Every 3-4 weeks", body: "Comeback tasks follow typical chair-appointment cadence." },
   { icon: "home", title: "HVAC & Home Systems", cadence: "Seasonal", body: "Reminder tasks line up with pre-season maintenance windows." },
   { icon: "health", title: "Dental & Hygiene", cadence: "Every 6 months", body: "Comeback tasks follow a recall-based, not weekly, cadence." },
 ];

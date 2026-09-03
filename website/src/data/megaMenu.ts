@@ -42,7 +42,7 @@ export const megaMenuQuadrants: MegaMenuQuadrant[] = [
     tags: ["Client records", "Ungated reviews"],
     links: [
       { label: "Customers", href: "/features/customers" },
-      { label: "Customer retention", href: "/features/retention" },
+      { label: "Customer retention", href: "/features/customer-retention" },
       { label: "Reviews", href: "/features/reviews" },
     ],
   },

@@ -1,5 +1,5 @@
 /* Responsive foundation for the Stage 3 homepage body. Breakpoints match
-   the site's existing 42rem/64rem/80rem convention (kept from Stage 2 —
+   the site's existing 42rem/64rem/80rem convention (kept from Stage 2 -
    see that stage's report for why a new breakpoint system wasn't
    introduced for the shell, same reasoning applies here). */
 @media (min-width:42rem){

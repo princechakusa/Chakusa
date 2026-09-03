@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Mobile App feature page.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - Mobile App feature page.
 // Structure adapted from the Stitch export
 // (chakusa_mobile_app_dual_experience_in_one_app/code.html): hero +
 // proof strip, two device-mode previews, a 6-capability grid, final
@@ -8,23 +8,23 @@
 // com.chakusa.mobile, real iOS/Android config) and the website's own
 // existing get-started.astro and SiteFooter.astro, both of which
 // already say "App Store: coming soon" / "Google Play: coming soon."
-// The app is not live in either store yet — this page must not imply
+// The app is not live in either store yet - this page must not imply
 // otherwise.
 //
 // Fabricated content from the Stitch source removed, not replaced with
 // different fabricated content:
 // - "4.9 avg across 48,000+ App Store reviews," "<180ms latency,"
 //   "end-to-end encrypted appointments," "SOC2 Certified," "Zero
-//   Transaction Markups," "Bank-Grade Settlement" — unverifiable
+//   Transaction Markups," "Bank-Grade Settlement" - unverifiable
 //   claims, some inconsistent with an app that isn't published yet.
 //   Removed.
 // - "Chakusa Rewards / 450 pts available," named businesses (Heritage
 //   Craft Barbers, Precision EuroTech, Luxe Dental Studio) with prices
 //   and distances, and "Direct Merchant Payouts" (no payment
-//   processing feature confirmed) — fabricated or unconfirmed.
+//   processing feature confirmed) - fabricated or unconfirmed.
 //   Removed.
 // - A working "Install the Universal App Today" QR code and live store
-//   badges — the app isn't published; replaced with an honest
+//   badges - the app isn't published; replaced with an honest
 //   "coming soon" notice matching the rest of the site.
 export const mobileHero = {
   badge: "One app, coming soon",

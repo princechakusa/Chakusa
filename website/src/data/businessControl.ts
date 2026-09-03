@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Business Control feature
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - Business Control feature
 // page. Structure adapted from the Stitch export
 // (chakusa_business_control_growth_management_hub/code.html): hero +
 // proof strip, an attention-center spotlight, a "how the day runs"
@@ -6,7 +6,7 @@
 //
 // Grounded against src/modules/dashboard/attentionCenter.service.ts's
 // real AttentionCategory set (missed_call_followup, customer_due,
-// review_opportunity, payment_outstanding) — that's the real "what
+// review_opportunity, payment_outstanding) - that's the real "what
 // needs attention" list a business owner sees, not a live-updating
 // dashboard of invented bookings and revenue figures.
 //
@@ -15,16 +15,16 @@
 // - The full dashboard mockup with specific invented numbers ("14
 //   Bookings Today," "86.4% Retention Health," "4.98 ★ / 342 Verified")
 //   and named leads/customers/reviewers (Marcus Vance, David Miller,
-//   Rachel Thorne) — replaced with the real, generic attention
+//   Rachel Thorne) - replaced with the real, generic attention
 //   categories and one illustrative example.
 // - "Autonomous AI Control / Quiet AI Assistant Configuration" implying
-//   the AI acts fully on its own — inconsistent with the real product
+//   the AI acts fully on its own - inconsistent with the real product
 //   (Draft mode by default, human review); reframed to match
 //   /features/ai-assistant's honest description.
 // - The "Sarah Jenkins" testimonial with photo and "+16% Repeat
-//   Clients" / "11 Hours/Wk" stats — a fabricated identity and outcome.
+//   Clients" / "11 Hours/Wk" stats - a fabricated identity and outcome.
 //   Removed, not replaced.
-// - "Start Free for 14 Days" — no trial exists; CTA points to the real
+// - "Start Free for 14 Days" - no trial exists; CTA points to the real
 //   Free plan.
 export const controlHero = {
   badge: "One dashboard, not five tabs",

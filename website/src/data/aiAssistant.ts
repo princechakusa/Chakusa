@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — AI Assistant feature page.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - AI Assistant feature page.
 // Structure reproduced from the Stitch export
 // (chakusa_ai_assistant_quiet_grounded_intelligence_for_local_trades/
 // code.html): hero + proof strip, three practical-role cards, a
@@ -11,7 +11,7 @@
 // policy engine (DRAFT / APPROVAL / AUTONOMOUS modes, policy
 // checkpoints, human takeover/resume/transfer), and mutating actions
 // that can require approval before they happen. DEFAULT_MODE is
-// "DRAFT" — the assistant drafts, a human reviews, unless a business
+// "DRAFT" - the assistant drafts, a human reviews, unless a business
 // deliberately turns on a more autonomous mode. That default, and the
 // existence of human takeover at every step, is the load-bearing fact
 // this page is built around.
@@ -19,16 +19,16 @@
 // Fabricated content from the Stitch source removed, not replaced with
 // different fabricated content:
 // - "0% Hallucination Tolerance," "98.4% Enquiry-to-Booking Conversion
-//   Accuracy," "14 Hrs Reclaimed Weekly" — unverifiable, specific
+//   Accuracy," "14 Hrs Reclaimed Weekly" - unverifiable, specific
 //   numbers. Replaced with the real, confirmed facts (default mode,
 //   real tools, approval on mutating actions).
 // - The named conversations (Marcus Vance, John S, Sarah J) and the
-//   "Julian" photo testimonial with a live "AI Chair Assistant" demo —
+//   "Julian" photo testimonial with a live "AI Chair Assistant" demo -
 //   fabricated identities and an unconfirmed autonomous dispatch
 //   scenario. Removed.
-// - Specific per-industry "Average Setup Time" figures — unverifiable;
+// - Specific per-industry "Average Setup Time" figures - unverifiable;
 //   removed.
-// - "Book a Live Walkthrough" — no such scheduling flow is confirmed to
+// - "Book a Live Walkthrough" - no such scheduling flow is confirmed to
 //   exist; CTA points to the real Free plan and product page instead.
 export const aiHero = {
   badge: "AI with human oversight",

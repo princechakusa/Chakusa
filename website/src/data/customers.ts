@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Customers feature page.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION - Customers feature page.
 // Structure reproduced from the Stitch export
 // (chakusa_customers_practical_client_crm_for_artisans/code.html): hero
 // + proof strip, one illustrative customer-profile spotlight, a
@@ -12,20 +12,20 @@
 // Fabricated content from the Stitch source removed, not replaced with
 // different fabricated content:
 // - "94.2% Recall Accuracy / <3 Sec Formula Retrievability / -38%
-//   No-Show / 0% Data Lock-In" — specific, unverifiable numbers.
+//   No-Show / 0% Data Lock-In" - specific, unverifiable numbers.
 //   Replaced with the real facts (what's on a profile, how it's
 //   exported, that it's never locked in).
 // - The named client profile ("Marcus Vance", $2,940 lifetime spend,
 //   25 visits, allergy notes, service formulas) and the "Julian Vance"
-//   testimonial with photo — fabricated identities. Replaced with one
+//   testimonial with photo - fabricated identities. Replaced with one
 //   clearly-labeled illustrative profile, no invented name or photo.
 // - Per-industry fabricated schema fields (VIN numbers, allergy
-//   flags, "formula cards") presented as built-in dedicated fields —
+//   flags, "formula cards") presented as built-in dedicated fields -
 //   the real product stores this as flexible notes/custom fields, not
 //   named per-industry columns; described that way instead.
-// - "Import instantly from iOS, Google Contacts, and Square" — no such
+// - "Import instantly from iOS, Google Contacts, and Square" - no such
 //   integration exists; the real import path is a CSV upload.
-// - "Free 30-Day Business Trial" — no trial exists; real plans are
+// - "Free 30-Day Business Trial" - no trial exists; real plans are
 //   Free / Pro / Business.
 export const customersHero = {
   badge: "One record per customer",
@@ -41,7 +41,7 @@ export const customersProof = [
 
 export const profileSpotlight = {
   label: "Illustrative example",
-  note: "Not a real customer — shown to demonstrate the profile format.",
+  note: "Not a real customer - shown to demonstrate the profile format.",
   name: "Example customer",
   meta: "Member since example date",
   tags: ["Regular", "Prefers SMS"],

@@ -2,14 +2,14 @@
    Reproduces the canonical Stitch footer (light surface, bordered top,
    4 link columns beside a brand block, legal bar at the bottom) using
    the new role-based tokens. This is a real, intentional visual change
-   from the previous dark (#0f1220) footer — Stitch's own footer is light
+   from the previous dark (#0f1220) footer - Stitch's own footer is light
    on every one of the 14 pages, and Stage 1/2 both establish Stitch as
    the visual source of truth over the prior frontend's choices. Content
    is unchanged: real copy from FooterBrand.astro/FooterLegal.astro, real
    routes from data/homepage.ts's footerGroups (see that file's Stage 2
    comment for what was deliberately left out of Stitch's version and
    why: Enterprise Solutions, Partner Program, Security & Compliance,
-   Trust Center, Help Center — none are real pages yet). */
+   Trust Center, Help Center - none are real pages yet). */
 .marketing-footer{padding-top:var(--space-4xl);background:var(--card-surface);color:var(--body-text);border-top:1px solid var(--hairline)}
 .footer-main{display:grid;gap:var(--space-2xl);padding-bottom:var(--space-2xl)}
 .footer-brand{max-width:22rem}

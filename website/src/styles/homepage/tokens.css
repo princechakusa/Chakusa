@@ -11,7 +11,7 @@
 
    Primary/secondary values are the ones locked in the Stage 2 brief
    (#EE5D43 / #0D9488), not DESIGN.md's YAML frontmatter primary
-   (#ab2d19), which is a stale/generated artifact — see the Stage 1
+   (#ab2d19), which is a stale/generated artifact - see the Stage 1
    report's Design System Extraction section for why. */
 :root{
   --primary:#EE5D43;

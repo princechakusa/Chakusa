@@ -42,7 +42,7 @@ export const megaMenuQuadrants: MegaMenuQuadrant[] = [
     tags: ["Client records", "Ungated reviews"],
     links: [
       { label: "Customers", href: "/features/customers" },
-      { label: "Customer retention", href: "/features/retention" },
+      { label: "Customer retention", href: "/features/customer-retention" },
       { label: "Reviews", href: "/features/reviews" },
     ],
   },
@@ -76,7 +76,7 @@ export const productMegaLinks = [
   { label: "Bookings", href: "/features/bookings", icon: "calendar", group: "Operations" },
   { label: "Customers", href: "/features/customers", icon: "users", group: "Relationships" },
   { label: "Reviews", href: "/features/reviews", icon: "star", group: "Relationships" },
-  { label: "Retention", href: "/features/retention", icon: "repeat", group: "Relationships" },
+  { label: "Retention", href: "/features/customer-retention", icon: "repeat", group: "Relationships" },
   { label: "Automation", href: "/features/automation", icon: "sparkle", group: "Automation & AI" },
   { label: "AI assistant", href: "/features/ai-assistant", icon: "chat", group: "Automation & AI" },
   { label: "Business control", href: "/features/business-control", icon: "shield", group: "Operations" },

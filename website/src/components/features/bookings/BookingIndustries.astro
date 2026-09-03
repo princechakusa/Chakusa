@@ -1,0 +1,5 @@
+---
+import { bookingIndustries } from "../../../data/bookings";
+import BookingsIcon from "./BookingsIcon.astro";
+---
+<section class="bk-industries" aria-labelledby="booking-industries-title"><div class="bk-shell"><div class="bk-heading bk-heading--split"><div><p class="bk-label">Multi-sector scheduling</p><h2 id="booking-industries-title">Built for how service businesses actually work.</h2></div><p>Services can use their own duration, team availability, notice, and booking window without changing the customer experience.</p></div><div class="bk-industries__grid">{bookingIndustries.map(item => <article><span class="bk-icon"><BookingsIcon name={item.icon}/></span><h3>{item.title}</h3><p>{item.copy}</p><ul>{item.points.map(point => <li>{point}</li>)}</ul><footer><small>Example service</small><strong>{item.example}</strong></footer></article>)}</div></div></section>

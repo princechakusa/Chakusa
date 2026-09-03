@@ -1,0 +1,10 @@
+---
+import { bookingExample as demo } from "../../../data/bookings";
+import BookingsIcon from "./BookingsIcon.astro";
+const controls = [
+  { icon: "shield", title: "Availability protection", copy: "Existing appointments and availability blocks are excluded from the slots customers can choose." },
+  { icon: "clock", title: "Configurable change windows", copy: "The business controls how close to an appointment a customer can reschedule or cancel." },
+  { icon: "sync", title: "Calendar subscription", copy: "A revocable read-only ICS feed keeps Chakusa appointments visible in compatible calendars." },
+];
+---
+<section class="bk-controls" id="scheduling-controls" aria-labelledby="scheduling-controls-title"><div class="bk-shell bk-controls__grid"><div class="bk-controls__copy"><p class="bk-label">Scheduling controls</p><h2 id="scheduling-controls-title">Protect availability. <em>Keep every change clear.</em></h2><p>Chakusa calculates bookable times from the business schedule, existing appointments, booking rules, and team availability.</p><ul>{controls.map(item => <li><span><BookingsIcon name={item.icon}/></span><div><strong>{item.title}</strong><p>{item.copy}</p></div></li>)}</ul></div><div class="bk-board" role="img" aria-label="Example team schedule with completed, confirmed, and scheduled appointments"><header><span>Example schedule</span><b>Current availability</b></header>{demo.schedule.map(item => <article><time>{item.time}</time><div><strong>{item.customer}</strong><span>{item.service}</span></div><b>{item.status}</b></article>)}<footer><span>Business timezone</span><strong>Times display in the configured local timezone</strong></footer></div></div></section>

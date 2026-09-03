@@ -1,0 +1,18 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import BookingsHero from "../../components/features/bookings/BookingsHero.astro";
+import BookingFlow from "../../components/features/bookings/BookingFlow.astro";
+import BookingIndustries from "../../components/features/bookings/BookingIndustries.astro";
+import SchedulingControls from "../../components/features/bookings/SchedulingControls.astro";
+import BookingsCta from "../../components/features/bookings/BookingsCta.astro";
+import BookingsSchemas from "../../components/features/bookings/BookingsSchemas.astro";
+import "../../styles/features/bookings.css";
+import "../../styles/features/bookings-responsive.css";
+import "../../styles/features/bookings-refinements.css";
+const title = "Online Booking and Scheduling for Service Businesses | Chakusa";
+const description = "Let customers book available services while your team manages appointments, availability, reminders, rescheduling, and calendar access with Chakusa.";
+---
+<MarketingLayout {title} {description}><BookingsSchemas/><SkipLink/><Header/><main id="main-content"><BookingsHero/><BookingFlow/><BookingIndustries/><SchedulingControls/><BookingsCta/></main><Footer/></MarketingLayout>

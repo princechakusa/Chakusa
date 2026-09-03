@@ -1,18 +1,42 @@
 ---
-// Real values, mirrored from src/lib/entitlements.ts, re-verify before
-// every release per docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 2 (kept
-// identical to the pre-migration PricingTable.astro this replaces).
-const rows = [
-  { label: "Leads per month", free: "40", pro: "Unlimited", business: "Unlimited" },
-  { label: "Review requests per month", free: "40", pro: "Unlimited", business: "Unlimited" },
-  { label: "Customers", free: "200", pro: "Unlimited", business: "Unlimited" },
-  { label: "Open reminders", free: "40", pro: "Unlimited", business: "Unlimited" },
-  { label: "Custom templates per type", free: "1", pro: "Unlimited", business: "Unlimited" },
-  { label: "Team seats", free: "1", pro: "1", business: "Multiple" },
-  { label: "Missed-call follow-up automation", free: "No", pro: "Rolling out", business: "Rolling out" },
-  { label: "Send messages directly through Chakusa", free: "No", pro: "Yes", business: "Yes" },
-  { label: "Advanced analytics & extended history", free: "No", pro: "Yes", business: "Yes" },
-  { label: "Team management (roles & invitations)", free: "No", pro: "No", business: "Yes" },
+// Categorized comparison table, matching Stitch's "Granular Architecture
+// Breakdown" table exactly: rows grouped under labeled section headers
+// (Stitch: "1. Booking & Scheduling Engine", "2. Client Relationship &
+// CRM Records", "3. Lead Recovery & Automation", "4. Reviews, Trust &
+// Infrastructure"). Real values, mirrored from src/lib/entitlements.ts,
+// re-verify before every release per
+// docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 2.
+const groups = [
+  {
+    title: "Booking & scheduling",
+    rows: [
+      { label: "Customers", free: "200", pro: "Unlimited", business: "Unlimited" },
+      { label: "Open reminders", free: "40", pro: "Unlimited", business: "Unlimited" },
+      { label: "Team seats", free: "1", pro: "1", business: "Multiple" },
+      { label: "Team management (roles & invitations)", free: "No", pro: "No", business: "Yes" },
+    ],
+  },
+  {
+    title: "Customer relationship & records",
+    rows: [
+      { label: "Custom templates per type", free: "1", pro: "Unlimited", business: "Unlimited" },
+      { label: "Advanced analytics & extended history", free: "No", pro: "Yes", business: "Yes" },
+    ],
+  },
+  {
+    title: "Lead recovery & automation",
+    rows: [
+      { label: "Leads per month", free: "40", pro: "Unlimited", business: "Unlimited" },
+      { label: "Missed-call follow-up automation", free: "No", pro: "Rolling out", business: "Rolling out" },
+      { label: "Send messages directly through Chakusa", free: "No", pro: "Yes", business: "Yes" },
+    ],
+  },
+  {
+    title: "Reviews & trust",
+    rows: [
+      { label: "Review requests per month", free: "40", pro: "Unlimited", business: "Unlimited" },
+    ],
+  },
 ];
 ---
-<section class="pr-compare" aria-labelledby="pricing-compare-title"><div class="pr-shell"><div class="pr-heading pr-heading--center"><p class="pr-label">Compare plans</p><h2 id="pricing-compare-title">Every plan, side by side.</h2></div><div class="pr-compare__wrap"><table class="pr-compare__table"><thead><tr><th scope="col">Feature</th><th scope="col">Starter</th><th scope="col">Pro</th><th scope="col">Business</th></tr></thead><tbody>{rows.map((row) => <tr><th scope="row">{row.label}</th><td>{row.free}</td><td>{row.pro}</td><td>{row.business}</td></tr>)}</tbody></table></div></div></section>
+<section class="pr-compare" aria-labelledby="pricing-compare-title"><div class="pr-shell"><div class="pr-heading pr-heading--center"><p class="pr-label">Granular breakdown</p><h2 id="pricing-compare-title">Compare plan capabilities, side by side.</h2><p>Review all system capabilities across tiers to select the exact operational surface your workshop needs.</p></div><div class="pr-compare__wrap"><table class="pr-compare__table"><thead><tr><th scope="col">Feature</th><th scope="col">Starter</th><th scope="col">Pro</th><th scope="col">Business</th></tr></thead>{groups.map((group, i) => <tbody><tr class="pr-compare__group"><th scope="colgroup" colspan="4">{i + 1}. {group.title}</th></tr>{group.rows.map((row) => <tr><th scope="row">{row.label}</th><td>{row.free}</td><td>{row.pro}</td><td>{row.business}</td></tr>)}</tbody>)}</table></div></div></section>

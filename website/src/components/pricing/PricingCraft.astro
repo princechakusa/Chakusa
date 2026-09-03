@@ -1,0 +1,12 @@
+---
+// Mirrors Stitch's "Engineered for physical operations, not desk
+// workers" 2-column section. Stitch used a stock photo and specific
+// invented metrics ("[X.X]% Retention," "[X.X] hrs/week," both literal
+// unfilled bracket placeholders in its own export). No real photo is
+// substituted (a stock photo here would carry the same "implies a real
+// customer" risk this project has avoided everywhere else); the
+// metrics are replaced with honest, qualitative facts instead.
+import PricingIcon from "./PricingIcon.astro";
+const points = ["Built for on-the-go use on a phone, not a desktop-only dashboard", "Works whether you're mid-cut, under a hood, or between appointments", "No hardware to install, no terminal to configure"];
+---
+<section class="pr-craft" aria-labelledby="pricing-craft-title"><div class="pr-shell pr-craft__grid"><div><p class="pr-label">Handcrafted for real trades</p><h2 id="pricing-craft-title">Engineered for physical work, not desk jobs.</h2><p>Whether you're managing a barber chair, a service bay, or a client visit, Chakusa fits the way tradespeople actually work.</p><ul>{points.map((point) => <li><PricingIcon name="check"/>{point}</li>)}</ul></div><div class="pr-craft__visual"><PricingIcon name="shield" class="pr-craft__visual-icon"/><span>Built for hands-on trades</span></div></div></section>

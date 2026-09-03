@@ -7,4 +7,4 @@ const faqs = [
   { question: "Is Business pricing available yet?", answer: "Not yet. Business tier pricing hasn't been finalized. Reach out and we'll follow up once it is." },
 ];
 ---
-<section class="pr-faq" aria-labelledby="pricing-faq-title"><div class="pr-shell"><div class="pr-heading"><p class="pr-label">Questions</p><h2 id="pricing-faq-title">Billing, answered.</h2></div><div class="pr-faq__list">{faqs.map((item) => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></div><FaqSchema items={faqs}/></section>
+<section class="pr-faq" aria-labelledby="pricing-faq-title"><div class="pr-shell"><div class="pr-heading pr-heading--center"><p class="pr-label">Common inquiries</p><h2 id="pricing-faq-title">Frequently asked questions.</h2><p>Everything you need to know about billing, client data rights, and operational onboarding.</p></div><div class="pr-faq__list">{faqs.map((item) => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></div><FaqSchema items={faqs}/></section>

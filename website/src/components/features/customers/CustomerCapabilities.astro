@@ -1,0 +1,5 @@
+---
+import CustomersIcon from "./CustomersIcon.astro";
+import { customerCapabilities } from "../../../data/customers";
+---
+<section class="cu-capabilities" id="capabilities" aria-labelledby="customers-capabilities-title"><div class="cu-shell"><div class="cu-heading cu-heading--center"><p class="cu-label">Built for busy hands, not sales-ops teams</p><h2 id="customers-capabilities-title">A CRM that stays out of the way.</h2><p>No mandatory fields, no complicated setup. Just what a working business actually needs to remember its customers.</p></div><div class="cu-capabilities__grid">{customerCapabilities.map((item) => <div class="cu-capabilities__card"><div class="cu-icon"><CustomersIcon name={item.icon}/></div><strong>{item.title}</strong><p>{item.body}</p></div>)}</div></div></section>

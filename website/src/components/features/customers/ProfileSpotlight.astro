@@ -1,0 +1,4 @@
+---
+import { profileSpotlight } from "../../../data/customers";
+---
+<section class="cu-spotlight" id="profile-example" aria-labelledby="customers-spotlight-title"><div class="cu-shell"><div class="cu-heading"><p class="cu-label">{profileSpotlight.label}</p><h2 id="customers-spotlight-title">One profile, the full picture.</h2><p>{profileSpotlight.note}</p></div><div class="cu-spotlight__card"><header><div class="cu-spotlight__avatar" aria-hidden="true">{profileSpotlight.name.charAt(0)}</div><div><strong>{profileSpotlight.name}</strong><span>{profileSpotlight.meta}</span></div></header><div class="cu-spotlight__tags">{profileSpotlight.tags.map((tag) => <span>{tag}</span>)}</div><p class="cu-spotlight__notes"><strong>Notes: </strong>{profileSpotlight.notes}</p><ol class="cu-spotlight__visits">{profileSpotlight.visits.map((visit) => <li><span>{visit.date}</span><strong>{visit.service}</strong><em>{visit.status}</em></li>)}</ol></div></div></section>

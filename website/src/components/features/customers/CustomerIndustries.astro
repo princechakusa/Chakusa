@@ -1,0 +1,5 @@
+---
+import CustomersIcon from "./CustomersIcon.astro";
+import { customerIndustries } from "../../../data/customers";
+---
+<section class="cu-industries" aria-labelledby="customers-industries-title"><div class="cu-shell"><div class="cu-heading cu-heading--center"><p class="cu-label">Adapts to your trade</p><h2 id="customers-industries-title">Flexible enough for how your business actually works.</h2><p>Notes and custom fields, not a rigid one-size-fits-all form.</p></div><div class="cu-industries__grid">{customerIndustries.map((item, i) => <article><div class:list={["cu-icon", i % 2 === 1 && "cu-icon--alt"]}><CustomersIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p></article>)}</div></div></section>

@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import CustomersIcon from "./CustomersIcon.astro";
+import { customersHero, customersProof } from "../../../data/customers";
+---
+<section class="cu-hero" aria-labelledby="customers-title"><div class="cu-shell cu-hero__inner"><p class="cu-badge">{customersHero.badge}</p><h1 id="customers-title">{customersHero.title}</h1><p>{customersHero.body}</p><div class="cu-actions"><Button href="#profile-example"><span>See a profile</span><CustomersIcon name="arrow-right"/></Button><Button href="#capabilities" variant="secondary"><span>What's included</span></Button></div><dl class="cu-proof">{customersProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

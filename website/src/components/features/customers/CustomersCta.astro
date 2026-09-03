@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import CustomersIcon from "./CustomersIcon.astro";
+import { customersCta } from "../../../data/customers";
+---
+<section class="cu-cta" aria-labelledby="customers-cta-title"><div class="cu-shell"><div class="cu-cta__panel"><p class="cu-label cu-label--light">{customersCta.label}</p><h2 id="customers-cta-title">{customersCta.title}</h2><p>{customersCta.body}</p><div class="cu-actions"><Button href="/get-started"><span>Start free</span><CustomersIcon name="arrow-right"/></Button><Button href="/product" variant="secondary">Explore all features</Button></div><ul><li>No credit card required</li><li>CSV import and export</li><li>No coding required</li></ul></div></div></section>

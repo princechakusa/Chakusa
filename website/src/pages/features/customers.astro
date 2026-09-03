@@ -1,0 +1,17 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import CustomersHero from "../../components/features/customers/CustomersHero.astro";
+import ProfileSpotlight from "../../components/features/customers/ProfileSpotlight.astro";
+import CustomerCapabilities from "../../components/features/customers/CustomerCapabilities.astro";
+import CustomerIndustries from "../../components/features/customers/CustomerIndustries.astro";
+import CustomersCta from "../../components/features/customers/CustomersCta.astro";
+import CustomersSchemas from "../../components/features/customers/CustomersSchemas.astro";
+import "../../styles/features/customers.css";
+import "../../styles/features/customers-responsive.css";
+const title = "Customer Records and CRM for Service Businesses | Chakusa";
+const description = "Keep every customer's contact details, notes, and visit history on one profile. Import and export by CSV, with no data lock-in.";
+---
+<MarketingLayout {title} {description}><CustomersSchemas/><SkipLink/><Header/><main id="main-content"><CustomersHero/><ProfileSpotlight/><CustomerCapabilities/><CustomerIndustries/><CustomersCta/></main><Footer/></MarketingLayout>

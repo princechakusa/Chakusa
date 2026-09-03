@@ -28,6 +28,11 @@
 .pr-plan li{display:flex;align-items:flex-start;gap:.5rem;color:var(--heading);font-size:.85rem;line-height:1.45}
 .pr-plan li svg{flex:none;width:1.1rem;margin-top:.15rem;color:var(--secondary)}
 .pr-plan .ui-button{width:100%}
+.pr-valueprops{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2.5rem}
+.pr-valueprops>div{display:flex;align-items:flex-start;gap:.75rem;padding:1.25rem;border-radius:var(--r-lg);background:#fff}
+.pr-valueprops svg{flex:none;width:1.4rem;height:1.4rem;color:var(--secondary);margin-top:.1rem}
+.pr-valueprops strong{display:block;font-family:var(--font-heading);font-size:.92rem;color:var(--heading)}
+.pr-valueprops p{margin:.25rem 0 0;color:var(--body-text);font-size:.8rem;line-height:1.5}
 
 .pr-compare{padding-block:4rem;background:#fff}
 .pr-compare__wrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg)}

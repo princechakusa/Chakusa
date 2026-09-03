@@ -78,5 +78,5 @@ export const finalCta = {
   title: "The modern standard for local service commerce.",
   body: "Whether you're looking for a trusted local service or ready to run your business on one connected platform, Chakusa is ready.",
   customer: { title: "Looking for a trusted service?", copy: "Explore local businesses with real reviews and upfront information.", label: "Explore local businesses" },
-  business: { title: "Run a local business?", copy: "Start free. No card required. Capture enquiries, manage bookings, and bring customers back.", label: "Start free" },
+  business: { title: "Run a local business?", copy: "Try Starter free for 14 days. Capture enquiries, manage bookings, and bring customers back.", label: "Start free trial" },
 };

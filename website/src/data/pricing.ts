@@ -1,9 +1,15 @@
-// Mirrors src/lib/entitlements.ts's PLAN_LIMITS / PLAN_FEATURES exactly.
-// Re-verify these numbers against that file before every release, see
-// docs/WEBSITE_IMPLEMENTATION_HANDBOOK.md Part 2's Pricing acceptance
-// criteria. Store-localized subscription prices remain authoritative and
-// deliberately are not duplicated in website source.
-
+// MARKETING PRICING PRESENTATION — deliberately separate from live
+// billing implementation (no billing/entitlement enforcement is being
+// built or changed by this file; see "FINAL STITCH FIDELITY DIRECTIVE",
+// sections 7-9). The entry tier is now presented as "Starter" at
+// $9.99/month with a 14-day free trial, an explicit owner-approved
+// business decision superseding the earlier permanent-free "Free" tier
+// shown on this page. This is a marketing-copy change only — it does
+// NOT reflect src/lib/entitlements.ts's current PLAN_LIMITS (still
+// "free" there) and does NOT imply the billing/trial/entitlement
+// architecture has been built; that is separate, later work per the
+// directive's section 8. Feature limits below are otherwise unchanged
+// and still mirror entitlements.ts pending that later work.
 export interface PricingTier {
   name: string;
   tagline: string;
@@ -17,10 +23,10 @@ export interface PricingTier {
 
 export const pricingTiers: PricingTier[] = [
   {
-    name: "Free",
+    name: "Starter",
     tagline: "Everything you need to start bringing customers back.",
-    price: "$0",
-    priceNote: "No card required",
+    price: "$9.99",
+    priceNote: "per month, after a 14-day free trial. Cancel anytime.",
     features: [
       "Up to 40 leads a month",
       "Up to 40 review requests a month",
@@ -29,7 +35,7 @@ export const pricingTiers: PricingTier[] = [
       "1 custom message template per type",
       "1 team seat",
     ],
-    ctaLabel: "Start free",
+    ctaLabel: "Start 14-day free trial",
     ctaHref: "/get-started",
   },
   {

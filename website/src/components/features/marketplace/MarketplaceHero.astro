@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import MarketplaceIcon from "./MarketplaceIcon.astro";
+import { marketplaceHero, marketplaceProof } from "../../../data/marketplace";
+---
+<section class="mp-hero" aria-labelledby="marketplace-title"><div class="mp-shell mp-hero__inner"><p class="mp-badge">{marketplaceHero.badge}</p><h1 id="marketplace-title">{marketplaceHero.title}</h1><p>{marketplaceHero.body}</p><div class="mp-actions"><Button href="#profile-example"><span>See a profile</span><MarketplaceIcon name="arrow-right"/></Button><Button href="#categories" variant="secondary"><span>Browse by industry</span></Button></div><dl class="mp-proof">{marketplaceProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

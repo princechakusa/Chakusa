@@ -1,0 +1,17 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import MarketplaceHero from "../../components/features/marketplace/MarketplaceHero.astro";
+import MarketplaceCategories from "../../components/features/marketplace/MarketplaceCategories.astro";
+import ProfileExample from "../../components/features/marketplace/ProfileExample.astro";
+import MarketplaceValues from "../../components/features/marketplace/MarketplaceValues.astro";
+import MarketplaceCta from "../../components/features/marketplace/MarketplaceCta.astro";
+import MarketplaceSchemas from "../../components/features/marketplace/MarketplaceSchemas.astro";
+import "../../styles/features/marketplace.css";
+import "../../styles/features/marketplace-responsive.css";
+const title = "Public Business Profiles and Direct Booking | Chakusa";
+const description = "Every Chakusa business gets a public profile with real services, pricing, and hours, so customers can book directly without creating an account.";
+---
+<MarketingLayout {title} {description}><MarketplaceSchemas/><SkipLink/><Header/><main id="main-content"><MarketplaceHero/><MarketplaceCategories/><ProfileExample/><MarketplaceValues/><MarketplaceCta/></main><Footer/></MarketingLayout>

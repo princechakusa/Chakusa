@@ -1,0 +1,5 @@
+---
+import MarketplaceIcon from "./MarketplaceIcon.astro";
+import { marketplaceValues } from "../../../data/marketplace";
+---
+<section class="mp-values" aria-labelledby="marketplace-values-title"><div class="mp-shell"><div class="mp-heading mp-heading--center"><p class="mp-label">{marketplaceValues.label}</p><h2 id="marketplace-values-title">{marketplaceValues.title}</h2></div><div class="mp-values__grid">{marketplaceValues.points.map((point) => <div><div class="mp-icon"><MarketplaceIcon name={point.icon}/></div><strong>{point.title}</strong><p>{point.body}</p></div>)}</div></div></section>

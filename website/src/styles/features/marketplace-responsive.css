@@ -1,0 +1,11 @@
+@media (max-width:64rem){
+  .mp-categories__grid{grid-template-columns:repeat(2,1fr)}
+  .mp-values__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:42rem){
+  .mp-categories__grid{grid-template-columns:1fr}
+  .mp-values__grid{grid-template-columns:1fr}
+  .mp-proof{grid-template-columns:1fr}
+  .mp-profile__card li{grid-template-columns:1fr;gap:.15rem}
+  .mp-cta__panel{padding:2rem 1.5rem}
+}

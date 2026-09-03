@@ -1,0 +1,5 @@
+---
+import MarketplaceIcon from "./MarketplaceIcon.astro";
+import { marketplaceCategories } from "../../../data/marketplace";
+---
+<section class="mp-categories" id="categories" aria-labelledby="marketplace-categories-title"><div class="mp-shell"><div class="mp-heading"><p class="mp-label">Structured guides</p><h2 id="marketplace-categories-title">Browse by industry.</h2><p>Every category maps to a real, working set of Chakusa industry pages.</p></div><div class="mp-categories__grid">{marketplaceCategories.map((cat, i) => <a href={cat.href}><div class:list={["mp-icon", i % 2 === 1 && "mp-icon--alt"]}><MarketplaceIcon name={cat.icon}/></div><span>{cat.title}</span></a>)}</div></div></section>

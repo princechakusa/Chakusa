@@ -1,1 +1,57 @@
 :root{--ink:#20242b;--ink-soft:#737985;--canvas:#f8f9fb;--surface:#fff;--violet:#ff5c5c;--violet-deep:#e95c62;--teal:#35d0ba;--amber:#f5b942;--border:#e8eaf0;--shadow-sm:0 8px 24px rgba(32,36,43,.07);--shadow-lg:0 30px 80px rgba(32,36,43,.14);--radius-sm:.75rem;--radius-md:1.25rem;--radius-lg:2rem;--container:82rem;--font:"Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--ease:cubic-bezier(.22,1,.36,1);--focus:0 0 0 3px rgba(255,92,92,.24)}
+
+/* PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 2.
+   New role-based production tokens reconciled from the approved Google
+   Stitch design system (modern_local_commerce_system/DESIGN.md). These
+   are additive, not a replacement: the color-named tokens above
+   (--violet, --ink, --teal, --radius-sm, etc.) remain untouched and in
+   use by every page not yet visually migrated. Once every page has been
+   rebuilt against the tokens below, the old block can be retired in a
+   dedicated cleanup stage, not before.
+
+   Primary/secondary values are the ones locked in the Stage 2 brief
+   (#EE5D43 / #0D9488), not DESIGN.md's YAML frontmatter primary
+   (#ab2d19), which is a stale/generated artifact — see the Stage 1
+   report's Design System Extraction section for why. */
+:root{
+  --primary:#EE5D43;
+  --primary-hover:#e15b45;
+  --secondary:#0D9488;
+  --heading:#0F172A;
+  --body-text:#334155;
+  --muted-text:#94A3B8;
+  --page-surface:#F8FAFC;
+  --card-surface:#FFFFFF;
+  --hairline:#E2E8F0;
+  --danger-bg:#FFF1F2;
+  --danger-ink:#E11D48;
+
+  --r-xs:.25rem;
+  --r-sm:.5rem;
+  --r-md:.75rem;
+  --r-lg:1rem;
+  --r-xl:1.5rem;
+  --r-full:9999px;
+
+  --space-2xs:.25rem;
+  --space-xs:.5rem;
+  --space-sm:.75rem;
+  --space-md:1rem;
+  --space-lg:1.5rem;
+  --space-xl:2rem;
+  --space-2xl:3rem;
+  --space-3xl:4rem;
+  --space-4xl:6rem;
+  --gutter:1.5rem;
+  --margin-mobile:1rem;
+  --margin-desktop:2.5rem;
+
+  --container-narrow:80rem;
+  --container-wide:90rem;
+
+  --font-heading:"Plus Jakarta Sans Variable","Plus Jakarta Sans",var(--font);
+
+  --shadow-hover:0 4px 12px -2px rgba(15,23,42,.05),0 2px 4px -2px rgba(15,23,42,.03);
+  --shadow-overlay:0 10px 25px -5px rgba(15,23,42,.08),0 8px 10px -6px rgba(15,23,42,.04);
+  --shadow-modal:0 20px 30px -10px rgba(15,23,42,.12);
+}

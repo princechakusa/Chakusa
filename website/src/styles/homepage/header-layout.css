@@ -1,11 +1,15 @@
+/* Header height + flex layout, kept in its own file per the existing
+   convention (header.css owns color/visual treatment, this file owns
+   structural sizing). Selector matches Header.astro's real DOM nesting:
+   <header class="marketing-header"><div class="header-shell"><Container>. */
 .marketing-header > .header-shell > .container {
-  min-height: 4.75rem;
+  min-height: 4.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.25rem;
+  gap: var(--gutter);
 }
 
 @media (min-width: 64rem) {
-  .marketing-header > .header-shell > .container { min-height: 5.25rem; }
+  .marketing-header > .header-shell > .container { min-height: 5rem; }
 }

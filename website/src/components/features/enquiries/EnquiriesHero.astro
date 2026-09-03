@@ -1,6 +1,5 @@
 ---
 import Button from "../../foundation/Button.astro";
-import ProductScreenshot from "../../product/ProductScreenshot.astro";
 import { lifecycleStages, enquiriesProof } from "../../../data/enquiries";
 ---
 <section class="enq-hero container" aria-labelledby="enq-title">
@@ -15,7 +14,14 @@ import { lifecycleStages, enquiriesProof } from "../../../data/enquiries";
     <dl class="enq-hero__proof">{enquiriesProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
   </div>
   <div class="enq-hero__visual">
-    <ProductScreenshot src={null} label="Leads waiting for a response" />
+    <div class="enq-hero__dashboard">
+      <div class="enq-hero__windowbar" aria-hidden="true"><span></span><span></span><span></span><small>Chakusa workspace</small></div>
+      <img src="/images/how-it-works/chakusa-dashboard-desktop.png" width="1536" height="1024" alt="Chakusa business dashboard showing leads, bookings, reviews, and items needing attention" fetchpriority="high" />
+    </div>
+    <div class="enq-hero__signal" aria-label="An enquiry remains visible until the business responds">
+      <span>New enquiry</span>
+      <strong>Visible until you respond</strong>
+    </div>
     <ul class="enq-lifecycle-pills" aria-label="Lead status progression">
       {lifecycleStages.map((stage, index) => <li data-active={index === 0 ? "true" : "false"}>{stage.label}</li>)}
     </ul>

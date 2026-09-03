@@ -8,6 +8,10 @@
 .hiw-hero__copy>p{margin-top:1.25rem;color:var(--body-text);font-size:1.05rem;line-height:1.7}
 .hiw-hero h1{margin:0;font-family:var(--font-heading);color:var(--heading);font-size:clamp(2.3rem,5.5vw,3.4rem);line-height:1.12;letter-spacing:-.03em}
 .hiw-hero__actions{display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem}
+.hiw-hero__proof{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2.5rem;padding:1rem;border-radius:var(--r-lg);background:var(--page-surface);max-width:36rem}
+.hiw-hero__proof div{display:flex;flex-direction:column-reverse}
+.hiw-hero__proof dt{color:var(--body-text);font-size:.68rem}
+.hiw-hero__proof dd{margin:0;color:var(--heading);font-family:var(--font-heading);font-size:.9rem;font-weight:700}
 .hiw-hero__path{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:1px;margin:0;padding:1px;background:var(--hairline);border:1px solid var(--hairline);border-radius:var(--r-xl);overflow:hidden}
 .hiw-hero__path li{min-height:4.5rem;display:flex;align-items:center;justify-content:center;padding:1rem;background:#fff;font-weight:700;font-size:.85rem;text-align:center}
 

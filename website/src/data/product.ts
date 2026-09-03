@@ -7,6 +7,15 @@
 // exists for that story yet - never filled with a placeholder or fabricated
 // UI, per website/README.md's asset convention.
 
+// Hero proof strip, added for structural parity with every other
+// migrated page's stat-strip pattern. Same facts established elsewhere
+// in this file, not new claims.
+export const productProof = [
+  { label: "Connects", value: "Enquiries to reviews" },
+  { label: "Sending", value: "Reviewed by your team" },
+  { label: "Lock-in", value: "None" },
+];
+
 export const lifecycleSteps = [
   { id: "discover", label: "Discover" },
   { id: "enquire", label: "Enquire" },

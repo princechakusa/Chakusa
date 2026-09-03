@@ -6,6 +6,15 @@
 // genuinely matches the step; steps without a matching production capture
 // use an honest non-UI treatment instead of a fabricated screenshot.
 
+// Hero proof strip, added for structural parity with every other
+// migrated page's stat-strip pattern. Same facts as the rest of this
+// file, not new claims.
+export const howItWorksProof = [
+  { label: "Steps in the journey", value: "9, start to return visit" },
+  { label: "Messages sent by", value: "Your team, always" },
+  { label: "Automatic sending", value: "Never" },
+];
+
 export interface JourneyStage {
   id: string;
   number: string;

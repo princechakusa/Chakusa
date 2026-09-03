@@ -1,0 +1,28 @@
+---
+import MegaMenuIcon from "./MegaMenuIcon.astro";
+import { megaMenuQuadrants, megaMenuPromo } from "../../data/megaMenu";
+interface Props { id: string }
+const { id } = Astro.props;
+---
+<div class="nav-menu" data-menu-root>
+  <a href="/features/enquiries">Features</a>
+  <button class="nav-menu__trigger" type="button" aria-expanded="false" aria-controls={`menu-${id}`} aria-label="Open Features menu" data-menu-trigger>
+    <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </button>
+  <div class="mega-menu" id={`menu-${id}`} hidden data-menu-panel>
+    <div class="mega-menu__quadrants">
+      {megaMenuQuadrants.map((quad) => <div class="mega-menu__quad">
+        <div class="mega-menu__quad-head"><MegaMenuIcon name={quad.icon}/><strong>{quad.title}</strong></div>
+        <p>{quad.body}</p>
+        <div class="mega-menu__tags">{quad.tags.map((tag) => <span>{tag}</span>)}</div>
+        <ul>{quad.links.map((link) => <li><a href={link.href}>{link.label}</a></li>)}</ul>
+      </div>)}
+    </div>
+    <div class="mega-menu__promo">
+      <span class="mega-menu__promo-badge">{megaMenuPromo.badge}</span>
+      <strong>{megaMenuPromo.title}</strong>
+      <p>{megaMenuPromo.body}</p>
+      <a href={megaMenuPromo.linkHref}>{megaMenuPromo.linkLabel} <MegaMenuIcon name="arrow-right"/></a>
+    </div>
+  </div>
+</div>

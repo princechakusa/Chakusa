@@ -1,7 +1,12 @@
 ---
 import NavigationDropdown from "./NavigationDropdown.astro";
+import MegaMenu from "./MegaMenu.astro";
 import { primaryNavigation } from "../../data/homepage";
 ---
 <nav class="desktop-navigation" aria-label="Primary navigation">
-  {primaryNavigation.map((item, index) => item.children ? <NavigationDropdown {...item} id={`primary-${index}`} /> : <a href={item.href}>{item.label}</a>)}
+  {primaryNavigation.map((item, index) => {
+    const id = `primary-${index}`;
+    if (item.label === "Features") return <MegaMenu id={id} />;
+    return item.children ? <NavigationDropdown {...item} id={id} /> : <a href={item.href}>{item.label}</a>;
+  })}
 </nav>

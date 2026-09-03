@@ -1,0 +1,10 @@
+@media (max-width:64rem){
+  .ma-capabilities__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:42rem){
+  .ma-modes__grid{grid-template-columns:1fr}
+  .ma-capabilities__grid{grid-template-columns:1fr}
+  .ma-proof{grid-template-columns:1fr}
+  .ma-badges{flex-direction:column;align-items:center}
+  .ma-cta__panel{padding:2rem 1.5rem}
+}

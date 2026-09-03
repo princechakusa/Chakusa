@@ -1,0 +1,5 @@
+---
+import MobileIcon from "./MobileIcon.astro";
+import { mobileCapabilities } from "../../../data/mobileApp";
+---
+<section class="ma-capabilities" id="capabilities" aria-labelledby="mobile-capabilities-title"><div class="ma-shell"><div class="ma-heading"><p class="ma-label">One synchronized experience</p><h2 id="mobile-capabilities-title">Everything stays connected across the app.</h2></div><div class="ma-capabilities__grid">{mobileCapabilities.map((item) => <article><header><div class="ma-icon"><MobileIcon name={item.icon}/></div><span class="ma-capabilities__badge">{item.badge}</span></header><strong>{item.title}</strong><p>{item.body}</p></article>)}</div></div></section>

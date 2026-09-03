@@ -1,0 +1,5 @@
+---
+import MobileIcon from "./MobileIcon.astro";
+import { mobileModes } from "../../../data/mobileApp";
+---
+<section class="ma-modes" id="modes" aria-labelledby="mobile-modes-title"><div class="ma-shell"><div class="ma-heading ma-heading--center"><p class="ma-label">Cohesive ecosystem</p><h2 id="mobile-modes-title">Built for both sides of every visit.</h2><p>No disjointed accounts, no switching between separate apps.</p></div><div class="ma-modes__grid"><div class="ma-modes__card"><div class="ma-modes__head"><MobileIcon name="person"/><span>{mobileModes.customer.label}</span></div><strong>{mobileModes.customer.title}</strong><ul>{mobileModes.customer.points.map((point) => <li>{point}</li>)}</ul></div><div class="ma-modes__card ma-modes__card--dark"><div class="ma-modes__head"><MobileIcon name="storefront"/><span>{mobileModes.business.label}</span></div><strong>{mobileModes.business.title}</strong><ul>{mobileModes.business.points.map((point) => <li>{point}</li>)}</ul></div></div></div></section>

@@ -1,0 +1,16 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import MobileHero from "../../components/features/mobile-app/MobileHero.astro";
+import MobileModes from "../../components/features/mobile-app/MobileModes.astro";
+import MobileCapabilities from "../../components/features/mobile-app/MobileCapabilities.astro";
+import MobileCta from "../../components/features/mobile-app/MobileCta.astro";
+import MobileSchemas from "../../components/features/mobile-app/MobileSchemas.astro";
+import "../../styles/features/mobile-app.css";
+import "../../styles/features/mobile-app-responsive.css";
+const title = "The Chakusa Mobile App, Coming Soon | Chakusa";
+const description = "One app, two experiences: customers discover and book local services, and businesses run their day, with no second login or separate app. Coming soon to iOS and Android.";
+---
+<MarketingLayout {title} {description}><MobileSchemas/><SkipLink/><Header/><main id="main-content"><MobileHero/><MobileModes/><MobileCapabilities/><MobileCta/></main><Footer/></MarketingLayout>

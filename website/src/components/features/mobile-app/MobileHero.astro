@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import MobileIcon from "./MobileIcon.astro";
+import { mobileHero, mobileProof } from "../../../data/mobileApp";
+---
+<section class="ma-hero" aria-labelledby="mobile-title"><div class="ma-shell ma-hero__inner"><p class="ma-badge">{mobileHero.badge}</p><h1 id="mobile-title">{mobileHero.title}</h1><p>{mobileHero.body}</p><div class="ma-actions"><Button href="#modes"><span>See both modes</span><MobileIcon name="arrow-right"/></Button><Button href="#capabilities" variant="secondary"><span>What's included</span></Button></div><dl class="ma-proof">{mobileProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

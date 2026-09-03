@@ -1,0 +1,17 @@
+---
+interface Props { name: string; class?: string; }
+const { name, class: className } = Astro.props;
+const paths: Record<string, string> = {
+  phone: "M7 3h3l2 5-2 1a11 11 0 0 0 5 5l1-2 5 2v3a2 2 0 0 1-2 2c-8 0-14-6-14-14a2 2 0 0 1 2-2Z",
+  calendar: "M5 3v3m14-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z",
+  star: "m12 3 2.8 5.9 6.2.9-4.5 4.5 1.1 6.2L12 17.6 6.4 20.5l1.1-6.2L3 9.8l6.2-.9Z",
+  repeat: "M20 7V3l-2 2a8 8 0 0 0-13 2m-1 10v4l2-2a8 8 0 0 0 13-2",
+  task: "M9 11l2 2 4-4 M5 4h14v16H5z",
+  car: "M4 16V9l2-4h12l2 4v7 M4 16h16 M7 16v2 M17 16v2 M6 12h12",
+  cut: "m4 4 16 16M4 20 20 4M7 7a3 3 0 1 1-3-3m3 13a3 3 0 1 1-3 3",
+  home: "m3 11 9-8 9 8 M5 10v10h14V10",
+  health: "M8 3h8v5h5v8h-5v5H8v-5H3V8h5V3Z",
+  "arrow-right": "M5 12h14m0 0-6-6m6 6-6 6",
+};
+---
+<svg class={className} viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name] ?? paths.task} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>

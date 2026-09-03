@@ -1,0 +1,5 @@
+---
+import AutomationIcon from "./AutomationIcon.astro";
+import { systemSpotlight } from "../../../data/automation";
+---
+<section class="at-spotlight" aria-labelledby="automation-spotlight-title"><div class="at-shell"><div class="at-heading at-heading--center"><p class="at-label">{systemSpotlight.label}</p><h2 id="automation-spotlight-title">{systemSpotlight.title}</h2><p>{systemSpotlight.body}</p></div><div class="at-spotlight__card"><div class="at-spotlight__icon"><AutomationIcon name="task"/></div><div><strong>{systemSpotlight.taskTitle}</strong><span>{systemSpotlight.taskMeta}</span></div></div></div></section>

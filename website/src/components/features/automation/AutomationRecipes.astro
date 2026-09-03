@@ -1,0 +1,5 @@
+---
+import AutomationIcon from "./AutomationIcon.astro";
+import { automationRecipes } from "../../../data/automation";
+---
+<section class="at-recipes" id="recipes" aria-labelledby="automation-recipes-title"><div class="at-shell"><div class="at-heading at-heading--center"><p class="at-label">Crafted for real trades</p><h2 id="automation-recipes-title">Workflow defaults that match how each trade actually runs.</h2><p>Starting points you can adjust, not a rigid one-size-fits-all cadence.</p></div><div class="at-recipes__grid">{automationRecipes.map((item, i) => <article><div class:list={["at-icon", i % 2 === 1 && "at-icon--alt"]}><AutomationIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p><span class="at-recipes__cadence">{item.cadence}</span></article>)}</div></div></section>

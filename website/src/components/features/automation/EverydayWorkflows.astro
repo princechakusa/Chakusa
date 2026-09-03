@@ -1,0 +1,5 @@
+---
+import AutomationIcon from "./AutomationIcon.astro";
+import { workflows } from "../../../data/automation";
+---
+<section class="at-workflows" id="workflows" aria-labelledby="automation-workflows-title"><div class="at-shell"><div class="at-heading"><p class="at-label">Standard operating procedures</p><h2 id="automation-workflows-title">Built for how working businesses actually operate.</h2><p>Four workflows drawn straight from the platform's real automation templates.</p></div><div class="at-workflows__grid">{workflows.map((wf) => <article><header><div class="at-icon"><AutomationIcon name={wf.icon}/></div><span class="at-workflows__badge">{wf.badge}</span></header><h3>{wf.title}</h3><dl><div><dt>Trigger</dt><dd>{wf.trigger}</dd></div><div><dt>Action</dt><dd>{wf.action}</dd></div></dl><footer><AutomationIcon name="task"/><span>{wf.outcome}</span></footer></article>)}</div></div></section>

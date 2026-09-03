@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import AutomationIcon from "./AutomationIcon.astro";
+import { automationHero, automationProof } from "../../../data/automation";
+---
+<section class="at-hero" aria-labelledby="automation-title"><div class="at-shell at-hero__inner"><p class="at-badge">{automationHero.badge}</p><h1 id="automation-title">{automationHero.title}</h1><p>{automationHero.body}</p><div class="at-actions"><Button href="#workflows"><span>See everyday workflows</span><AutomationIcon name="arrow-right"/></Button><Button href="#recipes" variant="secondary"><span>Workflows by trade</span></Button></div><dl class="at-proof">{automationProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

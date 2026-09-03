@@ -1,0 +1,17 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import AutomationHero from "../../components/features/automation/AutomationHero.astro";
+import EverydayWorkflows from "../../components/features/automation/EverydayWorkflows.astro";
+import SystemSpotlight from "../../components/features/automation/SystemSpotlight.astro";
+import AutomationRecipes from "../../components/features/automation/AutomationRecipes.astro";
+import AutomationCta from "../../components/features/automation/AutomationCta.astro";
+import AutomationSchemas from "../../components/features/automation/AutomationSchemas.astro";
+import "../../styles/features/automation.css";
+import "../../styles/features/automation-responsive.css";
+const title = "Practical Workflow Automation for Service Businesses | Chakusa";
+const description = "Chakusa's workflows create a task for your team when something needs attention, a missed call, an upcoming appointment, a finished job. Nothing is ever sent without review.";
+---
+<MarketingLayout {title} {description}><AutomationSchemas/><SkipLink/><Header/><main id="main-content"><AutomationHero/><EverydayWorkflows/><SystemSpotlight/><AutomationRecipes/><AutomationCta/></main><Footer/></MarketingLayout>

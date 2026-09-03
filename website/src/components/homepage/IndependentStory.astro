@@ -1,16 +1,29 @@
 ---
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3.
-// Replaces Stitch's fabricated testimonial ("Maya Lin... Chakusa gave me
-// my evenings back while doubling repeat bookings", "14 hrs saved
-// weekly", "92% client retention") in the same visual rhythm — a single
-// large statement plus a two-up supporting stat row — but with real
-// product storytelling instead of an invented quote and invented
-// outcomes. No customer name, no photo, no numbers presented as measured
-// results.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B.
+// Stage 3 correctly removed Stitch's fabricated testimonial (a named
+// person, a photo, and invented outcome numbers) — that stays removed.
+// This corrects the *visual* regression that removal caused: Stitch's
+// section is a two-column composition (photo left, text + stat row
+// right), and Stage 3 collapsed it to a single centered text block.
+//
+// No photo is used here. A stock or generic "customer" photo next to
+// this copy would recreate the exact deception Stage 3 fixed — a face
+// implying a specific real person said this, when no such person exists.
+// The left column is an honest, non-photographic visual instead. If a
+// real, consented customer photo is ever supplied, it belongs here.
+import StoryIcon from "./StoryIcon.astro";
 import { independentStory } from "../../data/homepageStory";
 ---
 <section class="story-independent container" aria-labelledby="story-independent-title">
-  <p class="story-kicker">{independentStory.eyebrow}</p>
-  <h2 id="story-independent-title">{independentStory.title}</h2>
-  <p class="story-independent__body">{independentStory.body}</p>
+  <div class="story-independent__card">
+    <div class="story-independent__visual" aria-hidden="true">
+      <StoryIcon name="storefront" class="story-independent__visual-icon" />
+      <span>Built for independent operators</span>
+    </div>
+    <div class="story-independent__copy">
+      <p class="story-independent__badge">{independentStory.badge}</p>
+      <h2 id="story-independent-title">{independentStory.title}</h2>
+      <p>{independentStory.body}</p>
+    </div>
+  </div>
 </section>

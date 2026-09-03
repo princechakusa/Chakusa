@@ -1,4 +1,7 @@
 ---
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B.
+// Corrected from Stage 3: Stitch centers this section's heading and
+// intro copy on the dark background; Stage 3 left-aligned it.
 import StoryIcon from "./StoryIcon.astro";
 import { ecosystemCopy } from "../../data/homepageStory";
 ---
@@ -9,12 +12,24 @@ import { ecosystemCopy } from "../../data/homepageStory";
     <p>{ecosystemCopy.body}</p>
     <div class="story-ecosystem__modes">
       <div class="story-ecosystem__mode">
-        <span><StoryIcon name="person" class="story-ecosystem__icon" />Customer mode</span>
+        <div class="story-ecosystem__mode-head">
+          <span class="story-ecosystem__pill">Customer mode</span>
+          <StoryIcon name="person" class="story-ecosystem__icon" />
+        </div>
         <p>Browse nearby businesses, see real availability, and book directly.</p>
+        <div class="story-ecosystem__preview" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
       </div>
       <div class="story-ecosystem__mode">
-        <span><StoryIcon name="storefront" class="story-ecosystem__icon" />Business mode</span>
+        <div class="story-ecosystem__mode-head">
+          <span class="story-ecosystem__pill">Business mode</span>
+          <StoryIcon name="storefront" class="story-ecosystem__icon" />
+        </div>
         <p>See today's schedule, new enquiries, and customers due for a follow-up.</p>
+        <div class="story-ecosystem__preview" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
       </div>
     </div>
   </div>

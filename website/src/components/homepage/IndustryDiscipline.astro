@@ -9,10 +9,18 @@ import { industryCards } from "../../data/homepageStory";
     <p>Chakusa adapts to how each trade actually books, follows up, and brings customers back.</p>
   </div>
   <div class="story-industries__grid">
-    {industryCards.map((card) => <a class="story-industries__card" href={card.href}>
-      <StoryIcon name={card.icon} class="story-industries__icon" />
-      <strong>{card.title}</strong>
-      <p>{card.copy}</p>
+    {industryCards.map((card, i) => <a class="story-industries__card" href={card.href}>
+      <div>
+        <div class:list={["story-industries__badge", i % 2 === 1 && "story-industries__badge--alt"]}>
+          <StoryIcon name={card.icon} class="story-industries__icon" />
+        </div>
+        <strong>{card.title}</strong>
+        <p>{card.copy}</p>
+      </div>
+      <div class="story-industries__stats">
+        <div><span>{card.stat1Label}</span><span>{card.stat1Value}</span></div>
+        <div><span>{card.stat2Label}</span><span>{card.stat2Value}</span></div>
+      </div>
     </a>)}
   </div>
   <p><a href="/industries">See all supported industries <span aria-hidden="true">→</span></a></p>

@@ -4,22 +4,28 @@ import StoryIcon from "./StoryIcon.astro";
 import { finalCta } from "../../data/homepageStory";
 ---
 <section class="story-cta container" aria-labelledby="story-cta-title">
-  <p class="story-kicker">{finalCta.eyebrow}</p>
-  <h2 id="story-cta-title">{finalCta.title}</h2>
-  <p>{finalCta.body}</p>
-  <div class="story-cta__grid">
-    <div class="story-cta__card">
-      <StoryIcon name="person" class="story-cta__icon" />
-      <strong>{finalCta.customer.title}</strong>
-      <p>{finalCta.customer.copy}</p>
-      <Button href="/industries" variant="secondary">{finalCta.customer.label} <StoryIcon name="arrow_forward" class="story-cta__arrow" /></Button>
-    </div>
-    <div class="story-cta__card story-cta__card--primary">
-      <StoryIcon name="storefront" class="story-cta__icon" />
-      <strong>{finalCta.business.title}</strong>
-      <p>{finalCta.business.copy}</p>
-      <Button href="/get-started">{finalCta.business.label}</Button>
+  <div class="story-cta__panel">
+    <span class="story-cta__blob story-cta__blob--a" aria-hidden="true"></span>
+    <span class="story-cta__blob story-cta__blob--b" aria-hidden="true"></span>
+    <div class="story-cta__panel-inner">
+      <p class="story-kicker">{finalCta.eyebrow}</p>
+      <h2 id="story-cta-title">{finalCta.title}</h2>
+      <p>{finalCta.body}</p>
+      <div class="story-cta__grid">
+        <div class="story-cta__card">
+          <StoryIcon name="person" class="story-cta__icon" />
+          <strong>{finalCta.customer.title}</strong>
+          <p>{finalCta.customer.copy}</p>
+          <Button href="/industries" variant="secondary">{finalCta.customer.label} <StoryIcon name="arrow_forward" class="story-cta__arrow" /></Button>
+        </div>
+        <div class="story-cta__card story-cta__card--primary">
+          <StoryIcon name="storefront" class="story-cta__icon" />
+          <strong>{finalCta.business.title}</strong>
+          <p>{finalCta.business.copy}</p>
+          <Button href="/get-started">{finalCta.business.label}</Button>
+        </div>
+      </div>
+      <p class="story-cta__footnote">Questions? See <a href="/pricing">pricing</a> or <a href="/how-it-works">how it works</a>.</p>
     </div>
   </div>
-  <p class="story-cta__footnote">Questions? See <a href="/pricing">pricing</a> or <a href="/how-it-works">how it works</a>.</p>
 </section>

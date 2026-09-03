@@ -11,12 +11,12 @@
   .story-cta__grid{grid-template-columns:repeat(2,1fr)}
 }
 @media (min-width:64rem){
-  .story-hero{grid-template-columns:1fr .9fr;align-items:center;gap:var(--space-3xl);padding-block:var(--space-4xl)}
-  .story-hero__visual{grid-template-columns:1fr;gap:var(--space-lg)}
-  .story-lifecycle__grid{grid-template-columns:repeat(4,1fr)}
+  .story-hero{padding-block:var(--space-4xl)}
+  .story-lifecycle__grid{grid-template-columns:repeat(7,1fr)}
   .story-industries__grid{grid-template-columns:repeat(3,1fr)}
   .story-modules__grid{grid-template-columns:repeat(3,1fr)}
+  .story-independent__card{grid-template-columns:1fr 1.4fr}
 }
 @media (prefers-reduced-motion:reduce){
-  .story-hero__copy,.story-hero__visual,.story-section-heading,.story-lifecycle__grid,.story-industries__card,.story-modules__card,.story-independent,.story-ecosystem__inner,.story-cta__card{animation:none}
+  .story-hero__copy,.story-hero__visual,.story-section-heading,.story-lifecycle__grid,.story-industries__card,.story-modules__card,.story-independent__card,.story-ecosystem__inner,.story-cta__panel{animation:none}
 }

@@ -3,16 +3,23 @@ import StoryIcon from "./StoryIcon.astro";
 import { platformModules } from "../../data/homepageStory";
 ---
 <section class="story-modules container" aria-labelledby="story-modules-title">
-  <div class="story-section-heading">
+  <div class="story-section-heading story-section-heading--center">
     <p class="story-kicker">Core platform modules</p>
     <h2 id="story-modules-title">Built to run operations without friction.</h2>
     <p>Six connected modules, instead of six separate subscriptions that don't talk to each other.</p>
   </div>
   <div class="story-modules__grid">
     {platformModules.map((module) => <div class="story-modules__card">
-      <StoryIcon name={module.icon} class="story-modules__icon" />
-      <strong>{module.title}</strong>
+      <div class="story-modules__head">
+        <div class="story-modules__badge"><StoryIcon name={module.icon} class="story-modules__icon" /></div>
+        <strong>{module.title}</strong>
+      </div>
       <p>{module.copy}</p>
+      <div class="story-modules__preview">
+        <span>{module.previewLabel}</span>
+        <p>{module.previewBody}</p>
+      </div>
+      <div class="story-modules__stat"><span>{module.statLabel}</span><span>{module.statValue}</span></div>
     </div>)}
   </div>
 </section>

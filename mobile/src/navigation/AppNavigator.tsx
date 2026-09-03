@@ -53,6 +53,8 @@ import { useAuth } from '../state/AuthContext';
 import { ErrorState } from '../components/ui';
 import { usePreferences } from '../state/PreferencesContext';
 import { authenticationRoutes } from '../domain/authenticationFlow';
+import { usePendingIntentConsumer } from '../experience/usePendingIntentConsumer';
+import { navigationRef } from './navigationRef';
 
 const Root = createNativeStackNavigator<RootStackParamList>(); const Tabs = createBottomTabNavigator<MainTabParamList>();
 const icons: Record<keyof MainTabParamList, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
@@ -77,9 +79,20 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
   return <PremiumFtueScreen />;
 }
 
-export function AppNavigator() {
+const businessNavHandle = {
+  isReady: () => navigationRef.isReady(),
+  navigate: (name: string, params?: object) => (navigationRef.navigate as (n: string, p?: object) => void)(name, params),
+  currentRouteName: () => navigationRef.getCurrentRoute()?.name,
+};
+
+export function AppNavigator({ navReady = false }: { navReady?: boolean }) {
   const { status, role, restoreError, restore, pendingLegalDocuments } = useAuth(); const preferences = usePreferences();
   const routes = authenticationRoutes(status, preferences.onboardingComplete, pendingLegalDocuments.length > 0);
+  // PROGRAM 2 LOOP 10: open a preserved deep-link / notification
+  // destination only once the business owner is fully inside the app
+  // (authenticated, past onboarding and any legal gate) and the navigator
+  // is ready. `routes.main` is exactly that condition.
+  usePendingIntentConsumer('business', navReady && routes.main, businessNavHandle);
   useEffect(() => { if (status === 'authenticated' && (role === 'ADMIN' || role === 'STAFF') && !preferences.onboardingComplete) preferences.completeOnboarding(); }, [preferences, role, status]);
   if (routes.restoring || preferences.restoring) return <View style={styles.restoring}><ActivityIndicator color={colors.primary} /><Text style={styles.restoringText}>Restoring your workspace…</Text></View>;
   if (routes.restoreError) return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;

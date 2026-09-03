@@ -7,6 +7,7 @@ import { ApiError } from '../services/api';
 import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
 import { setCustomerUnauthorizedHandler } from './customerApi';
 import { customerApi, customerAuthApi, legalApi } from './endpoints';
+import { clearPendingIntent } from '../experience/pendingIntentStorage';
 import { clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
 
 // PROGRAM 2 LOOP 7: customer authentication + secure session.
@@ -63,6 +64,10 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
 
   const clearLocal = useCallback(async (event: CustomerAuthEvent) => {
     await clearCustomerSession();
+    // PROGRAM 2 LOOP 10: drop any preserved customer destination on an
+    // explicit sign-out / account close — but NOT on 'session-expired',
+    // where the intent must survive so it opens after re-authentication.
+    if (event === 'signed-out' || event === 'account-deleted') void clearPendingIntent();
     setUser(null);
     setProfile(null);
     setPendingLegalDocuments([]);

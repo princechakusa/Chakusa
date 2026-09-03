@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -19,6 +20,8 @@ import {
   resolveInitialExperience,
 } from './experience';
 import { readExperiencePreference, writeExperiencePreference } from './experiencePreference';
+import { normalizeDeepLinkIntent, normalizeNotificationIntent, PendingIntent } from './pendingIntent';
+import { writePendingIntent } from './pendingIntentStorage';
 
 export { useExperience } from './experienceContext';
 
@@ -44,18 +47,35 @@ export function ExperienceRouter() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [preference, businessSession, customerSession, initialUrl] = await Promise.all([
+      const [preference, businessSession, customerSession, initialUrl, lastNotification] = await Promise.all([
         readExperiencePreference(),
         getStoredSession().catch(() => null),
         getCustomerSession().catch(() => null),
         Linking.getInitialURL().catch(() => null),
+        Platform.OS === 'web' ? Promise.resolve(null) : Notifications.getLastNotificationResponseAsync().catch(() => null),
       ]);
       if (cancelled) return;
+
+      // PROGRAM 2 LOOP 10: a launch deep link / terminated-state
+      // notification tap is normalised to a validated PendingIntent and
+      // persisted here, BEFORE any shell mounts. The target shell's
+      // navigator consumes it exactly once, only after that experience's
+      // auth / legal / onboarding prerequisites are met. A deep link wins
+      // over a notification when both are present.
+      const launchIntent =
+        normalizeDeepLinkIntent(initialUrl)
+        ?? normalizeNotificationIntent(lastNotification?.notification.request.content.data as Record<string, unknown> | undefined);
+      // A new launch intent replaces whatever was there. With no new
+      // intent, any previously persisted one is left for its owning shell
+      // to consume — the TTL in peek/consume is what expires it, so an
+      // intent survives an OAuth / process bounce.
+      if (launchIntent) await writePendingIntent(launchIntent);
+
       apply(resolveInitialExperience({
         preference,
         hasBusinessSession: Boolean(businessSession),
         hasCustomerSession: Boolean(customerSession),
-        deepLinkExperience: classifyDeepLinkExperience(initialUrl),
+        deepLinkExperience: launchIntent?.experience ?? classifyDeepLinkExperience(initialUrl),
         forced: FORCED,
       }));
       setPhase('ready');
@@ -63,22 +83,24 @@ export function ExperienceRouter() {
     return () => { cancelled = true; };
   }, []);
 
-  // Runtime deep links: if a link for the OTHER experience arrives and that
-  // experience already has a session, switch to it so its own linking
-  // config can route the URL. Otherwise stay put — never switch on an
-  // unclassifiable string, and never force a logged-out experience switch
-  // from a background link.
+  // Runtime deep links / notification taps for the OTHER experience:
+  // normalise → persist the validated intent → switch. The target shell
+  // then restores/authenticates and consumes the intent when ready. A link
+  // for the CURRENT experience is left to that shell's own linking config /
+  // tap handler (unchanged from Loop 9) to avoid double navigation.
   useEffect(() => {
-    if (FORCED) return; // dev override: don't auto-switch
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      const target = classifyDeepLinkExperience(url);
-      if (!target || target === experienceRef.current) return;
-      const probe = target === 'business' ? getStoredSession() : getCustomerSession();
-      void probe.then((session) => {
-        if (session) { void writeExperiencePreference(target); apply(target); }
-      }).catch(() => undefined);
+    if (FORCED) return; // dev override: no cross-experience auto-switch
+    const crossOver = (intent: PendingIntent | null) => {
+      if (!intent || intent.experience === experienceRef.current) return;
+      void writePendingIntent(intent);
+      void writeExperiencePreference(intent.experience);
+      apply(intent.experience);
+    };
+    const urlSub = Linking.addEventListener('url', ({ url }) => crossOver(normalizeDeepLinkIntent(url)));
+    const noteSub = Platform.OS === 'web' ? null : Notifications.addNotificationResponseReceivedListener((response) => {
+      crossOver(normalizeNotificationIntent(response.notification.request.content.data as Record<string, unknown> | undefined));
     });
-    return () => sub.remove();
+    return () => { urlSub.remove(); noteSub?.remove(); };
   }, []);
 
   const value = useMemo<ExperienceValue>(() => ({

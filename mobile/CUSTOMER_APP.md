@@ -65,6 +65,37 @@ experience switches only when that experience already has a session.
 customer `data.category` to an experience, else `null` (never guesses from
 title/body).
 
+### Pending-intent handoff (Loop 10)
+
+A validated incoming destination survives auth / legal / onboarding.
+
+- `src/experience/pendingIntent.ts` (pure, tested) — `normalizeDeepLinkIntent`
+  / `normalizeNotificationIntent` turn a raw link or a **structured**
+  notification payload (`data.experience` / `data.category` /
+  `data.loyaltyKind` / `data.deepLink` — never title/body) into a
+  `PendingIntent { experience, source, route: string|null, params?, createdAt }`.
+  Customer links go through `parseCustomerDeepLink` (guard intact); only
+  `ResetPassword` / `TeamInvite` are navigable business routes, everything
+  else business → `route: null` ("just enter business").
+- `src/experience/pendingIntentStorage.ts` — persisted at
+  `chakusa.pending-intent.v1`, **15-minute TTL**, re-validated on every
+  read, `consumePendingIntent(experience)` clears then returns (exactly
+  once; an intent for the *other* experience is left for its shell).
+  Contains no token.
+- `ExperienceRouter` writes the intent from `Linking.getInitialURL()` /
+  `Notifications.getLastNotificationResponseAsync()` at cold start
+  (terminated-state taps included), and from runtime `url` /
+  notification-response events **only when they target the other
+  experience** (then switches). Same-experience warm links stay with the
+  shell's own `linking` config / `NotificationTapHandler` (unchanged).
+- `usePendingIntentConsumer(experience, ready, navHandle)` runs inside each
+  navigator. `ready` = `navContainer onReady` **and** that experience's
+  gate is open (customer: `authenticated && !legalAcceptanceRequired`;
+  business: `routes.main`). It fires once, skips if already on the target
+  route, and never uses a timer.
+- Explicit sign-out / account-close clears the pending intent;
+  `session-expired` does **not** (it must survive re-auth).
+
 ### `APP_VARIANT` today
 
 Retained as an **internal development override** only

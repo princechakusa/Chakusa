@@ -29,6 +29,7 @@ import { CustomerMembershipsScreen } from '../screens/CustomerMembershipsScreen'
 import { CustomerMembershipPlansScreen } from '../screens/CustomerMembershipPlansScreen';
 import { CustomerReferralsScreen } from '../screens/CustomerReferralsScreen';
 import { EditCustomerProfileScreen } from '../screens/EditCustomerProfileScreen';
+import { usePendingIntentConsumer } from '../../experience/usePendingIntentConsumer';
 import { navigationRef } from './customerNavigationRef';
 import type { CustomerRootStackParamList, CustomerTabParamList } from './types';
 
@@ -85,8 +86,19 @@ function CustomerTabsNavigator() {
   );
 }
 
-export function CustomerNavigator() {
+const customerNavHandle = {
+  isReady: () => navigationRef.isReady(),
+  navigate: (name: string, params?: object) => (navigationRef.navigate as (n: string, p?: object) => void)(name, params),
+  currentRouteName: () => navigationRef.getCurrentRoute()?.name,
+};
+
+export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) {
   const { status, restoreError, restore, legalAcceptanceRequired } = useCustomerAuth();
+
+  // PROGRAM 2 LOOP 10: open a preserved deep-link / notification
+  // destination only once the customer is authenticated AND past the legal
+  // gate AND the navigator is ready. Never earlier.
+  usePendingIntentConsumer('customer', navReady && status === 'authenticated' && !legalAcceptanceRequired, customerNavHandle);
 
   if (status === 'restoring') {
     return (

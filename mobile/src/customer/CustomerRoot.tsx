@@ -1,5 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CustomerAuthProvider } from './CustomerAuthContext';
@@ -7,20 +8,23 @@ import { CustomerNavigator } from './navigation/CustomerNavigator';
 import { customerLinking } from './navigation/customerLinking';
 import { navigationRef } from './navigation/customerNavigationRef';
 
-// PROGRAM 2 LOOP 7: the root of the CUSTOMER application variant. Mounted
-// by App.tsx only when APP_VARIANT === 'customer'. It shares nothing
-// mutable with the business app — its own auth context, its own
-// navigation container and ref, its own deep-link config. The business
-// provider tree (AuthProvider, AppProvider, BillingProvider, …) is never
-// constructed in a customer build.
+// PROGRAM 2 LOOP 7: the root of the CUSTOMER experience. Mounted by the
+// ExperienceRouter — never at the same time as BusinessRoot. Its own auth
+// context, navigation container + ref and deep-link config; the business
+// provider tree is never constructed here.
+//
+// PROGRAM 2 LOOP 10: `navReady` is flipped by the container's onReady and
+// handed to the navigator so the pending-intent consumer can wait for the
+// navigator without any timer.
 
 export function CustomerRoot() {
+  const [navReady, setNavReady] = useState(false);
   return (
     <SafeAreaProvider>
       <CustomerAuthProvider>
-        <NavigationContainer ref={navigationRef} linking={customerLinking}>
+        <NavigationContainer ref={navigationRef} linking={customerLinking} onReady={() => setNavReady(true)}>
           <StatusBar style="dark" />
-          <CustomerNavigator />
+          <CustomerNavigator navReady={navReady} />
         </NavigationContainer>
       </CustomerAuthProvider>
     </SafeAreaProvider>

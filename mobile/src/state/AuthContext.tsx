@@ -9,6 +9,7 @@ import { unregisterCurrentPushToken } from '../services/pushNotifications';
 import { usePreferences } from './PreferencesContext';
 import { hasCompletedBusinessSetup } from '../domain/authenticationFlow';
 import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
+import { clearPendingIntent } from '../experience/pendingIntentStorage';
 
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
@@ -101,8 +102,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     linkGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.linkGoogle(idToken); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'GOOGLE' as const])] } : current); return true; },
     appleSignIn: async invitationToken => { const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await applySession(await authApi.apple({ ...credential, invitationToken })); return true; },
     linkApple: async () => { const challenge = await authApi.appleLinkChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.linkApple(credential); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'APPLE' as const])] } : current); return true; },
-    logout: async () => { const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { await clearSession(); } },
-    logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { await clearSession(); } },
+    logout: async () => { const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { void clearPendingIntent(); await clearSession(); } },
+    logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { void clearPendingIntent(); await clearSession(); } },
     forgotPassword: async email => (await authApi.forgotPassword(email)).message,
     updateProfile: async fullName => { const updated = await authApi.updateProfile(fullName); setUser(current => current ? { ...current, fullName: updated.fullName } : current); },
     changePassword: async (currentPassword, newPassword) => { await authApi.changePassword({ currentPassword, newPassword }); setUser(current => current ? { ...current, hasPassword: true } : current); },

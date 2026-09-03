@@ -6,6 +6,7 @@
 // side-by-side layout, which the owner's visual review correctly flagged.
 import Button from "../foundation/Button.astro";
 import StoryIcon from "./StoryIcon.astro";
+import TradeCharacter from "./TradeCharacter.astro";
 import { heroCopy, heroTrust } from "../../data/homepageStory";
 ---
 <section class="story-hero container" aria-labelledby="story-hero-title">
@@ -20,6 +21,13 @@ import { heroCopy, heroTrust } from "../../data/homepageStory";
     <ul class="story-hero__trust">
       {heroTrust.map((item) => <li><StoryIcon name={item.icon} class="story-hero__trust-icon" />{item.label}</li>)}
     </ul>
+  </div>
+  <div class="story-hero__illustration" aria-hidden="true">
+    <TradeCharacter />
+    <div class="story-hero__signal">
+      <span>New enquiry</span>
+      <strong>Visible until you respond</strong>
+    </div>
   </div>
   <div class="story-hero__visual" aria-hidden="true">
     <div class="story-hero__card">

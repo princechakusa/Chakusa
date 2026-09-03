@@ -1,4 +1,15 @@
 ---
 const year = new Date().getFullYear();
+const legalLinks = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "AI Disclosure", href: "/ai-disclosure" },
+  { label: "Cookies", href: "/cookies" },
+];
 ---
-<div class="footer-legal"><span>© {year} Chakusa. All rights reserved.</span><span>Designed for businesses that keep moving.</span></div>
+<div class="footer-legal">
+  <span>© {year} Chakusa. All rights reserved.</span>
+  <nav class="footer-legal__links" aria-label="Legal">
+    {legalLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+  </nav>
+</div>

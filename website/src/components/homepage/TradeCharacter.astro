@@ -1,39 +1,51 @@
 ---
 // Reusable flat-vector "trade worker" character illustration, matching
-// Stitch's large-character-illustration treatment (a capped, bearded
-// worker in a coral apron/coverall, phone in hand) instead of a small
-// icon badge. Pure inline SVG, no external asset, so it stays
-// production-safe (no hotlinked Stitch image, no runtime dependency).
-// Deliberately generic/faceless-neutral, not modeled on any real
-// person, consistent with every illustrative example elsewhere on the
-// site never implying a specific real individual.
+// Stitch's own illustration style for this exact composition (a
+// bowler-capped, bearded worker with a pen behind the cap, in a coral
+// coat, one arm extended holding a phone) - confirmed flat vector, not
+// painterly raster art, so this is a faithful reproduction technique,
+// not an approximation. Pure inline SVG, no external asset, so it
+// stays production-safe (no hotlinked Stitch image, no runtime
+// dependency). Deliberately generic/faceless-neutral, not modeled on
+// any real person, consistent with every illustrative example
+// elsewhere on the site never implying a specific real individual.
+interface Props { class?: string }
+const { class: className } = Astro.props;
 ---
-<svg class="trade-character" viewBox="0 0 240 320" role="img" aria-label="Illustration of a local service worker holding a phone">
-  <circle class="trade-character__halo" cx="120" cy="110" r="86" />
+<svg class:list={["trade-character", className]} viewBox="0 0 240 340" role="img" aria-label="Illustration of a local service worker holding a phone">
+  <circle class="trade-character__halo" cx="118" cy="112" r="82" />
   <g class="trade-character__figure">
-    <path class="trade-character__body" d="M70 320V210c0-33 22-58 50-58s50 25 50 58v110Z" />
-    <rect class="trade-character__neck" x="108" y="128" width="24" height="26" rx="6" />
-    <circle class="trade-character__head" cx="120" cy="96" r="42" />
-    <path class="trade-character__cap" d="M76 92a44 44 0 0 1 88 0v6H76Z" />
-    <rect class="trade-character__cap-brim" x="70" y="94" width="100" height="10" rx="5" />
-    <path class="trade-character__beard" d="M92 104c0 26 12 46 28 46s28-20 28-46Z" />
-    <path class="trade-character__strap" d="M96 152 82 118M144 152l14-34" />
-    <g class="trade-character__arm">
-      <path d="M158 190c18 6 30 20 34 40l4 24" />
-      <rect class="trade-character__phone" x="182" y="248" width="34" height="56" rx="7" />
-      <circle class="trade-character__phone-dot" cx="199" cy="288" r="2.4" />
+    <!-- coat -->
+    <path class="trade-character__body" d="M60 340V232c0-38 26-66 58-66s58 28 58 66v108Z" />
+    <path class="trade-character__collar" d="M96 172h44l-10 22h-24Z" />
+    <!-- neck -->
+    <rect class="trade-character__neck" x="104" y="150" width="28" height="30" rx="6" />
+    <!-- head + beard -->
+    <circle class="trade-character__head" cx="118" cy="112" r="46" />
+    <path class="trade-character__beard" d="M78 118c0 30 16 54 40 54s40-24 40-54Z" />
+    <!-- cap -->
+    <path class="trade-character__cap" d="M72 108a46 46 0 0 1 92 0v8H72Z" />
+    <rect class="trade-character__cap-brim" x="66" y="110" width="104" height="11" rx="5.5" />
+    <!-- pen behind cap -->
+    <rect class="trade-character__pen" x="150" y="70" width="8" height="34" rx="3" transform="rotate(28 154 87)" />
+    <!-- arm + phone -->
+    <path class="trade-character__arm" d="M164 240c22 4 38 18 46 40l8 26" />
+    <g class="trade-character__phone-group" transform="translate(196 292) rotate(8)">
+      <rect class="trade-character__phone" x="0" y="0" width="38" height="62" rx="8" />
+      <circle class="trade-character__phone-dot" cx="19" cy="46" r="2.6" />
     </g>
   </g>
 </svg>
 <style>
-.trade-character{width:100%;height:auto;overflow:visible}
+.trade-character{width:100%;height:auto;overflow:visible;display:block}
 .trade-character__halo{fill:var(--secondary);opacity:.12}
 .trade-character__body{fill:var(--primary)}
-.trade-character__neck,.trade-character__head{fill:#f0b088}
+.trade-character__collar{fill:#f0b088}
+.trade-character__neck,.trade-character__head{fill:#e8a878}
 .trade-character__cap,.trade-character__cap-brim{fill:var(--heading)}
-.trade-character__beard{fill:#3d2b22}
-.trade-character__strap{fill:none;stroke:var(--heading);stroke-width:5;stroke-linecap:round}
-.trade-character__arm path{fill:none;stroke:var(--primary);stroke-width:16;stroke-linecap:round}
+.trade-character__beard{fill:#2c2018}
+.trade-character__pen{fill:var(--primary)}
+.trade-character__arm{fill:none;stroke:var(--primary);stroke-width:18;stroke-linecap:round}
 .trade-character__phone{fill:var(--secondary)}
 .trade-character__phone-dot{fill:#fff}
 </style>

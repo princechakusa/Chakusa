@@ -46,6 +46,18 @@ export const productStories: ProductStory[] = [
   { id: "retention", step: "06", eyebrow: "Bring them back", title: "Know exactly who's due before they quietly stop coming.", copy: "Chakusa surfaces customers who haven't rebooked in the expected window, so a reminder goes out while they're still a returning customer, not after they've become a former one.", features: ["Comeback reminders", "Due-back tracking", "Repeat visit history"], next: "A returning customer restarts the cycle.", visual: null, visualLabel: "Customers due back" },
 ];
 
+// Bottom stat-panel line for each engine card, matching Stitch's inner
+// "chip" panel structure exactly. Real facts, not Stitch's specific
+// invented numbers ("100% Captured", "82%", "0% Hallucination Policy").
+export const productStoryStats: Record<string, { label: string; value: string }> = {
+  "customer-response": { label: "Who replies", value: "Your team, always" },
+  booking: { label: "Conflict checking", value: "Built in" },
+  "customer-profiles": { label: "Data export", value: "CSV, anytime" },
+  automation: { label: "Sends automatically", value: "Never" },
+  reviews: { label: "Rating-based filtering", value: "None" },
+  retention: { label: "Guaranteed rebooking", value: "Not promised" },
+};
+
 // Icon keys for the six-engine grid (Stitch's "Six foundational engines"
 // section) - maps 1:1 to productStories by id, same copy, just a visual
 // treatment addition.
@@ -69,14 +81,14 @@ export const handshake = {
   business: { label: "Business view", title: "See enquiries, bookings, and what needs attention.", points: ["One dashboard for the day", "Prepared responses to review", "Customer history on every profile"] },
 };
 
-export interface ProductIndustry { icon: string; label: string }
+export interface ProductIndustry { icon: string; label: string; body: string; tag: string }
 export const productIndustryCards: ProductIndustry[] = [
-  { icon: "cut", label: "Barbers & salons" },
-  { icon: "spa", label: "Beauty & spa" },
-  { icon: "health", label: "Dentists" },
-  { icon: "car", label: "Mechanics" },
-  { icon: "clean", label: "Cleaners" },
-  { icon: "camera", label: "Photographers" },
+  { icon: "cut", label: "Barbers & Salons", body: "Chair appointments, add-on services, and recurring rebooking reminders.", tag: "Booking & rebooking" },
+  { icon: "spa", label: "Beauty & Spa", body: "Treatment bookings, client history, and reviews requested while fresh.", tag: "Client history" },
+  { icon: "health", label: "Dentists", body: "Appointment confirmations, intake context, and recall reminders.", tag: "Recall scheduling" },
+  { icon: "car", label: "Mechanics", body: "Service enquiries, appointment scheduling, and service-due reminders.", tag: "Service tracking" },
+  { icon: "clean", label: "Cleaners", body: "Recurring visit scheduling, customer notes, and follow-up after every job.", tag: "Recurring visits" },
+  { icon: "camera", label: "Photographers", body: "Enquiry capture for shoot requests and a portfolio customers can find.", tag: "Enquiry capture" },
 ];
 
 export const aiAssistant = {

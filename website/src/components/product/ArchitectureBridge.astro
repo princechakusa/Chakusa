@@ -1,0 +1,38 @@
+---
+// Mirrors Stitch's "Synchronized Twin-Mesh Architecture" 3-column bridge
+// diagram exactly in structure (customer panel / core panel / business
+// panel, connected by "instant handshake" markers). Content is the real,
+// verified capability list from each side, not Stitch's specific
+// fabricated metrics ("Live Node Latency: 12ms", "v4.2 Hub").
+import ProductIcon from "./ProductIcon.astro";
+---
+<div class="pd-bridge">
+  <div class="pd-bridge__head"><span class="pd-bridge__dot" aria-hidden="true"></span><span>How the two sides connect</span></div>
+  <div class="pd-bridge__row">
+    <div class="pd-bridge__panel">
+      <div class="pd-bridge__panel-head"><strong>Customer side</strong><ProductIcon name="person"/></div>
+      <p>Discovers the business and books directly.</p>
+      <ul>
+        <li><ProductIcon name="storefront"/>Public business profile</li>
+        <li><ProductIcon name="calendar"/>Self-booking from real availability</li>
+        <li><ProductIcon name="star"/>Ungated reviews and history</li>
+      </ul>
+    </div>
+    <div class="pd-bridge__link" aria-hidden="true"><ProductIcon name="repeat"/><span>Instant handshake</span></div>
+    <div class="pd-bridge__panel pd-bridge__panel--dark">
+      <div class="pd-bridge__panel-head"><strong>Chakusa</strong><ProductIcon name="task"/></div>
+      <p>Keeps both sides of the same booking in sync, no double-booking.</p>
+      <div class="pd-bridge__meter"><span>Booking conflicts</span><b>Prevented by design</b></div>
+    </div>
+    <div class="pd-bridge__link" aria-hidden="true"><ProductIcon name="repeat"/><span>Real-time update</span></div>
+    <div class="pd-bridge__panel">
+      <div class="pd-bridge__panel-head"><strong>Business side</strong><ProductIcon name="storefront"/></div>
+      <p>Sees and acts on what just happened.</p>
+      <ul>
+        <li><ProductIcon name="calendar"/>Team calendar and dispatch</li>
+        <li><ProductIcon name="note"/>Customer notes and history</li>
+        <li><ProductIcon name="chat"/>Prepared responses to review</li>
+      </ul>
+    </div>
+  </div>
+</div>

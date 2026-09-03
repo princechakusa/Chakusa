@@ -52,3 +52,4 @@
 .mp-cta ul{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem;margin:2rem 0 0;padding:0}
 .mp-cta li{font-size:.72rem;color:var(--heading)}
 .mp-cta li::before{content:"";display:inline-block;width:.42rem;height:.42rem;margin-right:.5rem;border-radius:999px;background:var(--secondary);vertical-align:.08rem}
+

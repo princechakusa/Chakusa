@@ -1,8 +1,14 @@
-// Marketplace feature page.
-// The Stitch export included a full searchable directory experience.
-// Chakusa currently supports public business profiles and direct self booking,
-// so this page describes that real capability without fabricating search,
-// map, fee, or platform volume claims.
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION. Marketplace feature page.
+// Structure adapted from the Stitch export
+// (chakusa_marketplace_discover_book_local_services/code.html), with
+// one important correction: Stitch presented a live aggregated marketplace
+// search page with named businesses, review counts, prices, and a location
+// map. The current website does not expose that customer-facing directory.
+//
+// The real capability confirmed in the product is simpler and stronger:
+// each business gets a public profile with services, pricing, hours, and
+// public self-booking. This page presents that truthfully and keeps visual
+// examples illustrative only.
 export const marketplaceHero = {
   badge: "Discover and book, directly",
   title: "Every business gets a public profile customers can book from directly.",
@@ -15,7 +21,12 @@ export const marketplaceProof = [
   { label: "Customer account", value: "Not required" },
 ];
 
-export interface MarketplaceCategory { icon: string; title: string; href: string }
+export interface MarketplaceCategory {
+  icon: string;
+  title: string;
+  href: string;
+}
+
 export const marketplaceCategories: MarketplaceCategory[] = [
   { icon: "cut", title: "Beauty and wellness", href: "/industries/beauty" },
   { icon: "car", title: "Automotive", href: "/industries/automotive" },
@@ -25,7 +36,7 @@ export const marketplaceCategories: MarketplaceCategory[] = [
 
 export const profileExample = {
   label: "Illustrative example",
-  note: "Not a real business. Shown only to demonstrate the public profile format.",
+  note: "Not a real business. Shown to demonstrate the public profile format.",
   name: "Example Barber Co.",
   hours: "Open today, 9:00 AM to 6:00 PM",
   services: [

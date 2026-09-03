@@ -11,14 +11,24 @@ const valueProps = [
   { icon: "shield", title: "No hidden tiers", body: "Every plan's limits are listed here, in full." },
   { icon: "check", title: "Cancel anytime", body: "No long-term contract, on any plan." },
 ];
-// Stitch's per-card eyebrow ("Solo Artisan Tier," "Studio / Shop Tier,
-// High Capacity," "Build & Franchise Tier, Multi-Location") sits above
-// the card, outside its border, distinct from the "Most Popular" badge
-// on the featured card. Reproduced here with real Chakusa framing.
-const eyebrows: Record<string, string> = {
-  Starter: "For independent operators",
-  Pro: "For growing businesses",
-  Business: "For teams with more than one person",
-};
 ---
-<section class="pr-plans" id="plans" aria-labelledby="pricing-plans-title"><div class="pr-shell"><h2 class="visually-hidden" id="pricing-plans-title">Plans</h2><div class="pr-plans__grid">{pricingTiers.map((tier) => <div class="pr-plan__col"><p class:list={["pr-plan__eyebrow", tier.featured && "pr-plan__eyebrow--featured"]}>{tier.featured ? "Most popular" : eyebrows[tier.name]}</p><div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}><strong>{tier.name}</strong><p class="pr-plan__tagline">{tier.tagline}</p><p class="pr-plan__price">{tier.price}</p>{tier.priceNote && <p class="pr-plan__note">{tier.priceNote}</p>}<p class="pr-plan__included">Included:</p><ul>{tier.features.map((feature) => <li><PricingIcon name="check"/>{feature}</li>)}</ul><Button href={tier.ctaHref} variant={tier.featured ? "primary" : "secondary"}>{tier.ctaLabel}</Button></div></div>)}</div><div class="pr-valueprops">{valueProps.map((item) => <div><PricingIcon name={item.icon}/><div><strong>{item.title}</strong><p>{item.body}</p></div></div>)}</div></div></section>
+<section class="pr-plans" id="plans" aria-labelledby="pricing-plans-title"><div class="pr-shell">
+  <h2 class="visually-hidden" id="pricing-plans-title">Plans</h2>
+  <div class="pr-billing-toggle" role="group" aria-label="Billing frequency">
+    <button type="button" class="is-active" aria-pressed="true">Monthly billing</button>
+    <button type="button" aria-pressed="false" disabled title="Annual billing isn't available yet">Annual billing <span>Coming soon</span></button>
+  </div>
+  <p class="pr-billing-note"><PricingIcon name="shield"/>Monthly billing with clear plan limits</p>
+  <div class="pr-plans__grid">{pricingTiers.map((tier) => <div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}>
+    {tier.featured && <p class="pr-plan__badge"><PricingIcon name="check"/>Most popular</p>}
+    <div class="pr-plan__head"><strong>{tier.name}</strong><span class="pr-plan__chip">{tier.chip}</span></div>
+    <p class="pr-plan__tagline">{tier.tagline}</p>
+    <p class="pr-plan__price">{tier.price}{tier.name === "Starter" && <em>/ billed monthly</em>}</p>
+    {tier.priceNote && <p class="pr-plan__note">{tier.priceNote}</p>}
+    <p class="pr-plan__included">{tier.includedLabel}</p>
+    <ul>{tier.features.map((feature) => <li><span class="pr-plan__check"><PricingIcon name="check"/></span>{feature}</li>)}</ul>
+    <Button href={tier.ctaHref} variant={tier.featured ? "primary" : "secondary"}>{tier.ctaLabel}</Button>
+    <p class="pr-plan__footnote">{tier.ctaFootnote}</p>
+  </div>)}</div>
+  <div class="pr-valueprops">{valueProps.map((item) => <div><PricingIcon name={item.icon}/><div><strong>{item.title}</strong><p>{item.body}</p></div></div>)}</div>
+</div></section>

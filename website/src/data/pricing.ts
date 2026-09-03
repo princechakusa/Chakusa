@@ -12,21 +12,30 @@
 // and still mirror entitlements.ts pending that later work.
 export interface PricingTier {
   name: string;
+  // Stitch's exact per-card secondary chip badge ("Solo Pro," "High
+  // Capacity," "Multi-Location"), sitting beside the tier name.
+  chip: string;
   tagline: string;
   price: string;
   priceNote?: string;
+  // Stitch's "EVERYTHING IN [PRIOR TIER], PLUS" / "INCLUDED OPERATIONAL
+  // TOOLS" label directly above the feature list.
+  includedLabel: string;
   features: string[];
   ctaLabel: string;
   ctaHref: string;
+  ctaFootnote: string;
   featured?: boolean;
 }
 
 export const pricingTiers: PricingTier[] = [
   {
     name: "Starter",
-    tagline: "Everything you need to start bringing customers back.",
+    chip: "Solo Pro",
+    tagline: "For independent barbers, mobile detailers, freelance photographers, and solo trade technicians.",
     price: "$9.99",
     priceNote: "per month, after a 14-day free trial. Cancel anytime.",
+    includedLabel: "Included operational tools",
     features: [
       "Up to 40 leads a month",
       "Up to 40 review requests a month",
@@ -35,14 +44,17 @@ export const pricingTiers: PricingTier[] = [
       "1 custom message template per type",
       "1 team seat",
     ],
-    ctaLabel: "Start 14-day free trial",
+    ctaLabel: "Get started with Starter",
     ctaHref: "/get-started",
+    ctaFootnote: "14-day free trial",
   },
   {
     name: "Pro",
-    tagline: "For businesses ready to stop tracking this by hand.",
+    chip: "High Capacity",
+    tagline: "For multi-chair salons, automotive service centers, wellness studios, and small dispatched crews.",
     price: "See store price",
     priceNote: "Billed through the App Store or Google Play. The store's localized price is the purchase authority.",
+    includedLabel: "Everything in Starter, plus",
     features: [
       "Unlimited leads, review requests, customers, and reminders",
       "Unlimited custom message templates",
@@ -50,20 +62,24 @@ export const pricingTiers: PricingTier[] = [
       "Send messages directly through Chakusa",
       "Advanced analytics and extended history",
     ],
-    ctaLabel: "Start free",
+    ctaLabel: "Choose Pro",
     ctaHref: "/get-started",
+    ctaFootnote: "Store-billed subscription",
     featured: true,
   },
   {
     name: "Business",
-    tagline: "For teams with more than one person answering the phone.",
+    chip: "Multi-Location",
+    tagline: "For trade franchises, multi-location studio operations, and teams with more than one person answering the phone.",
     price: "See store price",
     priceNote: "Billed through the App Store or Google Play. The store's localized price is the purchase authority.",
+    includedLabel: "Everything in Pro, plus",
     features: [
       "Everything in Pro",
       "Up to 10 team members with roles and invitations",
     ],
-    ctaLabel: "Start free",
+    ctaLabel: "Choose Business",
     ctaHref: "/get-started",
+    ctaFootnote: "Custom onboarding available",
   },
 ];

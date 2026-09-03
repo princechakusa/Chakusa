@@ -1,0 +1,5 @@
+---
+import ReviewsIcon from "./ReviewsIcon.astro";
+import { reviewExample } from "../../../data/reviews";
+---
+<section class="rv-ledger" id="ledger-example" aria-labelledby="reviews-ledger-title"><div class="rv-shell"><div class="rv-heading"><p class="rv-label">{reviewExample.label}</p><h2 id="reviews-ledger-title">What a business owner sees.</h2><p>{reviewExample.note}</p></div><div class="rv-ledger__card"><div class="rv-ledger__stars" aria-label={`${reviewExample.rating} out of 5 stars`}>{Array.from({length: 5}).map((_, i) => <ReviewsIcon name="star" class={i < reviewExample.rating ? "is-filled" : ""}/>)}</div><p class="rv-ledger__quote">&ldquo;{reviewExample.quote}&rdquo;</p><div class="rv-ledger__meta"><span>{reviewExample.reviewer}</span><span>{reviewExample.service}</span></div></div></div></section>

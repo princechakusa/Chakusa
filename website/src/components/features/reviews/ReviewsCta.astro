@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import ReviewsIcon from "./ReviewsIcon.astro";
+import { reviewsCta } from "../../../data/reviews";
+---
+<section class="rv-cta" aria-labelledby="reviews-cta-title"><div class="rv-shell"><div class="rv-cta__panel"><p class="rv-label">{reviewsCta.label}</p><h2 id="reviews-cta-title">{reviewsCta.title}</h2><p>{reviewsCta.body}</p><div class="rv-actions"><Button href="/get-started"><span>Start free</span><ReviewsIcon name="arrow-right"/></Button><Button href="/product" variant="secondary">Explore all features</Button></div><ul><li>Simple setup</li><li>No rating-based filtering</li><li>The business owns the profile</li></ul></div></div></section>

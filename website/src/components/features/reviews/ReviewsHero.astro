@@ -1,0 +1,6 @@
+---
+import Button from "../../foundation/Button.astro";
+import ReviewsIcon from "./ReviewsIcon.astro";
+import { reviewsHero, reviewsProof } from "../../../data/reviews";
+---
+<section class="rv-hero" aria-labelledby="reviews-title"><div class="rv-shell rv-hero__inner"><p class="rv-badge">{reviewsHero.badge}</p><h1 id="reviews-title">{reviewsHero.title.replace(reviewsHero.emphasis, "")}<em>{reviewsHero.emphasis}</em></h1><p>{reviewsHero.body}</p><div class="rv-actions"><Button href="#ledger-example"><span>See how it works</span><ReviewsIcon name="arrow-right"/></Button><Button href="#gating" variant="secondary"><span>Why zero gating</span></Button></div><dl class="rv-proof">{reviewsProof.map((item) => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></div></section>

@@ -1,0 +1,16 @@
+@media (max-width:64rem){
+  .rv-compare__grid{grid-template-columns:1fr}
+  .rv-industries__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:42rem){
+  .rv-lifecycle__grid{grid-template-columns:1fr!important;grid-auto-flow:row}
+  .rv-industries__grid{grid-template-columns:1fr}
+  .rv-proof{grid-template-columns:1fr}
+  .rv-cta__panel{padding:2rem 1.5rem}
+}
+@media (min-width:42rem) and (max-width:64rem){
+  .rv-lifecycle__grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (min-width:64rem){
+  .rv-lifecycle__grid{grid-template-columns:repeat(4,1fr)}
+}

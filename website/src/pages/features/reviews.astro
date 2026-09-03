@@ -1,0 +1,18 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import ReviewsHero from "../../components/features/reviews/ReviewsHero.astro";
+import ReviewLifecycle from "../../components/features/reviews/ReviewLifecycle.astro";
+import GatingComparison from "../../components/features/reviews/GatingComparison.astro";
+import ReviewLedgerExample from "../../components/features/reviews/ReviewLedgerExample.astro";
+import ReviewIndustries from "../../components/features/reviews/ReviewIndustries.astro";
+import ReviewsCta from "../../components/features/reviews/ReviewsCta.astro";
+import ReviewsSchemas from "../../components/features/reviews/ReviewsSchemas.astro";
+import "../../styles/features/reviews.css";
+import "../../styles/features/reviews-responsive.css";
+const title = "Customer Reviews Without Rating Gating | Chakusa";
+const description = "Chakusa sends a review request after every completed visit, not just the ones expected to go well, and publishes what comes back to the business's own profile.";
+---
+<MarketingLayout {title} {description}><ReviewsSchemas/><SkipLink/><Header/><main id="main-content"><ReviewsHero/><ReviewLifecycle/><GatingComparison/><ReviewLedgerExample/><ReviewIndustries/><ReviewsCta/></main><Footer/></MarketingLayout>

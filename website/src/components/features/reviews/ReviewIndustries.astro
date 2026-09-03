@@ -1,0 +1,5 @@
+---
+import ReviewsIcon from "./ReviewsIcon.astro";
+import { reviewIndustries } from "../../../data/reviews";
+---
+<section class="rv-industries" aria-labelledby="reviews-industries-title"><div class="rv-shell"><div class="rv-heading rv-heading--center"><p class="rv-label">Works the same way everywhere</p><h2 id="reviews-industries-title">Tailored to how your industry actually books.</h2><p>The same ungated flow, applied to how each trade actually schedules and completes work.</p></div><div class="rv-industries__grid">{reviewIndustries.map((item, i) => <article><div class:list={["rv-icon", i % 2 === 1 && "rv-icon--alt"]}><ReviewsIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p><ul>{item.points.map((point) => <li>{point}</li>)}</ul></article>)}</div></div></section>

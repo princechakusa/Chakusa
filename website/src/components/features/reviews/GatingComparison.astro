@@ -1,0 +1,4 @@
+---
+import { gatingTrap, chakusaStandard } from "../../../data/reviews";
+---
+<section class="rv-compare" id="gating" aria-labelledby="reviews-compare-title"><div class="rv-shell"><div class="rv-heading rv-heading--center"><p class="rv-label">The ethics of growth</p><h2 id="reviews-compare-title">Why zero-gating is the only lasting strategy</h2><p>Sentiment-gated review platforms route unhappy customers into a private form. Regulators, review platforms, and customers themselves are increasingly aware of the difference.</p></div><div class="rv-compare__grid"><div class="rv-compare__card rv-compare__card--trap"><strong>{gatingTrap.title}</strong><p>{gatingTrap.body}</p><ul>{gatingTrap.points.map((point) => <li>{point}</li>)}</ul></div><div class="rv-compare__card rv-compare__card--standard"><strong>{chakusaStandard.title}</strong><p>{chakusaStandard.body}</p><ul>{chakusaStandard.points.map((point) => <li>{point}</li>)}</ul></div></div></div></section>

@@ -1,0 +1,5 @@
+---
+import ProductIcon from "./ProductIcon.astro";
+import { handshake } from "../../data/product";
+---
+<section class="pd-handshake" aria-labelledby="pd-handshake-title"><div class="container pd-section-heading pd-section-heading--center"><p class="product-kicker product-kicker--light">{handshake.eyebrow}</p><h2 id="pd-handshake-title">{handshake.title}</h2><p>{handshake.body}</p></div><div class="container pd-handshake__grid"><div class="pd-handshake__card"><div class="pd-handshake__head"><ProductIcon name="person"/><span>{handshake.customer.label}</span></div><strong>{handshake.customer.title}</strong><ul>{handshake.customer.points.map((point) => <li>{point}</li>)}</ul></div><div class="pd-handshake__card pd-handshake__card--alt"><div class="pd-handshake__head"><ProductIcon name="storefront"/><span>{handshake.business.label}</span></div><strong>{handshake.business.title}</strong><ul>{handshake.business.points.map((point) => <li>{point}</li>)}</ul></div></div></section>

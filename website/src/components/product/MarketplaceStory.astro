@@ -1,4 +1,0 @@
----
-import { marketplace } from "../../data/product";
----
-<section class="product-marketplace container" id="marketplace" aria-labelledby="marketplace-title"><div class="product-marketplace__grid"><div class="product-marketplace__copy"><p class="product-kicker">{marketplace.eyebrow}</p><h2 id="marketplace-title">{marketplace.title}</h2><p>{marketplace.copy}</p></div><div class="product-marketplace__map" aria-label="Customer discovery path from marketplace to business enquiry"><div class="product-marketplace__map-top"><span>Marketplace discovery</span><strong>Find a service business</strong></div><div class="product-marketplace__categories">{marketplace.categories.map(category => <span>{category}</span>)}</div><ol>{marketplace.steps.map((step, index) => <li><span>{String(index + 1).padStart(2, "0")}</span><strong>{step.label}</strong><small>{step.copy}</small></li>)}</ol></div></div></section>

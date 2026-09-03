@@ -46,6 +46,39 @@ export const productStories: ProductStory[] = [
   { id: "retention", step: "06", eyebrow: "Bring them back", title: "Know exactly who's due before they quietly stop coming.", copy: "Chakusa surfaces customers who haven't rebooked in the expected window, so a reminder goes out while they're still a returning customer, not after they've become a former one.", features: ["Comeback reminders", "Due-back tracking", "Repeat visit history"], next: "A returning customer restarts the cycle.", visual: null, visualLabel: "Customers due back" },
 ];
 
+// Icon keys for the six-engine grid (Stitch's "Six foundational engines"
+// section) - maps 1:1 to productStories by id, same copy, just a visual
+// treatment addition.
+export const productStoryIcons: Record<string, string> = {
+  "customer-response": "chat",
+  booking: "calendar",
+  "customer-profiles": "note",
+  automation: "task",
+  reviews: "star",
+  retention: "repeat",
+};
+
+// The "instant handshake between buyer and maker" section - what the
+// customer sees vs. what the business sees, reusing the real facts from
+// marketplace/businessControl below rather than introducing new copy.
+export const handshake = {
+  eyebrow: "Two views, one system",
+  title: "The connection between customer and business.",
+  body: "The same event updates both sides at once. A customer's enquiry appears on the business's dashboard immediately; a business's response reaches the customer the same way.",
+  customer: { label: "Customer view", title: "Browse, enquire, and track a booking.", points: ["Marketplace and business profiles", "Direct enquiries", "Booking status"] },
+  business: { label: "Business view", title: "See enquiries, bookings, and what needs attention.", points: ["One dashboard for the day", "Prepared responses to review", "Customer history on every profile"] },
+};
+
+export interface ProductIndustry { icon: string; label: string }
+export const productIndustryCards: ProductIndustry[] = [
+  { icon: "cut", label: "Barbers & salons" },
+  { icon: "spa", label: "Beauty & spa" },
+  { icon: "health", label: "Dentists" },
+  { icon: "car", label: "Mechanics" },
+  { icon: "clean", label: "Cleaners" },
+  { icon: "camera", label: "Photographers" },
+];
+
 export const aiAssistant = {
   eyebrow: "Assisted, not automatic",
   title: "AI that drafts and responds, a team that stays in charge.",

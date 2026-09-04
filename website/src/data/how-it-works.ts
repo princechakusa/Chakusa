@@ -3,7 +3,7 @@
 // flags. Automation and AI messaging describe themselves as owner-reviewed/
 // assisted, never fully autonomous, because EXPO_PUBLIC_AUTOMATION_ENABLED
 // is false in production. Real screenshots are used only where the image
-// genuinely matches the step; steps without a matching production capture
+// genuinely matches the step; steps without a matching product image
 // use an honest non-UI treatment instead of a fabricated screenshot.
 
 // Hero proof strip, added for structural parity with every other

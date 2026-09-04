@@ -1,37 +1,6 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 2.
-//
-// Reconciled against the approved Stitch header (present, byte-identical
-// in structure, across every one of the 14 exported pages except the
-// homepage/mobile-app variants): Product | Features (dropdown) |
-// How It Works | Marketplace | Pricing, plus a Find Services / Get
-// Started CTA pair.
-//
-// Two deliberate departures from that Stitch structure, both to avoid
-// creating a dead link (explicitly forbidden this stage), not oversight:
-//
-// 1. The Features dropdown in Stitch lists all 9 other feature pages
-//    (Bookings, Customers, Retention, Reviews, Automation, AI Assistant,
-//    Marketplace, Business Control, Mobile App). None of those routes
-//    exist yet: only /features/enquiries does. The dropdown lists only
-//    the pages that are real right now; add one entry per feature page
-//    as each one ships in a later stage. The shape (label, href,
-//    description) already matches Stitch's own copy for Enquiries
-//    ("Instant capture and qualification") for continuity once the rest
-//    are added.
-// 2. Stitch's top-level "Marketplace" link and "Find Services" CTA both
-//    point at a live public marketplace/discovery destination that
-//    doesn't exist on the website yet (the real marketplace lives inside
-//    the mobile app; there is no customer-facing web page for it). Left
-//    out of the header for now rather than pointed at nothing. The
-//    existing Sign in / Start free CTA pair is kept (real destinations,
-//    matches the current site) rather than replaced with Stitch's
-//    "Find Services" / "For Business / Get Started" wording, since a
-//    literal "Find Services" button needs a real page behind it.
-//
-// Industries and About are real, working destinations that predate this
-// migration and aren't part of the Stitch export at all: kept rather
-// than dropped, per Stage 1/2's "preserve valid existing navigation
-// destinations" requirement.
+// Complete public website navigation. Features, Product, and Industries
+// are rendered by the shared premium mega-menu family in DesktopNavigation.
+// Every link below resolves to a public route in the current build.
 export const primaryNavigation = [
   { label: "Product", href: "/product", children: [
     { label: "Customer response", href: "/product#customer-response", description: "Respond to enquiries with human oversight." },
@@ -62,19 +31,11 @@ export const primaryNavigation = [
   { label: "About", href: "/about" },
 ];
 
-// Footer reconciled the same way: Stitch's footer additionally lists
-// Enterprise Solutions, Partner Program, Security & Compliance, Trust
-// Center, and Help Center: none of which are real products, plans, or
-// pages yet. The fabricated "Chakusa Technologies Inc." copyright
-// line, replaced by FooterLegal.astro's real one. Only real destinations
-// appear below.
-// Column structure matches the newest Stitch export's footer exactly
-// (Navigation / Solutions / Trust & Compliance), with real destinations
-// only - Stitch's own footer additionally lists "Client & Partner
-// Portal" and "Operational AI Ethics," neither of which is a real page,
-// so those are not reproduced.
+// Shared footer for the complete public website. The Trust & Compliance
+// column connects the four approved legal destinations. A standalone hub
+// link will be added once its final Stitch source establishes the route.
 export const footerGroups = [
   { title: "Navigation", links: [{ label: "About Us", href: "/about" }, { label: "Contact Support", href: "/contact" }, { label: "Help Center", href: "/help" }, { label: "How it works", href: "/how-it-works" }, { label: "Pricing", href: "/pricing" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
-  { title: "Solutions", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
+  { title: "Solutions", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/customer-retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
   { title: "Trust & Compliance", links: [{ label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "AI Disclosure", href: "/ai-disclosure" }, { label: "Cookie Policy", href: "/cookies" }] },
 ];

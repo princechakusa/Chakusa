@@ -2,12 +2,12 @@
 // Structure adapted from the Stitch export
 // (chakusa_mobile_app_dual_experience_in_one_app/code.html): hero +
 // proof strip, two device-mode previews, a 6-capability grid, final
-// "coming soon" CTA.
+// "future release" CTA.
 //
 // Confirmed against the repo: mobile/app.json (bundleIdentifier
 // com.chakusa.mobile, real iOS/Android config) and the website's own
 // existing get-started.astro and SiteFooter.astro, both of which
-// already say "App Store: coming soon" / "Google Play: coming soon."
+// already say "App Store: future release" / "Google Play: future release."
 // The app is not live in either store yet - this page must not imply
 // otherwise.
 //
@@ -25,9 +25,9 @@
 //   Removed.
 // - A working "Install the Universal App Today" QR code and live store
 //   badges - the app isn't published; replaced with an honest
-//   "coming soon" notice matching the rest of the site.
+//   "future release" notice matching the rest of the site.
 export const mobileHero = {
-  badge: "One app, coming soon",
+  badge: "One app, two experiences",
   title: "One app. Two experiences.",
   body: "The same Chakusa app works as a customer discovering and booking local services, and as a business running its own operation. No second login, no separate app.",
 };
@@ -35,7 +35,7 @@ export const mobileHero = {
 export const mobileProof = [
   { label: "Platforms", value: "iOS and Android" },
   { label: "Accounts needed", value: "One" },
-  { label: "Availability", value: "Coming soon" },
+  { label: "Availability", value: "Release planned" },
 ];
 
 export const mobileModes = {
@@ -62,7 +62,7 @@ export const mobileCapabilities: MobileCapability[] = [
 ];
 
 export const mobileCta = {
-  label: "Coming soon",
+  label: "Mobile release",
   title: "The Chakusa app is coming to iOS and Android.",
   body: "In the meantime, everything in Chakusa works from the web, on any device.",
 };

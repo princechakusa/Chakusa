@@ -2,4 +2,14 @@
 interface Props { src?: string | null; label: string; }
 const { src, label } = Astro.props;
 ---
-<div class:list={["product-screenshot", { "product-screenshot--pending": !src }]} data-production-asset={src ? "available" : "awaiting-production-screenshot"}>{src ? <img src={src} width="1170" height="2532" alt={`Chakusa ${label} product screen`} loading="lazy" /> : <div class="product-screenshot__pending" aria-label={`${label} screenshot awaiting production capture`}><span>Chakusa product</span><strong>{label}</strong><small>Production capture in preparation</small></div>}</div>
+<div class:list={["product-screenshot", { "product-screenshot--diagram": !src }]}>{src ? <img src={src} width="1170" height="2532" alt={`Chakusa ${label} product screen`} loading="lazy" /> : <div class="product-visual" role="img" aria-label={`${label}, shown as a connected product workflow`}>
+  <div class="product-visual__header"><span>Chakusa</span><strong>{label}</strong></div>
+  <div class="product-visual__flow" aria-hidden="true">
+    <span class="product-visual__node product-visual__node--coral"></span>
+    <i></i>
+    <span class="product-visual__node product-visual__node--teal"></span>
+    <i></i>
+    <span class="product-visual__node product-visual__node--slate"></span>
+  </div>
+  <div class="product-visual__cards" aria-hidden="true"><span></span><span></span><span></span></div>
+</div>}</div>

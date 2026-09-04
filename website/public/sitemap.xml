@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Hand-written, only 13 URLs at V1, not worth an Astro sitemap integration
-  dependency yet. Add a new <url> entry any time a page is added to
-  src/pages/. Domain updated 2026-09-01 to the real chakusarecovery.com.
+  Hand-written public-route sitemap. Add a new <url> entry any time a
+  crawlable page is added to src/pages/. The 404 state and the legacy
+  /features/retention redirect are intentionally excluded.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://chakusarecovery.com/</loc><priority>1.0</priority></url>
@@ -12,7 +12,7 @@
   <url><loc>https://chakusarecovery.com/features/bookings</loc><priority>0.85</priority></url>
   <url><loc>https://chakusarecovery.com/features/reviews</loc><priority>0.85</priority></url>
   <url><loc>https://chakusarecovery.com/features/customers</loc><priority>0.85</priority></url>
-  <url><loc>https://chakusarecovery.com/features/retention</loc><priority>0.85</priority></url>
+  <url><loc>https://chakusarecovery.com/features/customer-retention</loc><priority>0.85</priority></url>
   <url><loc>https://chakusarecovery.com/features/automation</loc><priority>0.85</priority></url>
   <url><loc>https://chakusarecovery.com/features/ai-assistant</loc><priority>0.85</priority></url>
   <url><loc>https://chakusarecovery.com/features/marketplace</loc><priority>0.85</priority></url>

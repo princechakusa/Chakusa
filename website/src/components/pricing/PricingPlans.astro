@@ -16,7 +16,6 @@ const valueProps = [
   <h2 class="visually-hidden" id="pricing-plans-title">Plans</h2>
   <div class="pr-billing-toggle" role="group" aria-label="Billing frequency">
     <button type="button" class="is-active" aria-pressed="true">Monthly billing</button>
-    <button type="button" aria-pressed="false" disabled title="Annual billing isn't available yet">Annual billing <span>Coming soon</span></button>
   </div>
   <p class="pr-billing-note"><PricingIcon name="shield"/>Monthly billing with clear plan limits</p>
   <div class="pr-plans__grid">{pricingTiers.map((tier) => <div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}>

@@ -1,0 +1,22 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { stitchModules } from "../../data/businessStitch";
+---
+<section class="sb-executive" aria-labelledby="business-title">
+  <div class="sb-shell">
+    <div class="sb-executive__row">
+      <div class="sb-executive__copy">
+        <p class="sb-chip"><span></span>Chakusa OS · v4.1 Operational Engine</p>
+        <h1 id="business-title">The operating system for local service growth.</h1>
+        <div>Zero missed revenue from late-night calls. Automated client retention cadences, unified schedule dispatch, and quiet AI intake.</div>
+      </div>
+      <div class="sb-actions">
+        <a class="sb-button sb-button--light" href="#workspace"><StoryIcon name="tune" />Filter Workspace</a>
+        <a class="sb-button sb-button--primary" href="/get-started"><StoryIcon name="event_available" />New Direct Booking</a>
+      </div>
+    </div>
+    <nav class="sb-tabs" aria-label="Business workspace modules">
+      {stitchModules.map((item, index) => <a class:list={[index === 0 && "is-active"]} href={item.href}><StoryIcon name={item.icon} /><span>{item.label}</span>{item.badge && <b>{item.badge}</b>}</a>)}
+    </nav>
+  </div>
+</section>

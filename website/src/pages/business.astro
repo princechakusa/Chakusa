@@ -3,12 +3,14 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import BusinessHero from "../components/business/BusinessHero.astro";
-import BusinessWorkspace from "../components/business/BusinessWorkspace.astro";
-import BusinessFlow from "../components/business/BusinessFlow.astro";
-import BusinessIntelligence from "../components/business/BusinessIntelligence.astro";
-import BusinessCta from "../components/business/BusinessCta.astro";
-import "../styles/business/business.css";
+import BusinessStitchHeader from "../components/business/BusinessStitchHeader.astro";
+import BusinessStitchDashboard from "../components/business/BusinessStitchDashboard.astro";
+import BusinessStitchWorkflow from "../components/business/BusinessStitchWorkflow.astro";
+import BusinessStitchControls from "../components/business/BusinessStitchControls.astro";
+import BusinessStitchSpotlight from "../components/business/BusinessStitchSpotlight.astro";
+import BusinessStitchCta from "../components/business/BusinessStitchCta.astro";
+import "../styles/business/business-stitch.css";
+import "../styles/business/business-stitch-fixes.css";
 
 const title = "Chakusa for service businesses | Enquiries, bookings and repeat customers";
 const description = "Run enquiries, bookings, customer records, reviews, follow-up, and repeat customer activity from one connected Chakusa workspace.";
@@ -25,11 +27,12 @@ const breadcrumb = {
   <SkipLink />
   <Header />
   <main id="main-content">
-    <BusinessHero />
-    <BusinessWorkspace />
-    <BusinessFlow />
-    <BusinessIntelligence />
-    <BusinessCta />
+    <BusinessStitchHeader />
+    <BusinessStitchDashboard />
+    <BusinessStitchWorkflow />
+    <BusinessStitchControls />
+    <BusinessStitchSpotlight />
+    <BusinessStitchCta />
   </main>
   <Footer />
   <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumb)} />

@@ -1,0 +1,18 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { stitchCadences, stitchAssistantSettings } from "../../data/businessStitch";
+---
+<section class="sb-controls sb-shell" aria-label="Retention and AI settings">
+  <div class="sb-controls__grid">
+    <article class="sb-control-card" id="retention">
+      <header><p>Smart Frequency Intelligence</p><h2>Automated Retention Intervals</h2><div>Chakusa knows when your customers are biologically and mechanically due to return. Never let a regular drift away.</div></header>
+      <div class="sb-cadences">{stitchCadences.map((item) => <section><div><strong><StoryIcon name={item.icon} />{item.title}</strong><b>{item.interval}</b></div><span><i class={`is-${item.tone}`} style={`width:${item.progress}`}></i></span><small><em>{item.detail}</em><b class={`is-${item.tone}`}>{item.result}</b></small></section>)}</div>
+      <footer><span><strong>Smart Cadence Dispatch</strong><small>Currently active for 438 registered clients</small></span><i aria-hidden="true"><b></b></i></footer>
+    </article>
+    <article class="sb-control-card" id="ai-settings">
+      <header><p class="is-coral">Autonomous Control</p><h2>Quiet AI Assistant Configuration</h2><div>Grounded entirely in your specific services, working hours, and shop policy. Zero hallucination, strict boundary enforcement.</div></header>
+      <div class="sb-settings">{stitchAssistantSettings.map((item) => <section><div><strong>{item.title}</strong><b>{item.state}</b></div><p>{item.body}</p>{item.note && <small><StoryIcon name="shield" />{item.note}</small>}</section>)}</div>
+      <footer class="sb-control-card__ai"><span>AI Response Speed: <strong>Average 18 seconds</strong></span><a href="/features/ai-assistant">Test Prompt Simulator</a></footer>
+    </article>
+  </div>
+</section>

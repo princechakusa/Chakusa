@@ -1,0 +1,46 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { stitchMetrics, stitchLeads, stitchSchedule, stitchReviews } from "../../data/businessStitch";
+---
+<section class="sb-dashboard sb-shell" id="workspace" aria-label="Business Control Center Dashboard">
+  <div class="sb-metrics">
+    {stitchMetrics.map((item) => <article>
+      <header><span>{item.label}</span><StoryIcon name={item.icon} /></header>
+      <div><strong>{item.value}</strong><b class={`is-${item.tone}`}>{item.badge}</b></div>
+      <p>{item.note}</p>
+    </article>)}
+  </div>
+  <div class="sb-bento">
+    <div class="sb-bento__main">
+      <article class="sb-card" id="enquiries">
+        <header class="sb-card__header"><div><i></i><h2>Enquiries In-Flight (Off-Hours Auto-Capture)</h2></div><span>Handled by Quiet AI</span></header>
+        <div class="sb-leads">
+          {stitchLeads.map((lead) => <section>
+            <div class="sb-lead__copy"><div><strong>{lead.name}</strong><b class={`is-${lead.tone}`}>{lead.service}</b></div><p>{lead.message}</p><small>{lead.time}<span>{lead.state}</span></small></div>
+            <div class="sb-mini-actions"><a class:list={["sb-mini-button", lead.tone === "coral" && "is-primary"]} href="/get-started">{lead.action}</a><a class="sb-mini-button" href="/features/enquiries">{lead.secondary}</a></div>
+          </section>)}
+        </div>
+      </article>
+      <article class="sb-card" id="schedule">
+        <header class="sb-card__header"><h2>Today's Schedule & Execution</h2><strong>Thursday · Oct 17</strong></header>
+        <div class="sb-schedule">
+          {stitchSchedule.map((item) => <section class={`is-${item.tone}`}>
+            <time>{item.time}<small>{item.period}</small></time><div><strong>{item.title}</strong><p>{item.detail}</p></div><b>{item.status}</b>
+          </section>)}
+        </div>
+      </article>
+    </div>
+    <aside class="sb-bento__aside">
+      <article class="sb-card sb-customer" id="customer">
+        <header><span>CRM Spotlight · VIP Client</span><StoryIcon name="shield" /></header>
+        <div class="sb-customer__person"><img src="/images/business/sarah-jenkins.jpg" width="56" height="56" alt="" /><div><h2>David Miller</h2><p>Portland Resident · Tier 1 Collector</p><strong>8 Total Visits · 0 No-Shows</strong></div></div>
+        <dl><div><dt>Lifetime Value</dt><dd>$1,420.00</dd></div><div><dt>Cadence Cycle</dt><dd>Every 5 Wks</dd></div><div><dt>Preferences & Notes</dt><dd>Prefers Saturday mornings 10:00 AM. Favorite finish: Raw Terracotta Speckle & Matte White stoneware.</dd></div></dl>
+        <a class="sb-button sb-button--soft" href="/features/bookings"><StoryIcon name="calendar_month" />Schedule Next Cadence Appointment</a>
+      </article>
+      <article class="sb-card" id="reviews">
+        <header class="sb-card__header"><h2>Verified Reviews Feed</h2><span>100% Verified Buyer</span></header>
+        <div class="sb-reviews">{stitchReviews.map((review) => <section><header><strong>{review.name}</strong><b aria-label="5 out of 5 stars">★★★★★</b></header><p>{review.body}</p><small>{review.meta}</small></section>)}</div>
+      </article>
+    </aside>
+  </div>
+</section>

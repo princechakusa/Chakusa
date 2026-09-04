@@ -1,0 +1,11 @@
+---
+import { stitchConversion } from "../../data/businessStitch";
+---
+<section class="sb-workflow" aria-labelledby="conversion-title">
+  <div class="sb-shell">
+    <header class="sb-section-heading"><p>Conversion Architecture</p><h2 id="conversion-title">How Chakusa turns 10:45 PM lost leads into 7:15 AM paid calendar slots.</h2><div>68% of high-intent service inquiries happen outside 9-to-5 business hours. Chakusa eliminates phone tag while safeguarding your sleep.</div></header>
+    <ol class="sb-workflow__grid">
+      {stitchConversion.map((step) => <li><div><span class={`is-${step.tone}`}>{step.number}</span><h3>{step.title}</h3><p>{step.body}</p></div><small class={`is-${step.tone}`}>{step.signal}</small></li>)}
+    </ol>
+  </div>
+</section>

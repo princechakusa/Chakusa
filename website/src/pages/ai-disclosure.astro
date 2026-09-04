@@ -3,71 +3,182 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import "../styles/global.css";
 
 const title = "AI Disclosure | Chakusa";
 const description = "How Chakusa's AI features actually work, what they can and cannot do, which providers process your data, and who inside Chakusa can see an AI conversation.";
-const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
+
+// Reproduces the approved Stitch AI-disclosure anatomy (hero band with
+// status chips, a supervised-workflow strip, sticky table-of-contents,
+// numbered governance sections, a contact box) but NOT its content -
+// the Stitch source claims "Human-in-the-Loop Protocol Enforced,"
+// "Zero Generative Hallucinations," EU AI Act compliance, a 60-second
+// cache-deletion guarantee, and a customer "Request Owner Call"
+// bypass. None of that is true of the real system: the customer-facing
+// assistant has NO consent gate today, admins can read raw unredacted
+// transcripts, and AI conversation content is kept indefinitely (see
+// docs/PRIVACY_ENGINEERING_FOLLOWUPS.md). This page keeps stating those
+// gaps plainly - the whole point of a disclosure page is that it does
+// not soften an unresolved gap into a resolved-sounding feature.
+const lastUpdated = "Draft dated 2026-09-01";
+
+const toc = [
+  ["where", "1. Where AI shows up"],
+  ["how", "2. How it works"],
+  ["can", "3. What it can do"],
+  ["cannot", "4. What it cannot do"],
+  ["safety", "5. Automated safety checks"],
+  ["consent", "6. Consent, honestly stated"],
+  ["visibility", "7. Who can see a conversation"],
+  ["retention", "8. How long it's kept"],
+  ["providers", "9. Providers"],
+  ["contact", "10. Changes & questions"],
+];
+
+const canDo = [
+  "Answer routine questions from a business's customers",
+  "Draft, and in some cases send, a reply on a business's behalf",
+  "Answer a customer's questions inside the app",
+];
+const cannotDo = [
+  "Guarantee its answers are accurate",
+  "Replace professional, medical, legal, or financial advice",
+  "Make a booking, payment, or account change on its own outside what a business has explicitly configured it to do",
+  "Act without limits — every response is checked against automated rules before it's sent",
+];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
-  <main id="main-content">
-    <section class="legal-section content-shell" aria-labelledby="ai-title" data-reveal>
-      {/* TODO(launch-blocker): engineering draft grounded in a full backend
-          audit (src/lib/ai/*) as of 2026-09-01. See
-          docs/PRIVACY_ENGINEERING_FOLLOWUPS.md for the two open product
-          gaps this page describes honestly rather than papering over:
-          no consent gate on the customer-facing assistant, and
-          unredacted admin visibility into AI transcripts. Do not soften
-          this page's wording to make either sound resolved until it is. */}
-      <p class="eyebrow">AI Disclosure</p>
-      <h1 id="ai-title">How Chakusa uses AI</h1>
-      <p class="legal-draft-notice">{lastUpdated}</p>
+  <main id="main-content" class="aid">
+    <section class="aid__hero"><div class="aid__shell">
+      <div class="aid__badges">
+        <span class="aid__badge aid__badge--draft"><i></i>Engineering draft — not attorney-reviewed</span>
+        <span class="aid__badge">Last updated: {lastUpdated}</span>
+      </div>
+      <h1>How Chakusa uses AI</h1>
+      <p class="aid__lede">Where AI shows up, what it can and cannot do, and an honest account of what's still a gap — not a disclosure written to sound resolved.</p>
+      <p class="aid__disclaimer">Grounded in a full audit of <code>src/lib/ai/*</code> as of 2026-09-01. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">the two open engineering gaps</a> this page describes below rather than papering over: no consent gate on the customer-facing assistant, and unredacted admin visibility into AI transcripts.</p>
+    </div></section>
 
-      <h2>Where AI shows up</h2>
-      <p>Two places. First, a business can turn on an AI assistant that drafts or sends replies to that business's own customers over SMS or WhatsApp. Second, customers can chat directly with an in-app AI assistant inside the Chakusa app.</p>
+    <div class="aid__body"><div class="aid__shell aid__grid">
+      <aside class="aid__toc">
+        <div class="aid__toc-card">
+          <p class="aid__toc-label">On this page</p>
+          <nav aria-label="AI Disclosure sections">
+            {toc.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
+          </nav>
+          <a class="aid__toc-cta" href="mailto:privacy@chakusarecovery.com">Ask a question</a>
+        </div>
+      </aside>
 
-      <h2>How it works</h2>
-      <p>When either feature is used, the relevant conversation, along with some context (like the customer's name, notes on file, and recent appointments, for the business-facing assistant) is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response.</p>
+      <div class="aid__content">
+        <section id="where">
+          <h2>1. Where AI shows up</h2>
+          <p>Two places. First, a business can turn on an AI assistant that drafts or sends replies to that business's own customers over SMS or WhatsApp. Second, customers can chat directly with an in-app AI assistant inside the Chakusa app.</p>
+        </section>
 
-      <h2>What it can do</h2>
-      <ul>
-        <li>Answer routine questions from a business's customers</li>
-        <li>Draft, and in some cases send, a reply on a business's behalf</li>
-        <li>Answer a customer's questions inside the app</li>
-      </ul>
+        <section id="how">
+          <h2>2. How it works</h2>
+          <p>When either feature is used, the relevant conversation — along with some context (like the customer's name, notes on file, and recent appointments, for the business-facing assistant) — is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response.</p>
+        </section>
 
-      <h2>What it cannot do</h2>
-      <ul>
-        <li>Guarantee its answers are accurate</li>
-        <li>Replace professional, medical, legal, or financial advice</li>
-        <li>Make a booking, payment, or account change on its own outside what a business has explicitly configured it to do</li>
-        <li>Act without limits, every response is checked against automated rules before it's sent (see below)</li>
-      </ul>
+        <section id="can">
+          <h2>3. What it can do</h2>
+          <ul class="aid__list aid__list--can">{canDo.map((item) => <li>{item}</li>)}</ul>
+        </section>
 
-      <h2>Automated safety checks</h2>
-      <p>Before a response is generated or sent, an automated system checks for things like attempts to manipulate the AI's instructions, content that looks like it's leaking sensitive information, and language patterns associated with unsafe or inappropriate advice. These are rule-based pattern checks, not a human reviewing every message, and not a second AI judging the first one's safety. A message can also be automatically held for a human to approve, or escalated to a person entirely, based on confidence and configurable business rules (for example: quiet hours, blocked topics, or a customer who has opted out of contact). A business, or a customer asking to speak with a person, can always take over from the AI.</p>
-      <p>There's also a platform-wide switch that can immediately turn AI features off across all of Chakusa if needed.</p>
+        <section id="cannot">
+          <h2>4. What it cannot do</h2>
+          <ul class="aid__list aid__list--cannot">{cannotDo.map((item) => <li>{item}</li>)}</ul>
+        </section>
 
-      <h2>Consent, honestly stated</h2>
-      <p>The business-facing assistant is opt-in, a business must turn it on before it acts on their behalf. <strong>The in-app customer assistant currently is not gated by a separate opt-in</strong>, it's available to any customer by default. We consider this a gap worth closing with a clearer first-use notice, and it's tracked as a product improvement, not something we're pretending is already resolved.</p>
+        <section id="safety">
+          <h2>5. Automated safety checks</h2>
+          <p>Before a response is generated or sent, an automated system checks for things like attempts to manipulate the AI's instructions, content that looks like it's leaking sensitive information, and language patterns associated with unsafe or inappropriate advice. These are rule-based pattern checks, not a human reviewing every message, and not a second AI judging the first one's safety.</p>
+          <p>A message can also be automatically held for a human to approve, or escalated to a person entirely, based on confidence and configurable business rules — for example: quiet hours, blocked topics, or a customer who has opted out of contact. A business, or a customer asking to speak with a person, can always take over from the AI. There's also a platform-wide switch that can immediately turn AI features off across all of Chakusa if needed.</p>
+        </section>
 
-      <h2>Who can see a conversation</h2>
-      <p>The business whose customer is messaging (for the business-facing assistant) can see that conversation, the same as any other message in their account. For the in-app customer assistant, Chakusa staff with admin access can view the full conversation content for support and safety purposes; as of this disclosure, that view is not redacted. Every admin view is intended to be logged.</p>
+        <section id="consent" class="aid__flag">
+          <h2>6. Consent, honestly stated</h2>
+          <p>The business-facing assistant is opt-in — a business must turn it on before it acts on their behalf.</p>
+          <p><strong>The in-app customer assistant currently is not gated by a separate opt-in.</strong> It's available to any customer by default. We consider this a gap worth closing with a clearer first-use notice, and it's tracked as a product improvement, not something we're pretending is already resolved.</p>
+        </section>
 
-      <h2>How long it's kept</h2>
-      <p>AI conversation content is currently kept indefinitely rather than deleted on a fixed schedule. Some system-generated "memory" used to personalize responses is deleted automatically after it expires; not all of it currently has an expiry set. A customer can turn off personalization and conversation memory in their app settings.</p>
+        <section id="visibility" class="aid__flag">
+          <h2>7. Who can see a conversation</h2>
+          <p>The business whose customer is messaging (for the business-facing assistant) can see that conversation, the same as any other message in their account.</p>
+          <p>For the in-app customer assistant, Chakusa staff with admin access can view the full conversation content for support and safety purposes; <strong>as of this disclosure, that view is not redacted.</strong> Every admin view is intended to be logged.</p>
+        </section>
 
-      <h2>Providers</h2>
-      <p>OpenAI and Anthropic. Neither is instructed to use your conversations to train their own models beyond what their own standard API terms provide; we haven't independently audited that claim beyond relying on those providers' published terms.</p>
+        <section id="retention">
+          <h2>8. How long it's kept</h2>
+          <p>AI conversation content is currently kept indefinitely rather than deleted on a fixed schedule. Some system-generated "memory" used to personalize responses is deleted automatically after it expires; not all of it currently has an expiry set. A customer can turn off personalization and conversation memory in their app settings.</p>
+        </section>
 
-      <h2>Changes to this disclosure</h2>
-      <p>If how our AI features work changes materially, especially around consent or data handling, we'll update this page and the date at the top.</p>
+        <section id="providers">
+          <h2>9. Providers</h2>
+          <p>OpenAI and Anthropic. Neither is instructed to use your conversations to train their own models beyond what their own standard API terms provide; we haven't independently audited that claim beyond relying on those providers' published terms.</p>
+        </section>
 
-      <h2>Questions</h2>
-      <p>Reach out. See the <a href="/about#contact">About page</a>.</p>
-    </section>
+        <section id="contact" class="aid__contact">
+          <h2>10. Changes &amp; questions</h2>
+          <p>If how our AI features work changes materially, especially around consent or data handling, we'll update this page and the date at the top.</p>
+          <div class="aid__contact-box">
+            <div><span>Questions about how AI is used</span><strong>privacy@chakusarecovery.com</strong></div>
+            <a href="mailto:privacy@chakusarecovery.com">Email us</a>
+          </div>
+        </section>
+      </div>
+    </div></div>
   </main>
   <Footer />
 </MarketingLayout>
+
+<style>
+.aid{background:var(--page-surface);color:var(--heading)}
+.aid__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
+.aid__hero{padding:3.5rem 0 2.5rem;background:#f2f3ff;border-bottom:1px solid var(--hairline)}
+.aid__badges{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1.1rem}
+.aid__badge{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .75rem;border-radius:999px;background:#fff;color:var(--body-text);font:700 .72rem/1.2 var(--font);box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.aid__badge--draft{color:#93000a;background:#ffdad6}
+.aid__badge--draft i{width:.45rem;height:.45rem;border-radius:50%;background:#ba1a1a}
+.aid h1{margin:0 0 .6rem;font:700 clamp(2.1rem,4.2vw,3rem)/1.12 var(--font-heading);letter-spacing:-.03em}
+.aid__lede{max-width:44rem;margin:0 0 1.1rem;color:var(--body-text);font-size:1.05rem;line-height:1.65}
+.aid__disclaimer{max-width:52rem;margin:0;padding:.9rem 1.1rem;border-radius:.75rem;background:#fff;color:var(--body-text);font-size:.82rem;line-height:1.6}
+.aid__disclaimer code{padding:.1rem .3rem;border-radius:.3rem;background:var(--page-surface);font-size:.78rem}
+.aid__disclaimer a{color:var(--secondary);font-weight:700}
+.aid__body{padding:3rem 0 5rem}
+.aid__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
+.aid__toc{position:sticky;top:6rem}
+.aid__toc-card{padding:1.25rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
+.aid__toc-label{margin:0 0 .75rem;color:var(--muted-text,#687184);font:800 .68rem/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase}
+.aid__toc-card nav{display:grid;gap:.15rem}
+.aid__toc-card nav a{padding:.5rem .6rem;border-radius:.5rem;color:var(--body-text);font-size:.82rem;text-decoration:none}
+.aid__toc-card nav a:hover{background:var(--page-surface);color:var(--heading)}
+.aid__toc-cta{display:block;margin-top:1rem;padding:.65rem;border-radius:.6rem;background:var(--primary);color:#fff;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none}
+.aid__content{min-width:0;display:grid;gap:2.5rem}
+.aid__content section{scroll-margin-top:6rem}
+.aid__content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
+.aid__content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
+.aid__content p:last-child{margin-bottom:0}
+.aid__content a{color:var(--secondary);font-weight:700}
+.aid__list{display:grid;gap:.6rem;margin:0;padding:0;list-style:none}
+.aid__list li{position:relative;padding-left:1.6rem;color:var(--body-text);font-size:.92rem;line-height:1.55}
+.aid__list li::before{position:absolute;left:0;font-weight:900}
+.aid__list--can li::before{content:'\2713';color:var(--secondary)}
+.aid__list--cannot li::before{content:'\2715';color:#ba1a1a}
+.aid__flag{padding:1.25rem 1.5rem;border-left:4px solid #ba1a1a;border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff5f4}
+.aid__flag h2{color:#7a1005}
+.aid__contact-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin-top:.5rem;padding:1.25rem 1.5rem;border-radius:var(--r-lg);background:var(--heading);color:#fff}
+.aid__contact-box span{display:block;color:#c9ccd3;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.aid__contact-box strong{display:block;margin-top:.3rem;font-size:1.05rem}
+.aid__contact-box a{padding:.65rem 1.1rem;border-radius:.6rem;background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}
+@media(max-width:64rem){
+  .aid__grid{grid-template-columns:1fr}
+  .aid__toc{position:static}
+}
+@media(max-width:40rem){
+  .aid__hero{padding:2.5rem 0 2rem}
+  .aid__contact-box{flex-direction:column;align-items:flex-start}
+}
+</style>

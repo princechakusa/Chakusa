@@ -3,95 +3,219 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import "../styles/global.css";
 
 const title = "Privacy Policy | Chakusa";
 const description = "How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features, including every third party involved and your rights under GDPR, UK GDPR, CCPA, and other privacy laws.";
-const lastUpdated = "Draft dated 2026-09-01. Not yet reviewed by a licensed attorney. Do not publish as final or rely on this to establish legal compliance.";
+
+// Reproduces the approved Stitch legal-page anatomy (hero band with a
+// status badge, sticky table-of-contents sidebar, numbered sections,
+// a provider card grid, a closing contact block) with Chakusa's real
+// facts substituted for Stitch's fabricated ones. Specifically NOT
+// carried over from the Stitch source, because none of it is true of
+// this product: "Cryptographically Verified Document," SOC-2/ISO 27001
+// certification, PCI-DSS Level 1 attestation, AES-256/TLS 1.3/HSTS
+// specifics, a named "Amazon Web Services" host, a formal Data
+// Protection Officer, a 24-hour SLA, a 72-hour deletion window, a
+// 1-click deletion flow, bi-annual penetration testing, FIDO2/WebAuthn
+// bastion access, and a public GitHub history of policy versions -
+// none of this is implemented or verified. The one still-true, still
+// important thing this page must keep saying plainly (see the existing
+// privacy.astro this replaces, and docs/PRIVACY_ENGINEERING_FOLLOWUPS.md)
+// is that this is an engineering draft, not an attorney-reviewed legal
+// document - that status is the hero's badge here, not hidden in fine
+// print.
+const lastUpdated = "Draft dated 2026-09-01";
+
+const toc = [
+  ["principles", "1. Who this covers & how we use data"],
+  ["collected", "2. Information we collect"],
+  ["ai", "3. AI features"],
+  ["messages", "4. Text messages"],
+  ["shared", "5. Who we share it with"],
+  ["automated", "6. Automated decisions"],
+  ["retention", "7. How long we keep it"],
+  ["rights", "8. Your rights"],
+  ["children", "9. Children's privacy"],
+  ["security", "10. Security"],
+  ["contact", "11. Complaints & contact"],
+];
+
+const collected = [
+  ["Business accounts", "Name, email, business details; Google/Apple profile basics if you sign in that way; the customer records you enter into the CRM (names, phone numbers, notes, messages) — that data is yours, not ours."],
+  ["Customer accounts", "Name, email, optional phone, booking history, loyalty points, marketplace searches and favorites, reviews, and messages/AI conversations. Approximate location if you allow it, to show nearby businesses."],
+  ["Bookings & payments", "Appointment details and payment records for deposits/balances. Card details are handled entirely by Stripe — we never see or store them."],
+  ["Loyalty & referrals", "Points balances and history, redemption codes, membership plan details, and referral codes."],
+  ["Messages & AI", "Content of messages sent through Chakusa (SMS/WhatsApp via Twilio), and AI conversation content where an AI feature is used."],
+  ["Technical", "Device push-notification tokens and error/diagnostic data. This website sets no tracking or advertising cookies."],
+];
+
+const providers = [
+  ["Twilio", "Sends SMS and WhatsApp messages"],
+  ["Stripe", "Processes booking payments, refunds, and business payouts (Stripe Connect)"],
+  ["OpenAI / Anthropic", "Generate AI responses when an AI feature is used"],
+  ["Expo", "Delivers push notifications"],
+  ["Sentry", "Receives error/crash reports, configured to scrub auth tokens first"],
+  ["Google / Apple", "Sign-in, and app-store billing for a business's plan"],
+  ["Render", "Hosts the application servers"],
+  ["Supabase", "Hosts the Postgres database"],
+];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
-  <main id="main-content">
-    <section class="legal-section content-shell" aria-labelledby="privacy-title" data-reveal>
-      {/* TODO(launch-blocker): engineering draft grounded in a full backend
-          audit (src/modules/*, prisma/schema.prisma) as of 2026-09-01, not
-          a legal document. Attorney review is required before this can be
-          relied on, specifically to confirm: (1) Chakusa's actual
-          incorporation jurisdiction and every country real users are in,
-          (2) whether GDPR/UK GDPR/CCPA/CPRA/UAE PDPL/POPIA obligations are
-          met operationally, not just documented, (3) whether the AI
-          consent gap noted below needs a product fix before this policy's
-          description of it is acceptable to publish (see
-          docs/PRIVACY_ENGINEERING_FOLLOWUPS.md at the repo root). */}
-      <p class="eyebrow">Privacy Policy</p>
-      <h1 id="privacy-title">Privacy Policy</h1>
-      <p class="legal-draft-notice">{lastUpdated}</p>
+  <main id="main-content" class="pv">
+    <section class="pv__hero"><div class="pv__shell">
+      <div class="pv__badges">
+        <span class="pv__badge pv__badge--draft"><i></i>Engineering draft — not attorney-reviewed</span>
+        <span class="pv__badge">Last updated: {lastUpdated}</span>
+      </div>
+      <h1>Privacy Policy</h1>
+      <p class="pv__lede">How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features — and what we deliberately don't do with it.</p>
+      <p class="pv__disclaimer">This page is grounded in a full backend audit of the actual product (<code>src/modules/*</code>, <code>prisma/schema.prisma</code>) as of 2026-09-01, not written as a legal document. It has not been reviewed by a licensed attorney, and shouldn't be relied on to establish legal compliance. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">open engineering follow-ups</a> this page describes honestly rather than papering over.</p>
+    </div></section>
 
-      <h2>Who this covers</h2>
-      <p>Chakusa has two kinds of accounts: <b>business accounts</b> (business owners running their CRM, marketplace listing, bookings, and loyalty program) and <b>customer accounts</b> (people who discover, book, and message businesses through Chakusa). One person can hold both. This policy covers both, and this website.</p>
+    <div class="pv__body"><div class="pv__shell pv__grid">
+      <aside class="pv__toc">
+        <div class="pv__toc-card">
+          <p class="pv__toc-label">On this page</p>
+          <nav aria-label="Privacy Policy sections">
+            {toc.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
+          </nav>
+          <a class="pv__toc-cta" href="mailto:privacy@chakusarecovery.com">Email the privacy team</a>
+        </div>
+      </aside>
 
-      <h2>Information we collect</h2>
-      <h3>From business accounts</h3>
-      <p>Name, email, and business details when you sign up. If you sign in with Google or Apple, the basic profile information those providers share. If you use the CRM to track your own customers, the customer names, phone numbers, notes, message content, and review/feedback records you enter, that data is yours, not ours; you're responsible for having the right to collect and store it.</p>
-      <h3>From customer accounts</h3>
-      <p>Name, email, phone (optional), and a profile used across every business you interact with through Chakusa: booking history, loyalty points and redemptions, marketplace searches and favorites, reviews you leave, and messages and AI assistant conversations you send. Marketplace search recognizes your approximate location if you allow it, to show nearby businesses.</p>
-      <h3>Bookings and payments</h3>
-      <p>Appointment details (service, time, price, staff assigned), and payment records for deposits or balances paid through Chakusa (amount, status, refunds). Card details are handled entirely by <b>Stripe</b>; we never see or store them. A business's own cancellation, rescheduling, and no-show policies are set by that business, not by Chakusa.</p>
-      <h3>Loyalty, memberships, and referrals</h3>
-      <p>Points balances and history, redemption codes, membership plan details, and, if you refer someone, the referral code and the email address of the person you're referring (collected before they've signed up, so we can credit the referral once they do).</p>
-      <h3>Messages and AI conversations</h3>
-      <p>Content of messages sent through Chakusa (SMS/WhatsApp via Twilio), and, if you use an AI-powered feature, the content of that conversation. See <a href="/ai-disclosure">AI Disclosure</a> for the specifics of what happens to that data.</p>
-      <h3>Technical information</h3>
-      <p>Device push-notification tokens, and error/diagnostic data when something breaks. This website itself sets no tracking or advertising cookies, see the <a href="/cookies">Cookie Policy</a>.</p>
+      <div class="pv__content">
+        <article class="pv__quote">
+          <p>“Chakusa does not sell customer data, and does not use it to serve ads. The customer records a business enters are that business's data, not ours.”</p>
+        </article>
 
-      <h2>How we use it</h2>
-      <p>To run the product: showing your leads, bookings, loyalty balances, and marketplace listings; sending messages you ask us to send or that automation sends on your behalf; generating AI responses where that feature is used; and sending push notifications about activity in your account. We don't sell data, and we don't use it to serve ads.</p>
+        <section id="principles">
+          <h2>1. Who this covers &amp; how we use data</h2>
+          <p>Chakusa has two kinds of accounts: <b>business accounts</b> (running a CRM, marketplace listing, bookings, and loyalty program) and <b>customer accounts</b> (people who discover, book, and message businesses through Chakusa). One person can hold both. This policy covers both, and this website.</p>
+          <p>We use collected data to run the product: showing your leads, bookings, loyalty balances, and marketplace listings; sending messages you ask us to send or that automation sends on your behalf; generating AI responses where that feature is used; and sending push notifications about activity in your account. We don't sell data, and we don't use it to serve ads.</p>
+        </section>
 
-      <h2>AI features</h2>
-      <p>Chakusa includes AI-powered features: a business-facing assistant that can draft or send replies to a business's customers (a business must turn this on), and an in-app assistant customers can chat with directly. Both send conversation content to a third-party AI provider (OpenAI or Anthropic, depending on configuration) to generate a response. Full detail, including an important gap in how the customer-facing assistant currently works, its data retention behavior, and who inside Chakusa can view a conversation, is in the dedicated <a href="/ai-disclosure">AI Disclosure</a>, which is part of this Privacy Policy by reference.</p>
+        <section id="collected">
+          <h2>2. Information we collect</h2>
+          <div class="pv__table-wrap"><table class="pv__table">
+            <thead><tr><th>Category</th><th>What's collected</th></tr></thead>
+            <tbody>{collected.map(([cat, body]) => <tr><td>{cat}</td><td>{body}</td></tr>)}</tbody>
+          </table></div>
+        </section>
 
-      <h2>Text messages</h2>
-      <p>Message delivery runs through Twilio. Standard message and data rates may apply depending on the recipient's carrier. <strong>The business is responsible for having consent</strong> to message their customer, under whatever law applies where that customer lives (in the US, generally the TCPA; in Canada, CASL; other countries have their own rules). If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further. A business sending manually or through a channel outside Chakusa's own automation is still responsible for honoring that opt-out itself.</p>
+        <section id="ai">
+          <h2>3. AI features</h2>
+          <p>Chakusa includes AI-powered features: a business-facing assistant that can draft or send replies to a business's customers (a business must turn this on), and an in-app assistant customers can chat with directly. Both send conversation content to a third-party AI provider (OpenAI or Anthropic, depending on configuration) to generate a response.</p>
+          <p>Full detail — including an honest description of a current gap in how the customer-facing assistant works, its data-retention behavior, and who inside Chakusa can view a conversation — is in the dedicated <a href="/ai-disclosure">AI Disclosure</a>, which is part of this Privacy Policy by reference.</p>
+        </section>
 
-      <h2>Who we share it with</h2>
-      <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
-      <ul>
-        <li><b>Twilio</b>, sends SMS/WhatsApp messages</li>
-        <li><b>Stripe</b>, processes booking payments and refunds; also handles payouts to businesses (Stripe Connect)</li>
-        <li><b>OpenAI</b> and/or <b>Anthropic</b>, generate AI responses when an AI feature is used</li>
-        <li><b>Expo</b>, delivers push notifications</li>
-        <li><b>Sentry</b>, receives error/crash reports from our backend, configured to scrub authentication tokens and other sensitive fields before anything is sent</li>
-        <li><b>Google</b> and <b>Apple</b>, handle Sign-In if you use those options, and handle subscription billing for a business's own Chakusa plan (we never see card details there either)</li>
-        <li>Our infrastructure and database providers, who host the servers Chakusa runs on</li>
-      </ul>
-      <p>Because these providers operate infrastructure in multiple countries, data may be processed outside the country you're in, including the United States (both AI providers' standard endpoints are US-based unless a data-residency-specific configuration is set up in the future). Each provider is responsible for its own compliance with applicable data-transfer rules.</p>
+        <section id="messages">
+          <h2>4. Text messages</h2>
+          <p>Message delivery runs through Twilio. Standard message and data rates may apply depending on the recipient's carrier. <strong>The business is responsible for having consent</strong> to message their customer, under whatever law applies where that customer lives (in the US, generally the TCPA; in Canada, CASL). If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further.</p>
+        </section>
 
-      <h2>Automated decisions</h2>
-      <p>When an AI feature is enabled, Chakusa's system automatically decides whether to send an AI-generated reply, hold it for a human to approve, or escalate the conversation to a person, based on confidence and safety rules (see AI Disclosure). A person can always take over. We don't use automated decisions for anything with a legal or similarly significant effect on you (for example, we don't use AI to approve or deny a booking, a refund, or account access).</p>
+        <section id="shared">
+          <h2>5. Who we share it with</h2>
+          <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
+          <div class="pv__providers">
+            {providers.map(([name, purpose]) => <div class="pv__provider"><strong>{name}</strong><span>{purpose}</span></div>)}
+          </div>
+          <p class="pv__note">Because these providers operate infrastructure in multiple countries, data may be processed outside the country you're in, including the United States. Each provider is responsible for its own compliance with applicable data-transfer rules.</p>
+        </section>
 
-      <h2>How long we keep it</h2>
-      <p>Account, booking, loyalty, and message data is kept for as long as the account is active, plus a reasonable period afterward, unless deletion is requested sooner or the law requires longer retention. AI conversation content is currently kept indefinitely rather than on a fixed schedule, see AI Disclosure for the specifics and the retention improvement this points to.</p>
+        <section id="automated">
+          <h2>6. Automated decisions</h2>
+          <p>When an AI feature is enabled, Chakusa's system automatically decides whether to send an AI-generated reply, hold it for a human to approve, or escalate the conversation to a person, based on confidence and safety rules (see AI Disclosure). A person can always take over. We don't use automated decisions for anything with a legal or similarly significant effect on you — for example, we don't use AI to approve or deny a booking, a refund, or account access.</p>
+        </section>
 
-      <h2>Your rights</h2>
-      <p>Depending on where you are, you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain uses of it, for example under the EU/UK <b>GDPR</b>, the California <b>CCPA/CPRA</b>, the <b>UAE PDPL</b>, or South Africa's <b>POPIA</b>. You can exercise these rights by contacting us below; we'll respond within the time required by applicable law. As Chakusa expands to more countries, this section will be updated to name the specific local law that applies.</p>
-      <p>Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
+        <section id="retention">
+          <h2>7. How long we keep it</h2>
+          <p>Account, booking, loyalty, and message data is kept for as long as the account is active, plus a reasonable period afterward, unless deletion is requested sooner or the law requires longer retention. AI conversation content is currently kept indefinitely rather than on a fixed schedule — see AI Disclosure for the specifics and the retention improvement this points to.</p>
+        </section>
 
-      <h2>Children's privacy</h2>
-      <p>Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
+        <section id="rights">
+          <h2>8. Your rights</h2>
+          <p>Depending on where you are, you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain uses of it — for example under the EU/UK <b>GDPR</b>, the California <b>CCPA/CPRA</b>, the <b>UAE PDPL</b>, or South Africa's <b>POPIA</b>. You can exercise these rights by contacting us below; we'll respond within the time required by applicable law. As Chakusa expands to more countries, this section will be updated to name the specific local law that applies.</p>
+          <p class="pv__note">Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
+        </section>
 
-      <h2>Security</h2>
-      <p>Passwords are hashed, never stored in plain text. Sessions are rotated and scoped separately for business accounts, customer accounts, and internal admin access. Any linked sign-in credentials are encrypted at rest. Internal access to production data is limited to what's needed to operate the service, and administrative actions are logged.</p>
+        <section id="children">
+          <h2>9. Children's privacy</h2>
+          <p>Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
+        </section>
 
-      <h2>Complaints</h2>
-      <p>If you're not satisfied with how we've handled a request, you can contact us below, or, depending on where you live, lodge a complaint with your local data protection authority.</p>
+        <section id="security">
+          <h2>10. Security</h2>
+          <p>Passwords are hashed with Argon2, never stored in plain text. Sessions are rotated and scoped separately for business accounts, customer accounts, and internal admin access. Any linked sign-in credentials are encrypted at rest. Internal access to production data is limited to what's needed to operate the service, and administrative actions are logged.</p>
+        </section>
 
-      <h2>Changes to this policy</h2>
-      <p>If we make a material change to how we handle data, we'll update this page and the date at the top.</p>
-
-      <h2>Contact</h2>
-      <p>To exercise a data right or ask a question about this policy: <a href="mailto:privacy@chakusarecovery.com">privacy@chakusarecovery.com</a>.</p>
-    </section>
+        <section id="contact" class="pv__contact">
+          <h2>11. Complaints &amp; contact</h2>
+          <p>If you're not satisfied with how we've handled a request, you can contact us below, or, depending on where you live, lodge a complaint with your local data protection authority. If we make a material change to how we handle data, we'll update this page and the date at the top.</p>
+          <div class="pv__contact-box">
+            <div><span>Privacy questions or a data-rights request</span><strong>privacy@chakusarecovery.com</strong></div>
+            <a href="mailto:privacy@chakusarecovery.com">Email Privacy</a>
+          </div>
+        </section>
+      </div>
+    </div></div>
   </main>
   <Footer />
 </MarketingLayout>
+
+<style>
+.pv{background:var(--page-surface);color:var(--heading)}
+.pv__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
+.pv__hero{padding:3.5rem 0 2.5rem;background:#f2f3ff;border-bottom:1px solid var(--hairline)}
+.pv__badges{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1.1rem}
+.pv__badge{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .75rem;border-radius:999px;background:#fff;color:var(--body-text);font:700 .72rem/1.2 var(--font);box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.pv__badge--draft{color:#93000a;background:#ffdad6}
+.pv__badge--draft i{width:.45rem;height:.45rem;border-radius:50%;background:#ba1a1a}
+.pv h1{margin:0 0 .6rem;font:700 clamp(2.1rem,4.2vw,3rem)/1.12 var(--font-heading);letter-spacing:-.03em}
+.pv__lede{max-width:44rem;margin:0 0 1.1rem;color:var(--body-text);font-size:1.05rem;line-height:1.65}
+.pv__disclaimer{max-width:52rem;margin:0;padding:.9rem 1.1rem;border-radius:.75rem;background:#fff;color:var(--body-text);font-size:.82rem;line-height:1.6}
+.pv__disclaimer code{padding:.1rem .3rem;border-radius:.3rem;background:var(--page-surface);font-size:.78rem}
+.pv__disclaimer a{color:var(--secondary);font-weight:700}
+.pv__body{padding:3rem 0 5rem}
+.pv__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
+.pv__toc{position:sticky;top:6rem}
+.pv__toc-card{padding:1.25rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
+.pv__toc-label{margin:0 0 .75rem;color:var(--muted-text,#687184);font:800 .68rem/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase}
+.pv__toc-card nav{display:grid;gap:.15rem}
+.pv__toc-card nav a{padding:.5rem .6rem;border-radius:.5rem;color:var(--body-text);font-size:.82rem;text-decoration:none}
+.pv__toc-card nav a:hover{background:var(--page-surface);color:var(--heading)}
+.pv__toc-cta{display:block;margin-top:1rem;padding:.65rem;border-radius:.6rem;background:var(--primary);color:#fff;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none}
+.pv__content{min-width:0;display:grid;gap:2.5rem}
+.pv__quote{margin:0;padding:1.5rem 1.75rem;border-left:4px solid var(--primary);border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff}
+.pv__quote p{margin:0;color:var(--heading);font:600 1.1rem/1.55 var(--font-heading)}
+.pv__content section{scroll-margin-top:6rem}
+.pv__content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
+.pv__content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
+.pv__content p:last-child{margin-bottom:0}
+.pv__content a{color:var(--secondary);font-weight:700}
+.pv__note{font-size:.85rem;color:var(--muted-text,#687184)}
+.pv__table-wrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg)}
+.pv__table{width:100%;border-collapse:collapse;font-size:.86rem}
+.pv__table th{padding:.75rem 1rem;background:var(--page-surface);text-align:left;font:700 .72rem/1.2 var(--font);text-transform:uppercase;letter-spacing:.04em;color:var(--muted-text,#687184)}
+.pv__table td{padding:.85rem 1rem;border-top:1px solid var(--hairline);vertical-align:top;color:var(--body-text)}
+.pv__table td:first-child{white-space:nowrap;font-weight:700;color:var(--heading)}
+.pv__providers{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:0 0 1rem}
+.pv__provider{padding:.9rem;border:1px solid var(--hairline);border-radius:var(--r-md);background:#fff}
+.pv__provider strong{display:block;font-size:.85rem;color:var(--heading)}
+.pv__provider span{display:block;margin-top:.3rem;font-size:.72rem;color:var(--muted-text,#687184);line-height:1.4}
+.pv__contact-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin-top:.5rem;padding:1.25rem 1.5rem;border-radius:var(--r-lg);background:var(--heading);color:#fff}
+.pv__contact-box span{display:block;color:#c9ccd3;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.pv__contact-box strong{display:block;margin-top:.3rem;font-size:1.05rem}
+.pv__contact-box a{padding:.65rem 1.1rem;border-radius:.6rem;background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}
+@media(max-width:64rem){
+  .pv__grid{grid-template-columns:1fr}
+  .pv__toc{position:static}
+  .pv__providers{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:40rem){
+  .pv__hero{padding:2.5rem 0 2rem}
+  .pv__providers{grid-template-columns:1fr}
+  .pv__contact-box{flex-direction:column;align-items:flex-start}
+}
+</style>

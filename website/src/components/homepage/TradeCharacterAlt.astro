@@ -1,0 +1,50 @@
+---
+// Second flat-vector character (a woman, tablet in hand), same style
+// and technique as TradeCharacter.astro (flat vector, coral/teal
+// palette, no external asset) but a distinct figure, so the site
+// doesn't paste the identical character at the identical size on every
+// page. Matches Stitch's own pattern of using different illustrated
+// figures per page (e.g. a woman for About-style pages). Generic,
+// non-specific, not modeled on any real person.
+interface Props { class?: string }
+const { class: className } = Astro.props;
+---
+<svg class:list={["trade-character", "trade-character--woman", className]} viewBox="0 0 240 340" role="img" aria-label="Illustration of a business owner holding a tablet">
+  <circle class="tcw-halo" cx="122" cy="112" r="82" />
+  <g>
+    <path class="tcw-body" d="M64 340V226c0-36 25-64 58-64s58 28 58 64v114Z" />
+    <rect class="tcw-neck" x="108" y="148" width="28" height="28" rx="7" />
+    <circle class="tcw-head" cx="122" cy="110" r="44" />
+    <path class="tcw-hair" d="M78 112c0-26 20-46 44-46s44 20 44 46c0 14-3 24-7 34l-4-22-12 10-11-12-12 12-11-10-4 22c-4-10-7-20-7-34Z" />
+    <circle class="tcw-bun" cx="121" cy="61" r="20" />
+    <g class="tcw-glasses"><rect x="88" y="96" width="29" height="21" rx="7"/><rect x="127" y="96" width="29" height="21" rx="7"/><path d="M117 105h10M88 103l-8-4M156 103l8-4"/></g>
+    <g class="tcw-face"><circle cx="104" cy="106" r="2.3"/><circle cx="140" cy="106" r="2.3"/><path d="M112 124c7 6 14 6 21 0"/></g>
+    <path class="tcw-jacket" d="M78 252V230c0-29 17-52 43-61l12 23 13-23c25 10 39 33 39 61v22Z" />
+    <path class="tcw-collar" d="M100 172h44l-9 20h-26Z" />
+    <rect class="tcw-belt" x="91" y="239" width="70" height="12" rx="4" />
+    <g class="tcw-arm">
+      <path d="M170 236c20 6 33 20 39 42l6 24" />
+      <rect class="tcw-tablet" x="196" y="292" width="40" height="52" rx="6" />
+      <rect class="tcw-tablet-screen" x="201" y="297" width="30" height="34" rx="2" />
+    </g>
+  </g>
+</svg>
+<style>
+.trade-character--woman{width:100%;height:auto;overflow:visible;display:block}
+.tcw-halo{fill:var(--primary);opacity:.1}
+.tcw-body{fill:var(--heading)}
+.tcw-neck,.tcw-head{fill:#e8a878}
+.tcw-hair{fill:#2c2018}
+.tcw-bun{fill:#131b2e}
+.tcw-glasses rect,.tcw-glasses path{fill:none;stroke:#131b2e;stroke-width:4;stroke-linecap:round}
+.tcw-face circle{fill:#131b2e;transform-box:fill-box;transform-origin:center;animation:tcw-blink 4.6s infinite}
+.tcw-face path{fill:none;stroke:#131b2e;stroke-width:3;stroke-linecap:round}
+.tcw-jacket{fill:#008f82}
+.tcw-collar{fill:var(--secondary)}
+.tcw-belt{fill:#ee5d43}
+.tcw-arm path{fill:none;stroke:var(--heading);stroke-width:17;stroke-linecap:round}
+.tcw-tablet{fill:var(--primary)}
+.tcw-tablet-screen{fill:#fff}
+@keyframes tcw-blink{0%,45%,49%,100%{transform:scaleY(1)}47%{transform:scaleY(.08)}}
+@media(prefers-reduced-motion:reduce){.tcw-face circle{animation:none}}
+</style>

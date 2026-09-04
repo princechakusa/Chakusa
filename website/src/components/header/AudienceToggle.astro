@@ -6,8 +6,16 @@
 // marketplace lives in the mobile app), so "For clients" points at the
 // closest real customer-facing destination, browsing businesses by
 // industry, rather than a fabricated page.
+//
+// Stitch renders this as a segmented pill with one side visibly
+// active (white, elevated), not two plain equal-weight links. We
+// approximate "active" from the current path: pages under /industries
+// are the client-facing side, everything else defaults to the
+// business side (matching Stitch's own default state).
+const path = Astro.url.pathname;
+const isClientSide = path.startsWith("/industries");
 ---
 <div class="audience-toggle" role="group" aria-label="Choose your experience">
-  <a href="/industries">For clients</a>
-  <a href="/product">For businesses</a>
+  <a href="/industries" aria-current={isClientSide ? "page" : undefined}>For clients</a>
+  <a href="/product" aria-current={isClientSide ? undefined : "page"}>For businesses</a>
 </div>

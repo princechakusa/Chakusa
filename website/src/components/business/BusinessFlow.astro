@@ -1,0 +1,20 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { businessFlow } from "../../data/business";
+---
+<section class="business-flow" aria-labelledby="flow-title">
+  <div class="business-shell">
+    <header class="business-heading business-heading--center">
+      <p>Connected by design</p>
+      <h2 id="flow-title">From the first enquiry to the next booking.</h2>
+      <div>Each step updates the same customer relationship. Nothing has to be rebuilt in another tool.</div>
+    </header>
+    <ol class="business-flow__list">
+      {businessFlow.map((item) => <li>
+        <div class="business-flow__top"><span>{item.number}</span><i><StoryIcon name={item.icon} /></i></div>
+        <h3>{item.title}</h3>
+        <p>{item.body}</p>
+      </li>)}
+    </ol>
+  </div>
+</section>

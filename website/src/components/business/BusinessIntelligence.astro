@@ -1,0 +1,26 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { retentionItems, assistantControls } from "../../data/business";
+---
+<section class="business-intelligence business-shell" aria-labelledby="intelligence-title">
+  <header class="business-heading business-heading--split">
+    <div><p>Follow-up with control</p><h2 id="intelligence-title">Useful automation. Clear human decisions.</h2></div>
+    <div>Chakusa helps the team notice and prepare the next step. The business stays responsible for what is sent.</div>
+  </header>
+  <div class="business-intelligence__grid">
+    <article class="business-panel">
+      <div class="business-panel__title"><span class="business-icon"><StoryIcon name="repeat" /></span><div><p>Customer retention</p><h3>Know who is due back.</h3></div></div>
+      <div class="business-control-list">
+        {retentionItems.map((item) => <div><span><strong>{item.title}</strong><small>{item.detail}</small></span><b>{item.state}</b></div>)}
+      </div>
+      <a href="/features/customer-retention">Explore customer retention <StoryIcon name="arrow_forward" /></a>
+    </article>
+    <article class="business-panel business-panel--dark">
+      <div class="business-panel__title"><span class="business-icon"><StoryIcon name="forum" /></span><div><p>AI assistant</p><h3>Support the team without hiding the controls.</h3></div></div>
+      <div class="business-control-list">
+        {assistantControls.map((item) => <div><span><strong>{item.title}</strong><small>{item.body}</small></span><b>Configured</b></div>)}
+      </div>
+      <a href="/features/ai-assistant">Understand the AI assistant <StoryIcon name="arrow_forward" /></a>
+    </article>
+  </div>
+</section>

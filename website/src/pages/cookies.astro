@@ -1,8 +1,8 @@
 ---
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import SkipLink from "../components/foundation/SkipLink.astro";
-import Header from "../components/header/Header.astro";
-import Footer from "../components/footer/Footer.astro";
+import LegalLayout from "../components/legal/LegalLayout.astro";
+import LegalToc from "../components/legal/LegalToc.astro";
+import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
+import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "Cookie Policy | Chakusa";
 const description = "What this website does and does not store in your browser — and why the honest answer is 'nothing.'";
@@ -19,17 +19,23 @@ const description = "What this website does and does not store in your browser �
 // localStorage, or sessionStorage. The real, and much simpler, answer
 // is that this static marketing site sets nothing at all - that's the
 // headline, not a category table dressed up to look substantial.
+//
+// The old hand-rolled "Related legal documents" section was removed
+// when this page migrated onto LegalLayout, which now auto-appends a
+// RelatedLegalDocuments component covering all other legal/trust docs
+// (not just the 3 this page used to link) - see that component instead
+// of duplicating it here. Remaining TOC entries were renumbered
+// accordingly.
 const lastUpdated = "Draft dated 2026-09-01";
 
-const toc = [
+const toc: Array<[string, string]> = [
   ["short", "1. The short version"],
   ["categories", "2. Cookie categories on this site"],
   ["storage", "3. Local storage & similar technology"],
   ["app", "4. The mobile app is different"],
   ["controls", "5. Your browser's own controls"],
   ["changes", "6. If that changes"],
-  ["related", "7. Related legal documents"],
-  ["contact", "8. Questions"],
+  ["contact", "7. Questions"],
 ];
 
 const categories = [
@@ -39,145 +45,90 @@ const categories = [
   ["Marketing / advertising", "Not used", "No ad network, no referral-attribution cookie, no cross-site tracking pixel."],
 ];
 ---
-<MarketingLayout {title} {description}>
-  <SkipLink />
-  <Header />
-  <main id="main-content" class="ck">
-    <section class="ck__hero"><div class="ck__shell">
-      <div class="ck__badges">
-        <span class="ck__badge ck__badge--draft">Engineering draft — not attorney-reviewed</span>
-        <span class="ck__badge">Last updated: {lastUpdated}</span>
-      </div>
-      <h1>Cookie Policy</h1>
-      <p class="ck__lede">What this website stores in your browser. The honest, verified answer is: nothing beyond what your browser needs to render the page.</p>
-      <p class="ck__disclaimer">Verified directly against this site's source code as of 2026-09-01 — there is no <code>document.cookie</code>, <code>localStorage</code>, or <code>sessionStorage</code> call anywhere in it. This is a factual statement about the current build, not a legal document, and hasn't been reviewed by a licensed attorney.</p>
-    </div></section>
+<LegalLayout
+  title={title}
+  description={description}
+  current="cookies"
+  hero={{
+    title: "Cookie Policy",
+    lede: "What this website stores in your browser. The honest, verified answer is: nothing beyond what your browser needs to render the page.",
+    status: "Engineering draft — not attorney-reviewed",
+    lastUpdated: lastUpdated,
+  }}
+>
+  <Fragment slot="hero-disclaimer">
+    <LegalDisclaimer>Verified directly against this site's source code as of 2026-09-01 — there is no <code>document.cookie</code>, <code>localStorage</code>, or <code>sessionStorage</code> call anywhere in it. This is a factual statement about the current build, not a legal document, and hasn't been reviewed by a licensed attorney.</LegalDisclaimer>
+  </Fragment>
 
-    <div class="ck__body"><div class="ck__shell ck__grid">
-      <aside class="ck__toc">
-        <div class="ck__toc-card">
-          <p class="ck__toc-label">On this page</p>
-          <nav aria-label="Cookie Policy sections">
-            {toc.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
-          </nav>
-          <a class="ck__toc-cta" href="mailto:privacy@chakusarecovery.com">Ask a question</a>
-        </div>
-      </aside>
+  <div class="ck-grid">
+    <LegalToc items={toc} ctaHref="mailto:privacy@chakusarecovery.com" ctaLabel="Ask a question" />
 
-      <div class="ck__content">
-        <article class="ck__quote">
-          <p>“This website does not use tracking cookies, advertising cookies, or analytics cookies. There's no third-party tracking script on this site at all, so there's nothing to opt out of.”</p>
-        </article>
+    <div class="ck-content">
+      <article class="ck-quote">
+        <p>“This website does not use tracking cookies, advertising cookies, or analytics cookies. There's no third-party tracking script on this site at all, so there's nothing to opt out of.”</p>
+      </article>
 
-        <section id="short">
-          <h2>1. The short version</h2>
-          <p>chakusarecovery.com sets no cookies and uses no browser storage to track, identify, or remember you across visits. There's no cookie banner on this site because there's nothing for it to ask permission for.</p>
-        </section>
+      <section id="short">
+        <h2>1. The short version</h2>
+        <p>chakusarecovery.com sets no cookies and uses no browser storage to track, identify, or remember you across visits. There's no cookie banner on this site because there's nothing for it to ask permission for.</p>
+      </section>
 
-        <section id="categories">
-          <h2>2. Cookie categories on this site</h2>
-          <p>Most cookie policies list what each category does. Ours can say plainly that every category is unused:</p>
-          <div class="ck__table-wrap"><table class="ck__table">
-            <thead><tr><th>Category</th><th>Status</th><th>Why</th></tr></thead>
-            <tbody>{categories.map(([cat, status, why]) => <tr><td>{cat}</td><td><span class="ck__status">{status}</span></td><td>{why}</td></tr>)}</tbody>
-          </table></div>
-        </section>
+      <section id="categories">
+        <h2>2. Cookie categories on this site</h2>
+        <p>Most cookie policies list what each category does. Ours can say plainly that every category is unused:</p>
+        <div class="ck-table-wrap"><table class="ck-table">
+          <thead><tr><th>Category</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>{categories.map(([cat, status, why]) => <tr><td>{cat}</td><td><span class="ck-status">{status}</span></td><td>{why}</td></tr>)}</tbody>
+        </table></div>
+      </section>
 
-        <section id="storage">
-          <h2>3. Local storage &amp; similar technology</h2>
-          <p>Beyond cookies, some sites use <code>localStorage</code>, <code>sessionStorage</code>, or IndexedDB to remember things client-side. This site's code doesn't call any of those either — every page is static HTML with no client-side state to persist.</p>
-        </section>
+      <section id="storage">
+        <h2>3. Local storage &amp; similar technology</h2>
+        <p>Beyond cookies, some sites use <code>localStorage</code>, <code>sessionStorage</code>, or IndexedDB to remember things client-side. This site's code doesn't call any of those either — every page is static HTML with no client-side state to persist.</p>
+      </section>
 
-        <section id="app">
-          <h2>4. The mobile app is different</h2>
-          <p>The Chakusa mobile app doesn't use browser cookies at all — apps don't work that way — but it does store some information securely on your device (like your login session) to keep you signed in. That's covered in the <a href="/privacy">Privacy Policy</a>, not here.</p>
-        </section>
+      <section id="app">
+        <h2>4. The mobile app is different</h2>
+        <p>The Chakusa mobile app doesn't use browser cookies at all — apps don't work that way — but it does store some information securely on your device (like your login session) to keep you signed in. That's covered in the <a href="/privacy">Privacy Policy</a>, not here.</p>
+      </section>
 
-        <section id="controls">
-          <h2>5. Your browser's own controls</h2>
-          <p>Because this site sets nothing, there's nothing here to clear. If you'd like to check for yourself, every modern browser has a way to inspect and clear site data (Chrome, Safari, Firefox, and Edge all expose this under their privacy or site-settings menus) — you'll find chakusarecovery.com has none stored.</p>
-        </section>
+      <section id="controls">
+        <h2>5. Your browser's own controls</h2>
+        <p>Because this site sets nothing, there's nothing here to clear. If you'd like to check for yourself, every modern browser has a way to inspect and clear site data (Chrome, Safari, Firefox, and Edge all expose this under their privacy or site-settings menus) — you'll find chakusarecovery.com has none stored.</p>
+      </section>
 
-        <section id="changes">
-          <h2>6. If that changes</h2>
-          <p>If we ever add analytics or a similar tool to this website, we'll update this page to say exactly what it does — the categories, the names, the retention — before it goes live, not after.</p>
-        </section>
+      <section id="changes">
+        <h2>6. If that changes</h2>
+        <p>If we ever add analytics or a similar tool to this website, we'll update this page to say exactly what it does — the categories, the names, the retention — before it goes live, not after.</p>
+      </section>
 
-        <section id="related">
-          <h2>7. Related legal documents</h2>
-          <div class="ck__related">
-            <a href="/privacy"><strong>Privacy Policy</strong><span>How Chakusa collects and protects data across the product</span></a>
-            <a href="/terms"><strong>Terms of Service</strong><span>The terms for using Chakusa as a business or a customer</span></a>
-            <a href="/ai-disclosure"><strong>AI Disclosure</strong><span>How Chakusa's AI features actually work</span></a>
-          </div>
-        </section>
-
-        <section id="contact" class="ck__contact">
-          <h2>8. Questions</h2>
-          <div class="ck__contact-box">
-            <div><span>Questions about this policy</span><strong>privacy@chakusarecovery.com</strong></div>
-            <a href="mailto:privacy@chakusarecovery.com">Email us</a>
-          </div>
-        </section>
-      </div>
-    </div></div>
-  </main>
-  <Footer />
-</MarketingLayout>
+      <section id="contact" class="ck-contact">
+        <h2>7. Questions</h2>
+        <LegalContactPanel label="Questions about this policy" />
+      </section>
+    </div>
+  </div>
+</LegalLayout>
 
 <style>
-.ck{background:var(--page-surface);color:var(--heading)}
-.ck__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
-.ck__hero{padding:3.5rem 0 2.5rem;background:#f2f3ff;border-bottom:1px solid var(--hairline)}
-.ck__badges{display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:1.1rem}
-.ck__badge{color:var(--muted-text,#687184);font:700 .72rem/1.2 var(--font);letter-spacing:.03em;text-transform:uppercase}
-.ck__badge--draft{color:#93000a}
-.ck h1{margin:0 0 .6rem;font:700 clamp(2.1rem,4.2vw,3rem)/1.12 var(--font-heading);letter-spacing:-.03em}
-.ck__lede{max-width:44rem;margin:0 0 1.1rem;color:var(--body-text);font-size:1.05rem;line-height:1.65}
-.ck__disclaimer{max-width:52rem;margin:0;padding:.9rem 1.1rem;border-radius:.75rem;background:#fff;color:var(--body-text);font-size:.82rem;line-height:1.6}
-.ck__disclaimer code{padding:.1rem .3rem;border-radius:.3rem;background:var(--page-surface);font-size:.78rem}
-.ck__body{padding:3rem 0 5rem}
-.ck__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
-.ck__toc{position:sticky;top:6rem}
-.ck__toc-card{padding:1.25rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
-.ck__toc-label{margin:0 0 .75rem;color:var(--muted-text,#687184);font:800 .68rem/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase}
-.ck__toc-card nav{display:grid;gap:.15rem}
-.ck__toc-card nav a{padding:.5rem .6rem;border-radius:.5rem;color:var(--body-text);font-size:.82rem;text-decoration:none}
-.ck__toc-card nav a:hover{background:var(--page-surface);color:var(--heading)}
-.ck__toc-cta{display:block;margin-top:1rem;padding:.65rem;border-radius:.6rem;background:var(--primary);color:#fff;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none}
-.ck__content{min-width:0;display:grid;gap:2.5rem}
-.ck__content>*{min-width:0}
-.ck__table-wrap{min-width:0}
-.ck__quote{margin:0;padding:1.5rem 1.75rem;border-left:4px solid var(--secondary);border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff}
-.ck__quote p{margin:0;color:var(--heading);font:600 1.1rem/1.55 var(--font-heading)}
-.ck__content section{scroll-margin-top:6rem}
-.ck__content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
-.ck__content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
-.ck__content p:last-child{margin-bottom:0}
-.ck__content a{color:var(--secondary);font-weight:700}
-.ck__content code{padding:.1rem .3rem;border-radius:.3rem;background:#fff;border:1px solid var(--hairline);font-size:.85em}
-.ck__table-wrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg)}
-.ck__table{width:100%;border-collapse:collapse;font-size:.86rem}
-.ck__table th{padding:.75rem 1rem;background:var(--page-surface);text-align:left;font:700 .72rem/1.2 var(--font);text-transform:uppercase;letter-spacing:.04em;color:var(--muted-text,#687184)}
-.ck__table td{padding:.85rem 1rem;border-top:1px solid var(--hairline);vertical-align:top;color:var(--body-text)}
-.ck__table td:first-child{white-space:nowrap;font-weight:700;color:var(--heading)}
-.ck__status{display:inline-flex;padding:.2rem .55rem;border-radius:.4rem;background:#d7f6ee;color:var(--secondary);font-size:.78rem;font-weight:700}
-.ck__related{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
-.ck__related a{display:block;padding:1.1rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff;text-decoration:none}
-.ck__related a:hover{border-color:var(--secondary)}
-.ck__related strong{display:block;color:var(--heading);font-size:.92rem}
-.ck__related span{display:block;margin-top:.35rem;color:var(--muted-text,#687184);font-size:.78rem;line-height:1.5}
-.ck__contact-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin-top:.5rem;padding:1.25rem 1.5rem;border-radius:var(--r-lg);background:var(--heading);color:#fff}
-.ck__contact-box span{display:block;color:#c9ccd3;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-.ck__contact-box strong{display:block;margin-top:.3rem;font-size:1.05rem}
-.ck__contact-box a{padding:.65rem 1.1rem;border-radius:.6rem;background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}
+.ck-grid{width:min(100% - 2rem,72rem);margin-inline:auto;padding:3rem 0 5rem;display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
+.ck-content{min-width:0;display:grid;gap:2.5rem}
+.ck-content>*{min-width:0}
+.ck-quote{margin:0;padding:1.5rem 1.75rem;border-left:4px solid var(--secondary);border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff}
+.ck-quote p{margin:0;color:var(--heading);font:600 1.1rem/1.55 var(--font-heading)}
+.ck-content section{scroll-margin-top:6rem}
+.ck-content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
+.ck-content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
+.ck-content p:last-child{margin-bottom:0}
+.ck-content a{color:var(--secondary);font-weight:700}
+.ck-content code{padding:.1rem .3rem;border-radius:.3rem;background:#fff;border:1px solid var(--hairline);font-size:.85em}
+.ck-table-wrap{min-width:0;overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg)}
+.ck-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.ck-table th{padding:.75rem 1rem;background:var(--page-surface);text-align:left;font:700 .72rem/1.2 var(--font);text-transform:uppercase;letter-spacing:.04em;color:var(--muted-text,#687184)}
+.ck-table td{padding:.85rem 1rem;border-top:1px solid var(--hairline);vertical-align:top;color:var(--body-text)}
+.ck-table td:first-child{white-space:nowrap;font-weight:700;color:var(--heading)}
+.ck-status{display:inline-flex;padding:.2rem .55rem;border-radius:.4rem;background:#d7f6ee;color:var(--secondary);font-size:.78rem;font-weight:700}
 @media(max-width:64rem){
-  .ck__grid{grid-template-columns:1fr}
-  .ck__toc{position:static}
-  .ck__related{grid-template-columns:1fr}
-}
-@media(max-width:40rem){
-  .ck__hero{padding:2.5rem 0 2rem}
-  .ck__contact-box{flex-direction:column;align-items:flex-start}
+  .ck-grid{grid-template-columns:1fr}
 }
 </style>

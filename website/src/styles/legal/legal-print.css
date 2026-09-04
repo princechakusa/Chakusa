@@ -1,0 +1,37 @@
+/* Print styles shared by every legal/trust page. Hides interactive
+   navigation chrome (site header/footer, LegalNav, LegalToc) and keeps
+   the document content itself legible on paper. */
+@media print {
+  .legal-print-hide,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  main {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+  }
+}

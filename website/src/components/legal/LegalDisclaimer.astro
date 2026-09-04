@@ -1,0 +1,32 @@
+---
+// A simple white rounded box for a disclaimer paragraph, supplied via the
+// default slot so each page can provide its own exact disclaimer copy.
+---
+<p class="legal-disclaimer"><slot /></p>
+
+<style>
+.legal-disclaimer {
+  max-width: 52rem;
+  margin: 0;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: var(--body-text);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.legal-disclaimer :global(code) {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.3rem;
+  background: var(--page-surface);
+  font-size: 0.78rem;
+}
+.legal-disclaimer :global(a) {
+  color: var(--secondary);
+  font-weight: 700;
+}
+.legal-disclaimer :global(a:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+</style>

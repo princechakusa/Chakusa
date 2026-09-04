@@ -1,0 +1,49 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import LegalHero from "./LegalHero.astro";
+import RelatedLegalDocuments from "./RelatedLegalDocuments.astro";
+import "../../styles/legal/legal-print.css";
+
+export interface Props {
+  title: string;
+  description: string;
+  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies";
+  hero: {
+    eyebrow?: string;
+    title: string;
+    lede: string;
+    status: string;
+    lastUpdated?: string;
+  };
+}
+
+const { title, description, current, hero } = Astro.props;
+---
+<MarketingLayout title={title} description={description}>
+  <SkipLink />
+  <div class="legal-print-hide">
+    <Header />
+  </div>
+  <main id="main-content" class="legal-page">
+    <LegalHero current={current} {...hero}>
+      <slot name="hero-disclaimer" />
+    </LegalHero>
+
+    <slot />
+
+    <RelatedLegalDocuments current={current} />
+  </main>
+  <div class="legal-print-hide">
+    <Footer />
+  </div>
+</MarketingLayout>
+
+<style>
+.legal-page {
+  background: var(--page-surface);
+  color: var(--heading);
+}
+</style>

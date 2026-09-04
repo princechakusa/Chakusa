@@ -1,0 +1,65 @@
+---
+export interface Props {
+  label: string;
+  email?: string;
+}
+
+const { label, email = "privacy@chakusarecovery.com" } = Astro.props;
+---
+<div class="legal-contact-panel">
+  <div>
+    <span>{label}</span>
+    <strong>{email}</strong>
+  </div>
+  <a href={`mailto:${email}`}>Email us</a>
+</div>
+
+<style>
+.legal-contact-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--r-lg);
+  background: var(--heading);
+  color: #fff;
+}
+.legal-contact-panel span {
+  display: block;
+  color: #c9ccd3;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+.legal-contact-panel strong {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 1.05rem;
+  word-break: break-word;
+}
+.legal-contact-panel a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 0.6rem;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.legal-contact-panel a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 40rem) {
+  .legal-contact-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>

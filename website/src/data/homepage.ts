@@ -32,10 +32,10 @@ export const primaryNavigation = [
 ];
 
 // Shared footer for the complete public website. The Trust & Compliance
-// column connects the four approved legal destinations. A standalone hub
-// link will be added once its final Stitch source establishes the route.
+// column connects the four approved legal destinations, and its heading
+// links to the /trust hub page.
 export const footerGroups = [
   { title: "Navigation", links: [{ label: "About Us", href: "/about" }, { label: "Contact Support", href: "/contact" }, { label: "Help Center", href: "/help" }, { label: "How it works", href: "/how-it-works" }, { label: "Pricing", href: "/pricing" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
   { title: "Solutions", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/customer-retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
-  { title: "Trust & Compliance", links: [{ label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "AI Disclosure", href: "/ai-disclosure" }, { label: "Cookie Policy", href: "/cookies" }] },
+  { title: "Trust & Compliance", href: "/trust", links: [{ label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "AI Disclosure", href: "/ai-disclosure" }, { label: "Cookie Policy", href: "/cookies" }] },
 ];

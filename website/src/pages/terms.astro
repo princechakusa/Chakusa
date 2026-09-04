@@ -1,98 +1,121 @@
 ---
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import SkipLink from "../components/foundation/SkipLink.astro";
-import Header from "../components/header/Header.astro";
-import Footer from "../components/footer/Footer.astro";
-import TermsExperience from "../components/legal/TermsExperience.astro";
-import "../styles/legal/terms.css";
+import LegalLayout from "../components/legal/LegalLayout.astro";
+import LegalToc from "../components/legal/LegalToc.astro";
+import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
+import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "Terms of Service | Chakusa";
 const description = "Read the terms governing Chakusa business and customer accounts, marketplace discovery, bookings, messaging, subscriptions, AI assistance, and acceptable use.";
 const lastUpdated = "Effective September 4, 2026";
+
+const hero = {
+  eyebrow: "Platform agreement",
+  title: "Chakusa Terms of Service",
+  lede: "The agreement governing how businesses and customers use Chakusa's marketplace, bookings, messaging, and business tools.",
+  status: "Engineering draft — not attorney-reviewed",
+  lastUpdated,
+};
+
+const pillars: Array<[string, string]> = [
+  ["Direct relationship", "Businesses provide the services customers book. Chakusa supplies the platform that connects them."],
+  ["Clear responsibility", "Businesses control their services and policies. Customers control their account activity and choices."],
+  ["Honest participation", "Listings, bookings, messages, and reviews must reflect genuine activity."],
+];
+
+const clauses: Array<[string, string]> = [
+  ["Agreement and eligibility", "These Terms govern Chakusa's website, marketplace, business tools, customer tools, and related services. By creating an account or using Chakusa, you agree to these Terms and the Privacy Policy. You must be legally able to enter into a contract where you live."],
+  ["Business and customer accounts", "One person may use Chakusa as a business and as a customer. Business accounts manage enquiries, services, bookings, customer records, messages, reviews, reminders, and team access. Customer accounts discover businesses, make enquiries and bookings, exchange messages, and leave honest reviews."],
+  ["Business responsibilities", "Businesses are responsible for accurate listings, services, prices, availability, qualifications, customer communications, and service policies. Businesses must have any consent required before contacting customers and must honor opt-out requests."],
+  ["Customer responsibilities", "Customers must provide accurate information, use bookings responsibly, communicate respectfully, and submit reviews based on genuine interactions. False, misleading, abusive, or manipulated content is prohibited."],
+  ["Marketplace and bookings", "Chakusa connects customers with independent service businesses. Unless expressly stated otherwise, Chakusa is not the provider of a booked service and is not a party to the service agreement between a customer and a business."],
+  ["Payments and subscriptions", "Where supported, payment processing may be provided by Stripe and remains subject to the payment provider's terms. Paid Chakusa plans may be purchased through the Apple App Store or Google Play, whose billing, renewal, cancellation, and refund rules apply."],
+  ["Messaging, automation, and AI", "Chakusa may prepare messages, create workflow tasks, and provide AI-assisted drafts. AI output can be inaccurate. Users must review important information and must not treat AI output as medical, legal, financial, or other professional advice."],
+  ["Content and ownership", "You retain ownership of content and business information you provide. You grant Chakusa the limited rights needed to host, process, display, and transmit that content. Chakusa retains ownership of its software, branding, documentation, and platform materials."],
+  ["Acceptable use", "Do not use Chakusa for unlawful or deceptive messages, false listings or reviews, unauthorized access, malicious code, security bypasses, harassment, fraud, or infringement of another person's rights."],
+  ["Suspension and termination", "You may stop using Chakusa at any time. Chakusa may restrict or terminate access to address fraud, abuse, security risks, legal requirements, non-payment, or material violations of these Terms."],
+  ["Availability and liability", "Chakusa is provided on an as-is and as-available basis to the extent permitted by law. Chakusa does not guarantee uninterrupted operation, business results, customer conversion, review ratings, or revenue outcomes."],
+  ["Changes, disputes, and contact", "Material updates will appear on this page with a revised effective date. If a dispute arises, contact Chakusa first. Applicable law, mandatory consumer protections, and jurisdiction rules remain in effect and are not waived by these Terms."],
+];
+
+const toc: Array<[string, string]> = clauses.map(([clauseTitle], index) => [`term-${index + 1}`, `${index + 1}. ${clauseTitle}`]);
 ---
-<MarketingLayout {title} {description}>
-  <SkipLink />
-  <Header />
-  <main id="main-content">
-    <TermsExperience />
-    {false && <section class="legal-section content-shell" aria-labelledby="terms-title" data-reveal>
-      {/* TODO(launch-blocker): engineering draft, not a legal document.
-          Before this goes live: (1) attorney review, (2) fill in the
-          governing-law jurisdiction below with wherever Chakusa is
-          actually incorporated, do not guess or invent one. */}
-      <p class="eyebrow">Terms of Service</p>
-      <h1 id="terms-title">Terms of Service</h1>
-      <p class="legal-draft-notice">{lastUpdated}</p>
+<LegalLayout {title} {description} current="terms" {hero}>
+  <LegalDisclaimer slot="hero-disclaimer">
+    This page reflects the product's current terms as implemented. It has not been reviewed by a licensed attorney and shouldn't be relied on to establish legal enforceability.
+  </LegalDisclaimer>
 
-      <h2>Agreement</h2>
-      <p>By creating a Chakusa account, business or customer, you agree to these terms. If you're creating a business account on behalf of a business, you're confirming you have the authority to bind that business to them. You must be of legal age to enter into a contract in your jurisdiction.</p>
+  <div class="terms__body"><div class="terms__shell terms__grid">
+    <aside class="terms__toc-col">
+      <LegalToc items={toc} ctaHref="mailto:support@chakusarecovery.com" ctaLabel="Contact support" />
+      <button type="button" class="terms__print" data-print>Print agreement</button>
+    </aside>
 
-      <h2>Two kinds of accounts</h2>
-      <p>Chakusa serves two roles, which can be held by the same person:</p>
-      <ul>
-        <li>A <b>business account</b> uses the CRM, and optionally lists on the marketplace, takes bookings, and runs a loyalty program.</li>
-        <li>A <b>customer account</b> discovers businesses, books appointments, earns and redeems loyalty rewards, leaves reviews, and messages businesses, including through AI-powered features.</li>
-      </ul>
+    <div class="terms__content">
+      <section class="terms__pillars" aria-labelledby="terms-pillars-heading">
+        <p class="terms__kicker">Agreement essentials</p>
+        <h2 id="terms-pillars-heading">Clear responsibilities on both sides of the platform.</h2>
+        <div class="terms__pillars-grid">
+          {pillars.map(([pillarTitle, pillarBody], index) => (
+            <article class="terms__pillar">
+              <span>0{index + 1}</span>
+              <h3>{pillarTitle}</h3>
+              <p>{pillarBody}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
-      <h2>Business terms</h2>
-      <p>If you use Chakusa to send messages to your own customers, <strong>you are solely responsible for having their consent</strong> to be contacted, under whatever law governs that communication where they live. If you list your business on the marketplace, you're responsible for the accuracy of your listing, pricing, and availability. If you accept bookings, you're responsible for setting and honoring your own cancellation, rescheduling, and no-show policies, Chakusa provides the tool, not the policy. If a customer asks to stop receiving messages, you must honor that; Chakusa's own automation already checks for a STOP reply, see the Privacy Policy.</p>
+      <article class="terms__document">
+        {clauses.map(([clauseTitle, clauseBody], index) => (
+          <section id={`term-${index + 1}`}>
+            <header>
+              <span>Clause {index + 1}.0</span>
+              <h2>{clauseTitle}</h2>
+            </header>
+            <p>{clauseBody}</p>
+            {index === 6 && (
+              <p>See the <a href="/ai-disclosure">AI Disclosure</a> for additional information about AI controls and limitations.</p>
+            )}
+            {index === 11 && (
+              <LegalContactPanel label="Questions about these Terms?" email="support@chakusarecovery.com" />
+            )}
+          </section>
+        ))}
+      </article>
+    </div>
+  </div></div>
+</LegalLayout>
 
-      <h2>Customer terms</h2>
-      <p>You're responsible for the accuracy of the information in your customer profile, for the conduct of your bookings (showing up, cancelling with reasonable notice), and for the content of any review you leave, reviews must be honest and based on a real interaction. You may not use a customer account to harass a business, post fake reviews, or attempt to access another person's account or another business's data.</p>
+<script>
+document.querySelectorAll<HTMLElement>("[data-print]").forEach((button) => button.addEventListener("click", () => window.print()));
+</script>
 
-      <h2>Marketplace</h2>
-      <p>The marketplace helps customers discover businesses; Chakusa is not a party to the service a business actually provides. We don't guarantee the accuracy of a listing, the quality of a business's work, or the outcome of any booking. Businesses and customers can report listings or reviews that violate these terms; we may remove content or suspend an account that does.</p>
-
-      <h2>Bookings and payments</h2>
-      <p>Where a business accepts deposits or payments through Chakusa, those payments are processed by Stripe. Chakusa facilitates the transaction; the business is the one providing the service and is responsible for refunds according to its own stated policy, subject to Stripe's own dispute and chargeback processes. We are not liable for a business's failure to perform a booked service, or for a customer's failure to show up.</p>
-
-      <h2>Messaging and AI features</h2>
-      <p>Some Chakusa features use AI to draft or send responses. AI-generated content can be inaccurate, and you should not rely on it for anything requiring professional, medical, legal, or financial advice. A business can review or take over an AI-drafted message before it sends, depending on configuration; a customer can always ask to speak with a person. Full detail on how this works is in the <a href="/ai-disclosure">AI Disclosure</a>, which is part of these terms by reference.</p>
-
-      <h2>Loyalty, memberships, and rewards</h2>
-      <p>Loyalty points and rewards have no cash value and cannot be exchanged for cash. A business sets and can change its own loyalty program, including point values, reward availability, and expiry, at its discretion, subject to honoring points already earned in good faith. We may suspend a loyalty account showing signs of fraud or abuse (for example, fake referrals).</p>
-
-      <h2>Subscriptions</h2>
-      <p>A business's own Chakusa plan (Free, Pro, or Business) is billed as an auto-renewing subscription through the Apple App Store or Google Play. Pricing, billing, and cancellation are handled by whichever store the business subscribed through. Business-tier pricing is not yet finalized.</p>
-
-      <h2>Acceptable use</h2>
-      <p>Don't use Chakusa to:</p>
-      <ul>
-        <li>send unsolicited, unlawful, or fraudulent messages</li>
-        <li>post fake reviews, fake listings, or otherwise misrepresent a business or service</li>
-        <li>harass, threaten, or spam another user</li>
-        <li>store or message personal data you don't have the right to store or message</li>
-        <li>attempt to access another account, another business's data, or reverse-engineer the service</li>
-        <li>use a loyalty, referral, or booking feature fraudulently</li>
-      </ul>
-      <p>We can suspend or terminate an account that violates this, with or without notice depending on severity, and may permanently ban an account for repeated or severe violations.</p>
-
-      <h2>Ownership</h2>
-      <p>The customer, lead, booking, and message data in your account is yours. Chakusa's software, branding, and the way the product is built are ours. Using Chakusa doesn't give you ownership over the app itself. Reviews and other content you post remain yours, but you grant Chakusa a license to display them as part of the service.</p>
-
-      <h2>No warranty</h2>
-      <p>Chakusa is provided "as is." We work to keep it reliable, but we don't guarantee it will be uninterrupted, error-free, or fit for a particular purpose beyond what's described on this site.</p>
-
-      <h2>Limitation of liability</h2>
-      <p>To the extent allowed by law, Chakusa isn't liable for indirect, incidental, or consequential damages arising from your use of the app, including messages sent, AI-generated content, bookings made or missed, or decisions made based on data in the app. This doesn't limit liability where the law doesn't allow it to be limited.</p>
-
-      <h2>Indemnification</h2>
-      <p>You agree to cover any claim, cost, or damage arising from your misuse of Chakusa, including messaging someone without proper consent, storing data you didn't have the right to store, or misrepresenting a business or booking.</p>
-
-      <h2>Termination</h2>
-      <p>You can stop using Chakusa and delete your account at any time. We can suspend or terminate access for violating these terms.</p>
-
-      <h2>Governing law</h2>
-      {/* TODO(launch-blocker): placeholder, not invented, fill in with
-          Chakusa's actual jurisdiction of incorporation once known. */}
-      <p class="legal-draft-notice">Placeholder: the governing law and jurisdiction for disputes has not been set yet, pending confirmation of where Chakusa is legally incorporated. This must be filled in correctly, not guessed, before this page is final.</p>
-
-      <h2>Changes</h2>
-      <p>We'll update these terms as the product changes. Material changes will be reflected on this page and the date at the top.</p>
-
-      <h2>Questions</h2>
-      <p>Reach out. See the <a href="/about#contact">About page</a>.</p>
-    </section>}
-  </main>
-  <Footer />
-</MarketingLayout>
+<style>
+.terms__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
+.terms__body{padding:3rem 0 5rem}
+.terms__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
+.terms__toc-col{display:grid;gap:0.75rem}
+.terms__print{display:block;width:100%;padding:0.75rem;border:1px solid var(--hairline);border-radius:0.6rem;background:#fff;color:var(--heading);font-size:0.8rem;font-weight:700;cursor:pointer;min-height:2.75rem}
+.terms__print:hover{border-color:var(--secondary)}
+.terms__print:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.terms__content{min-width:0;display:grid;gap:2.5rem}
+.terms__content>*{min-width:0}
+.terms__kicker{margin:0 0 0.5rem;color:var(--muted-text,#687184);font:800 0.72rem/1.2 var(--font);letter-spacing:0.08em;text-transform:uppercase}
+.terms__pillars h2{margin:0 0 1.25rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-0.02em;color:var(--heading)}
+.terms__pillars-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.terms__pillar{padding:1.1rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
+.terms__pillar span{display:block;color:var(--secondary);font:800 0.78rem/1.2 var(--font)}
+.terms__pillar h3{margin:0.5rem 0 0.4rem;font:700 1rem/1.3 var(--font-heading);color:var(--heading)}
+.terms__pillar p{margin:0;color:var(--body-text);font-size:0.85rem;line-height:1.55}
+.terms__document{display:grid;gap:2.5rem}
+.terms__document section{scroll-margin-top:6rem}
+.terms__document header{margin-bottom:0.6rem}
+.terms__document header span{display:block;color:var(--muted-text,#687184);font:700 0.72rem/1.2 var(--font);letter-spacing:0.04em;text-transform:uppercase}
+.terms__document h2{margin:0.25rem 0 0;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-0.02em;color:var(--heading)}
+.terms__document p{margin:0.85rem 0 0;color:var(--body-text);font-size:0.95rem;line-height:1.7}
+.terms__document a{color:var(--secondary);font-weight:700}
+@media (max-width: 64rem) {
+  .terms__grid{grid-template-columns:1fr}
+  .terms__pillars-grid{grid-template-columns:1fr}
+}
+</style>

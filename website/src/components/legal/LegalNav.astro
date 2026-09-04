@@ -1,0 +1,88 @@
+---
+export interface Props {
+  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies";
+}
+
+const { current } = Astro.props;
+
+const routes: Array<{ id: Props["current"]; href: string; label: string }> = [
+  { id: "trust", href: "/trust", label: "Trust & Compliance" },
+  { id: "privacy", href: "/privacy", label: "Privacy Policy" },
+  { id: "terms", href: "/terms", label: "Terms of Service" },
+  { id: "ai-disclosure", href: "/ai-disclosure", label: "AI Disclosure" },
+  { id: "cookies", href: "/cookies", label: "Cookie Policy" },
+];
+---
+<nav class="legal-nav" aria-label="Legal and trust documents">
+  <ul class="legal-nav__list">
+    {routes.map((route) => (
+      <li>
+        <a
+          class="legal-nav__pill"
+          href={route.href}
+          aria-current={route.id === current ? "page" : undefined}
+          data-active={route.id === current ? "true" : undefined}
+        >
+          {route.label}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+.legal-nav {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.legal-nav__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legal-nav__pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-full, 9999px);
+  background: #fff;
+  color: var(--body-text);
+  font: 700 0.8rem/1.2 var(--font);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.legal-nav__pill:hover {
+  border-color: var(--secondary);
+  color: var(--heading);
+}
+.legal-nav__pill[aria-current="page"] {
+  border-color: var(--heading);
+  background: var(--heading);
+  color: #fff;
+}
+.legal-nav__pill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legal-nav__pill {
+    transition: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .legal-nav__list {
+    flex-wrap: nowrap;
+  }
+}
+</style>

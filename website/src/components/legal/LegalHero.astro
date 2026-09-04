@@ -1,0 +1,93 @@
+---
+import LegalNav from "./LegalNav.astro";
+
+export interface Props {
+  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies";
+  eyebrow?: string;
+  title: string;
+  lede: string;
+  status: string;
+  lastUpdated?: string;
+}
+
+const { current, eyebrow, title, lede, status, lastUpdated } = Astro.props;
+---
+<section class="legal-hero">
+  <div class="legal-hero__shell">
+    <div class="legal-print-hide">
+      <LegalNav current={current} />
+    </div>
+
+    {eyebrow && <p class="legal-hero__eyebrow">{eyebrow}</p>}
+    <h1 class="legal-hero__title">{title}</h1>
+    <p class="legal-hero__lede">{lede}</p>
+
+    <div class="legal-hero__badges">
+      <span class="legal-hero__badge legal-hero__badge--status">{status}</span>
+      {lastUpdated && <span class="legal-hero__badge">Last updated: {lastUpdated}</span>}
+    </div>
+
+    <div class="legal-hero__slot">
+      <slot />
+    </div>
+  </div>
+</section>
+
+<style>
+.legal-hero {
+  padding: 3.5rem 0 2.5rem;
+  background: #f2f3ff;
+  border-bottom: 1px solid var(--hairline);
+}
+.legal-hero__shell {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  display: grid;
+  gap: 1.1rem;
+}
+.legal-hero__shell > * {
+  min-width: 0;
+}
+.legal-hero__eyebrow {
+  margin: 0.5rem 0 0;
+  color: var(--muted-text, #687184);
+  font: 800 0.72rem/1.2 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.legal-hero__title {
+  margin: 0;
+  color: var(--heading);
+  font: 700 clamp(2.1rem, 4.2vw, 3rem) / 1.12 var(--font-heading);
+  letter-spacing: -0.03em;
+}
+.legal-hero__lede {
+  max-width: 44rem;
+  margin: 0;
+  color: var(--body-text);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.legal-hero__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+.legal-hero__badge {
+  color: var(--muted-text, #687184);
+  font: 700 0.72rem/1.2 var(--font);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.legal-hero__badge--status {
+  color: #93000a;
+}
+.legal-hero__slot:empty {
+  display: none;
+}
+@media (max-width: 40rem) {
+  .legal-hero {
+    padding: 2.5rem 0 2rem;
+  }
+}
+</style>

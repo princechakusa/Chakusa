@@ -1,0 +1,105 @@
+---
+import LegalLayout from "../components/legal/LegalLayout.astro";
+import LegalToc from "../components/legal/LegalToc.astro";
+import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
+
+const title = "Trust & Compliance | Chakusa";
+const description = "Where to find Chakusa's privacy, terms, AI disclosure, and cookie information.";
+
+const hero = {
+  eyebrow: "Trust & Compliance",
+  title: "Trust & Compliance",
+  lede: "A guide to where Chakusa's privacy, legal, AI, and cookie information lives — this page is a directory, not a policy in itself.",
+  status: "Reference hub — not a legal document",
+};
+
+const toc: Array<[string, string]> = [
+  ["overview", "Overview"],
+  ["documents", "Legal documents"],
+  ["privacy-controls", "Privacy & data controls"],
+  ["ai-transparency", "AI transparency"],
+  ["security", "Security & responsible practices"],
+  ["business", "Business responsibilities"],
+  ["contact", "Contact"],
+];
+
+const documents = [
+  { href: "/privacy", title: "Privacy Policy", description: "How Chakusa explains personal information and privacy requests." },
+  { href: "/terms", title: "Terms of Service", description: "The rules that govern use of Chakusa." },
+  { href: "/ai-disclosure", title: "AI Disclosure", description: "Information about AI-assisted features and human oversight." },
+  { href: "/cookies", title: "Cookie Policy", description: "Information about website technologies and available controls." },
+];
+---
+<LegalLayout {title} {description} current="trust" {hero}>
+  <div class="tr__body"><div class="tr__shell tr__grid">
+    <LegalToc items={toc} />
+
+    <div class="tr__content">
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>This page is a directory, not a policy — it exists to point you to the right document rather than to state any rule on its own. Some of the pages it links to are engineering drafts, written directly from the product's code rather than reviewed by a licensed attorney. Nothing on this page, or on the pages it links to, is legal advice.</p>
+      </section>
+
+      <section id="documents">
+        <h2>Legal documents</h2>
+        <p>Chakusa's legal and trust information is split across four documents, each covering a specific topic:</p>
+        <div class="tr__docs">
+          {documents.map((doc) => (
+            <a class="tr__doc" href={doc.href}>
+              <strong>{doc.title}</strong>
+              <span>{doc.description}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section id="privacy-controls">
+        <h2>Privacy & data controls</h2>
+        <p>For how Chakusa handles personal data, including data rights requests and retention, see the <a href="/privacy">Privacy Policy</a>.</p>
+      </section>
+
+      <section id="ai-transparency">
+        <h2>AI transparency</h2>
+        <p>For how Chakusa's AI features work, the human oversight involved, and current limitations, see the <a href="/ai-disclosure">AI Disclosure</a>.</p>
+      </section>
+
+      <section id="security">
+        <h2>Security & responsible practices</h2>
+        <p>Chakusa applies reasonable technical and organizational safeguards described in the Privacy Policy's <a href="/privacy#security">security section</a> (password hashing, session scoping, access logging). These are engineering practices, not third-party certifications, and this page does not claim any compliance certification.</p>
+      </section>
+
+      <section id="business">
+        <h2>Business responsibilities</h2>
+        <p>Businesses using Chakusa are responsible for their own listings, for having customer consent to send messages, and for their own service policies. See the <a href="/terms">Terms of Service</a> for specifics.</p>
+      </section>
+
+      <section id="contact" class="tr__contact">
+        <h2>Contact</h2>
+        <LegalContactPanel label="Trust and privacy questions" />
+      </section>
+    </div>
+  </div></div>
+</LegalLayout>
+
+<style>
+.tr__body { padding: 3rem 0 5rem; background: var(--page-surface); }
+.tr__shell { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.tr__grid { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 3rem; align-items: start; }
+.tr__content { min-width: 0; display: grid; gap: 2.5rem; }
+.tr__content > * { min-width: 0; }
+.tr__content section { scroll-margin-top: 6rem; }
+.tr__content h2 { margin: 0 0 0.85rem; font: 700 1.35rem/1.3 var(--font-heading); letter-spacing: -0.02em; color: var(--heading); }
+.tr__content p { margin: 0 0 0.85rem; color: var(--body-text); font-size: 0.95rem; line-height: 1.7; }
+.tr__content p:last-child { margin-bottom: 0; }
+.tr__content a { color: var(--secondary); font-weight: 700; }
+.tr__docs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.tr__doc { display: block; min-width: 0; padding: 1.1rem; border: 1px solid var(--hairline); border-radius: var(--r-lg); background: #fff; text-decoration: none; min-height: 44px; }
+.tr__doc:hover { border-color: var(--secondary); }
+.tr__doc:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.tr__doc strong { display: block; color: var(--heading); font-size: 0.92rem; }
+.tr__doc span { display: block; margin-top: 0.35rem; color: var(--muted-text, #687184); font-size: 0.78rem; line-height: 1.5; }
+@media (max-width: 64rem) {
+  .tr__grid { grid-template-columns: 1fr; }
+  .tr__docs { grid-template-columns: 1fr; }
+}
+</style>

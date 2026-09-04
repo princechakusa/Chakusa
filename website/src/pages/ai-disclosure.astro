@@ -1,8 +1,8 @@
 ---
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import SkipLink from "../components/foundation/SkipLink.astro";
-import Header from "../components/header/Header.astro";
-import Footer from "../components/footer/Footer.astro";
+import LegalLayout from "../components/legal/LegalLayout.astro";
+import LegalToc from "../components/legal/LegalToc.astro";
+import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
+import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "AI Disclosure | Chakusa";
 const description = "How Chakusa's AI features actually work, what they can and cannot do, which providers process your data, and who inside Chakusa can see an AI conversation.";
@@ -18,7 +18,14 @@ const description = "How Chakusa's AI features actually work, what they can and 
 // read raw, unredacted AI transcripts (docs/PRIVACY_ENGINEERING_FOLLOWUPS.md).
 const lastUpdated = "Draft dated 2026-09-01";
 
-const toc = [
+const hero = {
+  title: "How Chakusa uses AI",
+  lede: "Where AI shows up, exactly which actions it can take, what it cannot do, and an honest account of what's still a gap — not a disclosure written to sound resolved.",
+  status: "Engineering draft — not attorney-reviewed",
+  lastUpdated,
+};
+
+const toc: Array<[string, string]> = [
   ["where", "1. Where AI shows up"],
   ["how", "2. How it works"],
   ["actions", "3. What the AI can actually do"],
@@ -52,140 +59,102 @@ const cannotDo = [
   "Act without limits — every response is checked against automated rules before it's sent",
 ];
 ---
-<MarketingLayout {title} {description}>
-  <SkipLink />
-  <Header />
-  <main id="main-content" class="aid">
-    <section class="aid__hero"><div class="aid__shell">
-      <div class="aid__badges">
-        <span class="aid__badge aid__badge--draft">Engineering draft — not attorney-reviewed</span>
-        <span class="aid__badge">Last updated: {lastUpdated}</span>
-      </div>
-      <h1>How Chakusa uses AI</h1>
-      <p class="aid__lede">Where AI shows up, exactly which actions it can take, what it cannot do, and an honest account of what's still a gap — not a disclosure written to sound resolved.</p>
-      <p class="aid__disclaimer">Grounded in a full audit of <code>src/lib/ai/*</code> as of 2026-09-01. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">the two open engineering gaps</a> this page describes below rather than papering over: no consent gate on the customer-facing assistant, and unredacted admin visibility into AI transcripts.</p>
-    </div></section>
+<LegalLayout {title} {description} current="ai-disclosure" {hero}>
+  <LegalDisclaimer slot="hero-disclaimer">
+    Grounded in a full audit of <code>src/lib/ai/*</code> as of 2026-09-01. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">the two open engineering gaps</a> this page describes below rather than papering over: no consent gate on the customer-facing assistant, and unredacted admin visibility into AI transcripts.
+  </LegalDisclaimer>
 
-    <div class="aid__body"><div class="aid__shell aid__grid">
-      <aside class="aid__toc">
-        <div class="aid__toc-card">
-          <p class="aid__toc-label">On this page</p>
-          <nav aria-label="AI Disclosure sections">
-            {toc.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
-          </nav>
-          <a class="aid__toc-cta" href="mailto:privacy@chakusarecovery.com">Ask a question</a>
-        </div>
-      </aside>
+  <div class="aid__body"><div class="aid__shell aid__grid">
+    <LegalToc items={toc} ctaHref="mailto:privacy@chakusarecovery.com" ctaLabel="Ask a question" />
 
-      <div class="aid__content">
-        <section id="where">
-          <h2>1. Where AI shows up</h2>
-          <p>Two places. First, a business can turn on an AI assistant that drafts or sends replies to that business's own customers over SMS or WhatsApp. Second, customers can chat directly with an in-app AI assistant inside the Chakusa app.</p>
-        </section>
+    <div class="aid__content">
+      <section id="where">
+        <h2>1. Where AI shows up</h2>
+        <p>Two places. First, a business can turn on an AI assistant that drafts or sends replies to that business's own customers over SMS or WhatsApp. Second, customers can chat directly with an in-app AI assistant inside the Chakusa app.</p>
+      </section>
 
-        <section id="how">
-          <h2>2. How it works</h2>
-          <p>When either feature is used, the relevant conversation — along with some context (like the customer's name, notes on file, and recent appointments, for the business-facing assistant) — is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response.</p>
-        </section>
+      <section id="how">
+        <h2>2. How it works</h2>
+        <p>When either feature is used, the relevant conversation — along with some context (like the customer's name, notes on file, and recent appointments, for the business-facing assistant) — is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response.</p>
+      </section>
 
-        <section id="actions">
-          <h2>3. What the AI can actually do</h2>
-          <p>The business-facing assistant doesn't have open-ended access to your account — it can only call a fixed, named set of actions, each scoped to the business it's operating for:</p>
-          <div class="aid__table-wrap"><table class="aid__table">
-            <thead><tr><th>Action</th><th>What it does</th></tr></thead>
-            <tbody>{actions.map(([name, body]) => <tr><td><code>{name}</code></td><td>{body}</td></tr>)}</tbody>
-          </table></div>
-          <p class="aid__note">Anything outside this list simply isn't possible for the AI to do — it's not a matter of the AI "choosing" not to.</p>
-        </section>
+      <section id="actions">
+        <h2>3. What the AI can actually do</h2>
+        <p>The business-facing assistant doesn't have open-ended access to your account — it can only call a fixed, named set of actions, each scoped to the business it's operating for:</p>
+        <div class="aid__table-wrap"><table class="aid__table">
+          <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+          <tbody>{actions.map(([name, body]) => <tr><td><code>{name}</code></td><td>{body}</td></tr>)}</tbody>
+        </table></div>
+        <p class="aid__note">Anything outside this list simply isn't possible for the AI to do — it's not a matter of the AI "choosing" not to.</p>
+      </section>
 
-        <section id="modes">
-          <h2>4. Draft, Approval, and Autonomous modes</h2>
-          <p>A business chooses how much independence the assistant has, from three modes:</p>
-          <ul class="aid__list aid__list--plain">
-            <li><strong>Draft (the default for every business).</strong> The AI prepares a reply or action; a person on the business's team reviews and sends it. Nothing reaches a customer without a human tap.</li>
-            <li><strong>Approval.</strong> Specific action types (a reply, a quote, an appointment change, a workflow) each require a person's sign-off before they take effect — configurable per business.</li>
-            <li><strong>Autonomous.</strong> A business can opt into letting some actions proceed without per-message approval. Even in this mode, <strong>payment-related actions are always blocked</strong> by policy — that rule doesn't have a mode that turns it off.</li>
-          </ul>
-          <p>A business can also set quiet hours, block specific topics, and restrict which channels (SMS, WhatsApp, email) the assistant is allowed to use — the assistant respects those settings on every message, in every mode.</p>
-        </section>
+      <section id="modes">
+        <h2>4. Draft, Approval, and Autonomous modes</h2>
+        <p>A business chooses how much independence the assistant has, from three modes:</p>
+        <ul class="aid__list aid__list--plain">
+          <li><strong>Draft (the default for every business).</strong> The AI prepares a reply or action; a person on the business's team reviews and sends it. Nothing reaches a customer without a human tap.</li>
+          <li><strong>Approval.</strong> Specific action types (a reply, a quote, an appointment change, a workflow) each require a person's sign-off before they take effect — configurable per business.</li>
+          <li><strong>Autonomous.</strong> A business can opt into letting some actions proceed without per-message approval. Even in this mode, <strong>payment-related actions are always blocked</strong> by policy — that rule doesn't have a mode that turns it off.</li>
+        </ul>
+        <p>A business can also set quiet hours, block specific topics, and restrict which channels (SMS, WhatsApp, email) the assistant is allowed to use — the assistant respects those settings on every message, in every mode.</p>
+      </section>
 
-        <section id="cannot">
-          <h2>5. What it cannot do</h2>
-          <ul class="aid__list aid__list--cannot">{cannotDo.map((item) => <li>{item}</li>)}</ul>
-        </section>
+      <section id="cannot">
+        <h2>5. What it cannot do</h2>
+        <ul class="aid__list aid__list--cannot">{cannotDo.map((item) => <li>{item}</li>)}</ul>
+      </section>
 
-        <section id="safety">
-          <h2>6. Automated safety checks</h2>
-          <p>Before a response is generated or sent, an automated system checks for things like attempts to manipulate the AI's instructions, content that looks like it's leaking sensitive information, and language patterns associated with unsafe or inappropriate advice. These are rule-based pattern checks, not a human reviewing every message, and not a second AI judging the first one's safety.</p>
-          <p>A message can also be automatically held for a human to approve, or escalated to a person entirely, based on confidence and the business's own rules (quiet hours, blocked topics, or a customer who has opted out of contact). A business, or a customer asking to speak with a person, can always take over from the AI. There's also a platform-wide switch that can immediately turn AI features off across all of Chakusa if needed.</p>
-        </section>
+      <section id="safety">
+        <h2>6. Automated safety checks</h2>
+        <p>Before a response is generated or sent, an automated system checks for things like attempts to manipulate the AI's instructions, content that looks like it's leaking sensitive information, and language patterns associated with unsafe or inappropriate advice. These are rule-based pattern checks, not a human reviewing every message, and not a second AI judging the first one's safety.</p>
+        <p>A message can also be automatically held for a human to approve, or escalated to a person entirely, based on confidence and the business's own rules (quiet hours, blocked topics, or a customer who has opted out of contact). A business, or a customer asking to speak with a person, can always take over from the AI. There's also a platform-wide switch that can immediately turn AI features off across all of Chakusa if needed.</p>
+      </section>
 
-        <section id="consent" class="aid__flag">
-          <h2>7. Consent, honestly stated</h2>
-          <p>The business-facing assistant is opt-in — a business must turn it on before it acts on their behalf.</p>
-          <p><strong>The in-app customer assistant currently is not gated by a separate opt-in.</strong> It's available to any customer by default. We consider this a gap worth closing with a clearer first-use notice, and it's tracked as a product improvement, not something we're pretending is already resolved.</p>
-        </section>
+      <section id="consent" class="aid__flag">
+        <h2>7. Consent, honestly stated</h2>
+        <p>The business-facing assistant is opt-in — a business must turn it on before it acts on their behalf.</p>
+        <p><strong>The in-app customer assistant currently is not gated by a separate opt-in.</strong> It's available to any customer by default. We consider this a gap worth closing with a clearer first-use notice, and it's tracked as a product improvement, not something we're pretending is already resolved.</p>
+      </section>
 
-        <section id="visibility" class="aid__flag">
-          <h2>8. Who can see a conversation</h2>
-          <p>The business whose customer is messaging (for the business-facing assistant) can see that conversation, the same as any other message in their account.</p>
-          <p>For the in-app customer assistant, Chakusa staff with admin access can view the full conversation content for support and safety purposes; <strong>as of this disclosure, that view is not redacted.</strong> Every admin view is intended to be logged.</p>
-        </section>
+      <section id="visibility" class="aid__flag">
+        <h2>8. Who can see a conversation</h2>
+        <p>The business whose customer is messaging (for the business-facing assistant) can see that conversation, the same as any other message in their account.</p>
+        <p>For the in-app customer assistant, Chakusa staff with admin access can view the full conversation content for support and safety purposes; <strong>as of this disclosure, that view is not redacted.</strong> Every admin view is intended to be logged.</p>
+      </section>
 
-        <section id="retention">
-          <h2>9. How long it's kept</h2>
-          <p>AI conversation content is currently kept indefinitely rather than deleted on a fixed schedule. Some system-generated "memory" used to personalize responses is deleted automatically after it expires; not all of it currently has an expiry set. A customer can turn off personalization and conversation memory in their app settings (Section 11).</p>
-        </section>
+      <section id="retention">
+        <h2>9. How long it's kept</h2>
+        <p>AI conversation content is currently kept indefinitely rather than deleted on a fixed schedule. Some system-generated "memory" used to personalize responses is deleted automatically after it expires; not all of it currently has an expiry set. A customer can turn off personalization and conversation memory in their app settings (Section 11).</p>
+      </section>
 
-        <section id="providers">
-          <h2>10. Providers</h2>
-          <p>OpenAI and Anthropic. Neither is instructed to use your conversations to train their own models beyond what their own standard API terms provide; we haven't independently audited that claim beyond relying on those providers' published terms.</p>
-        </section>
+      <section id="providers">
+        <h2>10. Providers</h2>
+        <p>OpenAI and Anthropic. Neither is instructed to use your conversations to train their own models beyond what their own standard API terms provide; we haven't independently audited that claim beyond relying on those providers' published terms.</p>
+      </section>
 
-        <section id="controls">
-          <h2>11. Your controls</h2>
-          <ul class="aid__list aid__list--plain">
-            <li><strong>As a customer:</strong> ask to speak with a person at any time — the AI hands off. Turn off personalization and conversation memory in app settings.</li>
-            <li><strong>As a business:</strong> turn the assistant off entirely, switch modes (Section 4), set quiet hours and blocked topics, and review anything held for approval before it sends.</li>
-          </ul>
-        </section>
+      <section id="controls">
+        <h2>11. Your controls</h2>
+        <ul class="aid__list aid__list--plain">
+          <li><strong>As a customer:</strong> ask to speak with a person at any time — the AI hands off. Turn off personalization and conversation memory in app settings.</li>
+          <li><strong>As a business:</strong> turn the assistant off entirely, switch modes (Section 4), set quiet hours and blocked topics, and review anything held for approval before it sends.</li>
+        </ul>
+      </section>
 
-        <section id="contact" class="aid__contact">
-          <h2>12. Changes &amp; questions</h2>
-          <p>If how our AI features work changes materially, especially around consent or data handling, we'll update this page and the date at the top.</p>
-          <div class="aid__contact-box">
-            <div><span>Questions about how AI is used</span><strong>privacy@chakusarecovery.com</strong></div>
-            <a href="mailto:privacy@chakusarecovery.com">Email us</a>
-          </div>
-        </section>
-      </div>
-    </div></div>
-  </main>
-  <Footer />
-</MarketingLayout>
+      <section id="contact">
+        <h2>12. Changes &amp; questions</h2>
+        <p>If how our AI features work changes materially, especially around consent or data handling, we'll update this page and the date at the top.</p>
+        <LegalContactPanel label="Questions about how AI is used" />
+      </section>
+    </div>
+  </div></div>
+</LegalLayout>
 
 <style>
-.aid{background:var(--page-surface);color:var(--heading)}
 .aid__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
-.aid__hero{padding:3.5rem 0 2.5rem;background:#f2f3ff;border-bottom:1px solid var(--hairline)}
-.aid__badges{display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:1.1rem}
-.aid__badge{color:var(--muted-text,#687184);font:700 .72rem/1.2 var(--font);letter-spacing:.03em;text-transform:uppercase}
-.aid__badge--draft{color:#93000a}
-.aid h1{margin:0 0 .6rem;font:700 clamp(2.1rem,4.2vw,3rem)/1.12 var(--font-heading);letter-spacing:-.03em}
-.aid__lede{max-width:44rem;margin:0 0 1.1rem;color:var(--body-text);font-size:1.05rem;line-height:1.65}
-.aid__disclaimer{max-width:52rem;margin:0;padding:.9rem 1.1rem;border-radius:.75rem;background:#fff;color:var(--body-text);font-size:.82rem;line-height:1.6}
-.aid__disclaimer code{padding:.1rem .3rem;border-radius:.3rem;background:var(--page-surface);font-size:.78rem}
-.aid__disclaimer a{color:var(--secondary);font-weight:700}
 .aid__body{padding:3rem 0 5rem}
 .aid__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
-.aid__toc{position:sticky;top:6rem}
-.aid__toc-card{padding:1.25rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
-.aid__toc-label{margin:0 0 .75rem;color:var(--muted-text,#687184);font:800 .68rem/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase}
-.aid__toc-card nav{display:grid;gap:.15rem}
-.aid__toc-card nav a{padding:.5rem .6rem;border-radius:.5rem;color:var(--body-text);font-size:.82rem;text-decoration:none}
-.aid__toc-card nav a:hover{background:var(--page-surface);color:var(--heading)}
-.aid__toc-cta{display:block;margin-top:1rem;padding:.65rem;border-radius:.6rem;background:var(--primary);color:#fff;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none}
 .aid__content{min-width:0;display:grid;gap:2.5rem}
+.aid__content>*{min-width:0}
 .aid__content section{scroll-margin-top:6rem}
 .aid__content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
 .aid__content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
@@ -204,16 +173,7 @@ const cannotDo = [
 .aid__list--cannot li::before{content:'\2715';position:absolute;left:0;color:#ba1a1a;font-weight:900}
 .aid__flag{padding:1.25rem 1.5rem;border-left:4px solid #ba1a1a;border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff5f4}
 .aid__flag h2{color:#7a1005}
-.aid__contact-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin-top:.5rem;padding:1.25rem 1.5rem;border-radius:var(--r-lg);background:var(--heading);color:#fff}
-.aid__contact-box span{display:block;color:#c9ccd3;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-.aid__contact-box strong{display:block;margin-top:.3rem;font-size:1.05rem}
-.aid__contact-box a{padding:.65rem 1.1rem;border-radius:.6rem;background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}
 @media(max-width:64rem){
   .aid__grid{grid-template-columns:1fr}
-  .aid__toc{position:static}
-}
-@media(max-width:40rem){
-  .aid__hero{padding:2.5rem 0 2rem}
-  .aid__contact-box{flex-direction:column;align-items:flex-start}
 }
 </style>

@@ -1,0 +1,92 @@
+---
+export interface Props {
+  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies";
+}
+
+const { current } = Astro.props;
+
+const documents: Array<{ id: Props["current"]; href: string; title: string; description: string }> = [
+  { id: "trust", href: "/trust", title: "Trust & Compliance", description: "A guide to Chakusa's trust and legal resources." },
+  { id: "privacy", href: "/privacy", title: "Privacy Policy", description: "How Chakusa explains personal information and privacy requests." },
+  { id: "terms", href: "/terms", title: "Terms of Service", description: "The rules that govern use of Chakusa." },
+  { id: "ai-disclosure", href: "/ai-disclosure", title: "AI Disclosure", description: "Information about AI-assisted features and human oversight." },
+  { id: "cookies", href: "/cookies", title: "Cookie Policy", description: "Information about website technologies and available controls." },
+];
+
+const related = documents.filter((doc) => doc.id !== current);
+---
+<section class="legal-related" aria-labelledby="legal-related-heading">
+  <div class="legal-related__shell">
+    <p id="legal-related-heading" class="legal-related__label">Related legal documents</p>
+    <div class="legal-related__grid">
+      {related.map((doc) => (
+        <a class="legal-related__card" href={doc.href}>
+          <strong>{doc.title}</strong>
+          <span>{doc.description}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+.legal-related {
+  padding: 3rem 0 4rem;
+  background: var(--page-surface);
+}
+.legal-related__shell {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+}
+.legal-related__label {
+  margin: 0 0 1.1rem;
+  color: var(--muted-text, #687184);
+  font: 800 0.68rem/1.2 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.legal-related__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+.legal-related__card {
+  display: block;
+  min-width: 0;
+  padding: 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: #fff;
+  text-decoration: none;
+  min-height: 44px;
+}
+.legal-related__card:hover {
+  border-color: var(--secondary);
+}
+.legal-related__card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.legal-related__card strong {
+  display: block;
+  color: var(--heading);
+  font-size: 0.92rem;
+}
+.legal-related__card span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted-text, #687184);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+@media (max-width: 64rem) {
+  .legal-related__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 40rem) {
+  .legal-related__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

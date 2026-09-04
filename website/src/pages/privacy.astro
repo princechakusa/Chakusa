@@ -1,8 +1,8 @@
 ---
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import SkipLink from "../components/foundation/SkipLink.astro";
-import Header from "../components/header/Header.astro";
-import Footer from "../components/footer/Footer.astro";
+import LegalLayout from "../components/legal/LegalLayout.astro";
+import LegalToc from "../components/legal/LegalToc.astro";
+import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
+import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "Privacy Policy | Chakusa";
 const description = "How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features, including every third party involved and your rights under GDPR, UK GDPR, CCPA, and other privacy laws.";
@@ -25,7 +25,7 @@ const description = "How Chakusa collects, stores, and protects data across the 
 // while adding nothing that isn't grounded in the real product.
 const lastUpdated = "Draft dated 2026-09-01";
 
-const toc = [
+const toc: Array<[string, string]> = [
   ["scope", "1. Scope & definitions"],
   ["accounts", "2. Accounts covered by this policy"],
   ["collected", "3. Information we collect"],
@@ -101,203 +101,166 @@ const security = [
   "Administrative actions are logged, including admin views of AI conversation content (see AI Disclosure Section 7).",
 ];
 ---
-<MarketingLayout {title} {description}>
-  <SkipLink />
-  <Header />
-  <main id="main-content" class="pv">
-    <section class="pv__hero"><div class="pv__shell">
-      <div class="pv__badges">
-        <span class="pv__badge pv__badge--draft">Engineering draft — not attorney-reviewed</span>
-        <span class="pv__badge">Last updated: {lastUpdated}</span>
-      </div>
-      <h1>Privacy Policy</h1>
-      <p class="pv__lede">How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features — and what we deliberately don't do with it.</p>
-      <p class="pv__disclaimer">This page is grounded in a full backend audit of the actual product (<code>src/modules/*</code>, <code>prisma/schema.prisma</code>) as of 2026-09-01, not written as a legal document. It has not been reviewed by a licensed attorney, and shouldn't be relied on to establish legal compliance. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">open engineering follow-ups</a> this page describes honestly rather than papering over.</p>
-    </div></section>
+<LegalLayout
+  title={title}
+  description={description}
+  current="privacy"
+  hero={{
+    title: "Privacy Policy",
+    lede: "How Chakusa collects, stores, and protects data across the CRM, marketplace, booking, loyalty, and AI features — and what we deliberately don't do with it.",
+    status: "Engineering draft — not attorney-reviewed",
+    lastUpdated: lastUpdated,
+  }}
+>
+  <Fragment slot="hero-disclaimer">
+    <LegalDisclaimer>This page is grounded in a full backend audit of the actual product (<code>src/modules/*</code>, <code>prisma/schema.prisma</code>) as of 2026-09-01, not written as a legal document. It has not been reviewed by a licensed attorney, and shouldn't be relied on to establish legal compliance. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">open engineering follow-ups</a> this page describes honestly rather than papering over.</LegalDisclaimer>
+  </Fragment>
 
-    <div class="pv__body"><div class="pv__shell pv__grid">
-      <aside class="pv__toc">
-        <div class="pv__toc-card">
-          <p class="pv__toc-label">On this page</p>
-          <nav aria-label="Privacy Policy sections">
-            {toc.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
-          </nav>
-          <a class="pv__toc-cta" href="mailto:privacy@chakusarecovery.com">Email the privacy team</a>
+  <div class="pv-grid">
+    <LegalToc items={toc} ctaHref="mailto:privacy@chakusarecovery.com" ctaLabel="Email the privacy team" />
+
+    <div class="pv-content">
+      <article class="pv-quote">
+        <p>“Chakusa does not sell customer data, and does not use it to serve ads. The customer records a business enters are that business's data, not ours.”</p>
+      </article>
+
+      <section id="scope">
+        <h2>1. Scope &amp; definitions</h2>
+        <p>This policy covers chakusarecovery.com and the Chakusa app, for both business and customer accounts. A few terms used throughout, in plain language:</p>
+        <div class="pv-table-wrap"><table class="pv-table">
+          <tbody>{definitions.map(([term, body]) => <tr><td>{term}</td><td>{body}</td></tr>)}</tbody>
+        </table></div>
+      </section>
+
+      <section id="accounts">
+        <h2>2. Accounts covered by this policy</h2>
+        <p>Chakusa has two kinds of accounts: <b>business accounts</b> (running a CRM, marketplace listing, bookings, and loyalty program) and <b>customer accounts</b> (people who discover, book, and message businesses through Chakusa). One person can hold both, and this policy covers both equally.</p>
+      </section>
+
+      <section id="collected">
+        <h2>3. Information we collect</h2>
+        <div class="pv-table-wrap"><table class="pv-table">
+          <thead><tr><th>Category</th><th>What's collected</th><th>Source</th></tr></thead>
+          <tbody>{collected.map(([cat, body, source]) => <tr><td>{cat}</td><td>{body}</td><td>{source}</td></tr>)}</tbody>
+        </table></div>
+      </section>
+
+      <section id="use">
+        <h2>4. How we use information</h2>
+        <div class="pv-table-wrap"><table class="pv-table">
+          <thead><tr><th>Purpose</th><th>What that means</th></tr></thead>
+          <tbody>{uses.map(([purpose, body]) => <tr><td>{purpose}</td><td>{body}</td></tr>)}</tbody>
+        </table></div>
+        <p class="pv-note">We don't sell data, and we don't use it to serve ads — that applies to every purpose above, not just some of them.</p>
+      </section>
+
+      <section id="ai">
+        <h2>5. AI features</h2>
+        <p>Chakusa includes AI-powered features: a business-facing assistant that can draft or send replies to a business's customers (a business must turn this on), and an in-app assistant customers can chat with directly. Both send conversation content to a third-party AI provider (OpenAI or Anthropic, depending on configuration) to generate a response.</p>
+        <p>Full detail — including which specific actions the AI can take, its default human-approval requirement, an honest description of a current consent gap, its data-retention behavior, and who inside Chakusa can view a conversation — is in the dedicated <a href="/ai-disclosure">AI Disclosure</a>, which is part of this Privacy Policy by reference.</p>
+      </section>
+
+      <section id="messages">
+        <h2>6. Text messages</h2>
+        <p>Message delivery runs through Twilio. Standard message and data rates may apply depending on the recipient's carrier. <strong>The business is responsible for having consent</strong> to message their customer, under whatever law applies where that customer lives (in the US, generally the TCPA; in Canada, CASL). If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further.</p>
+      </section>
+
+      <section id="cookies">
+        <h2>7. Cookies &amp; tracking</h2>
+        <p>This marketing website sets no tracking or advertising cookies. The Chakusa app uses only the technical storage needed to keep you signed in and remember basic preferences — nothing sold to or shared with an ad network. See the <a href="/cookies">Cookie Policy</a> for the full, itemized list of what is and isn't set.</p>
+      </section>
+
+      <section id="shared">
+        <h2>8. Who we share it with</h2>
+        <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
+        <div class="pv-providers">
+          {providers.map(([name, purpose]) => <div class="pv-provider"><strong>{name}</strong><span>{purpose}</span></div>)}
         </div>
-      </aside>
+      </section>
 
-      <div class="pv__content">
-        <article class="pv__quote">
-          <p>“Chakusa does not sell customer data, and does not use it to serve ads. The customer records a business enters are that business's data, not ours.”</p>
-        </article>
+      <section id="transfers">
+        <h2>9. International data transfers</h2>
+        <p>Because the providers above operate infrastructure in multiple countries, your data may be processed outside the country you're in, including the United States — both AI providers' standard endpoints are US-based unless a data-residency-specific configuration is set up in the future. Each provider is responsible for its own compliance with applicable cross-border data-transfer rules; we haven't independently audited their transfer mechanisms beyond relying on their published terms.</p>
+      </section>
 
-        <section id="scope">
-          <h2>1. Scope &amp; definitions</h2>
-          <p>This policy covers chakusarecovery.com and the Chakusa app, for both business and customer accounts. A few terms used throughout, in plain language:</p>
-          <div class="pv__table-wrap"><table class="pv__table">
-            <tbody>{definitions.map(([term, body]) => <tr><td>{term}</td><td>{body}</td></tr>)}</tbody>
-          </table></div>
-        </section>
+      <section id="automated">
+        <h2>10. Automated decisions</h2>
+        <p>When an AI feature is enabled, Chakusa's system automatically decides whether to send an AI-generated reply, hold it for a human to approve, or escalate the conversation to a person, based on confidence and safety rules (see AI Disclosure). A person can always take over. We don't use automated decisions for anything with a legal or similarly significant effect on you — for example, we don't use AI to approve or deny a booking, a refund, or account access, and payment-related actions always require a human, never the AI, by policy.</p>
+      </section>
 
-        <section id="accounts">
-          <h2>2. Accounts covered by this policy</h2>
-          <p>Chakusa has two kinds of accounts: <b>business accounts</b> (running a CRM, marketplace listing, bookings, and loyalty program) and <b>customer accounts</b> (people who discover, book, and message businesses through Chakusa). One person can hold both, and this policy covers both equally.</p>
-        </section>
+      <section id="retention">
+        <h2>11. How long we keep it</h2>
+        <div class="pv-table-wrap"><table class="pv-table">
+          <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+          <tbody>{retentionRows.map(([cat, body]) => <tr><td>{cat}</td><td>{body}</td></tr>)}</tbody>
+        </table></div>
+        <p class="pv-note">Deletion can be requested sooner, or the law may require longer retention in specific cases (Section 13).</p>
+      </section>
 
-        <section id="collected">
-          <h2>3. Information we collect</h2>
-          <div class="pv__table-wrap"><table class="pv__table">
-            <thead><tr><th>Category</th><th>What's collected</th><th>Source</th></tr></thead>
-            <tbody>{collected.map(([cat, body, source]) => <tr><td>{cat}</td><td>{body}</td><td>{source}</td></tr>)}</tbody>
-          </table></div>
-        </section>
+      <section id="security">
+        <h2>12. Security measures</h2>
+        <ul class="pv-list">{security.map((item) => <li>{item}</li>)}</ul>
+      </section>
 
-        <section id="use">
-          <h2>4. How we use information</h2>
-          <div class="pv__table-wrap"><table class="pv__table">
-            <thead><tr><th>Purpose</th><th>What that means</th></tr></thead>
-            <tbody>{uses.map(([purpose, body]) => <tr><td>{purpose}</td><td>{body}</td></tr>)}</tbody>
-          </table></div>
-          <p class="pv__note">We don't sell data, and we don't use it to serve ads — that applies to every purpose above, not just some of them.</p>
-        </section>
+      <section id="rights">
+        <h2>13. Your rights</h2>
+        <p>Depending on where you are, you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain uses of it — for example under the EU/UK <b>GDPR</b>, the California <b>CCPA/CPRA</b>, the <b>UAE PDPL</b>, or South Africa's <b>POPIA</b>. To exercise these rights, email us (Section 17); we'll respond within the time required by applicable law. As Chakusa expands to more countries, this section will be updated to name the specific local law that applies.</p>
+        <p class="pv-note">Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
+      </section>
 
-        <section id="ai">
-          <h2>5. AI features</h2>
-          <p>Chakusa includes AI-powered features: a business-facing assistant that can draft or send replies to a business's customers (a business must turn this on), and an in-app assistant customers can chat with directly. Both send conversation content to a third-party AI provider (OpenAI or Anthropic, depending on configuration) to generate a response.</p>
-          <p>Full detail — including which specific actions the AI can take, its default human-approval requirement, an honest description of a current consent gap, its data-retention behavior, and who inside Chakusa can view a conversation — is in the dedicated <a href="/ai-disclosure">AI Disclosure</a>, which is part of this Privacy Policy by reference.</p>
-        </section>
+      <section id="children">
+        <h2>14. Children's privacy</h2>
+        <p>Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
+      </section>
 
-        <section id="messages">
-          <h2>6. Text messages</h2>
-          <p>Message delivery runs through Twilio. Standard message and data rates may apply depending on the recipient's carrier. <strong>The business is responsible for having consent</strong> to message their customer, under whatever law applies where that customer lives (in the US, generally the TCPA; in Canada, CASL). If a customer replies STOP, Chakusa automatically registers that as an opt-out, and our automated messaging checks this before sending anything further.</p>
-        </section>
+      <section id="breach">
+        <h2>15. If something goes wrong</h2>
+        <p>If a security incident affecting your personal data occurs, we will notify affected users and the relevant authorities as required by applicable law. We don't have a public incident-history log today; if that changes, this section will link to it.</p>
+      </section>
 
-        <section id="cookies">
-          <h2>7. Cookies &amp; tracking</h2>
-          <p>This marketing website sets no tracking or advertising cookies. The Chakusa app uses only the technical storage needed to keep you signed in and remember basic preferences — nothing sold to or shared with an ad network. See the <a href="/cookies">Cookie Policy</a> for the full, itemized list of what is and isn't set.</p>
-        </section>
+      <section id="changes">
+        <h2>16. Changes to this policy</h2>
+        <p>If we make a material change to how we handle data, we'll update this page and the date at the top.</p>
+      </section>
 
-        <section id="shared">
-          <h2>8. Who we share it with</h2>
-          <p>We don't sell data to anyone. The services below process data on our behalf, only for the purpose of running Chakusa:</p>
-          <div class="pv__providers">
-            {providers.map(([name, purpose]) => <div class="pv__provider"><strong>{name}</strong><span>{purpose}</span></div>)}
-          </div>
-        </section>
-
-        <section id="transfers">
-          <h2>9. International data transfers</h2>
-          <p>Because the providers above operate infrastructure in multiple countries, your data may be processed outside the country you're in, including the United States — both AI providers' standard endpoints are US-based unless a data-residency-specific configuration is set up in the future. Each provider is responsible for its own compliance with applicable cross-border data-transfer rules; we haven't independently audited their transfer mechanisms beyond relying on their published terms.</p>
-        </section>
-
-        <section id="automated">
-          <h2>10. Automated decisions</h2>
-          <p>When an AI feature is enabled, Chakusa's system automatically decides whether to send an AI-generated reply, hold it for a human to approve, or escalate the conversation to a person, based on confidence and safety rules (see AI Disclosure). A person can always take over. We don't use automated decisions for anything with a legal or similarly significant effect on you — for example, we don't use AI to approve or deny a booking, a refund, or account access, and payment-related actions always require a human, never the AI, by policy.</p>
-        </section>
-
-        <section id="retention">
-          <h2>11. How long we keep it</h2>
-          <div class="pv__table-wrap"><table class="pv__table">
-            <thead><tr><th>Data</th><th>Retention</th></tr></thead>
-            <tbody>{retentionRows.map(([cat, body]) => <tr><td>{cat}</td><td>{body}</td></tr>)}</tbody>
-          </table></div>
-          <p class="pv__note">Deletion can be requested sooner, or the law may require longer retention in specific cases (Section 13).</p>
-        </section>
-
-        <section id="security">
-          <h2>12. Security measures</h2>
-          <ul class="pv__list">{security.map((item) => <li>{item}</li>)}</ul>
-        </section>
-
-        <section id="rights">
-          <h2>13. Your rights</h2>
-          <p>Depending on where you are, you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain uses of it — for example under the EU/UK <b>GDPR</b>, the California <b>CCPA/CPRA</b>, the <b>UAE PDPL</b>, or South Africa's <b>POPIA</b>. To exercise these rights, email us (Section 17); we'll respond within the time required by applicable law. As Chakusa expands to more countries, this section will be updated to name the specific local law that applies.</p>
-          <p class="pv__note">Reference: <a href="https://commission.europa.eu/law/law-topic/data-protection_en" target="_blank" rel="noopener">European Commission on data protection (GDPR)</a> · <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener">California Attorney General on the CCPA</a></p>
-        </section>
-
-        <section id="children">
-          <h2>14. Children's privacy</h2>
-          <p>Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.</p>
-        </section>
-
-        <section id="breach">
-          <h2>15. If something goes wrong</h2>
-          <p>If a security incident affecting your personal data occurs, we will notify affected users and the relevant authorities as required by applicable law. We don't have a public incident-history log today; if that changes, this section will link to it.</p>
-        </section>
-
-        <section id="changes">
-          <h2>16. Changes to this policy</h2>
-          <p>If we make a material change to how we handle data, we'll update this page and the date at the top.</p>
-        </section>
-
-        <section id="contact" class="pv__contact">
-          <h2>17. Complaints &amp; contact</h2>
-          <p>If you're not satisfied with how we've handled a request, you can contact us below, or, depending on where you live, lodge a complaint with your local data protection authority.</p>
-          <div class="pv__contact-box">
-            <div><span>Privacy questions or a data-rights request</span><strong>privacy@chakusarecovery.com</strong></div>
-            <a href="mailto:privacy@chakusarecovery.com">Email Privacy</a>
-          </div>
-        </section>
-      </div>
-    </div></div>
-  </main>
-  <Footer />
-</MarketingLayout>
+      <section id="contact" class="pv-contact">
+        <h2>17. Complaints &amp; contact</h2>
+        <p>If you're not satisfied with how we've handled a request, you can contact us below, or, depending on where you live, lodge a complaint with your local data protection authority.</p>
+        <LegalContactPanel label="Privacy questions or a data-rights request" />
+      </section>
+    </div>
+  </div>
+</LegalLayout>
 
 <style>
-.pv{background:var(--page-surface);color:var(--heading)}
-.pv__shell{width:min(100% - 2rem,72rem);margin-inline:auto}
-.pv__hero{padding:3.5rem 0 2.5rem;background:#f2f3ff;border-bottom:1px solid var(--hairline)}
-.pv__badges{display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:1.1rem}
-.pv__badge{color:var(--muted-text,#687184);font:700 .72rem/1.2 var(--font);letter-spacing:.03em;text-transform:uppercase}
-.pv__badge--draft{color:#93000a}
-.pv h1{margin:0 0 .6rem;font:700 clamp(2.1rem,4.2vw,3rem)/1.12 var(--font-heading);letter-spacing:-.03em}
-.pv__lede{max-width:44rem;margin:0 0 1.1rem;color:var(--body-text);font-size:1.05rem;line-height:1.65}
-.pv__disclaimer{max-width:52rem;margin:0;padding:.9rem 1.1rem;border-radius:.75rem;background:#fff;color:var(--body-text);font-size:.82rem;line-height:1.6}
-.pv__disclaimer code{padding:.1rem .3rem;border-radius:.3rem;background:var(--page-surface);font-size:.78rem}
-.pv__disclaimer a{color:var(--secondary);font-weight:700}
-.pv__body{padding:3rem 0 5rem}
-.pv__grid{display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
-.pv__toc{position:sticky;top:6rem}
-.pv__toc-card{padding:1.25rem;border:1px solid var(--hairline);border-radius:var(--r-lg);background:#fff}
-.pv__toc-label{margin:0 0 .75rem;color:var(--muted-text,#687184);font:800 .68rem/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase}
-.pv__toc-card nav{display:grid;gap:.15rem}
-.pv__toc-card nav a{padding:.5rem .6rem;border-radius:.5rem;color:var(--body-text);font-size:.82rem;text-decoration:none}
-.pv__toc-card nav a:hover{background:var(--page-surface);color:var(--heading)}
-.pv__toc-cta{display:block;margin-top:1rem;padding:.65rem;border-radius:.6rem;background:var(--primary);color:#fff;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none}
-.pv__content{min-width:0;display:grid;gap:2.5rem}
-.pv__quote{margin:0;padding:1.5rem 1.75rem;border-left:4px solid var(--primary);border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff}
-.pv__quote p{margin:0;color:var(--heading);font:600 1.1rem/1.55 var(--font-heading)}
-.pv__content section{scroll-margin-top:6rem}
-.pv__content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
-.pv__content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
-.pv__content p:last-child{margin-bottom:0}
-.pv__content a{color:var(--secondary);font-weight:700}
-.pv__note{font-size:.85rem;color:var(--muted-text,#687184)}
-.pv__table-wrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg);margin-bottom:.85rem}
-.pv__table{width:100%;border-collapse:collapse;font-size:.86rem}
-.pv__table th{padding:.75rem 1rem;background:var(--page-surface);text-align:left;font:700 .72rem/1.2 var(--font);text-transform:uppercase;letter-spacing:.04em;color:var(--muted-text,#687184)}
-.pv__table td{padding:.85rem 1rem;border-top:1px solid var(--hairline);vertical-align:top;color:var(--body-text)}
-.pv__table td:first-child{white-space:nowrap;font-weight:700;color:var(--heading)}
-.pv__list{display:grid;gap:.6rem;margin:0;padding:0;list-style:none}
-.pv__list li{position:relative;padding-left:1.6rem;color:var(--body-text);font-size:.92rem;line-height:1.55}
-.pv__list li::before{content:'\2713';position:absolute;left:0;color:var(--secondary);font-weight:900}
-.pv__providers{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:0 0 1rem}
-.pv__provider{padding:.9rem;border:1px solid var(--hairline);border-radius:var(--r-md);background:#fff}
-.pv__provider strong{display:block;font-size:.85rem;color:var(--heading)}
-.pv__provider span{display:block;margin-top:.3rem;font-size:.72rem;color:var(--muted-text,#687184);line-height:1.4}
-.pv__contact-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;margin-top:.5rem;padding:1.25rem 1.5rem;border-radius:var(--r-lg);background:var(--heading);color:#fff}
-.pv__contact-box span{display:block;color:#c9ccd3;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-.pv__contact-box strong{display:block;margin-top:.3rem;font-size:1.05rem}
-.pv__contact-box a{padding:.65rem 1.1rem;border-radius:.6rem;background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none}
+.pv-grid{width:min(100% - 2rem,72rem);margin-inline:auto;padding:3rem 0 5rem;display:grid;grid-template-columns:16rem minmax(0,1fr);gap:3rem;align-items:start}
+.pv-content{min-width:0;display:grid;gap:2.5rem}
+.pv-content>*{min-width:0}
+.pv-quote{margin:0;padding:1.5rem 1.75rem;border-left:4px solid var(--primary);border-radius:0 var(--r-lg) var(--r-lg) 0;background:#fff}
+.pv-quote p{margin:0;color:var(--heading);font:600 1.1rem/1.55 var(--font-heading)}
+.pv-content section{scroll-margin-top:6rem}
+.pv-content h2{margin:0 0 .85rem;font:700 1.35rem/1.3 var(--font-heading);letter-spacing:-.02em}
+.pv-content p{margin:0 0 .85rem;color:var(--body-text);font-size:.95rem;line-height:1.7}
+.pv-content p:last-child{margin-bottom:0}
+.pv-content a{color:var(--secondary);font-weight:700}
+.pv-note{font-size:.85rem;color:var(--muted-text,#687184)}
+.pv-table-wrap{min-width:0;overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg);margin-bottom:.85rem}
+.pv-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.pv-table th{padding:.75rem 1rem;background:var(--page-surface);text-align:left;font:700 .72rem/1.2 var(--font);text-transform:uppercase;letter-spacing:.04em;color:var(--muted-text,#687184)}
+.pv-table td{padding:.85rem 1rem;border-top:1px solid var(--hairline);vertical-align:top;color:var(--body-text)}
+.pv-table td:first-child{white-space:nowrap;font-weight:700;color:var(--heading)}
+.pv-list{display:grid;gap:.6rem;margin:0;padding:0;list-style:none}
+.pv-list li{position:relative;padding-left:1.6rem;color:var(--body-text);font-size:.92rem;line-height:1.55}
+.pv-list li::before{content:'\2713';position:absolute;left:0;color:var(--secondary);font-weight:900}
+.pv-providers{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:0 0 1rem}
+.pv-provider{padding:.9rem;border:1px solid var(--hairline);border-radius:var(--r-md);background:#fff}
+.pv-provider strong{display:block;font-size:.85rem;color:var(--heading)}
+.pv-provider span{display:block;margin-top:.3rem;font-size:.72rem;color:var(--muted-text,#687184);line-height:1.4}
 @media(max-width:64rem){
-  .pv__grid{grid-template-columns:1fr}
-  .pv__toc{position:static}
-  .pv__providers{grid-template-columns:repeat(2,1fr)}
+  .pv-grid{grid-template-columns:1fr}
+  .pv-providers{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:40rem){
-  .pv__hero{padding:2.5rem 0 2rem}
-  .pv__providers{grid-template-columns:1fr}
-  .pv__contact-box{flex-direction:column;align-items:flex-start}
+  .pv-providers{grid-template-columns:1fr}
 }
 </style>

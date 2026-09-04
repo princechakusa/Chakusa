@@ -1,4 +1,4 @@
 ---
 import { footerGroups } from "../../data/homepage";
 ---
-<nav class="footer-navigation" aria-label="Footer navigation">{footerGroups.map((group) => <div><h2>{group.title}</h2>{group.links.map((link) => <a href={link.href}>{link.label}</a>)}</div>)}</nav>
+<nav class="footer-navigation" aria-label="Footer navigation">{footerGroups.map((group) => <div><h2>{group.href ? <a href={group.href}>{group.title}</a> : group.title}</h2>{group.links.map((link) => <a href={link.href}>{link.label}</a>)}</div>)}</nav>

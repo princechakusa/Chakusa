@@ -1,0 +1,83 @@
+---
+export interface Props {
+  items: Array<[id: string, label: string]>;
+  ctaHref?: string;
+  ctaLabel?: string;
+}
+
+const { items, ctaHref, ctaLabel } = Astro.props;
+---
+<aside class="legal-toc legal-print-hide">
+  <div class="legal-toc__card">
+    <p class="legal-toc__label">On this page</p>
+    <nav aria-label="Page sections">
+      {items.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
+    </nav>
+    {ctaHref && ctaLabel && (
+      <a class="legal-toc__cta" href={ctaHref}>{ctaLabel}</a>
+    )}
+  </div>
+</aside>
+
+<style>
+.legal-toc {
+  position: sticky;
+  top: 6rem;
+}
+.legal-toc__card {
+  padding: 1.25rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+.legal-toc__label {
+  margin: 0 0 0.75rem;
+  color: var(--muted-text, #687184);
+  font: 800 0.68rem/1.2 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.legal-toc__card nav {
+  display: grid;
+  gap: 0.15rem;
+}
+.legal-toc__card nav a {
+  padding: 0.65rem 0.6rem;
+  border-radius: 0.5rem;
+  color: var(--body-text);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.legal-toc__card nav a:hover {
+  background: var(--page-surface);
+  color: var(--heading);
+}
+.legal-toc__card nav a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.legal-toc__cta {
+  display: block;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.6rem;
+  background: var(--primary);
+  color: #fff;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  min-height: 2.75rem;
+}
+.legal-toc__cta:focus-visible {
+  outline: 2px solid var(--heading);
+  outline-offset: 2px;
+}
+@media (max-width: 64rem) {
+  .legal-toc {
+    position: static;
+    width: 100%;
+  }
+}
+</style>

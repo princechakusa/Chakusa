@@ -1,0 +1,46 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { clientHighlights, clientListings, clientBookings, clientReviews } from "../../data/clientStitch";
+---
+<section class="sb-dashboard sb-shell" id="discover" aria-label="Client marketplace preview">
+  <div class="sb-metrics">
+    {clientHighlights.map((item) => <article>
+      <header><span>{item.label}</span><StoryIcon name={item.icon} /></header>
+      <div><strong>{item.value}</strong></div>
+      <p>{item.note}</p>
+    </article>)}
+  </div>
+  <div class="sb-bento">
+    <div class="sb-bento__main">
+      <article class="sb-card" id="listings">
+        <header class="sb-card__header"><div><h2>Illustrative marketplace listings</h2></div><span>Not real businesses</span></header>
+        <div class="sb-leads">
+          {clientListings.map((item) => <section>
+            <div class="sb-lead__copy"><div><strong>{item.name}</strong><b class={`is-${item.tone}`}>{item.category}</b></div><p>{item.note}</p><small>{item.state}</small></div>
+            <div class="sb-mini-actions"><a class:list={["sb-mini-button", item.tone === "coral" && "is-primary"]} href="/industries">{item.action}</a></div>
+          </section>)}
+        </div>
+      </article>
+      <article class="sb-card" id="bookings">
+        <header class="sb-card__header"><h2>Your bookings</h2><strong>Illustrative example</strong></header>
+        <div class="sb-schedule">
+          {clientBookings.map((item) => <section class={`is-${item.tone}`}>
+            <time>{item.time}<small>{item.period}</small></time><div><strong>{item.title}</strong><p>{item.detail}</p></div><b>{item.status}</b>
+          </section>)}
+        </div>
+      </article>
+    </div>
+    <aside class="sb-bento__aside">
+      <article class="sb-card sb-customer" id="profile">
+        <header><span>Your profile · Illustrative example</span><StoryIcon name="shield" /></header>
+        <div class="sb-customer__person"><span class="sb-avatar" aria-hidden="true">E</span><div><h2>Example customer</h2><p>Not a real account · shown to demonstrate the format</p><strong>Member since example date</strong></div></div>
+        <dl><div><dt>Loyalty points</dt><dd>Per business</dd></div><div><dt>Saved businesses</dt><dd>You control this list</dd></div><div><dt>Notes</dt><dd>Preferences you've shared with a business stay on your profile with that business.</dd></div></dl>
+        <a class="sb-button sb-button--soft" href="/industries"><StoryIcon name="event_available" />Explore local businesses</a>
+      </article>
+      <article class="sb-card" id="reviews">
+        <header class="sb-card__header"><h2>How reviews work</h2><span>Ungated</span></header>
+        <div class="sb-reviews">{clientReviews.map((review) => <section><header><strong>{review.name}</strong></header><p>{review.body}</p><small>{review.meta}</small></section>)}</div>
+      </article>
+    </aside>
+  </div>
+</section>

@@ -1,0 +1,15 @@
+---
+import { clientControls, clientLoyalty } from "../../data/clientStitch";
+---
+<section class="sb-controls sb-shell" aria-label="Client privacy and loyalty settings">
+  <div class="sb-controls__grid">
+    <article class="sb-control-card" id="messages">
+      <header><p>Your controls</p><h2>Privacy and messaging</h2><div>You decide how much the app remembers and how businesses can reach you.</div></header>
+      <div class="sb-settings">{clientControls.map((item) => <section><div><strong>{item.title}</strong><b>{item.state}</b></div><p>{item.body}</p></section>)}</div>
+    </article>
+    <article class="sb-control-card" id="loyalty">
+      <header><p>Loyalty</p><h2>Points and rewards</h2><div>Each business runs its own loyalty program on the same connected app.</div></header>
+      <div class="sb-settings">{clientLoyalty.map((item) => <section><div><strong>{item.title}</strong><b>{item.state}</b></div><p>{item.body}</p></section>)}</div>
+    </article>
+  </div>
+</section>

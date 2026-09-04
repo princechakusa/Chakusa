@@ -1,0 +1,11 @@
+---
+import { clientJourney } from "../../data/clientStitch";
+---
+<section class="sb-workflow" aria-labelledby="client-journey-title">
+  <div class="sb-shell">
+    <header class="sb-section-heading"><p>Your journey</p><h2 id="client-journey-title">From discovering a business to becoming a regular.</h2><div>The same connected app carries your details from the first search through to your next visit.</div></header>
+    <ol class="sb-workflow__grid">
+      {clientJourney.map((step) => <li><div><span class={`is-${step.tone}`}>{step.number}</span><h3>{step.title}</h3><p>{step.body}</p></div><small class={`is-${step.tone}`}>{step.signal}</small></li>)}
+    </ol>
+  </div>
+</section>

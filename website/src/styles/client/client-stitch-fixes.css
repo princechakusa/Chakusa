@@ -1,0 +1,6 @@
+/* Client-page-specific adjustments on top of the shared business-stitch.css
+   visual system, so /client stays visually consistent with /business
+   without duplicating the whole stylesheet. */
+.sb-avatar{display:grid;place-items:center;width:3.5rem;height:3.5rem;flex:none;border-radius:50%;background:var(--primary);color:#fff;font-family:var(--font-heading);font-weight:700;font-size:1.2rem}
+.sb-spotlight__visual--illustration{display:grid;place-items:center;padding:2.5rem;background:linear-gradient(160deg,#fff,var(--page-surface));border-radius:1rem;box-shadow:var(--shadow-modal);aspect-ratio:1}
+.sb-spotlight__visual--illustration :global(svg){width:min(60%,14rem)}

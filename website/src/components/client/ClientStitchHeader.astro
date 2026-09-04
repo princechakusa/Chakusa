@@ -1,0 +1,22 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { clientModules } from "../../data/clientStitch";
+---
+<section class="sb-executive" aria-labelledby="client-title">
+  <div class="sb-shell">
+    <div class="sb-executive__row">
+      <div class="sb-executive__copy">
+        <p class="sb-chip">Chakusa app · For clients</p>
+        <h1 id="client-title">Discover local businesses you can trust.</h1>
+        <div>Browse real availability, book directly from a public profile, and see honest reviews from other customers, no account required to start.</div>
+      </div>
+      <div class="sb-actions">
+        <a class="sb-button sb-button--light" href="/industries"><StoryIcon name="tune" />Explore by industry</a>
+        <a class="sb-button sb-button--primary" href="/get-started"><StoryIcon name="event_available" />Get the app</a>
+      </div>
+    </div>
+    <nav class="sb-tabs" aria-label="Client experience modules">
+      {clientModules.map((item, index) => <a class:list={[index === 0 && "is-active"]} href={item.href}><StoryIcon name={item.icon} /><span>{item.label}</span></a>)}
+    </nav>
+  </div>
+</section>

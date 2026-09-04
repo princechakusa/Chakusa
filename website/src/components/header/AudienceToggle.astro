@@ -1,21 +1,16 @@
 ---
 // "For Clients / For Businesses" audience toggle, matching the
 // approved Stitch header's distinction between the two real Chakusa
-// audiences (directive sections 4, 10). Real destinations only: no
-// separate customer-facing marketplace web page exists yet (the real
-// marketplace lives in the mobile app), so "For clients" points at the
-// closest real customer-facing destination, browsing businesses by
-// industry, rather than a fabricated page.
-//
-// Stitch renders this as a segmented pill with one side visibly
-// active (white, elevated), not two plain equal-weight links. We
-// approximate "active" from the current path: pages under /industries
-// are the client-facing side, everything else defaults to the
-// business side (matching Stitch's own default state).
+// audiences. Both sides now have a real, dedicated landing page:
+// /client (customer-facing: discover, book, review) and /business
+// (business-facing: enquiries, bookings, CRM). Active state is a
+// filled red pill (var(--primary)), not the low-contrast dark/white
+// treatment used before, since users reported confusion about which
+// side they were currently on.
 const path = Astro.url.pathname;
-const isClientSide = path.startsWith("/industries");
+const isClientSide = path.startsWith("/client") || path.startsWith("/industries");
 ---
 <div class="audience-toggle" role="group" aria-label="Choose your experience">
-  <a href="/industries" aria-current={isClientSide ? "page" : undefined}>For clients</a>
+  <a href="/client" aria-current={isClientSide ? "page" : undefined}>For clients</a>
   <a href="/business" aria-current={isClientSide ? undefined : "page"}>For businesses</a>
 </div>

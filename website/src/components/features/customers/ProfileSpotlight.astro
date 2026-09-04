@@ -1,4 +1,27 @@
 ---
 import { profileSpotlight } from "../../../data/customers";
+const { label, note, name, meta, tags, notes, visits, cadence } = profileSpotlight;
 ---
-<section class="cu-spotlight" id="profile-example" aria-labelledby="customers-spotlight-title"><div class="cu-shell"><div class="cu-heading"><p class="cu-label">{profileSpotlight.label}</p><h2 id="customers-spotlight-title">One profile, the full picture.</h2><p>{profileSpotlight.note}</p></div><div class="cu-spotlight__card"><header><div class="cu-spotlight__avatar" aria-hidden="true">{profileSpotlight.name.charAt(0)}</div><div><strong>{profileSpotlight.name}</strong><span>{profileSpotlight.meta}</span></div></header><div class="cu-spotlight__tags">{profileSpotlight.tags.map((tag) => <span>{tag}</span>)}</div><p class="cu-spotlight__notes"><strong>Notes: </strong>{profileSpotlight.notes}</p><ol class="cu-spotlight__visits">{profileSpotlight.visits.map((visit) => <li><span>{visit.date}</span><strong>{visit.service}</strong><em>{visit.status}</em></li>)}</ol></div></div></section>
+<section class="cu-spotlight" id="profile-example" aria-labelledby="customers-spotlight-title"><div class="cu-shell">
+  <div class="cu-heading"><p class="cu-label">{label}</p><h2 id="customers-spotlight-title">One profile, the full picture.</h2><p>{note}</p></div>
+  <div class="cu-spotlight__bento">
+    <div class="cu-spotlight__col">
+      <div class="cu-spotlight__card">
+        <header><div class="cu-spotlight__avatar" aria-hidden="true">{name.charAt(0)}</div><div><strong>{name}</strong><span>{meta}</span></div></header>
+        <div class="cu-spotlight__tags">{tags.map((tag) => <span>{tag}</span>)}</div>
+        <p class="cu-spotlight__notes"><strong>Notes: </strong>{notes}</p>
+      </div>
+      <div class="cu-spotlight__cadence">
+        <div class="cu-spotlight__cadence-head"><span>{cadence.label}</span></div>
+        <p>{cadence.detail}</p>
+        <div class="cu-spotlight__bar"><div style={`width:${cadence.progress}%`}></div></div>
+      </div>
+    </div>
+    <div class="cu-spotlight__col cu-spotlight__col--wide">
+      <div class="cu-spotlight__timeline">
+        <p class="cu-spotlight__timeline-label">Visit history</p>
+        <ol class="cu-spotlight__visits">{visits.map((visit) => <li><span>{visit.date}</span><strong>{visit.service}</strong><em>{visit.status}</em></li>)}</ol>
+      </div>
+    </div>
+  </div>
+</div></section>

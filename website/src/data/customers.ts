@@ -52,6 +52,16 @@ export const profileSpotlight = {
     { service: "Follow-up visit", date: "9 weeks ago", status: "Completed" },
     { service: "First visit", date: "4 months ago", status: "Completed" },
   ],
+  // Illustrates the real comeback-reminder feature (see
+  // /features/customer-retention), not a fabricated recall-accuracy
+  // stat like Stitch's "94.2% Recall Accuracy." The "progress" number
+  // is made up for this one illustrative example, not a measured
+  // product metric.
+  cadence: {
+    label: "Comeback reminder",
+    detail: "A business can set a reminder to go out if a regular customer hasn't booked again after a chosen number of weeks.",
+    progress: 62,
+  },
 };
 
 export interface CustomerCapability { icon: string; title: string; body: string }
@@ -62,12 +72,12 @@ export const customerCapabilities: CustomerCapability[] = [
   { icon: "csvexport", title: "You own the data", body: "Import from a CSV, export to a CSV, anytime. Nothing is locked behind the platform." },
 ];
 
-export interface CustomerIndustry { icon: string; title: string; body: string }
+export interface CustomerIndustry { icon: string; title: string; body: string; fields: [string, string][] }
 export const customerIndustries: CustomerIndustry[] = [
-  { icon: "cut", title: "Barbers & Salons", body: "Track preferences and notes per client, and see who's due for a rebook." },
-  { icon: "car", title: "Auto & Trades", body: "Keep job notes and history attached to each customer's record." },
-  { icon: "health", title: "Health & Wellness", body: "Store the notes that matter for each client's next appointment." },
-  { icon: "clean", title: "Home & Cleaning", body: "Keep recurring-customer preferences and access notes in one place." },
+  { icon: "cut", title: "Barbers & Salons", body: "Track preferences and notes per client, and see who's due for a rebook.", fields: [["Preference notes", "Cut style, product notes"], ["Rebook cadence", "Tracked from visit history"]] },
+  { icon: "car", title: "Auto & Trades", body: "Keep job notes and history attached to each customer's record.", fields: [["Vehicle / job notes", "Free-text, per customer"], ["Service history", "Every past visit logged"]] },
+  { icon: "health", title: "Health & Wellness", body: "Store the notes that matter for each client's next appointment.", fields: [["Care notes", "Free-text, per customer"], ["Next appointment", "Linked to bookings"]] },
+  { icon: "clean", title: "Home & Cleaning", body: "Keep recurring-customer preferences and access notes in one place.", fields: [["Access notes", "Gate codes, pet notes, etc."], ["Recurring plan", "Linked to bookings"]] },
 ];
 
 export const customersCta = {

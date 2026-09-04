@@ -24,8 +24,10 @@
 // - The "Sarah Jenkins" testimonial with photo and "+16% Repeat
 //   Clients" / "11 Hours/Wk" stats - a fabricated identity and outcome.
 //   Removed, not replaced.
-// - "Start Free for 14 Days" - no trial exists; CTA points to the real
-//   Free plan.
+// - "Start Free for 14 Days" is now owner-approved trial language, but
+//   it must mean a time-limited 14-day free trial that converts to a
+//   paid plan, not a permanent free plan. The CTA points to the real
+//   get-started flow.
 export const controlHero = {
   badge: "One dashboard, not five tabs",
   title: "Everything that needs your attention, in one place.",

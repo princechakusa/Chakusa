@@ -1,14 +1,13 @@
 // MARKETING PRICING PRESENTATION - deliberately separate from live
 // billing implementation (no billing/entitlement enforcement is being
-// built or changed by this file; see "FINAL STITCH FIDELITY DIRECTIVE",
-// sections 7-9). The entry tier is now presented as "Starter" at
-// $9.99/month with a 14-day free trial, an explicit owner-approved
-// business decision superseding the earlier permanent-free "Free" tier
-// shown on this page. This is a marketing-copy change only - it does
-// NOT reflect src/lib/entitlements.ts's current PLAN_LIMITS (still
-// "free" there) and does NOT imply the billing/trial/entitlement
-// architecture has been built; that is separate, later work per the
-// directive's section 8. Feature limits below are otherwise unchanged
+// built or changed by this file). There is no permanent free plan:
+// all three tiers are presented as a 14-day free trial followed by a
+// paid subscription (Starter at a fixed $9.99/month; Pro and Business
+// at a store-billed, localized price). This is a marketing-copy
+// change only - it does NOT reflect src/lib/entitlements.ts's current
+// PLAN_LIMITS (still "free" there) and does NOT imply the
+// billing/trial/entitlement architecture has been built; that is
+// separate, later work. Feature limits below are otherwise unchanged
 // and still mirror entitlements.ts pending that later work.
 export interface PricingTier {
   name: string;
@@ -46,14 +45,14 @@ export const pricingTiers: PricingTier[] = [
     ],
     ctaLabel: "Get started with Starter",
     ctaHref: "/get-started",
-    ctaFootnote: "14-day free trial",
+    ctaFootnote: "First 14 days free",
   },
   {
     name: "Pro",
     chip: "High Capacity",
     tagline: "For multi-chair salons, automotive service centers, wellness studios, and small dispatched crews.",
     price: "See store price",
-    priceNote: "Billed through the App Store or Google Play. The store's localized price is the purchase authority.",
+    priceNote: "First 14 days free, then billed through the App Store or Google Play. The store's localized price is the purchase authority. Cancel anytime.",
     includedLabel: "Everything in Starter, plus",
     features: [
       "Unlimited leads, review requests, customers, and reminders",
@@ -64,7 +63,7 @@ export const pricingTiers: PricingTier[] = [
     ],
     ctaLabel: "Choose Pro",
     ctaHref: "/get-started",
-    ctaFootnote: "Store-billed subscription",
+    ctaFootnote: "First 14 days free",
     featured: true,
   },
   {
@@ -72,7 +71,7 @@ export const pricingTiers: PricingTier[] = [
     chip: "Multi-Location",
     tagline: "For trade franchises, multi-location studio operations, and teams with more than one person answering the phone.",
     price: "See store price",
-    priceNote: "Billed through the App Store or Google Play. The store's localized price is the purchase authority.",
+    priceNote: "First 14 days free, then billed through the App Store or Google Play. The store's localized price is the purchase authority. Cancel anytime.",
     includedLabel: "Everything in Pro, plus",
     features: [
       "Everything in Pro",
@@ -80,6 +79,6 @@ export const pricingTiers: PricingTier[] = [
     ],
     ctaLabel: "Choose Business",
     ctaHref: "/get-started",
-    ctaFootnote: "Custom onboarding available",
+    ctaFootnote: "First 14 days free",
   },
 ];

@@ -18,8 +18,10 @@
 //   "4.96 / 5.0" and "1,428 bookings" aggregate stats - all fabricated.
 //   Replaced with one clearly-labeled illustrative example, no invented
 //   identity or photo attached.
-// - "14-day fully featured testbed" - no trial exists; real plans are
-//   Free / Pro / Business (see src/data/pricing.ts).
+// - "14-day fully featured testbed" - reworded because it implied a
+//   no-strings-attached testbed rather than the real 14-day free
+//   trial that converts to a paid plan; real plans are Starter / Pro
+//   / Business, each with a 14-day free trial (see src/data/pricing.ts).
 export const reviewsHero = {
   badge: "Reviews, without the gate",
   title: "Every customer gets asked. Every answer goes public.",

@@ -29,7 +29,9 @@
 // - Specific per-industry "Average Setup Time" figures - unverifiable;
 //   removed.
 // - "Book a Live Walkthrough" - no such scheduling flow is confirmed to
-//   exist; CTA points to the real Free plan and product page instead.
+//   exist; CTA points to the real get-started flow and product page
+//   instead, and describes a 14-day free trial, not a permanent free
+//   plan.
 export const aiHero = {
   badge: "AI with human oversight",
   title: "An AI assistant for customer conversations, with your rules and a human in the loop.",

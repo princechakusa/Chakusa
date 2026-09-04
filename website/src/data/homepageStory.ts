@@ -17,7 +17,11 @@
 //   "Every 3-4 Weeks" presented as measured facts) - the STRUCTURE (a
 //   small nested preview panel, a bottom stat row) is reproduced; the
 //   specific fabricated numbers/dialogue inside it are not.
-// - The final CTA's "14-day free trial" - no trial exists.
+// - The final CTA's "14-day free trial" was removed at Stage 3 because
+//   no trial existed yet. Superseded: a real 14-day free trial now
+//   applies to all three plans (see src/data/pricing.ts), so this
+//   claim is no longer fabricated where it appears elsewhere on the
+//   site.
 
 export const heroCopy = {
   eyebrow: "The 2-in-1 platform for local services",

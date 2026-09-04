@@ -13,7 +13,7 @@ import { stitchMetrics, stitchLeads, stitchSchedule, stitchReviews } from "../..
   <div class="sb-bento">
     <div class="sb-bento__main">
       <article class="sb-card" id="enquiries">
-        <header class="sb-card__header"><div><i></i><h2>Enquiries In-Flight (Off-Hours Auto-Capture)</h2></div><span>Handled by Quiet AI</span></header>
+        <header class="sb-card__header"><div><h2>Enquiries In-Flight (Off-Hours Auto-Capture)</h2></div><span>Handled by Quiet AI</span></header>
         <div class="sb-leads">
           {stitchLeads.map((lead) => <section>
             <div class="sb-lead__copy"><div><strong>{lead.name}</strong><b class={`is-${lead.tone}`}>{lead.service}</b></div><p>{lead.message}</p><small>{lead.time}<span>{lead.state}</span></small></div>

@@ -5,4 +5,7 @@
 .sb-settings small svg,.sb-spotlight__copy>p svg{width:.9rem;height:.9rem;color:var(--secondary)}
 .sb-spotlight__visual aside svg{width:1rem;height:1rem}
 .sb-executive__row,.sb-executive__copy,.sb-bento,.sb-bento__main,.sb-bento__aside{min-width:0}
+.sb-chip{display:block;padding:0;border-radius:0;background:transparent;letter-spacing:.06em;text-transform:uppercase}
+.sb-chip span,.sb-card__header i{display:none}
+.sb-spotlight__copy>p,.sb-cta .sb-shell>p{padding:0;border-radius:0;background:transparent;letter-spacing:.05em;text-transform:uppercase}
 @media(max-width:42rem){.sb-executive__copy{width:100%}.sb-executive h1{max-width:100%;font-size:2rem;overflow-wrap:normal}.sb-executive__copy>div{max-width:100%;font-size:.95rem}}

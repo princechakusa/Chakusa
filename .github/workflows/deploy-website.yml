@@ -29,6 +29,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -38,8 +39,25 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
+      # npm ci has occasionally hung indefinitely on the hosted runner
+      # (npm registry or restored-cache flakiness, not a repo issue -
+      # the lockfile is small and has no git/http dependencies). Bound
+      # each attempt with `timeout` and retry a few times with a clean
+      # npm cache instead of letting one bad attempt stall the whole
+      # job for hours.
       - working-directory: website
-        run: npm ci
+        run: |
+          for attempt in 1 2 3; do
+            echo "npm ci attempt $attempt/3"
+            if timeout 180 npm ci --no-audit --no-fund; then
+              exit 0
+            fi
+            echo "npm ci attempt $attempt failed or timed out, cleaning cache and retrying"
+            npm cache clean --force
+            sleep 5
+          done
+          echo "npm ci failed after 3 attempts"
+          exit 1
 
       - working-directory: website
         run: npm run build

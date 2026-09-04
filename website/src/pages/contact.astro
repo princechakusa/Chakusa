@@ -3,63 +3,23 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import PricingIcon from "../components/pricing/PricingIcon.astro";
-import { contactHero, contactChannels, contactFaqs } from "../data/contact";
+import ContactHero from "../components/contact/ContactHero.astro";
+import ContactChannels from "../components/contact/ContactChannels.astro";
+import ContactDispatch from "../components/contact/ContactDispatch.astro";
+import ContactFaq from "../components/contact/ContactFaq.astro";
+import "../styles/contact/contact-stitch.css";
 
-const title = "Contact | Chakusa";
-const description = "Reach the Chakusa team directly by email for support, business onboarding, or privacy and data questions.";
+const title = "Contact and Support | Chakusa";
+const description = "Contact the Chakusa team for business onboarding, booking assistance, account support, privacy requests, partnerships, and product feedback.";
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content">
-    <section class="contact-hero container">
-      <p class="contact-badge">{contactHero.badge}</p>
-      <h1>{contactHero.title}</h1>
-      <p>{contactHero.body}</p>
-    </section>
-    <section class="contact-channels container">
-      <div class="contact-channels__grid">
-        {contactChannels.map((c) => <a class="contact-channels__card" href={`mailto:${c.email}`}>
-          <div class="contact-channels__icon"><PricingIcon name={c.icon} /></div>
-          <strong>{c.title}</strong>
-          <p>{c.body}</p>
-          <span>{c.email}</span>
-        </a>)}
-      </div>
-    </section>
-    <section class="contact-faq container">
-      <div class="contact-faq__heading">
-        <p class="contact-label">Common questions</p>
-        <h2>Before you email us.</h2>
-      </div>
-      <div class="contact-faq__list">
-        {contactFaqs.map((item) => <details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}
-      </div>
-    </section>
+    <ContactHero />
+    <ContactChannels />
+    <ContactDispatch />
+    <ContactFaq />
   </main>
   <Footer />
 </MarketingLayout>
-<style>
-.contact-badge,.contact-label{margin:0;color:var(--secondary);font:700 .7rem/1.2 var(--font);letter-spacing:.06em;text-transform:uppercase}
-.contact-hero{padding-block:5rem 3rem;text-align:center;max-width:34rem}
-.contact-hero h1{margin:.75rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.2rem,4.4vw,3rem);line-height:1.2;letter-spacing:-.025em}
-.contact-hero>p:not(.contact-badge){margin:1rem 0 0;color:var(--body-text);font-size:1.05rem;line-height:1.6}
-.contact-channels{padding-block:2rem 4rem}
-.contact-channels__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
-.contact-channels__card{display:block;padding:1.75rem;border:1px solid var(--hairline);border-radius:var(--r-xl);background:#fff;color:inherit;transition:box-shadow 160ms ease,transform 160ms ease}
-.contact-channels__card:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px)}
-.contact-channels__icon{display:grid;place-items:center;width:2.75rem;height:2.75rem;margin-bottom:1rem;border-radius:.5rem;background:#fff0ed;color:var(--primary)}
-.contact-channels__card strong{display:block;margin-bottom:.5rem;font-family:var(--font-heading);font-size:1.05rem;color:var(--heading)}
-.contact-channels__card p{margin:0 0 1rem;color:var(--body-text);font-size:.85rem;line-height:1.55}
-.contact-channels__card span{color:var(--secondary);font-size:.8rem;font-weight:700}
-.contact-faq{padding-block:4rem 5rem;max-width:44rem}
-.contact-faq__heading h2{margin:.5rem 0 2rem;color:var(--heading);font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
-.contact-faq__list{border-top:1px solid var(--hairline)}
-.contact-faq__list details{border-bottom:1px solid var(--hairline)}
-.contact-faq__list summary{min-height:3.5rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:.9rem 0;cursor:pointer;font-family:var(--font-heading);font-weight:700;color:var(--heading);list-style:none}
-.contact-faq__list summary::-webkit-details-marker{display:none}
-.contact-faq__list summary span{font-size:1.2rem;font-weight:400;color:var(--secondary)}
-.contact-faq__list details p{margin:0;padding:0 0 1rem;color:var(--body-text);font-size:.9rem;line-height:1.6}
-@media (max-width:42rem){.contact-channels__grid{grid-template-columns:1fr}}
-</style>

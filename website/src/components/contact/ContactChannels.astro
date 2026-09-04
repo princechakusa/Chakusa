@@ -1,0 +1,8 @@
+---
+import ContactIcon from "./ContactIcon.astro";
+import { supportChannels } from "../../data/contactStitch";
+---
+<section class="cs-channels cs-shell" aria-labelledby="channels-title">
+  <header><div><p>Targeted Channels</p><h2 id="channels-title">Select your resolution stream</h2></div><span>Routing your query directly to specialized technical or operational leads eliminates triage delays.</span></header>
+  <div class="cs-channels__grid">{supportChannels.map((item) => <a href="#dispatch" data-support-channel={item.category} data-support-title={item.title} class={`is-${item.tone}`}><div><i><ContactIcon name={item.icon} /></i><span>{item.number}</span></div><h3>{item.title}</h3><p>{item.body}</p><footer><strong>{item.detail}</strong><ContactIcon name="arrow" /></footer></a>)}</div>
+</section>

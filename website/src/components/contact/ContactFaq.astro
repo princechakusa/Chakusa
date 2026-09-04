@@ -1,0 +1,5 @@
+---
+import ContactIcon from "./ContactIcon.astro";
+import { supportFaqs } from "../../data/contactStitch";
+---
+<section class="cs-faq cs-shell" aria-labelledby="support-faq-title"><header><p>Quick Solutions</p><h2 id="support-faq-title">Frequently Resolved Inquiries</h2><div>Get swift answers prior to initiating an operational support ticket.</div></header><div>{supportFaqs.map((item) => <article><ContactIcon name={item.icon} /><section><h3>{item.question}</h3><p>{item.answer}</p></section></article>)}</div></section>

@@ -1,0 +1,32 @@
+---
+import ContactIcon from "./ContactIcon.astro";
+import ContactLocation from "./ContactLocation.astro";
+import { tradeOptions } from "../../data/contactStitch";
+---
+<section class="cs-dispatch cs-shell" id="dispatch" aria-labelledby="dispatch-title">
+  <div class="cs-dispatch__form">
+    <header><div><h2 id="dispatch-title">Send a Direct Dispatch</h2><div class="cs-role" role="group" aria-label="Choose your role"><button class="is-active" type="button" data-role="business">I run a local business</button><button type="button" data-role="client">I am a client</button></div></div><p>Complete the dispatch ticket below. Inquiries are automatically paired with our tier-1 engineering and operational team.</p></header>
+    <form data-contact-form>
+      <div class="cs-form-grid"><label>Full Name <span>*</span><input name="name" placeholder="e.g., Marcus Vance" required /></label><label>Email Address <span>*</span><input name="email" type="email" placeholder="name@business.com" required /></label></div>
+      <div class="cs-form-grid"><label>Business / Trade Discipline<select name="trade">{tradeOptions.map(([value,label]) => <option value={value}>{label}</option>)}</select></label><label>Topic Subject <span>*</span><input name="subject" placeholder="Summary of inquiry or incident" required /></label></div>
+      <label>Operational Details or Message <span>*</span><textarea name="message" placeholder="Include specific location, platform ID, or appointment timestamps if applicable..." rows="4" required></textarea></label>
+      <div class="cs-sla"><ContactIcon name="check" /><span><strong>Standard SLA: Within 2 hours</strong><small>90-second SLA applied for live booking dispatch emergencies.</small></span><b>Staffed Active</b></div>
+      <footer><p><ContactIcon name="lock" />Zero marketing outreach. Your details remain private and restricted strictly to dispatch communication.</p><button type="submit">Dispatch Message <ContactIcon name="send" /></button></footer>
+      <p class="cs-form-status" data-form-status aria-live="polite"></p>
+    </form>
+  </div>
+  <aside class="cs-dispatch__aside">
+    <section class="cs-mailboxes"><p>Official Channels</p><h3>Direct Team Mailboxes</h3><div><span><b>General & Technical Support</b><a href="mailto:support@chakusarecovery.com">support@chakusarecovery.com</a><small>Merchant accounts, client reservations, billing inquiries.</small></span><span><b>Data Protection Officer</b><a href="mailto:privacy@chakusarecovery.com">privacy@chakusarecovery.com</a><small>Compliance registries, encryption verification, records requests.</small></span></div><footer><strong>Desk Operational Hours</strong><p>Monday - Saturday: 07:00 - 20:00 (Local Trade Zone)<br />Sunday: Critical automated booking dispatch monitoring.</p></footer></section>
+    <section class="cs-guarantee"><ContactIcon name="shield" /><h3>The Chakusa Guarantee</h3><p>We never broker user phone numbers or transaction histories to external ad networks. When you reach out to our team, you speak to people who deeply understand local service craftsmanship.</p><div><span>✓ Encrypted transmission</span><span>✓ No chatbot loops</span></div></section>
+    <ContactLocation />
+  </aside>
+</section>
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-contact-form]");
+  const status = document.querySelector<HTMLElement>("[data-form-status]");
+  const roleButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-role]")];
+  let role = "I run a local business";
+  roleButtons.forEach((button) => button.addEventListener("click", () => { roleButtons.forEach((item) => item.classList.remove("is-active")); button.classList.add("is-active"); role = button.textContent?.trim() || role; }));
+  document.querySelectorAll<HTMLElement>("[data-support-channel]").forEach((link) => link.addEventListener("click", () => { const subject = form?.elements.namedItem("subject"); if (subject instanceof HTMLInputElement) subject.value = link.dataset.supportTitle || ""; }));
+  form?.addEventListener("submit", (event) => { event.preventDefault(); if (!form.reportValidity()) return; const data = new FormData(form); const subject = String(data.get("subject") || "Chakusa support request"); const body = [`Name: ${data.get("name")}`,`Email: ${data.get("email")}`,`Role: ${role}`,`Trade: ${data.get("trade")}`,"",String(data.get("message") || "")].join("\n"); if (status) status.textContent = "Opening your email application with the dispatch details."; window.location.href = `mailto:support@chakusarecovery.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; });
+</script>

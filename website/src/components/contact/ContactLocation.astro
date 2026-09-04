@@ -1,0 +1,26 @@
+---
+import ContactIcon from "./ContactIcon.astro";
+---
+<section class="cs-location" data-location-panel>
+  <header><span>Local Support View</span><ContactIcon name="location" /></header>
+  <div class="cs-location__empty" data-location-empty><ContactIcon name="location" /><strong>See support around your location</strong><p>Your browser will ask permission first. Chakusa does not store your coordinates.</p><button type="button" data-location-button>Use my location</button></div>
+  <iframe title="Google Map centered on your current location" loading="lazy" referrerpolicy="no-referrer-when-downgrade" data-location-map hidden></iframe>
+  <p class="cs-location__status" data-location-status aria-live="polite"></p>
+</section>
+<script>
+  const panel = document.querySelector<HTMLElement>("[data-location-panel]");
+  const button = panel?.querySelector<HTMLButtonElement>("[data-location-button]");
+  const map = panel?.querySelector<HTMLIFrameElement>("[data-location-map]");
+  const empty = panel?.querySelector<HTMLElement>("[data-location-empty]");
+  const status = panel?.querySelector<HTMLElement>("[data-location-status]");
+  button?.addEventListener("click", () => {
+    if (!navigator.geolocation) { if (status) status.textContent = "Location is not available in this browser."; return; }
+    button.disabled = true; button.textContent = "Requesting location...";
+    navigator.geolocation.getCurrentPosition(({coords}) => {
+      const latitude = coords.latitude.toFixed(6); const longitude = coords.longitude.toFixed(6);
+      if (map) { map.src = `https://www.google.com/maps?q=${latitude},${longitude}&z=14&output=embed`; map.hidden = false; }
+      if (empty) empty.hidden = true;
+      if (status) status.textContent = "Google Maps is centered on your current location.";
+    }, () => { button.disabled = false; button.textContent = "Try again"; if (status) status.textContent = "Location permission was not provided. No location was collected."; }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  });
+</script>

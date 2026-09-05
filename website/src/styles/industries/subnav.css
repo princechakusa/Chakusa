@@ -1,0 +1,13 @@
+.ib-subnav{position:relative;z-index:25;overflow:visible;border-bottom:1px solid #dae2fd;background:#fff}
+.ib-subnav__row{position:relative;display:flex;align-items:center;gap:.2rem;min-width:0;padding-block:.65rem}
+.ib-subnav__row>a{flex:none;padding:.55rem .7rem;border-radius:.55rem;color:#59413c;font-size:.7rem;font-weight:750}
+.ib-subnav__row>a:hover,.ib-subnav__row>a:focus-visible,.ib-subnav__row>a[aria-current=page]{background:#ffdad3;color:#8d1704}
+.ib-subnav__current{margin-left:auto;padding:.5rem .7rem;border-radius:999px;background:#ab2d19;color:#fff;font-size:.68rem;font-weight:800}
+.ib-subnav__step{display:grid!important;place-items:center;width:2rem;height:2rem;padding:0!important;border:1px solid #dae2fd!important;border-radius:50%!important}
+.ib-subnav__picker{position:relative;flex:none}
+.ib-subnav__picker summary{padding:.55rem .7rem;border-radius:.55rem;background:#f2f3ff;color:#131b2e;font-size:.68rem;font-weight:800;cursor:pointer;list-style:none}
+.ib-subnav__picker summary::-webkit-details-marker{display:none}
+.ib-subnav__picker>div{position:absolute;right:0;top:calc(100% + .65rem);display:grid;grid-template-columns:repeat(3,minmax(10rem,1fr));gap:.7rem;width:min(44rem,calc(100vw - 2rem));padding:1rem;border:1px solid #dae2fd;border-radius:1rem;background:#fff;box-shadow:0 20px 45px rgba(40,48,68,.18)}
+.ib-subnav__picker section{display:grid;align-content:start;gap:.15rem}.ib-subnav__picker section strong{padding:.35rem .5rem;color:#006a61;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em}.ib-subnav__picker section a{padding:.4rem .5rem;border-radius:.45rem;color:#59413c;font-size:.7rem}.ib-subnav__picker section a:hover,.ib-subnav__picker section a[aria-current=page]{background:#fff0ed;color:#8d1704;font-weight:800}
+@media(max-width:64rem){.ib-subnav{overflow-x:auto}.ib-subnav__row{min-width:max-content}.ib-subnav__row>a:nth-of-type(n+3):not(.ib-subnav__step){display:none}.ib-subnav__current{margin-left:.5rem}.ib-subnav__picker>div{position:fixed;left:1rem;right:1rem;top:8.5rem;width:auto;grid-template-columns:repeat(2,1fr);max-height:65vh;overflow:auto}}
+@media(max-width:34rem){.ib-subnav__picker>div{grid-template-columns:1fr}.ib-subnav__current{max-width:7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}

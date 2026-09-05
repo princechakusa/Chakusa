@@ -1,5 +1,26 @@
 ---
-const links = [{href:"/industries",label:"All industries"},{href:"/industries/barbers",label:"Barbers"},{href:"/industries/hair-salons",label:"Hair salons"},{href:"/industries/beauty",label:"Beauty"},{href:"/industries/home-services",label:"Home services"},{href:"/industries/automotive",label:"Automotive"},{href:"/industries/professional",label:"Professional"},{href:"/industries/hospitality",label:"Hospitality"}];
-const { active = "Barbers" } = Astro.props;
+import { industryGroups } from "../../data/industryNavigation";
+import "../../styles/industries/subnav.css";
+
+interface Props { activeHref?: string }
+const { activeHref = "/industries/barbers" } = Astro.props;
+const professions = industryGroups.flatMap((group) => group.professions.map((profession) => ({ ...profession, category: group.label })));
+const currentIndex = professions.findIndex((profession) => profession.href === activeHref);
+const current = currentIndex >= 0 ? professions[currentIndex] : undefined;
+const previous = current ? professions[(currentIndex - 1 + professions.length) % professions.length] : undefined;
+const next = current ? professions[(currentIndex + 1) % professions.length] : undefined;
+const activeGroup = industryGroups.find((group) => group.overviewHref === activeHref || group.professions.some((profession) => profession.href === activeHref));
 ---
-<nav class="ib-subnav" aria-label="Industry pages"><div class="ib-shell">{links.map((link)=><a href={link.href} aria-current={link.label===active?"page":undefined}>{link.label}</a>)}</div></nav>
+<nav class="ib-subnav" aria-label="Industry pages">
+  <div class="ib-shell ib-subnav__row">
+    <a href="/industries">All industries</a>
+    {industryGroups.map((group) => <a href={group.overviewHref} aria-current={group === activeGroup && !current ? "page" : undefined}>{group.label}</a>)}
+    {current && <span class="ib-subnav__current">{current.label}</span>}
+    {previous && <a class="ib-subnav__step" href={previous.href} aria-label={`Previous industry: ${previous.label}`}>←</a>}
+    {next && <a class="ib-subnav__step" href={next.href} aria-label={`Next industry: ${next.label}`}>→</a>}
+    <details class="ib-subnav__picker">
+      <summary>Choose industry</summary>
+      <div>{industryGroups.map((group) => <section><strong>{group.label}</strong>{group.professions.map((profession) => <a href={profession.href} aria-current={profession.href === activeHref ? "page" : undefined}>{profession.label}</a>)}</section>)}</div>
+    </details>
+  </div>
+</nav>

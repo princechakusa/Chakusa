@@ -22,16 +22,7 @@ const { industry } = Astro.props;
 const title = `${industry.title} businesses | Chakusa`;
 const description = `${industry.headline} ${industry.detailIntro}`;
 const categoryGroup = industryGroups.find((group) => group.overviewHref === `/industries/${industry.id}`);
-const categoryLabel = "categoryLabel" in industry ? industry.categoryLabel : undefined;
-const activeSubnav = industry.id === "beauty" || categoryLabel === "Beauty and wellness"
-  ? "Beauty"
-  : industry.id === "home-services" || categoryLabel === "Home services"
-    ? "Home services"
-    : industry.id === "automotive" || categoryLabel === "Automotive"
-      ? "Automotive"
-      : industry.id === "hospitality" || categoryLabel === "Hospitality"
-        ? "Hospitality"
-        : "Professional";
+const activeHref = `/industries/${industry.id}`;
 
 // Workflow items are always written in Recover, Review, Retain order (see
 // industries.ts's doc comment), so each index maps to a distinct icon
@@ -49,7 +40,7 @@ const workflowIcons = [
   <SkipLink />
   <Header />
   <main id="main-content">
-    <IndustrySubnav active={activeSubnav} />
+    <IndustrySubnav {activeHref} />
     <section class="page-hero content-shell" aria-labelledby="industry-detail-title">
       <a class="industry-detail-back" href="/industries">All industries</a>
       <p class="eyebrow">{"categoryLabel" in industry ? industry.categoryLabel : industry.title}</p>

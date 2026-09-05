@@ -4,13 +4,14 @@ import SkipLink from "../../components/foundation/SkipLink.astro";
 import Header from "../../components/header/Header.astro";
 import Footer from "../../components/footer/Footer.astro";
 import CTASection from "../../components/CTASection.astro";
+import IndustrySubnav from "../../components/industries/IndustrySubnav.astro";
 import { industries } from "../../data/industries";
 import { industryGroups, industryProfessionPages } from "../../data/industryNavigation";
 import "../../styles/global.css";
 import "../../styles/industries/explorer.css";
 
 export function getStaticPaths() {
-  const professionPages = industryProfessionPages.filter((industry) => industry.id !== "barbers");
+  const professionPages = industryProfessionPages.filter((industry) => !["barbers", "hair-salons"].includes(industry.id));
   return [...industries, ...professionPages].map((industry) => ({
     params: { slug: industry.id },
     props: { industry },
@@ -21,6 +22,14 @@ const { industry } = Astro.props;
 const title = `${industry.title} businesses | Chakusa`;
 const description = `${industry.headline} ${industry.detailIntro}`;
 const categoryGroup = industryGroups.find((group) => group.overviewHref === `/industries/${industry.id}`);
+const categoryLabel = "categoryLabel" in industry ? industry.categoryLabel : undefined;
+const activeSubnav = industry.id === "beauty" || categoryLabel === "Beauty and wellness"
+  ? "Beauty"
+  : industry.id === "home-services" || categoryLabel === "Home services"
+    ? "Home services"
+    : industry.id === "automotive" || categoryLabel === "Automotive"
+      ? "Automotive"
+      : "Professional";
 
 // Workflow items are always written in Recover, Review, Retain order (see
 // industries.ts's doc comment), so each index maps to a distinct icon
@@ -38,6 +47,7 @@ const workflowIcons = [
   <SkipLink />
   <Header />
   <main id="main-content">
+    <IndustrySubnav active={activeSubnav} />
     <section class="page-hero content-shell" aria-labelledby="industry-detail-title">
       <a class="industry-detail-back" href="/industries">All industries</a>
       <p class="eyebrow">{"categoryLabel" in industry ? industry.categoryLabel : industry.title}</p>

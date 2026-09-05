@@ -1,0 +1,14 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import IndustrySubnav from "../../components/industries/IndustrySubnav.astro";
+import HairSalonHero from "../../components/industries/HairSalonHero.astro";
+import HairSalonContent from "../../components/industries/HairSalonContent.astro";
+import "../../styles/industries/barbers.css";
+import "../../styles/industries/barbers-flat.css";
+const title="Chakusa for Hair Salons | Enquiries, Appointments and Returning Clients";
+const description="See how hair salons use Chakusa to connect enquiries, appointments, customer notes, honest reviews, and returning clients in one working view.";
+---
+<MarketingLayout {title} {description}><SkipLink /><Header /><main id="main-content"><IndustrySubnav active="Hair salons" /><HairSalonHero /><HairSalonContent /></main><Footer /></MarketingLayout>

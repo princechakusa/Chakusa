@@ -1,0 +1,15 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import IndustrySubnav from "../../components/industries/IndustrySubnav.astro";
+import BarberHero from "../../components/industries/BarberHero.astro";
+import BarberOperations from "../../components/industries/BarberOperations.astro";
+import BarberStories from "../../components/industries/BarberStories.astro";
+import BarberFaqCta from "../../components/industries/BarberFaqCta.astro";
+import "../../styles/industries/barbers.css";
+const title="Chakusa for Barbers | Enquiries, Bookings and Returning Regulars";
+const description="See how barbers use Chakusa to connect missed enquiries, bookings, customer notes, reviews, and returning regulars in one working view.";
+---
+<MarketingLayout {title} {description}><SkipLink /><Header /><main id="main-content"><IndustrySubnav /><BarberHero /><BarberOperations /><BarberStories /><BarberFaqCta /></main><Footer /></MarketingLayout>

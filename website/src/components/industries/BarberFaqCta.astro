@@ -1,0 +1,5 @@
+---
+import { barberFaqs } from "../../data/barbersIndustry";
+---
+<section class="ib-faq ib-shell" aria-labelledby="barber-faq"><header class="ib-heading"><p>Common questions</p><h2 id="barber-faq">Frequently asked by barbers and shop owners.</h2></header><div>{barberFaqs.map((item)=><details><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></section>
+<section class="ib-cta"><div class="ib-shell"><p>Built for busy chairs</p><h2>Never lose track of another client while your shears are working.</h2><span>Set up your barbershop, connect the customer journey, and keep the next action visible.</span><div><a class="ui-button ui-button--primary" href="/get-started">Start free trial</a><a class="ui-button ui-button--secondary" href="/pricing">View pricing</a></div><small>First 14 days free. Choose the plan that fits your business.</small></div></section>

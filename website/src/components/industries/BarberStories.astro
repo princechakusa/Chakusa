@@ -1,0 +1,5 @@
+---
+import { barberStories } from "../../data/barbersIndustry";
+---
+<section class="ib-stories"><div class="ib-shell"><header class="ib-heading"><p>Practical use cases</p><h2>Real situations on the barber floor.</h2></header><div class="ib-stories__list">{barberStories.map((story)=><article><div><span>Case study {story.number}</span><h3>{story.title}</h3><p>{story.situation}</p></div><div><strong>What Chakusa does</strong><p>{story.action}</p></div><div><strong>Practical result</strong><p>{story.result}</p></div></article>)}</div></div></section>
+<section class="ib-ownership"><div class="ib-shell"><div><p>Built for hands at work</p><h2>Your customers belong to your shop.</h2><span>Chakusa gives the business one connected place for customer relationships without turning the workday into admin.</span><ul><li>Direct customer relationships</li><li>Exportable business records</li><li>Clear team access</li><li>No marketplace commission on bookings</li></ul></div></div></section>

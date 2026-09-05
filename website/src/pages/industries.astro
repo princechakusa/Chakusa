@@ -22,6 +22,7 @@ const description = "Chakusa is built for local, appointment-driven businesses i
     </section>
 
     <div class="industries-list content-shell" data-reveal>
+      <IndustryCard id="barbers" title="Barbers" examples={["Barbershop", "Grooming parlor", "Multi-chair shop"]} copy="Keep missed enquiries, chair bookings, customer notes, reviews, and returning regulars connected while the team stays focused on the work." />
       {industries.map((industry) => (
         <IndustryCard id={industry.id} title={industry.title} examples={industry.examples} copy={industry.copy} />
       ))}

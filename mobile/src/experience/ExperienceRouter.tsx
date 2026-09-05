@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -18,6 +18,7 @@ import {
   Experience,
   ExperienceOrUnselected,
   resolveInitialExperience,
+  shouldStartExperienceSwitch,
 } from './experience';
 import { readExperiencePreference, writeExperiencePreference } from './experiencePreference';
 import { normalizeDeepLinkIntent, normalizeNotificationIntent, PendingIntent } from './pendingIntent';
@@ -42,6 +43,30 @@ export function ExperienceRouter() {
   const apply = (next: ExperienceOrUnselected) => {
     experienceRef.current = next;
     setExperience(next);
+  };
+
+  // PROGRAM 2 LOOP 10B: guards the Android Fabric `addViewAt … child
+  // already has a parent` crash class. Swapping the entire mounted shell
+  // (BusinessRoot <-> CustomerRoot) tears down and rebuilds a large native
+  // view tree in one commit; doing that while an in-flight native
+  // animation/gesture (a stack transition, a Modal dismiss) still owns a
+  // view can race Fabric's view manager. `switchingRef` makes a rapid
+  // double-tap or a manual-switch-racing-a-deep-link-switch a no-op, and
+  // `InteractionManager.runAfterInteractions` — the standard React Native
+  // mechanism for "wait until animations/gestures settle", not a timer —
+  // defers the actual unmount/mount until nothing native is in flight.
+  const switchingRef = useRef(false);
+  const [switching, setSwitching] = useState(false);
+  const startSwitch = (target: Experience) => {
+    if (!shouldStartExperienceSwitch(target, experienceRef.current, switchingRef.current)) return;
+    switchingRef.current = true;
+    setSwitching(true);
+    void writeExperiencePreference(target);
+    InteractionManager.runAfterInteractions(() => {
+      apply(target);
+      switchingRef.current = false;
+      setSwitching(false);
+    });
   };
 
   useEffect(() => {
@@ -93,8 +118,7 @@ export function ExperienceRouter() {
     const crossOver = (intent: PendingIntent | null) => {
       if (!intent || intent.experience === experienceRef.current) return;
       void writePendingIntent(intent);
-      void writeExperiencePreference(intent.experience);
-      apply(intent.experience);
+      startSwitch(intent.experience);
     };
     const urlSub = Linking.addEventListener('url', ({ url }) => crossOver(normalizeDeepLinkIntent(url)));
     const noteSub = Platform.OS === 'web' ? null : Notifications.addNotificationResponseReceivedListener((response) => {
@@ -105,10 +129,16 @@ export function ExperienceRouter() {
 
   const value = useMemo<ExperienceValue>(() => ({
     experience,
-    switchExperience: (target) => { void writeExperiencePreference(target); apply(target); },
-    openSelector: () => apply('unselected'),
-  }), [experience]);
+    switching,
+    switchExperience: startSwitch,
+    openSelector: () => { if (!switchingRef.current) apply('unselected'); },
+  }), [experience, switching]);
 
+  // NOTE: `switching` intentionally does NOT change what renders here. The
+  // whole point of deferring is to keep the CURRENT shell mounted —
+  // unmounting it early would tear down its native tree immediately and
+  // reintroduce the exact race this guard exists to prevent. `switching`
+  // only disables the "Switch to …" affordance and delays `apply()`.
   if (phase === 'loading') {
     return (
       <SafeAreaProvider>

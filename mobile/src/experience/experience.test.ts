@@ -5,6 +5,7 @@ import {
   coerceExperiencePreference,
   hasSessionFor,
   resolveInitialExperience,
+  shouldStartExperienceSwitch,
 } from './experience';
 
 describe('coerceExperiencePreference', () => {
@@ -84,6 +85,23 @@ describe('classifyDeepLinkExperience', () => {
     expect(classifyDeepLinkExperience('')).toBeNull();
     expect(classifyDeepLinkExperience(null)).toBeNull();
     expect(classifyDeepLinkExperience('chakusa://totally-unknown/thing')).toBeNull();
+  });
+});
+
+describe('shouldStartExperienceSwitch — Android Fabric crash re-entrancy guard', () => {
+  it('allows a switch to a different experience when nothing is in flight', () => {
+    expect(shouldStartExperienceSwitch('business', 'customer', false)).toBe(true);
+    expect(shouldStartExperienceSwitch('customer', 'unselected', false)).toBe(true);
+  });
+
+  it('rejects a switch while one is already in progress (rapid double-tap)', () => {
+    expect(shouldStartExperienceSwitch('business', 'customer', true)).toBe(false);
+    expect(shouldStartExperienceSwitch('customer', 'business', true)).toBe(false);
+  });
+
+  it('rejects a redundant switch to the experience already active', () => {
+    expect(shouldStartExperienceSwitch('business', 'business', false)).toBe(false);
+    expect(shouldStartExperienceSwitch('customer', 'customer', false)).toBe(false);
   });
 });
 

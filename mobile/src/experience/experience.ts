@@ -65,6 +65,24 @@ export function hasSessionFor(experience: Experience, input: Pick<ExperienceReso
   return experience === 'business' ? input.hasBusinessSession : input.hasCustomerSession;
 }
 
+/**
+ * PROGRAM 2 LOOP 10B: whether a `switchExperience(target)` call should
+ * actually start a shell swap right now. Guards the two known triggers of
+ * the Android Fabric `addViewAt … child already has a parent` crash class:
+ * a rapid double-tap re-entering the swap before the first one finishes,
+ * and a redundant switch to the experience that is already active (or
+ * already being switched to). Pure so the re-entrancy rule is testable
+ * without mounting a component.
+ */
+export function shouldStartExperienceSwitch(
+  target: Experience,
+  current: ExperienceOrUnselected,
+  switchInProgress: boolean,
+): boolean {
+  if (switchInProgress) return false;
+  return target !== current;
+}
+
 // --- Deep-link classification ----------------------------------------------
 
 // Business-owner deep links the app already understands (App.tsx `linking`

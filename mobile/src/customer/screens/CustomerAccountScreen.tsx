@@ -18,9 +18,9 @@ type IconName = keyof typeof Ionicons.glyphMap;
 // Rewards" location (full experience is Loop 8), sign out, and close
 // account.
 
-function MenuRow({ icon, label, detail, onPress }: { icon: IconName; label: string; detail?: string; onPress: () => void }) {
+function MenuRow({ icon, label, detail, onPress, disabled = false }: { icon: IconName; label: string; detail?: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.rowDisabled]}>
       <Ionicons name={icon} size={20} color={colors.text} />
       <Text style={styles.rowLabel}>{label}</Text>
       {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
@@ -32,7 +32,7 @@ function MenuRow({ icon, label, detail, onPress }: { icon: IconName; label: stri
 export function CustomerAccountScreen() {
   const navigation = useNavigation<Nav>();
   const { user, profile, logout, closeAccount } = useCustomerAuth();
-  const { switchExperience } = useExperience();
+  const { switching, switchExperience } = useExperience();
 
   const confirmClose = () => {
     Alert.alert(
@@ -80,7 +80,7 @@ export function CustomerAccountScreen() {
 
       <SectionHeader title="Chakusa" />
       <View style={styles.group}>
-        <MenuRow icon="swap-horizontal-outline" label="Switch to business" onPress={() => switchExperience('business')} />
+        <MenuRow icon="swap-horizontal-outline" label={switching ? 'Switching…' : 'Switch to business'} disabled={switching} onPress={() => switchExperience('business')} />
       </View>
 
       <SectionHeader title="Legal" />
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   group: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
   row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   pressed: { opacity: 0.6 },
+  rowDisabled: { opacity: 0.5 },
   rowLabel: { flex: 1, ...typography.body, color: colors.text },
   rowDetail: { ...typography.caption, color: colors.textSecondary },
 });

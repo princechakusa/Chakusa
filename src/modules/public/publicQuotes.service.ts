@@ -30,49 +30,57 @@ export interface ResolvedPublicQuote {
   token: ResolvedToken;
 }
 
-function loadTokenRow(tokenId: string) {
-  return prisma.quoteAcceptanceToken.findUnique({
-    where: { id: tokenId },
+// Internal ids ARE selected here (needed by the accept/decline action
+// path in publicQuotes.accept.service.ts); serializePublicQuote never
+// projects them into a response.
+const TOKEN_ROW_SELECT = {
+  id: true,
+  tokenHash: true,
+  expiresAt: true,
+  revokedAt: true,
+  quoteRevisionId: true,
+  quoteRevision: {
     select: {
-      tokenHash: true,
-      expiresAt: true,
-      revokedAt: true,
-      quoteRevision: {
+      notes: true,
+      terms: true,
+      subtotal: true,
+      discountTotal: true,
+      taxTotal: true,
+      total: true,
+      lineItems: {
+        orderBy: { sortOrder: "asc" as const },
         select: {
-          notes: true,
-          terms: true,
-          subtotal: true,
-          discountTotal: true,
-          taxTotal: true,
-          total: true,
-          lineItems: {
-            orderBy: { sortOrder: "asc" },
-            select: {
-              description: true,
-              quantity: true,
-              unitPrice: true,
-              discountAmount: true,
-              taxable: true,
-              lineTotal: true,
-            },
-          },
-          quoteDocument: {
-            select: {
-              documentType: true,
-              documentNumber: true,
-              currency: true,
-              status: true,
-              expiresAt: true,
-              business: { select: { name: true, platformStatus: true } },
-            },
-          },
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          discountAmount: true,
+          taxable: true,
+          lineTotal: true,
+        },
+      },
+      quoteDocument: {
+        select: {
+          id: true,
+          documentType: true,
+          documentNumber: true,
+          currency: true,
+          status: true,
+          currentRevisionId: true,
+          expiresAt: true,
+          business: { select: { name: true, platformStatus: true } },
         },
       },
     },
-  });
+  },
+};
+
+function loadTokenRow(tokenId: string) {
+  return prisma.quoteAcceptanceToken.findUnique({ where: { id: tokenId }, select: TOKEN_ROW_SELECT });
 }
 
-function deriveState(documentStatus: QuoteDocumentStatus, tokenExpiresAt: Date, tokenRevokedAt: Date | null, now: Date): PublicQuoteState | null {
+export { TOKEN_ROW_SELECT };
+
+export function deriveState(documentStatus: QuoteDocumentStatus, tokenExpiresAt: Date, tokenRevokedAt: Date | null, now: Date): PublicQuoteState | null {
   // Terminal document states win over token expiry for display purposes -
   // an accepted quote should read "accepted" even if its token has since
   // lapsed.

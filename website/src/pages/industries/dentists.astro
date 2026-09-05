@@ -1,0 +1,5 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";import SkipLink from "../../components/foundation/SkipLink.astro";import Header from "../../components/header/Header.astro";import Footer from "../../components/footer/Footer.astro";import BeautyVerticalPage from "../../components/industries/BeautyVerticalPage.astro";import { dentistIndustry } from "../../data/dentistIndustry";import "../../styles/industries/barbers.css";import "../../styles/industries/barbers-flat.css";import "../../styles/industries/beauty-verticals.css";
+const title="Chakusa for Dentists | Enquiries, Appointments and Recall Administration";const description="Connect non-clinical dental enquiries, appointment requests, honest reviews, and practice-controlled recall administration.";
+---
+<MarketingLayout {title} {description}><SkipLink/><Header/><main id="main-content"><BeautyVerticalPage vertical={dentistIndustry} visual="woman"/></main><Footer/></MarketingLayout>

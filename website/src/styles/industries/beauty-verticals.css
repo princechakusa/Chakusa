@@ -1,0 +1,8 @@
+.ib-workflow__steps--wide{grid-template-columns:repeat(3,1fr)}
+.beauty-vertical-hero h1{font-size:clamp(2.6rem,4.4vw,3.9rem)}
+.spa-scene{position:absolute;inset:2rem 0 0;width:100%;height:calc(100% - 2rem);overflow:visible;filter:drop-shadow(0 16px 16px rgba(40,48,68,.1))}
+.spa-scene__sun{fill:#dff9f4;animation:spa-breathe 4.5s ease-in-out infinite}.spa-scene__table{fill:#283044}.spa-scene__towel{fill:#fff;stroke:#dae2fd;stroke-width:3}.spa-scene__fold{fill:none;stroke:#dae2fd;stroke-width:3;stroke-linecap:round}.spa-scene__stones ellipse{fill:#59413c}.spa-scene__plant path{fill:none;stroke:#006a61;stroke-width:7;stroke-linecap:round}.spa-scene__plant .spa-scene__pot{fill:#ab2d19;stroke:none}.spa-scene__steam path{fill:none;stroke:#006a61;stroke-width:4;stroke-linecap:round;animation:spa-steam 3.2s ease-in-out infinite}.spa-scene__steam path+path{animation-delay:-1.4s}
+@keyframes spa-breathe{0%,100%{transform:scale(1);transform-origin:center;opacity:.65}50%{transform:scale(1.05);opacity:.9}}@keyframes spa-steam{0%,100%{opacity:.25;transform:translateY(5px)}50%{opacity:.8;transform:translateY(-5px)}}
+@media(max-width:64rem){.ib-workflow__steps--wide{grid-template-columns:1fr 1fr}}
+@media(max-width:42rem){.ib-workflow__steps--wide{grid-template-columns:1fr}.spa-scene{inset:1rem 0 0;height:calc(100% - 1rem)}}
+@media(prefers-reduced-motion:reduce){.spa-scene__sun,.spa-scene__steam path{animation:none}}

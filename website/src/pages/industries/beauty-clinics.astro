@@ -1,0 +1,14 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import BeautyVerticalPage from "../../components/industries/BeautyVerticalPage.astro";
+import { beautyClinic } from "../../data/beautyVerticals";
+import "../../styles/industries/barbers.css";
+import "../../styles/industries/barbers-flat.css";
+import "../../styles/industries/beauty-verticals.css";
+const title="Chakusa for Beauty Clinics | Enquiries, Appointments and Follow-Up";
+const description="Connect non-clinical beauty treatment enquiries, appointments, appropriate customer context, honest reviews, and responsible follow-up.";
+---
+<MarketingLayout {title} {description}><SkipLink/><Header/><main id="main-content"><BeautyVerticalPage vertical={beautyClinic} visual="clinic" /></main><Footer/></MarketingLayout>

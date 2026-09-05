@@ -1,0 +1,14 @@
+---
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import SkipLink from "../../components/foundation/SkipLink.astro";
+import Header from "../../components/header/Header.astro";
+import Footer from "../../components/footer/Footer.astro";
+import BeautyVerticalPage from "../../components/industries/BeautyVerticalPage.astro";
+import { spasMassage } from "../../data/beautyVerticals";
+import "../../styles/industries/barbers.css";
+import "../../styles/industries/barbers-flat.css";
+import "../../styles/industries/beauty-verticals.css";
+const title="Chakusa for Spas and Massage | Bookings, Guest Context and Return Visits";
+const description="Connect spa and massage enquiries, bookings, appropriate guest preferences, honest feedback, and respectful return follow-up.";
+---
+<MarketingLayout {title} {description}><SkipLink/><Header/><main id="main-content"><BeautyVerticalPage vertical={spasMassage} visual="spa" /></main><Footer/></MarketingLayout>

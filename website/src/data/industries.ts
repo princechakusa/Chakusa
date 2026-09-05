@@ -77,4 +77,17 @@ export const industries: Industry[] = [
       "See who's due back for a seasonal check or routine service",
     ],
   },
+  {
+    id: "hospitality",
+    title: "Hospitality",
+    examples: ["Restaurant", "Private dining", "Reservation team"],
+    copy: "Keep reservation enquiries, guest feedback, and returning-customer context connected.",
+    headline: "Turn a good visit into a lasting guest relationship.",
+    detailIntro: "Independent restaurants rely on responsive reservations, trusted feedback, and guests choosing to return. Chakusa keeps those relationship moments visible.",
+    workflow: [
+      "Capture an enquiry or reservation request with its next action",
+      "Ask every eligible guest for honest feedback after the visit",
+      "Keep returning guest context available for future contact",
+    ],
+  },
 ];

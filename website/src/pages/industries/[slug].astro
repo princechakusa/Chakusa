@@ -29,7 +29,9 @@ const activeSubnav = industry.id === "beauty" || categoryLabel === "Beauty and w
     ? "Home services"
     : industry.id === "automotive" || categoryLabel === "Automotive"
       ? "Automotive"
-      : "Professional";
+      : industry.id === "hospitality" || categoryLabel === "Hospitality"
+        ? "Hospitality"
+        : "Professional";
 
 // Workflow items are always written in Recover, Review, Retain order (see
 // industries.ts's doc comment), so each index maps to a distinct icon

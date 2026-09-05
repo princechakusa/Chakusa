@@ -1,5 +1,5 @@
 ---
-const links = [{href:"/industries",label:"All industries"},{href:"/industries/barbers",label:"Barbers"},{href:"/industries/hair-salons",label:"Hair salons"},{href:"/industries/beauty",label:"Beauty"},{href:"/industries/home-services",label:"Home services"},{href:"/industries/automotive",label:"Automotive"},{href:"/industries/professional",label:"Professional"}];
+const links = [{href:"/industries",label:"All industries"},{href:"/industries/barbers",label:"Barbers"},{href:"/industries/hair-salons",label:"Hair salons"},{href:"/industries/beauty",label:"Beauty"},{href:"/industries/home-services",label:"Home services"},{href:"/industries/automotive",label:"Automotive"},{href:"/industries/professional",label:"Professional"},{href:"/industries/hospitality",label:"Hospitality"}];
 const { active = "Barbers" } = Astro.props;
 ---
 <nav class="ib-subnav" aria-label="Industry pages"><div class="ib-shell">{links.map((link)=><a href={link.href} aria-current={link.label===active?"page":undefined}>{link.label}</a>)}</div></nav>

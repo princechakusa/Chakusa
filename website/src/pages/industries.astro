@@ -3,49 +3,34 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import CTASection from "../components/CTASection.astro";
+import MegaMenuIcon from "../components/header/MegaMenuIcon.astro";
+import StoryIcon from "../components/homepage/StoryIcon.astro";
+import TradeCharacter from "../components/homepage/TradeCharacter.astro";
+import TradeCharacterAlt from "../components/homepage/TradeCharacterAlt.astro";
 import { industryGroups } from "../data/industryNavigation";
+import { industryHubStats, industryOperatingLoop } from "../data/industriesHub";
 import "../styles/global.css";
-import "../styles/industries/explorer.css";
+import "../styles/industries/hub.css";
 
 const title = "Industries | Chakusa";
-const description = "Chakusa is built for local, appointment-driven businesses in beauty, home services, automotive, and professional services.";
+const description = "Chakusa connects enquiries, bookings, customer relationships, honest reviews, and return visits for 14 local-service disciplines.";
+const industryCount = industryGroups.reduce((total, group) => total + group.professions.length, 0);
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
-  <main id="main-content">
-    <section class="page-hero content-shell" aria-labelledby="industries-hero-title">
-      <p class="eyebrow">Industries</p>
-      <h1 id="industries-hero-title">Built for businesses that live on repeat customers.</h1>
-      <p class="page-hero-support">If your business depends on people coming back, not one-off sales, Chakusa is built for you. Pick your category to see exactly how it works.</p>
-    </section>
+  <main id="main-content" class="ih-page">
+    <nav class="ih-subnav" aria-label="Industry categories"><div class="ih-shell"><a href="#directory">All industries</a>{industryGroups.map((group) => <a href={`#${group.id}`}>{group.label}</a>)}<span>{industryCount} disciplines</span></div></nav>
 
-    <section class="industry-explorer content-shell" aria-labelledby="industry-explorer-title">
-      <div class="industry-explorer__intro">
-        <p class="eyebrow">Choose your category</p>
-        <h2 id="industry-explorer-title">Open a category, then choose your industry.</h2>
-      </div>
-      <div class="industry-explorer__groups">
-        {industryGroups.map((group, index) => <details class="industry-explorer__group" open={index === 0}>
-          <summary>
-            <span class="industry-explorer__number">0{index + 1}</span>
-            <span><strong>{group.label}</strong><small>{group.summary}</small></span>
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>
-          </summary>
-          <div class="industry-explorer__panel">
-            <div class="industry-explorer__professions">
-              {group.professions.map((profession) => <a href={profession.href}>
-                <strong>{profession.label}</strong><span>{profession.description}</span><b aria-hidden="true">→</b>
-              </a>)}
-            </div>
-            <a class="industry-explorer__overview" href={group.overviewHref}>View the {group.label.toLowerCase()} overview <span aria-hidden="true">→</span></a>
-          </div>
-        </details>)}
-      </div>
-    </section>
+    <section class="ih-hero" aria-labelledby="industries-hero-title"><div class="ih-shell ih-hero__grid"><div class="ih-hero__copy"><p class="ih-kicker">Chakusa industry directory · built for daily local commerce</p><h1 id="industries-hero-title">Built for the local service businesses people rely on <em>every day.</em></h1><p>Chakusa works across beauty, wellness, home services, automotive, professional services, hospitality, and small trades. One connected customer journey, adapted to the way each business works.</p><div class="ih-actions"><a class="ui-button ui-button--primary" href="/get-started">Start free trial <StoryIcon name="arrow_forward" /></a><a class="ui-button ui-button--secondary" href="/product">Explore product</a></div><small>First 14 days free. Then choose the plan that fits your business.</small></div><div class="ih-hero__art" aria-label="Animated flat illustrations of two local business owners"><span class="ih-orbit ih-orbit--one"></span><span class="ih-orbit ih-orbit--two"></span><TradeCharacter class="ih-character ih-character--one" /><TradeCharacterAlt class="ih-character ih-character--two" /></div></div><div class="ih-shell ih-stats" aria-label="Industry directory summary">{industryHubStats.map((stat) => <div><strong>{stat.value}</strong><span>{stat.label}</span></div>)}</div></section>
 
-    <CTASection heading="Don't see your exact business?" support="If you run appointments or repeat visits, Chakusa most likely fits. Try Starter free for 14 days and see for yourself." />
+    <section class="ih-directory ih-shell" id="directory" aria-labelledby="directory-title"><header class="ih-heading"><p>Vertical directory</p><h2 id="directory-title">Structured for your specific trade.</h2><span>Every trade has a different working rhythm. Choose a category, then open the page for your profession.</span></header><div class="ih-groups">{industryGroups.map((group, index) => <details class="ih-group" id={group.id} open={index === 0}><summary><i><MegaMenuIcon name={group.icon} /></i><span><strong>{group.label}</strong><small>{group.professions.length} {group.professions.length === 1 ? "discipline" : "disciplines"} · {group.summary}</small></span><b aria-hidden="true">+</b></summary><div class="ih-trades">{group.professions.map((profession) => <a href={profession.href}><i><MegaMenuIcon name={group.icon} /></i><div><strong>{profession.label}</strong><p>{profession.description}</p><span>Explore {profession.label} <b aria-hidden="true">→</b></span></div></a>)}</div></details>)}</div></section>
+
+    <section class="ih-loop" aria-labelledby="industry-loop-title"><div class="ih-shell"><header class="ih-heading ih-heading--center"><p>Unified mechanics</p><h2 id="industry-loop-title">The 6-step Chakusa operating loop.</h2><span>Whatever the trade, sustainable repeat business follows the same connected customer journey.</span></header><div class="ih-loop__grid">{industryOperatingLoop.map((step) => <article><span>{step.number}</span><i><StoryIcon name={step.icon} /></i><h3>{step.title}</h3><p>{step.body}</p></article>)}</div></div></section>
+
+    <section class="ih-custom ih-shell" aria-labelledby="custom-industry-title"><div class="ih-custom__mark"><StoryIcon name="construction" /></div><div><p>Specialised workflows</p><h2 id="custom-industry-title">Do not see your exact business?</h2><span>If your business takes enquiries, schedules work, requests honest feedback, or depends on repeat customers, Chakusa may still fit. Tell us how your working day operates.</span></div><div class="ih-custom__actions"><a class="ui-button ui-button--primary" href="/contact">Contact our team</a><a href="/get-started">Start with the standard setup →</a></div></section>
+
+    <section class="ih-cta"><div class="ih-shell"><p>Built for independent trade</p><h2>Connect the customer journey around your craft.</h2><span>Keep enquiries, appointments, customer context, honest reviews, and return opportunities in one practical workspace.</span><div><a class="ui-button ui-button--primary" href="/get-started">Start free trial</a><a class="ui-button ui-button--secondary" href="/pricing">View pricing</a></div><small>First 14 days free. Then choose the plan that fits your business.</small></div></section>
   </main>
   <Footer />
 </MarketingLayout>

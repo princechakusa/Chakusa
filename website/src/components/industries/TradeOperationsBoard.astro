@@ -1,0 +1,6 @@
+---
+interface Item { time: string; title: string; meta: string; status: string }
+interface Props { eyebrow: string; title: string; support: string; items: Item[] }
+const { eyebrow, title, support, items } = Astro.props;
+---
+<section class="trade-board" aria-labelledby="trade-board-title"><div class="ib-shell"><header class="ib-heading"><p>{eyebrow}</p><h2 id="trade-board-title">{title}</h2><span>{support}</span></header><div class="trade-board__panel">{items.map((item,index)=><article><span>{item.time}</span><i>{String(index+1).padStart(2,"0")}</i><div><strong>{item.title}</strong><small>{item.meta}</small></div><b>{item.status}</b></article>)}</div></div></section>

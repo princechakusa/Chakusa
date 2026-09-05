@@ -11,7 +11,7 @@ import "../../styles/global.css";
 import "../../styles/industries/explorer.css";
 
 export function getStaticPaths() {
-  const professionPages = industryProfessionPages.filter((industry) => !["barbers", "hair-salons", "beauty-clinics", "spas-massage", "dentists", "cleaners"].includes(industry.id));
+  const professionPages = industryProfessionPages.filter((industry) => !["barbers", "hair-salons", "beauty-clinics", "spas-massage", "dentists", "cleaners", "electricians"].includes(industry.id));
   return [...industries, ...professionPages].map((industry) => ({
     params: { slug: industry.id },
     props: { industry },

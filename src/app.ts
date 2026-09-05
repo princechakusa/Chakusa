@@ -20,6 +20,7 @@ import loyaltyBusinessRoutes from "./modules/loyalty/loyaltyBusiness.routes.js";
 import businessRoutes from "./modules/business/business.routes.js";
 import customerRoutes from "./modules/customers/customers.routes.js";
 import leadRoutes from "./modules/leads/leads.routes.js";
+import quoteRoutes from "./modules/quotes/quotes.routes.js";
 import templateRoutes from "./modules/templates/templates.routes.js";
 import reviewRequestRoutes from "./modules/reviews/reviews.routes.js";
 import feedbackRoutes from "./modules/feedback/feedback.routes.js";
@@ -234,6 +235,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(calendarRoutes, { prefix: "/calendar" });
   await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(leadRoutes, { prefix: "/leads" });
+  await app.register(quoteRoutes, { prefix: "/quotes" });
   await app.register(templateRoutes, { prefix: "/message-templates" });
   await app.register(reviewRequestRoutes, { prefix: "/review-requests" });
   await app.register(feedbackRoutes, { prefix: "/feedback" });

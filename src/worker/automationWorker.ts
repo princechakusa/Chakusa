@@ -15,6 +15,7 @@ import { getAutomationFoundationStatus } from "../modules/automation/automationF
 import { processMessageDispatches } from "../lib/messaging/messagingPlatform.js";
 import { WorkflowMessagingGateway } from "../lib/messaging/workflowMessagingGateway.js";
 import { expireAttachments, processAttachmentScans, recoverAttachmentProcessing } from "../lib/messaging/attachmentPlatform.js";
+import { sweepExpiredQuotes } from "../lib/quotes/quoteExpiry.js";
 import { monitorProviderHealth, processConversationSLAs, processProviderTemplateSynchronizations, refreshProviderCredentials } from "../lib/messaging/messagingOperations.js";
 
 export interface AutomationWorkerOptions {
@@ -91,6 +92,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
       () => refreshProviderCredentials(),
       () => processProviderTemplateSynchronizations(batchSize),
       () => scheduleTimeTriggers(new Date(), Math.max(batchSize, 100)),
+      () => sweepExpiredQuotes(new Date(), Math.max(batchSize, 100)),
       () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
       () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),
       () => sendDueAppointmentPaymentReminders(options.appointmentMessagingProvider ?? options.provider, batchSize),

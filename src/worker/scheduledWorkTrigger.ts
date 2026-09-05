@@ -12,8 +12,9 @@ import { registerDefaultActions } from '../lib/automation/defaultActions.js';
 import { unavailableWorkflowGateways } from '../lib/automation/workflowProviderGateways.js';
 import { processWorkflowExecutions } from './workflowWorker.js';
 import { getAutomationFoundationStatus } from '../modules/automation/automationFoundation.js';
+import { sweepExpiredQuotes } from '../lib/quotes/quoteExpiry.js';
 
-let inFlight: Promise<{ processed: number; recovered: number; outboxPublished: number; deliveriesAcknowledged: number; workflowsProcessed: number; remindersSent: number; customerMessagesSent: number; paymentRemindersSent: number }> | null = null;
+let inFlight: Promise<{ processed: number; recovered: number; outboxPublished: number; deliveriesAcknowledged: number; workflowsProcessed: number; remindersSent: number; customerMessagesSent: number; paymentRemindersSent: number; quotesExpired: number }> | null = null;
 const triggerStartedAt = new Date();
 let initialization: Promise<void> | null = null;
 function ensureInitialized() { initialization ??= (async () => { registerDefaultActions(unavailableWorkflowGateways()); await registerWorkflowTriggerSubscribers(); await initializeWorkflowSchedules(); })(); return initialization; }
@@ -33,7 +34,7 @@ export function runTriggeredScheduledWork() {
   inFlight = (async () => {
     await ensureInitialized();
     const foundation = await getAutomationFoundationStatus();
-    if (foundation.maintenance || !foundation.killSwitches.automation) { await recordWorkerHeartbeat(triggerStartedAt); return { processed: 0, recovered: 0, outboxPublished: 0, deliveriesAcknowledged: 0, workflowsProcessed: 0, remindersSent: 0, customerMessagesSent: 0, paymentRemindersSent: 0 }; }
+    if (foundation.maintenance || !foundation.killSwitches.automation) { await recordWorkerHeartbeat(triggerStartedAt); return { processed: 0, recovered: 0, outboxPublished: 0, deliveriesAcknowledged: 0, workflowsProcessed: 0, remindersSent: 0, customerMessagesSent: 0, paymentRemindersSent: 0, quotesExpired: 0 }; }
     await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries()]);
     await sweepLifecycleAutomations();
     const automation = await processDueAutomationRuns(undefined, 20);
@@ -44,9 +45,10 @@ export function runTriggeredScheduledWork() {
     const remindersSent = await sendDueAppointmentReminders(undefined, 50);
     const customerMessagesSent = await sendDueCustomerAppointmentMessages(undefined, 50);
     const paymentRemindersSent = await sendDueAppointmentPaymentReminders(undefined, 50);
+    const quotesExpired = (await sweepExpiredQuotes(new Date(), 250)).expired;
     await generateDueWeeklyOwnerReports(new Date(), 50);
     await recordWorkerHeartbeat(triggerStartedAt);
-    return { ...automation, outboxPublished: outbox.published, deliveriesAcknowledged: deliveries.delivered, workflowsProcessed, remindersSent, customerMessagesSent, paymentRemindersSent };
+    return { ...automation, outboxPublished: outbox.published, deliveriesAcknowledged: deliveries.delivered, workflowsProcessed, remindersSent, customerMessagesSent, paymentRemindersSent, quotesExpired };
   })();
   return inFlight.finally(() => { inFlight = null; });
 }

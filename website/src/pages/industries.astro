@@ -3,10 +3,10 @@ import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import IndustryCard from "../components/IndustryCard.astro";
 import CTASection from "../components/CTASection.astro";
-import { industries } from "../data/industries";
+import { industryGroups } from "../data/industryNavigation";
 import "../styles/global.css";
+import "../styles/industries/explorer.css";
 
 const title = "Industries | Chakusa";
 const description = "Chakusa is built for local, appointment-driven businesses in beauty, home services, automotive, and professional services.";
@@ -21,12 +21,29 @@ const description = "Chakusa is built for local, appointment-driven businesses i
       <p class="page-hero-support">If your business depends on people coming back, not one-off sales, Chakusa is built for you. Pick your category to see exactly how it works.</p>
     </section>
 
-    <div class="industries-list content-shell" data-reveal>
-      <IndustryCard id="barbers" title="Barbers" examples={["Barbershop", "Grooming parlor", "Multi-chair shop"]} copy="Keep missed enquiries, chair bookings, customer notes, reviews, and returning regulars connected while the team stays focused on the work." />
-      {industries.map((industry) => (
-        <IndustryCard id={industry.id} title={industry.title} examples={industry.examples} copy={industry.copy} />
-      ))}
-    </div>
+    <section class="industry-explorer content-shell" aria-labelledby="industry-explorer-title">
+      <div class="industry-explorer__intro">
+        <p class="eyebrow">Choose your category</p>
+        <h2 id="industry-explorer-title">Open a category, then choose your industry.</h2>
+      </div>
+      <div class="industry-explorer__groups">
+        {industryGroups.map((group, index) => <details class="industry-explorer__group" open={index === 0}>
+          <summary>
+            <span class="industry-explorer__number">0{index + 1}</span>
+            <span><strong>{group.label}</strong><small>{group.summary}</small></span>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>
+          </summary>
+          <div class="industry-explorer__panel">
+            <div class="industry-explorer__professions">
+              {group.professions.map((profession) => <a href={profession.href}>
+                <strong>{profession.label}</strong><span>{profession.description}</span><b aria-hidden="true">→</b>
+              </a>)}
+            </div>
+            <a class="industry-explorer__overview" href={group.overviewHref}>View the {group.label.toLowerCase()} overview <span aria-hidden="true">→</span></a>
+          </div>
+        </details>)}
+      </div>
+    </section>
 
     <CTASection heading="Don't see your exact business?" support="If you run appointments or repeat visits, Chakusa most likely fits. Try Starter free for 14 days and see for yourself." />
   </main>

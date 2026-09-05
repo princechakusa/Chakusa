@@ -1,0 +1,16 @@
+.ib-scene.ib-scene--flat {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ib-scene--flat .ib-scene__grid,
+.ib-scene--flat aside {
+  display: none;
+}
+
+.ib-scene--flat .ib-scene__character {
+  filter: drop-shadow(0 14px 14px rgb(40 48 68 / 10%));
+}

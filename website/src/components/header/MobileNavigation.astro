@@ -1,6 +1,7 @@
 ---
 import { primaryNavigation } from "../../data/homepage";
 import { megaMenuQuadrants } from "../../data/megaMenu";
+import { industryGroups } from "../../data/industryNavigation";
 ---
 <button class="mobile-menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation" data-mobile-trigger>
   <span></span><span></span><span></span>
@@ -17,6 +18,8 @@ import { megaMenuQuadrants } from "../../data/megaMenu";
           </section>)}
         </div>
       </details>
+    ) : item.label === "Industries" ? (
+      <details class="mobile-menu__details"><summary>Industries</summary><div class="mobile-menu__industry-groups">{industryGroups.map((group)=><details><summary>{group.label}</summary><div>{group.professions.map((profession)=><a class="mobile-menu__child" href={profession.href}>{profession.label}</a>)}<a class="mobile-menu__child mobile-menu__child--overview" href={group.overviewHref}>Category overview</a></div></details>)}</div></details>
     ) : (
       <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>
     ))}

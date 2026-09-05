@@ -30,17 +30,17 @@ export const reviewsHero = {
 };
 
 export const reviewsProof = [
-  { label: "Who gets asked", value: "Every visit" },
-  { label: "Filtered by rating first", value: "Never" },
-  { label: "Who owns the profile", value: "The business" },
+  { label: "Who gets asked", value: "Every visit", detail: "The same request flow" },
+  { label: "Filtered by rating first", value: "Never", detail: "No sentiment screening" },
+  { label: "Where reviews appear", value: "Chakusa profile", detail: "With the submitted score" },
 ];
 
 export interface ReviewStep { number: string; icon: string; title: string; body: string; tag: string }
 export const reviewSteps: ReviewStep[] = [
   { number: "01", icon: "check", title: "Visit marked complete", body: "The appointment is marked done in the business's Chakusa dashboard.", tag: "Business-triggered" },
-  { number: "02", icon: "sms", title: "Review request sent", body: "The customer gets a short, direct request to rate the visit, sent to everyone, not a select few.", tag: "No pre-screening" },
-  { number: "03", icon: "star", title: "Customer responds", body: "A star rating and an optional note, submitted straight from the link, no account required.", tag: "1 tap" },
-  { number: "04", icon: "profile", title: "Published to the profile", body: "The review appears on the business's public Chakusa profile as submitted.", tag: "Not filtered by score" },
+  { number: "02", icon: "sms", title: "Review request prepared", body: "The customer gets the same short, direct invitation to rate the visit—never a selected subset.", tag: "No pre-screening" },
+  { number: "03", icon: "star", title: "Customer responds", body: "The customer submits a 1–5 star rating and can add an optional note from the review link.", tag: "Rating + optional note" },
+  { number: "04", icon: "profile", title: "Published to the profile", body: "The review appears on the business's public Chakusa profile with the score that was submitted.", tag: "Not filtered by score" },
 ];
 
 export const gatingTrap = {
@@ -63,13 +63,59 @@ export const chakusaStandard = {
   ],
 };
 
-export const reviewExample = {
-  label: "Illustrative example",
-  note: "Not a real business or customer - shown to demonstrate the format a business sees.",
-  reviewer: "A customer",
-  rating: 5,
-  quote: "Showed up on time, explained the work clearly, and the price matched what I was quoted.",
-  service: "Example: standard service visit",
+export interface ReviewLedgerEntry {
+  trade: "barber" | "wellness" | "mechanic";
+  avatar: string;
+  reviewer: string;
+  booking: string;
+  specialist: string;
+  rating: number;
+  quote: string;
+  tags: string[];
+  time: string;
+  reply?: string;
+}
+
+export const reviewLedger: { label: string; title: string; note: string; entries: ReviewLedgerEntry[] } = {
+  label: "Product interface preview",
+  title: "The feedback and reputation ledger",
+  note: "Illustrative demo data—not real customers, bookings, or businesses.",
+  entries: [
+    {
+      trade: "barber",
+      avatar: "B",
+      reviewer: "Demo customer",
+      booking: "Completed booking",
+      specialist: "Barbering example",
+      rating: 5,
+      quote: "The appointment started on time, the service was explained clearly, and the result matched what I asked for.",
+      tags: ["Service: haircut and beard trim", "Visit marked complete", "Review submitted"],
+      time: "Example entry",
+      reply: "Thank you for the thoughtful feedback. We appreciate you taking the time to share your experience.",
+    },
+    {
+      trade: "wellness",
+      avatar: "W",
+      reviewer: "Demo customer",
+      booking: "Completed booking",
+      specialist: "Wellness example",
+      rating: 4,
+      quote: "Booking was straightforward and the team made the next steps easy to understand.",
+      tags: ["Service: wellness visit", "Optional written note", "Public profile"],
+      time: "Example entry",
+    },
+    {
+      trade: "mechanic",
+      avatar: "A",
+      reviewer: "Demo customer",
+      booking: "Completed booking",
+      specialist: "Automotive example",
+      rating: 5,
+      quote: "The work was explained before it began, and the final price matched the estimate I approved.",
+      tags: ["Service: vehicle inspection", "Booking-linked", "Business can reply"],
+      time: "Example entry",
+    },
+  ],
 };
 
 export interface ReviewIndustry { icon: string; title: string; body: string; points: string[] }

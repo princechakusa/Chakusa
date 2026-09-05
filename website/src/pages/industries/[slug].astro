@@ -5,10 +5,13 @@ import Header from "../../components/header/Header.astro";
 import Footer from "../../components/footer/Footer.astro";
 import CTASection from "../../components/CTASection.astro";
 import { industries } from "../../data/industries";
+import { industryGroups, industryProfessionPages } from "../../data/industryNavigation";
 import "../../styles/global.css";
+import "../../styles/industries/explorer.css";
 
 export function getStaticPaths() {
-  return industries.map((industry) => ({
+  const professionPages = industryProfessionPages.filter((industry) => industry.id !== "barbers");
+  return [...industries, ...professionPages].map((industry) => ({
     params: { slug: industry.id },
     props: { industry },
   }));
@@ -17,6 +20,7 @@ export function getStaticPaths() {
 const { industry } = Astro.props;
 const title = `${industry.title} businesses | Chakusa`;
 const description = `${industry.headline} ${industry.detailIntro}`;
+const categoryGroup = industryGroups.find((group) => group.overviewHref === `/industries/${industry.id}`);
 
 // Workflow items are always written in Recover, Review, Retain order (see
 // industries.ts's doc comment), so each index maps to a distinct icon
@@ -36,7 +40,7 @@ const workflowIcons = [
   <main id="main-content">
     <section class="page-hero content-shell" aria-labelledby="industry-detail-title">
       <a class="industry-detail-back" href="/industries">All industries</a>
-      <p class="eyebrow">{industry.title}</p>
+      <p class="eyebrow">{"categoryLabel" in industry ? industry.categoryLabel : industry.title}</p>
       <h1 id="industry-detail-title">{industry.headline}</h1>
       <p class="page-hero-support">{industry.detailIntro}</p>
       <div class="industry-detail-examples">
@@ -44,7 +48,24 @@ const workflowIcons = [
       </div>
     </section>
 
-    <section class="industry-detail-workflow content-shell" aria-labelledby="industry-workflow-title" data-reveal>
+    {categoryGroup && (
+      <section class="industry-detail-choices content-shell" aria-labelledby="industry-types-title">
+        <p class="eyebrow">Choose your industry</p>
+        <h2 id="industry-types-title">What type of {categoryGroup.label.toLowerCase()} business do you run?</h2>
+        <p class="industry-detail-choices__support">Choose one to open the page built for that type of business.</p>
+        <div class="industry-explorer__professions">
+          {categoryGroup.professions.map((profession) => (
+            <a href={profession.href}>
+              <strong>{profession.label}</strong>
+              <span>{profession.description}</span>
+              <b aria-hidden="true">→</b>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="industry-detail-workflow content-shell" aria-labelledby="industry-workflow-title">
       <p class="eyebrow">How it works</p>
       <h2 id="industry-workflow-title">Recover, review, retain.</h2>
       <div class="problem-grid">

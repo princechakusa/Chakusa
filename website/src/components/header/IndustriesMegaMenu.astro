@@ -1,0 +1,29 @@
+---
+import MegaMenuIcon from "./MegaMenuIcon.astro";
+import { industryGroups } from "../../data/industryNavigation";
+const { id } = Astro.props;
+---
+<div class="nav-menu" data-menu-root>
+  <button class="nav-menu__trigger nav-menu__trigger--label" type="button" aria-expanded="false" aria-controls={`menu-${id}`} aria-label="Open Industries menu" data-menu-trigger><span>Industries</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  <div class="mega-menu industries-menu" id={`menu-${id}`} hidden data-menu-panel>
+    <div class="mega-menu__label"><span>Choose a category, then your profession</span></div>
+    <div class="industries-menu__layout">
+      {industryGroups.map((group) => (
+        <details class="industries-menu__group">
+          <summary>
+            <span class="mega-menu__icon"><MegaMenuIcon name={group.icon}/></span>
+            <span><strong>{group.label}</strong><small>{group.summary}</small></span>
+            <MegaMenuIcon name="arrow-right" />
+          </summary>
+          <div class="industries-menu__links">
+            {group.professions.map((profession) => (
+              <a href={profession.href}><strong>{profession.label}</strong><small>{profession.description}</small></a>
+            ))}
+            <a class="industries-menu__overview" href={group.overviewHref}>View category overview</a>
+          </div>
+        </details>
+      ))}
+    </div>
+    <a class="mega-menu__all" href="/industries"><span>Explore all industries</span><MegaMenuIcon name="arrow-right"/></a>
+  </div>
+</div>

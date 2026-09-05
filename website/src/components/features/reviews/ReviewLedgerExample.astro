@@ -1,5 +1,81 @@
 ---
 import ReviewsIcon from "./ReviewsIcon.astro";
-import { reviewExample } from "../../../data/reviews";
+import { reviewLedger } from "../../../data/reviews";
 ---
-<section class="rv-ledger" id="ledger-example" aria-labelledby="reviews-ledger-title"><div class="rv-shell"><div class="rv-heading"><p class="rv-label">{reviewExample.label}</p><h2 id="reviews-ledger-title">What a business owner sees.</h2><p>{reviewExample.note}</p></div><div class="rv-ledger__card"><div class="rv-ledger__stars" aria-label={`${reviewExample.rating} out of 5 stars`}>{Array.from({length: 5}).map((_, i) => <ReviewsIcon name="star" class={i < reviewExample.rating ? "is-filled" : ""}/>)}</div><p class="rv-ledger__quote">&ldquo;{reviewExample.quote}&rdquo;</p><div class="rv-ledger__meta"><span>{reviewExample.reviewer}</span><span>{reviewExample.service}</span></div></div></div></section>
+<section class="rv-ledger" id="ledger-preview" aria-labelledby="reviews-ledger-title">
+  <div class="rv-shell">
+    <div class="rv-ledger__heading">
+      <div>
+        <div class="rv-ledger__eyebrow"><p class="rv-label">{reviewLedger.label}</p><span>Demo data</span></div>
+        <h2 id="reviews-ledger-title">{reviewLedger.title}</h2>
+        <p>{reviewLedger.note}</p>
+      </div>
+      <div class="rv-filters" role="group" aria-label="Filter example reviews by industry">
+        <ReviewsIcon name="filter" />
+        <button type="button" class="is-active" data-review-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-review-filter="barber" aria-pressed="false">Barbering</button>
+        <button type="button" data-review-filter="wellness" aria-pressed="false">Wellness</button>
+        <button type="button" data-review-filter="mechanic" aria-pressed="false">Auto</button>
+      </div>
+    </div>
+
+    <div class="rv-ledger__window">
+      <header class="rv-ledger__bar">
+        <div><span class="rv-ledger__mark"><ReviewsIcon name="star" /></span><div><strong>Example business review activity</strong><small>How submitted feedback can appear in the dashboard</small></div></div>
+        <span class="rv-ledger__live"><i></i>Illustrative preview</span>
+      </header>
+      <div class="rv-ledger__summary">
+        <div><span>Review policy</span><strong>Every completed visit</strong></div>
+        <div><span>Rating pre-screen</span><strong>None</strong></div>
+        <div><span>Display destination</span><strong>Chakusa profile</strong></div>
+      </div>
+      <div class="rv-ledger__stream" aria-live="polite">
+        {reviewLedger.entries.map((entry, index) => <article class="rv-review" data-review-trade={entry.trade}>
+          <div class:list={["rv-review__avatar", `rv-review__avatar--${entry.trade}`]} aria-hidden="true">{entry.avatar}</div>
+          <div class="rv-review__content">
+            <div class="rv-review__identity"><strong>{entry.reviewer}</strong><span><ReviewsIcon name="check" />{entry.booking}</span><small>{entry.specialist}</small></div>
+            <div class="rv-review__stars" aria-label={`${entry.rating} out of 5 stars`}>
+              {Array.from({length: 5}).map((_, star) => <ReviewsIcon name="star" class={star < entry.rating ? "is-filled" : ""}/>)}
+              <strong>{entry.rating}.0</strong>
+            </div>
+            <p>&ldquo;{entry.quote}&rdquo;</p>
+            <ul>{entry.tags.map((tag) => <li>{tag}</li>)}</ul>
+            {entry.reply && <div class="rv-review__reply" id={`review-reply-${index}`} hidden><span>Example public business response</span><p>&ldquo;{entry.reply}&rdquo;</p></div>}
+          </div>
+          <div class="rv-review__actions"><small>{entry.time}</small>{entry.reply && <button type="button" data-reply-target={`review-reply-${index}`} aria-expanded="false"><ReviewsIcon name="reply" /><span>Preview reply</span></button>}</div>
+        </article>)}
+        <p class="rv-ledger__empty" hidden data-review-empty>No examples match this filter.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const filterButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-review-filter]")];
+  const reviewRows = [...document.querySelectorAll<HTMLElement>("[data-review-trade]")];
+  const emptyState = document.querySelector<HTMLElement>("[data-review-empty]");
+  filterButtons.forEach((button) => button.addEventListener("click", () => {
+    const filter = button.dataset.reviewFilter ?? "all";
+    filterButtons.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    let visible = 0;
+    reviewRows.forEach((row) => {
+      const show = filter === "all" || row.dataset.reviewTrade === filter;
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (emptyState) emptyState.hidden = visible > 0;
+  }));
+  document.querySelectorAll<HTMLButtonElement>("[data-reply-target]").forEach((button) => button.addEventListener("click", () => {
+    const target = document.getElementById(button.dataset.replyTarget ?? "");
+    if (!target) return;
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    target.hidden = expanded;
+    button.setAttribute("aria-expanded", String(!expanded));
+    const label = button.querySelector("span");
+    if (label) label.textContent = expanded ? "Preview reply" : "Hide reply";
+  }));
+</script>

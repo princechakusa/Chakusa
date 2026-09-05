@@ -1,0 +1,13 @@
+---
+interface Props { realm: "client" | "business" }
+const { realm } = Astro.props;
+const client = realm === "client";
+---
+<form class="auth-form" data-auth-form data-realm={realm}>
+  <label>{client ? "Email address" : "Business email"}<input name="email" type="email" inputmode="email" autocomplete="username" maxlength="254" placeholder={client ? "you@example.com" : "owner@business.com"} required /></label>
+  <label>Password<span class="password-field"><input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="256" placeholder="Enter your password" required /><button type="button" data-password-toggle aria-label="Show password">Show</button></span></label>
+  <label class="remember"><input name="remember" type="checkbox" /> <span>Remember this device for 30 days</span></label>
+  <div class="turnstile-slot" data-turnstile aria-label="Security check"></div>
+  <button class={`auth-submit auth-submit--${realm}`} type="submit" disabled><span>{client ? "Sign in as client" : "Sign in as business"}</span><span aria-hidden="true">→</span></button>
+  <p class="form-message" data-form-message aria-live="polite"></p>
+</form>

@@ -20,8 +20,8 @@ const lastUpdated = "Draft dated 2026-09-01";
 
 const hero = {
   title: "How Chakusa uses AI",
-  lede: "Where AI shows up, exactly which actions it can take, what it cannot do, and an honest account of what's still a gap — not a disclosure written to sound resolved.",
-  status: "Engineering draft — not attorney-reviewed",
+  lede: "Where AI shows up, exactly which actions it can take, what it cannot do, and an honest account of what's still a gap; not a disclosure written to sound resolved.",
+  status: "Engineering draft; not attorney-reviewed",
   lastUpdated,
 };
 
@@ -41,22 +41,22 @@ const toc: Array<[string, string]> = [
 ];
 
 const actions = [
-  ["check_availability", "Looks up open appointment slots for a service between two times — read-only, never changes anything."],
+  ["check_availability", "Looks up open appointment slots for a service between two times; read-only, never changes anything."],
   ["book_appointment", "Books an appointment for the customer at a specific time."],
   ["reschedule_appointment", "Moves an existing appointment to a new time."],
   ["cancel_appointment", "Cancels an existing appointment."],
-  ["get_business_info", "Reads the business's own profile, services, and working hours — read-only."],
-  ["answer_faq", "Retrieves stored knowledge relevant to a customer's question — read-only."],
-  ["request_information", "Asks the customer a clarifying question before proceeding — read-only."],
+  ["get_business_info", "Reads the business's own profile, services, and working hours; read-only."],
+  ["answer_faq", "Retrieves stored knowledge relevant to a customer's question; read-only."],
+  ["request_information", "Asks the customer a clarifying question before proceeding; read-only."],
   ["escalate_to_human", "Hands the conversation to a person on the business's team."],
 ];
 
 const cannotDo = [
   "Guarantee its answers are accurate",
   "Replace professional, medical, legal, or financial advice",
-  "Take a payment, issue a refund, or touch billing — payment-related actions are hard-denied by policy in every mode, not just held for approval",
+  "Take a payment, issue a refund, or touch billing; payment-related actions are hard-denied by policy in every mode, not just held for approval",
   "Make a booking, payment, or account change on its own outside what a business has explicitly configured it to do",
-  "Act without limits — every response is checked against automated rules before it's sent",
+  "Act without limits; every response is checked against automated rules before it's sent",
 ];
 ---
 <LegalLayout {title} {description} current="ai-disclosure" {hero}>
@@ -75,17 +75,17 @@ const cannotDo = [
 
       <section id="how">
         <h2>2. How it works</h2>
-        <p>When either feature is used, the relevant conversation — along with some context (like the customer's name, notes on file, and recent appointments, for the business-facing assistant) — is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response.</p>
+        <p>When either feature is used, the relevant conversation is sent to a third-party AI provider, either <b>OpenAI</b> or <b>Anthropic</b> depending on how the system is configured, to generate a response. The conversation may include context such as the customer's name, notes on file, and recent appointments for the business-facing assistant.</p>
       </section>
 
       <section id="actions">
         <h2>3. What the AI can actually do</h2>
-        <p>The business-facing assistant doesn't have open-ended access to your account — it can only call a fixed, named set of actions, each scoped to the business it's operating for:</p>
+        <p>The business-facing assistant doesn't have open-ended access to your account; it can only call a fixed, named set of actions, each scoped to the business it's operating for:</p>
         <div class="aid__table-wrap"><table class="aid__table">
           <thead><tr><th>Action</th><th>What it does</th></tr></thead>
           <tbody>{actions.map(([name, body]) => <tr><td><code>{name}</code></td><td>{body}</td></tr>)}</tbody>
         </table></div>
-        <p class="aid__note">Anything outside this list simply isn't possible for the AI to do — it's not a matter of the AI "choosing" not to.</p>
+        <p class="aid__note">Anything outside this list simply isn't possible for the AI to do; it's not a matter of the AI "choosing" not to.</p>
       </section>
 
       <section id="modes">
@@ -93,10 +93,10 @@ const cannotDo = [
         <p>A business chooses how much independence the assistant has, from three modes:</p>
         <ul class="aid__list aid__list--plain">
           <li><strong>Draft (the default for every business).</strong> The AI prepares a reply or action; a person on the business's team reviews and sends it. Nothing reaches a customer without a human tap.</li>
-          <li><strong>Approval.</strong> Specific action types (a reply, a quote, an appointment change, a workflow) each require a person's sign-off before they take effect — configurable per business.</li>
-          <li><strong>Autonomous.</strong> A business can opt into letting some actions proceed without per-message approval. Even in this mode, <strong>payment-related actions are always blocked</strong> by policy — that rule doesn't have a mode that turns it off.</li>
+          <li><strong>Approval.</strong> Specific action types (a reply, a quote, an appointment change, a workflow) each require a person's sign-off before they take effect; configurable per business.</li>
+          <li><strong>Autonomous.</strong> A business can opt into letting some actions proceed without per-message approval. Even in this mode, <strong>payment-related actions are always blocked</strong> by policy; that rule doesn't have a mode that turns it off.</li>
         </ul>
-        <p>A business can also set quiet hours, block specific topics, and restrict which channels (SMS, WhatsApp, email) the assistant is allowed to use — the assistant respects those settings on every message, in every mode.</p>
+        <p>A business can also set quiet hours, block specific topics, and restrict which channels (SMS, WhatsApp, email) the assistant is allowed to use; the assistant respects those settings on every message, in every mode.</p>
       </section>
 
       <section id="cannot">
@@ -112,7 +112,7 @@ const cannotDo = [
 
       <section id="consent" class="aid__flag">
         <h2>7. Consent, honestly stated</h2>
-        <p>The business-facing assistant is opt-in — a business must turn it on before it acts on their behalf.</p>
+        <p>The business-facing assistant is opt-in; a business must turn it on before it acts on their behalf.</p>
         <p><strong>The in-app customer assistant currently is not gated by a separate opt-in.</strong> It's available to any customer by default. We consider this a gap worth closing with a clearer first-use notice, and it's tracked as a product improvement, not something we're pretending is already resolved.</p>
       </section>
 
@@ -135,7 +135,7 @@ const cannotDo = [
       <section id="controls">
         <h2>11. Your controls</h2>
         <ul class="aid__list aid__list--plain">
-          <li><strong>As a customer:</strong> ask to speak with a person at any time — the AI hands off. Turn off personalization and conversation memory in app settings.</li>
+          <li><strong>As a customer:</strong> ask to speak with a person at any time; the AI hands off. Turn off personalization and conversation memory in app settings.</li>
           <li><strong>As a business:</strong> turn the assistant off entirely, switch modes (Section 4), set quiet hours and blocked topics, and review anything held for approval before it sends.</li>
         </ul>
       </section>

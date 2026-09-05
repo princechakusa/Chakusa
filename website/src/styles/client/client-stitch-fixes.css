@@ -2,5 +2,5 @@
    visual system, so /client stays visually consistent with /business
    without duplicating the whole stylesheet. */
 .sb-avatar{display:grid;place-items:center;width:3.5rem;height:3.5rem;flex:none;border-radius:50%;background:var(--primary);color:#fff;font-family:var(--font-heading);font-weight:700;font-size:1.2rem}
-.sb-spotlight__visual--illustration{display:grid;place-items:center;padding:2.5rem;background:linear-gradient(160deg,#fff,var(--page-surface));border-radius:1rem;box-shadow:var(--shadow-modal);aspect-ratio:1}
-.sb-spotlight__visual--illustration :global(svg){width:min(60%,14rem)}
+.sb-spotlight__visual--illustration{display:grid;place-items:center;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;aspect-ratio:1}
+.sb-spotlight__visual--illustration :global(svg){width:min(72%,17rem);filter:drop-shadow(0 12px 12px rgb(40 48 68 / 8%))}

@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Contact page (new).
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION; Contact page (new).
 // Structure adapted from the newest Stitch export's Contact page: hero
 // + resolution-stream category cards + FAQ, reproduced honestly.
 //

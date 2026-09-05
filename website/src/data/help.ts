@@ -1,4 +1,4 @@
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION — Help page (new).
+// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION; Help page (new).
 // Structure adapted from the newest Stitch export's Help Center: hero
 // with search + character illustration, category grid, FAQ, contact
 // CTA.

@@ -38,7 +38,7 @@ export const reviewsProof = [
 export interface ReviewStep { number: string; icon: string; title: string; body: string; tag: string }
 export const reviewSteps: ReviewStep[] = [
   { number: "01", icon: "check", title: "Visit marked complete", body: "The appointment is marked done in the business's Chakusa dashboard.", tag: "Business-triggered" },
-  { number: "02", icon: "sms", title: "Review request prepared", body: "The customer gets the same short, direct invitation to rate the visit—never a selected subset.", tag: "No pre-screening" },
+  { number: "02", icon: "sms", title: "Review request prepared", body: "The customer gets the same short, direct invitation to rate the visit, never a selected subset.", tag: "No pre-screening" },
   { number: "03", icon: "star", title: "Customer responds", body: "The customer submits a 1–5 star rating and can add an optional note from the review link.", tag: "Rating + optional note" },
   { number: "04", icon: "profile", title: "Published to the profile", body: "The review appears on the business's public Chakusa profile with the score that was submitted.", tag: "Not filtered by score" },
 ];
@@ -79,7 +79,7 @@ export interface ReviewLedgerEntry {
 export const reviewLedger: { label: string; title: string; note: string; entries: ReviewLedgerEntry[] } = {
   label: "Product interface preview",
   title: "The feedback and reputation ledger",
-  note: "Illustrative demo data—not real customers, bookings, or businesses.",
+  note: "Illustrative demo data, not real customers, bookings, or businesses.",
   entries: [
     {
       trade: "barber",

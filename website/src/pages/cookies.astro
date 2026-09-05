@@ -5,7 +5,7 @@ import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
 import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "Cookie Policy | Chakusa";
-const description = "What this website does and does not store in your browser — and why the honest answer is 'nothing.'";
+const description = "What this website does and does not store in your browser, and why the honest answer is 'nothing.'";
 
 // Reproduces the approved Stitch cookie-page anatomy (hero band,
 // sticky table-of-contents, a category-by-category breakdown, an FAQ,
@@ -39,8 +39,8 @@ const toc: Array<[string, string]> = [
 ];
 
 const categories = [
-  ["Strictly necessary", "Not used", "This site doesn't set a session cookie, an auth token, or a CSRF cookie — there's no sign-in or checkout flow on the marketing website itself."],
-  ["Preferences", "Not used", "Nothing is remembered between visits — no saved theme, no remembered tab, no dismissed banner."],
+  ["Strictly necessary", "Not used", "This site doesn't set a session cookie, an auth token, or a CSRF cookie; there's no sign-in or checkout flow on the marketing website itself."],
+  ["Preferences", "Not used", "Nothing is remembered between visits; no saved theme, no remembered tab, no dismissed banner."],
   ["Analytics", "Not used", "No page-view tracking, no performance telemetry, no third-party analytics script of any kind."],
   ["Marketing / advertising", "Not used", "No ad network, no referral-attribution cookie, no cross-site tracking pixel."],
 ];
@@ -52,12 +52,12 @@ const categories = [
   hero={{
     title: "Cookie Policy",
     lede: "What this website stores in your browser. The honest, verified answer is: nothing beyond what your browser needs to render the page.",
-    status: "Engineering draft — not attorney-reviewed",
+    status: "Engineering draft; not attorney-reviewed",
     lastUpdated: lastUpdated,
   }}
 >
   <Fragment slot="hero-disclaimer">
-    <LegalDisclaimer>Verified directly against this site's source code as of 2026-09-01 — there is no <code>document.cookie</code>, <code>localStorage</code>, or <code>sessionStorage</code> call anywhere in it. This is a factual statement about the current build, not a legal document, and hasn't been reviewed by a licensed attorney.</LegalDisclaimer>
+    <LegalDisclaimer>Verified directly against this site's source code as of 2026-09-01; there is no <code>document.cookie</code>, <code>localStorage</code>, or <code>sessionStorage</code> call anywhere in it. This is a factual statement about the current build, not a legal document, and hasn't been reviewed by a licensed attorney.</LegalDisclaimer>
   </Fragment>
 
   <div class="ck-grid">
@@ -84,22 +84,22 @@ const categories = [
 
       <section id="storage">
         <h2>3. Local storage &amp; similar technology</h2>
-        <p>Beyond cookies, some sites use <code>localStorage</code>, <code>sessionStorage</code>, or IndexedDB to remember things client-side. This site's code doesn't call any of those either — every page is static HTML with no client-side state to persist.</p>
+        <p>Beyond cookies, some sites use <code>localStorage</code>, <code>sessionStorage</code>, or IndexedDB to remember things client-side. This site's code doesn't call any of those either; every page is static HTML with no client-side state to persist.</p>
       </section>
 
       <section id="app">
         <h2>4. The mobile app is different</h2>
-        <p>The Chakusa mobile app doesn't use browser cookies at all — apps don't work that way — but it does store some information securely on your device (like your login session) to keep you signed in. That's covered in the <a href="/privacy">Privacy Policy</a>, not here.</p>
+        <p>The Chakusa mobile app doesn't use browser cookies because apps do not work that way. It does store some information securely on your device, such as your login session, to keep you signed in. That's covered in the <a href="/privacy">Privacy Policy</a>, not here.</p>
       </section>
 
       <section id="controls">
         <h2>5. Your browser's own controls</h2>
-        <p>Because this site sets nothing, there's nothing here to clear. If you'd like to check for yourself, every modern browser has a way to inspect and clear site data (Chrome, Safari, Firefox, and Edge all expose this under their privacy or site-settings menus) — you'll find chakusarecovery.com has none stored.</p>
+        <p>Because this site sets nothing, there's nothing here to clear. If you'd like to check for yourself, every modern browser has a way to inspect and clear site data (Chrome, Safari, Firefox, and Edge all expose this under their privacy or site-settings menus); you'll find chakusarecovery.com has none stored.</p>
       </section>
 
       <section id="changes">
         <h2>6. If that changes</h2>
-        <p>If we ever add analytics or a similar tool to this website, we'll update this page to say exactly what it does — the categories, the names, the retention — before it goes live, not after.</p>
+        <p>If we ever add analytics or a similar tool to this website, we'll update this page before it goes live. The update will explain exactly what it does, including the categories, names, and retention periods.</p>
       </section>
 
       <section id="contact" class="ck-contact">

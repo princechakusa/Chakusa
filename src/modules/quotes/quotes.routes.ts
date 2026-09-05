@@ -5,7 +5,7 @@ import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema, sendQuoteSchema } from "./quotes.schemas.js";
-import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote } from "./quotes.service.js";
+import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote, reviseQuote } from "./quotes.service.js";
 
 // PROGRAM 3 LOOP 3B: BUSINESS-facing draft + read API for Quotes &
 // Estimates. Route handlers do ONLY: auth (preHandler) -> validation ->
@@ -97,5 +97,18 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
     const { id } = quoteIdParamSchema.parse(request.params);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(200).send(await cancelQuote(request.businessId!, memberId, id));
+  });
+
+  // PROGRAM 3 LOOP 3F: SENT -> SENT with a new immutable current revision.
+  // OWNER/ADMIN only (editing a document the customer has already seen).
+  // Revokes the old revision's token and returns a fresh one for the new
+  // revision, exactly once, for re-delivery.
+  fastify.post<{ Params: { id: string } }>("/:id/revise", async (request, reply) => {
+    requireBusinessRole(request, QUOTE_CANCEL_ROLES);
+    assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
+    const { id } = quoteIdParamSchema.parse(request.params);
+    const input = updateQuoteSchema.parse(request.body);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await reviseQuote(request.businessId!, memberId, id, input));
   });
 }

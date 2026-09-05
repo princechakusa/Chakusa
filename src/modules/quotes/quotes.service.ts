@@ -474,6 +474,101 @@ export async function cancelQuote(businessId: string, actorMemberId: string, doc
 }
 
 // ---------------------------------------------------------------------------
+// Revise (SENT -> SENT, new current revision) — PROGRAM 3 LOOP 3F.3
+//
+// The document stays SENT; a NEW immutable QuoteRevision becomes current.
+// The previous revision and its line items are never mutated. The old
+// acceptance token (bound to the previous revision) is revoked so the
+// customer can no longer accept a superseded version, and a fresh token
+// is issued for the new revision and returned once (for re-delivery).
+//
+// Optimistic-concurrency guarded on expectedCurrentRevisionId; the
+// conditional transition (where status='SENT' AND currentRevisionId=
+// expected) is the single-winner gate against concurrent revise / accept
+// / cancel.
+// ---------------------------------------------------------------------------
+
+export async function reviseQuote(businessId: string, actorMemberId: string, documentId: string, input: UpdateQuoteInput) {
+  await assertOriginsInBusiness(businessId, input);
+  if (input.lineItems?.length) await assertServiceOfferingsInBusiness(businessId, input.lineItems);
+
+  // A revised revision goes straight in front of the customer, so it must
+  // clear the same bar as an initial send: at least one line item, valid
+  // amounts. calculateQuoteTotals (via computeTotals) enforces the rest.
+  if (!input.lineItems?.length) {
+    throw ApiError.badRequest("A revised quote must have at least one line item");
+  }
+  const totals = computeTotals(input);
+
+  const rawToken = await withLimitCheck(async (tx) => {
+    const document = await tx.quoteDocument.findFirst({
+      where: { id: documentId, businessId },
+      select: { id: true, status: true, currentRevisionId: true, nextRevisionNumber: true },
+    });
+    if (!document) throw ApiError.notFound("Quote not found");
+
+    // REVISE is only legal from SENT (SENT -> SENT). DRAFT edits use
+    // PATCH /quotes/:id; terminal states throw ApiError.conflict (409).
+    assertLegalQuoteTransition(document.status, "REVISE");
+
+    if (document.currentRevisionId !== input.expectedCurrentRevisionId) {
+      throw ApiError.conflict("This quote has changed since you loaded it — reload and try again");
+    }
+    const previousRevisionId = document.currentRevisionId;
+
+    const revision = await createRevision(tx, document.id, document.nextRevisionNumber, actorMemberId, input, totals);
+
+    const advanced = await tx.quoteDocument.updateMany({
+      where: { id: document.id, businessId, status: "SENT", currentRevisionId: input.expectedCurrentRevisionId },
+      data: {
+        currentRevisionId: revision.id,
+        nextRevisionNumber: { increment: 1 },
+        leadId: input.leadId ?? null,
+        customerId: input.customerId ?? null,
+        customerProfileId: input.customerProfileId ?? null,
+        appointmentId: input.appointmentId ?? null,
+        expiresAt: input.expiresAt ?? null,
+      },
+    });
+    if (advanced.count !== 1) {
+      throw ApiError.conflict("This quote has changed since you loaded it — reload and try again");
+    }
+
+    // Prevent acceptance of the superseded version.
+    await tx.quoteAcceptanceToken.updateMany({
+      where: { quoteRevisionId: previousRevisionId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    // Fresh bearer token bound to the NEW revision.
+    const token = generateOpaqueToken();
+    await tx.quoteAcceptanceToken.create({
+      data: {
+        id: token.id,
+        quoteRevisionId: revision.id,
+        tokenHash: token.hash,
+        expiresAt: resolveAcceptanceTokenExpiry(input.expiresAt ?? null, new Date()),
+      },
+    });
+
+    await tx.quoteEvent.create({
+      data: {
+        quoteDocumentId: document.id,
+        quoteRevisionId: revision.id,
+        eventType: "REVISED",
+        actorType: "BUSINESS_MEMBER",
+        actorId: actorMemberId,
+      },
+    });
+
+    return token.raw;
+  });
+
+  const quote = await getQuoteDetail(businessId, documentId);
+  return { quote, acceptanceToken: rawToken };
+}
+
+// ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
 

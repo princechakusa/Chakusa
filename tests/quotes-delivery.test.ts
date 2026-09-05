@@ -107,6 +107,15 @@ describe("Quote delivery boundary (Program 3, Loop 3G)", () => {
     expect(sentEvents[1]!.metadata).toEqual({ resend: true });
   });
 
+  it("rejects resend for a quote that has passed its expiry date", async () => {
+    const account = await businessAccount(app);
+    const { quoteId } = await draftAndSend(app, account.token);
+    await prisma.quoteDocument.update({ where: { id: quoteId }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+    const res = await app.inject({ method: "POST", url: `/quotes/${quoteId}/resend`, headers: authHeader(account.token) });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.message).toContain("expiry date");
+  });
+
   it("rejects resend for a DRAFT or any terminal document", async () => {
     const account = await businessAccount(app);
     const draft = await app.inject({ method: "POST", url: "/quotes", headers: authHeader(account.token), payload: { documentType: "QUOTE", lineItems: [{ description: "x", quantity: 1, unitPrice: "1.00" }] } });

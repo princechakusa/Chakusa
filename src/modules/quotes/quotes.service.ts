@@ -593,6 +593,13 @@ export async function resendQuote(businessId: string, actorMemberId: string, doc
     if (document.status !== "SENT" || !document.currentRevisionId) {
       throw ApiError.conflict("Only a sent quote can be resent");
     }
+    // A past-deadline quote would only mint an already-expired token (the
+    // token can never outlive document.expiresAt). Make the business
+    // revise it with a fresh deadline instead - the expiry sweep will also
+    // move it to EXPIRED shortly.
+    if (document.expiresAt && document.expiresAt.getTime() <= Date.now()) {
+      throw ApiError.conflict("This quote has passed its expiry date — revise it with a new deadline before resending");
+    }
 
     // Conditional write on the document row itself: enforces the SENT
     // guard atomically and creates the write-write conflict that makes a

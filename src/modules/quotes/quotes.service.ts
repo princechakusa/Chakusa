@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { config } from "../../lib/config.js";
 import { generateOpaqueToken } from "../../lib/authTokens.js";
+import { buildPublicQuoteUrl } from "../../lib/quotes/publicQuoteLinks.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
 import { assertLegalQuoteTransition, calculateQuoteTotals, canSendQuote, formatDocumentNumber } from "../../lib/quotes/quotes.domain.js";
 import type { QuoteLineItemInput, QuoteTotals } from "../../lib/quotes/quotes.types.js";
@@ -419,9 +420,10 @@ export async function sendQuote(businessId: string, actorMemberId: string, docum
     return token.raw;
   });
 
-  // Safe read model (no token data) + the one-time raw bearer token.
+  // Safe read model (no token data) + the one-time raw bearer token and
+  // the assembled customer-facing link (Loop 3G).
   const quote = await getQuoteDetail(businessId, documentId);
-  return { quote, acceptanceToken: rawToken };
+  return { quote, acceptanceToken: rawToken, acceptanceUrl: buildPublicQuoteUrl(rawToken) };
 }
 
 // ---------------------------------------------------------------------------
@@ -565,7 +567,76 @@ export async function reviseQuote(businessId: string, actorMemberId: string, doc
   });
 
   const quote = await getQuoteDetail(businessId, documentId);
-  return { quote, acceptanceToken: rawToken };
+  return { quote, acceptanceToken: rawToken, acceptanceUrl: buildPublicQuoteUrl(rawToken) };
+}
+
+// ---------------------------------------------------------------------------
+// Resend (re-issue the customer link for a SENT quote) — PROGRAM 3 LOOP 3G
+//
+// Not a lifecycle transition: the document stays SENT and the CURRENT
+// revision is unchanged. It revokes any still-live acceptance token for
+// the current revision and mints a fresh one, so a business can hand the
+// customer a working link again (their own channel) after the previous
+// one was lost or expired. Provider-channel auto-delivery (SMS / email /
+// WhatsApp / push) is intentionally NOT built here - it is blocked on a
+// messaging-entitlement policy for quotes and on provider credentials in
+// the target environment.
+// ---------------------------------------------------------------------------
+
+export async function resendQuote(businessId: string, actorMemberId: string, documentId: string) {
+  const rawToken = await withLimitCheck(async (tx) => {
+    const document = await tx.quoteDocument.findFirst({
+      where: { id: documentId, businessId },
+      select: { id: true, status: true, currentRevisionId: true, expiresAt: true },
+    });
+    if (!document) throw ApiError.notFound("Quote not found");
+    if (document.status !== "SENT" || !document.currentRevisionId) {
+      throw ApiError.conflict("Only a sent quote can be resent");
+    }
+
+    // Conditional write on the document row itself: enforces the SENT
+    // guard atomically and creates the write-write conflict that makes a
+    // concurrent accept / decline / cancel / revise abort under
+    // Serializable isolation rather than racing the token swap.
+    const claimed = await tx.quoteDocument.updateMany({
+      where: { id: document.id, businessId, status: "SENT", currentRevisionId: document.currentRevisionId },
+      data: { status: "SENT" },
+    });
+    if (claimed.count !== 1) {
+      throw ApiError.conflict("This quote has changed since you loaded it — reload and try again");
+    }
+
+    await tx.quoteAcceptanceToken.updateMany({
+      where: { quoteRevisionId: document.currentRevisionId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    const token = generateOpaqueToken();
+    await tx.quoteAcceptanceToken.create({
+      data: {
+        id: token.id,
+        quoteRevisionId: document.currentRevisionId,
+        tokenHash: token.hash,
+        expiresAt: resolveAcceptanceTokenExpiry(document.expiresAt, new Date()),
+      },
+    });
+
+    await tx.quoteEvent.create({
+      data: {
+        quoteDocumentId: document.id,
+        quoteRevisionId: document.currentRevisionId,
+        eventType: "SENT",
+        actorType: "BUSINESS_MEMBER",
+        actorId: actorMemberId,
+        metadata: { resend: true },
+      },
+    });
+
+    return token.raw;
+  });
+
+  const quote = await getQuoteDetail(businessId, documentId);
+  return { quote, acceptanceToken: rawToken, acceptanceUrl: buildPublicQuoteUrl(rawToken) };
 }
 
 // ---------------------------------------------------------------------------

@@ -72,6 +72,14 @@ export const envSchema = z.object({
   // the flow this feeds — is a core, always-available feature, not gated
   // behind an optional integration the way Twilio/Apple/Google are.
   PUBLIC_REVIEW_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  // PROGRAM 3 LOOP 3G: base URL of the public web page that consumes
+  // GET/POST /public/quotes/:token (see src/lib/quotes/publicQuoteLinks.ts).
+  // Optional even in production: when unset, quote links fall back to
+  // PUBLIC_REVIEW_BASE_URL (the same customer web origin, already
+  // production-required), so no new production boot requirement is
+  // introduced. Set this only if the customer quote page is served from a
+  // different host than the review page. Must be https:// when set.
+  PUBLIC_QUOTE_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
   // Production Infrastructure Phase 2.2: email delivery (password reset,
   // team invitations) is a real product feature but — unlike
   // PUBLIC_REVIEW_BASE_URL above — is deliberately NOT unconditionally
@@ -278,6 +286,9 @@ export const envSchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });
   } else if (!env.PUBLIC_REVIEW_BASE_URL.startsWith("https://")) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL must use https:// in production" });
+  }
+  if (env.PUBLIC_QUOTE_BASE_URL && !env.PUBLIC_QUOTE_BASE_URL.startsWith("https://")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_QUOTE_BASE_URL"], message: "PUBLIC_QUOTE_BASE_URL must use https:// in production" });
   }
   if (env.GOOGLE_AUTH_ENABLED && !env.GOOGLE_OAUTH_CLIENT_IDS) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["GOOGLE_OAUTH_CLIENT_IDS"], message: "GOOGLE_OAUTH_CLIENT_IDS is required in production when GOOGLE_AUTH_ENABLED=true" });

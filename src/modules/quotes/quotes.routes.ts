@@ -5,7 +5,7 @@ import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema, sendQuoteSchema } from "./quotes.schemas.js";
-import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote, reviseQuote } from "./quotes.service.js";
+import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote, reviseQuote, resendQuote } from "./quotes.service.js";
 
 // PROGRAM 3 LOOP 3B: BUSINESS-facing draft + read API for Quotes &
 // Estimates. Route handlers do ONLY: auth (preHandler) -> validation ->
@@ -110,5 +110,16 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
     const input = updateQuoteSchema.parse(request.body);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(200).send(await reviseQuote(request.businessId!, memberId, id, input));
+  });
+
+  // PROGRAM 3 LOOP 3G: re-issue the customer link for a SENT quote (same
+  // current revision, no lifecycle change). OWNER/ADMIN/STAFF - same as
+  // send. Response carries the fresh raw token + assembled acceptanceUrl.
+  fastify.post<{ Params: { id: string } }>("/:id/resend", async (request, reply) => {
+    requireBusinessRole(request, QUOTE_ROLES);
+    assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
+    const { id } = quoteIdParamSchema.parse(request.params);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await resendQuote(request.businessId!, memberId, id));
   });
 }

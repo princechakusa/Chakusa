@@ -132,6 +132,14 @@ export async function resetDatabase() {
     prisma.customerBusinessLink.deleteMany(),
     prisma.customerProfile.deleteMany(),
     prisma.emailVerificationToken.deleteMany(),
+    // PROGRAM 3 LOOP 3A: quoteDocument.createdByMemberId / quoteRevision.
+    // createdByMemberId are onDelete: Restrict (an authored commercial
+    // record must not silently lose its author) — this delete must run
+    // BEFORE businessMember.deleteMany() below, or that step fails with a
+    // foreign-key violation for any test that created a QuoteDocument.
+    // Cascades to quoteRevision/quoteLineItem/quoteAcceptanceToken/quoteEvent.
+    prisma.quoteDocument.deleteMany(),
+    prisma.commercialDocumentCounter.deleteMany(),
     prisma.businessMember.deleteMany(),
     prisma.deviceToken.deleteMany(),
     prisma.passwordResetToken.deleteMany(),

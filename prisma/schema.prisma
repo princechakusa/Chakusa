@@ -979,6 +979,8 @@ model Business {
   membershipPlans                MembershipPlan[]
   customerMemberships            CustomerMembership[]
   loyaltyCampaigns               LoyaltyCampaign[]
+  quoteDocuments                 QuoteDocument[]
+  commercialDocumentCounters     CommercialDocumentCounter[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1088,6 +1090,8 @@ model BusinessMember {
   serviceAssignments ServiceMemberAssignment[]
   bookingBlocks      BookingBlock[]
   workingHours       Json?                     @map("working_hours")
+  createdQuoteDocuments QuoteDocument[]        @relation("QuoteDocumentCreatedBy")
+  createdQuoteRevisions QuoteRevision[]        @relation("QuoteRevisionCreatedBy")
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -1172,6 +1176,7 @@ model Customer {
   automationRuns AutomationRun[]
   tagAssignments CustomerTagAssignment[]
   appointments   Appointment[]
+  quoteDocuments QuoteDocument[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
@@ -1222,6 +1227,7 @@ model Appointment {
   bookedByCustomer     CustomerProfile?                @relation(fields: [bookedByCustomerProfileId], references: [id], onDelete: SetNull)
   publicAccess         PublicBookingAccess?
   paymentTransactions  AppointmentPaymentTransaction[]
+  quoteDocuments       QuoteDocument[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -1315,9 +1321,10 @@ model ServiceOffering {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  business     Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  assignments  ServiceMemberAssignment[]
-  appointments Appointment[]
+  business      Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments   ServiceMemberAssignment[]
+  appointments  Appointment[]
+  quoteLineItems QuoteLineItem[]
 
   @@unique([businessId, name])
   @@index([businessId, active, publiclyBookable, sortOrder])
@@ -1430,6 +1437,7 @@ model Lead {
   referredBy     Customer?       @relation("LeadReferredBy", fields: [referredByCustomerId], references: [id], onDelete: SetNull)
   messages       Message[]
   automationRuns AutomationRun[]
+  quoteDocuments QuoteDocument[]
 
   @@unique([businessId, clientEventId])
   @@index([businessId])
@@ -3190,6 +3198,7 @@ model CustomerProfile {
   referralCodes      ReferralCode[]
   referralsMade      Referral[]              @relation("ReferralReferrer")
   referralsReceived  Referral[]              @relation("ReferralReferee")
+  quoteDocuments     QuoteDocument[]
 
   @@index([status])
   @@index([phoneE164])
@@ -3730,4 +3739,266 @@ model CustomerRecentSearch {
 
   @@index([customerProfileId, createdAt])
   @@map("customer_recent_searches")
+}
+
+// ===========================================================================
+// PROGRAM 3 LOOP 3A: Quotes & Estimates — schema + domain foundation only.
+// NO routes, NO messaging integration, NO payment coupling exist yet — see
+// src/modules/quotes/quotes.domain.ts for the pure calculation/lifecycle
+// logic this schema supports. Fully additive; nothing above this block was
+// changed except adding a back-relation field to each of Business,
+// BusinessMember, Customer, CustomerProfile, Lead, Appointment and
+// ServiceOffering — no existing field, type, or relation was altered.
+//
+// ARCHITECTURE (approved Program 3 Loop 3 investigation — "Design B"):
+// QuoteDocument is the stable commercial identity (one document number,
+// e.g. "Q-2026-0042", for its entire life). QuoteRevision rows are
+// immutable, append-only commercial snapshots under one document —
+// revising a sent document creates a NEW revision, never a new document
+// and never a mutation of an existing revision. QuoteRevision therefore
+// carries NO mutable status field of its own: whether a revision is
+// "current," "accepted," or merely historical is always DERIVED by
+// comparing its id against QuoteDocument.currentRevisionId /
+// .acceptedRevisionId — the document is the single authority for every
+// lifecycle decision, by construction, so the two can never drift.
+//
+// RELATIONAL INTEGRITY (the cycle QuoteDocument.currentRevisionId /
+// .acceptedRevisionId -> QuoteRevision <- QuoteRevision.quoteDocumentId ->
+// QuoteDocument): a plain single-column FK on currentRevisionId/
+// acceptedRevisionId would only guarantee the referenced QuoteRevision
+// exists SOMEWHERE — not that it belongs to THIS document. That gap is
+// closed with a composite foreign key: QuoteRevision carries a composite
+// unique constraint on (id, quoteDocumentId), and QuoteDocument's
+// currentRevision/acceptedRevision relations reference BOTH
+// (currentRevisionId, id) / (acceptedRevisionId, id) against that
+// composite target. Postgres itself then refuses to let a QuoteDocument
+// point at a revision owned by a different document — this is enforced by
+// the database, not just the service layer.
+//
+// The complementary invariant ("acceptedRevisionId is NULL unless
+// status = ACCEPTED") cannot be expressed as a single-table Prisma
+// relation, so it is added as a hand-written CHECK constraint in this
+// loop's migration.sql, matching the existing precedent for cross-column
+// CHECK constraints in this repository (see e.g. the
+// 20260829010000_automation_foundation_metadata migration's
+// feature_flags_scope_target_check).
+// ===========================================================================
+
+enum QuoteDocumentType {
+  ESTIMATE
+  QUOTE
+}
+
+enum QuoteDocumentStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
+}
+
+enum QuoteEventType {
+  CREATED
+  SENT
+  VIEWED
+  REVISED
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
+}
+
+enum QuoteActorType {
+  BUSINESS_MEMBER
+  CUSTOMER
+  SYSTEM
+}
+
+// Collision-safe, database-authoritative document-number allocation,
+// scoped per (business, document type, year) — e.g. QUOTE/2026 issues
+// Q-2026-0001, Q-2026-0002, ...; ESTIMATE/2026 issues its own independent
+// E-2026-0001, E-2026-0002, ... sequence. Allocation is a single atomic
+// `UPDATE ... SET next_value = next_value + 1 RETURNING next_value`
+// against this row (see quotes.domain.ts's formatDocumentNumber for the
+// pure formatting half) — never MAX(documentNumber)+1, never an
+// in-memory counter, never a client-supplied number.
+model CommercialDocumentCounter {
+  id           String            @id @default(uuid())
+  businessId   String            @map("business_id")
+  documentType QuoteDocumentType @map("document_type")
+  year         Int
+  nextValue    Int               @default(1) @map("next_value")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, documentType, year])
+  @@map("commercial_document_counters")
+}
+
+model QuoteDocument {
+  id                 String              @id @default(uuid())
+  businessId         String              @map("business_id")
+  createdByMemberId  String              @map("created_by_member_id")
+  // Optional origins — a quote may start from any of these, or none.
+  leadId             String?             @map("lead_id")
+  customerId         String?             @map("customer_id")
+  customerProfileId  String?             @map("customer_profile_id")
+  appointmentId      String?             @map("appointment_id")
+  documentType       QuoteDocumentType   @map("document_type")
+  // Stable for the document's entire life — never reallocated when a new
+  // revision is created. Formatted as "{PREFIX}-{year}-{padded counter}".
+  documentNumber     String              @map("document_number")
+  // Server-controlled; the domain layer never trusts a client-supplied
+  // revision number. Starts at 1, incremented atomically per revision.
+  nextRevisionNumber Int                 @default(1) @map("next_revision_number")
+  // THE single authoritative lifecycle field — see the file-level doc
+  // comment. No other model in this schema owns a competing status.
+  status             QuoteDocumentStatus @default(DRAFT)
+  currentRevisionId  String?             @map("current_revision_id")
+  // Set exactly once, permanently, only when status transitions to
+  // ACCEPTED — enforced by the CHECK constraint added in this loop's
+  // migration (see the file-level doc comment).
+  acceptedRevisionId String?             @map("accepted_revision_id")
+  // Snapshotted from Business.currency (fallback "USD") at creation time —
+  // matches payments.service.ts's existing currency-resolution pattern
+  // exactly. Never re-read live from Business afterward.
+  currency           String
+  expiresAt          DateTime?           @map("expires_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByMember  BusinessMember   @relation("QuoteDocumentCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  lead             Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customer         Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerProfile  CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  appointment      Appointment?     @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  revisions        QuoteRevision[]  @relation("QuoteRevisionOwnership")
+  // Composite FKs — see the file-level doc comment. Both reference
+  // QuoteRevision's (id, quoteDocumentId) composite unique constraint, so
+  // Postgres itself rejects pointing at a revision owned by another
+  // document.
+  currentRevision  QuoteRevision?   @relation("QuoteDocumentCurrentRevision", fields: [currentRevisionId, id], references: [id, quoteDocumentId])
+  acceptedRevision QuoteRevision?   @relation("QuoteDocumentAcceptedRevision", fields: [acceptedRevisionId, id], references: [id, quoteDocumentId])
+  events           QuoteEvent[]
+
+  // documentNumber is unique per (business, type) — not globally — since
+  // QUOTE and ESTIMATE each run their own independent sequence.
+  @@unique([businessId, documentType, documentNumber])
+  // Trivially satisfied (id alone is already unique) — required by Prisma
+  // to validate the one-to-one composite relations above, not an
+  // independent constraint in its own right.
+  @@unique([currentRevisionId, id])
+  @@unique([acceptedRevisionId, id])
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+  @@index([customerProfileId])
+  @@index([customerId])
+  @@index([leadId])
+  @@index([appointmentId])
+  @@map("quote_documents")
+}
+
+// Immutable commercial snapshot. NOTHING on this row is ever updated after
+// insert — no status field, no mutable pricing. Its role in the lifecycle
+// (current / accepted / historical) is always derived by the caller from
+// QuoteDocument's pointers, never stored here.
+model QuoteRevision {
+  id                String   @id @default(uuid())
+  quoteDocumentId   String   @map("quote_document_id")
+  revisionNumber    Int      @map("revision_number")
+  subtotal          Decimal  @db.Decimal(10, 2)
+  taxTotal          Decimal  @default(0) @map("tax_total") @db.Decimal(10, 2)
+  discountTotal     Decimal  @default(0) @map("discount_total") @db.Decimal(10, 2)
+  total             Decimal  @db.Decimal(10, 2)
+  notes             String?
+  terms             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  createdByMemberId String   @map("created_by_member_id")
+
+  quoteDocument       QuoteDocument          @relation("QuoteRevisionOwnership", fields: [quoteDocumentId], references: [id], onDelete: Cascade)
+  createdByMember     BusinessMember         @relation("QuoteRevisionCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  lineItems           QuoteLineItem[]
+  acceptanceTokens    QuoteAcceptanceToken[]
+  events              QuoteEvent[]
+  // Reverse side of QuoteDocument's composite FKs — no fields/references
+  // here, since QuoteRevision does not own those columns.
+  currentForDocument  QuoteDocument?         @relation("QuoteDocumentCurrentRevision")
+  acceptedForDocument QuoteDocument?         @relation("QuoteDocumentAcceptedRevision")
+
+  // Locked requirement: no duplicate revision numbers within one document.
+  @@unique([quoteDocumentId, revisionNumber])
+  // The composite target for QuoteDocument.currentRevisionId/
+  // acceptedRevisionId's composite FKs — see the file-level doc comment.
+  @@unique([id, quoteDocumentId])
+  @@index([quoteDocumentId])
+  @@map("quote_revisions")
+}
+
+// Line items are scoped to one immutable revision and never updated after
+// insert. serviceOfferingId is provenance only — description/unitPrice are
+// always snapshots, so a later ServiceOffering price change can never
+// retroactively alter a historical quote.
+model QuoteLineItem {
+  id                String   @id @default(uuid())
+  quoteRevisionId   String   @map("quote_revision_id")
+  serviceOfferingId String?  @map("service_offering_id")
+  description       String
+  quantity          Decimal  @db.Decimal(10, 2)
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(10, 2)
+  discountAmount    Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  taxable           Boolean  @default(false)
+  lineTotal         Decimal  @map("line_total") @db.Decimal(10, 2)
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  quoteRevision   QuoteRevision    @relation(fields: [quoteRevisionId], references: [id], onDelete: Cascade)
+  serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
+
+  @@index([quoteRevisionId])
+  @@index([serviceOfferingId])
+  @@map("quote_line_items")
+}
+
+// Account-less customer access — mirrors PublicBookingAccess's security
+// pattern exactly: only a hash of the token is ever persisted, the raw
+// token is returned once at issuance and never stored or logged again.
+// Bound to a REVISION, not a document (see the Loop 3 architecture
+// resolution's Token Model section): a token can never authorize
+// acceptance of a revision that did not exist when it was issued, and
+// creating a new revision requires revoking every token bound to the
+// previous one in the same transaction. Token generation itself is a
+// future-loop route concern — no issuance logic exists yet.
+model QuoteAcceptanceToken {
+  id              String    @id @default(uuid())
+  quoteRevisionId String    @map("quote_revision_id")
+  tokenHash       String    @unique @map("token_hash")
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  quoteRevision QuoteRevision @relation(fields: [quoteRevisionId], references: [id], onDelete: Cascade)
+
+  @@index([quoteRevisionId])
+  @@map("quote_acceptance_tokens")
+}
+
+// Append-only audit ledger for this domain. No application code path may
+// update or delete a QuoteEvent row.
+model QuoteEvent {
+  id              String         @id @default(uuid())
+  quoteDocumentId String         @map("quote_document_id")
+  quoteRevisionId String?        @map("quote_revision_id")
+  eventType       QuoteEventType @map("event_type")
+  actorType       QuoteActorType @map("actor_type")
+  actorId         String?        @map("actor_id")
+  metadata        Json?
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  quoteDocument QuoteDocument  @relation(fields: [quoteDocumentId], references: [id], onDelete: Cascade)
+  quoteRevision QuoteRevision? @relation(fields: [quoteRevisionId], references: [id], onDelete: SetNull)
+
+  @@index([quoteDocumentId, createdAt])
+  @@map("quote_events")
 }

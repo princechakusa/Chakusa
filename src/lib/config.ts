@@ -43,6 +43,15 @@ export const envSchema = z.object({
   // sent today (a manual, sometimes-delayed action by the business owner),
   // not an arbitrarily short security-token window.
   PUBLIC_REVIEW_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // PROGRAM 3 LOOP 3C: how long a quote acceptance token (the opaque
+  // bearer returned once from POST /quotes/:id/send) stays valid when the
+  // quote itself carries no explicit commercial expiry. 30 days mirrors
+  // PUBLIC_REVIEW_TOKEN_TTL_DAYS — a customer-facing link a business may
+  // send days after generating it still needs to work, while staying a
+  // bounded, non-indefinite credential. When the QuoteDocument HAS an
+  // expiresAt, the token never outlives it: effective expiry is
+  // min(now + this, document.expiresAt).
+  QUOTE_ACCEPTANCE_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   // Placeholder pending a real commercial decision (see
   // entitlements.ts's PLAN_LIMITS) — how many ACTIVE BusinessMember rows
   // (owner included) a BUSINESS-tier business may have at once.

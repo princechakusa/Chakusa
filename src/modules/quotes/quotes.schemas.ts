@@ -89,3 +89,16 @@ export const listQuotesQuerySchema = z.object({
 export type ListQuotesQuery = z.infer<typeof listQuotesQuerySchema>;
 
 export const quoteIdParamSchema = z.object({ id: z.string().uuid() });
+
+// PROGRAM 3 LOOP 3C: DRAFT -> SENT. Body is optional; the only accepted
+// field is the same optimistic-concurrency guard used by the edit
+// endpoint. When present it must equal the document's current revision at
+// transition time, so a business that edited the draft in another tab
+// cannot send the stale revision it was looking at. When absent, the send
+// binds to whatever revision is current-and-valid inside the
+// transaction. No commercial content, no businessId, no token input -
+// everything authoritative is resolved/generated server-side.
+export const sendQuoteSchema = z.object({
+  expectedCurrentRevisionId: z.string().uuid().optional(),
+});
+export type SendQuoteInput = z.infer<typeof sendQuoteSchema>;

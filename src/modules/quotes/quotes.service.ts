@@ -1,10 +1,12 @@
 import { Prisma, type QuoteDocumentType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
+import { config } from "../../lib/config.js";
+import { generateOpaqueToken } from "../../lib/authTokens.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
-import { calculateQuoteTotals, formatDocumentNumber } from "../../lib/quotes/quotes.domain.js";
-import type { QuoteTotals } from "../../lib/quotes/quotes.types.js";
-import type { CreateQuoteInput, ListQuotesQuery, UpdateQuoteInput } from "./quotes.schemas.js";
+import { assertLegalQuoteTransition, calculateQuoteTotals, canSendQuote, formatDocumentNumber } from "../../lib/quotes/quotes.domain.js";
+import type { QuoteLineItemInput, QuoteTotals } from "../../lib/quotes/quotes.types.js";
+import type { CreateQuoteInput, ListQuotesQuery, SendQuoteInput, UpdateQuoteInput } from "./quotes.schemas.js";
 
 // PROGRAM 3 LOOP 3B: BUSINESS-side draft + read service for Quotes &
 // Estimates. Every function takes a server-resolved `businessId` (from
@@ -294,6 +296,132 @@ export async function deleteQuoteDraft(businessId: string, documentId: string) {
     if (existing) throw ApiError.conflict("Only draft documents can be deleted");
     throw ApiError.notFound("Quote not found");
   });
+}
+
+// ---------------------------------------------------------------------------
+// Send (DRAFT -> SENT) + secure acceptance-token issuance — PROGRAM 3 LOOP 3C
+//
+// The whole operation is one atomic Serializable transaction:
+//   validate DRAFT + current revision
+//     -> conditional DRAFT->SENT transition (single-winner)
+//     -> create exactly one hashed, revision-bound acceptance token
+//     -> record exactly one SENT QuoteEvent
+// If any step fails the transaction rolls back entirely: no SENT document
+// without its token and event, no orphan token, no second raw token.
+//
+// The revision that is current at the instant the transition commits IS
+// the sent commercial snapshot. Nothing here edits, duplicates or
+// recomputes a revision, or touches currency / documentNumber /
+// line items.
+//
+// Only the SHA-256 hash of the bearer token is persisted (authTokens.ts
+// primitive, same as PublicBookingAccess). The raw token is returned once
+// from this call and never stored or logged.
+// ---------------------------------------------------------------------------
+
+function resolveAcceptanceTokenExpiry(documentExpiresAt: Date | null, now: Date): Date {
+  const ttlDays = config.QUOTE_ACCEPTANCE_TOKEN_TTL_DAYS;
+  const ttlExpiry = new Date(now.getTime() + ttlDays * 86_400_000);
+  // A bearer token must never outlive the commercial document it
+  // authorizes. When the quote has no explicit commercial expiry, fall
+  // back to the bounded default (never a permanent token).
+  if (documentExpiresAt && documentExpiresAt.getTime() < ttlExpiry.getTime()) {
+    return documentExpiresAt;
+  }
+  return ttlExpiry;
+}
+
+export async function sendQuote(businessId: string, actorMemberId: string, documentId: string, input: SendQuoteInput) {
+  const rawToken = await withLimitCheck(async (tx) => {
+    const document = await tx.quoteDocument.findFirst({
+      where: { id: documentId, businessId },
+      select: {
+        id: true,
+        status: true,
+        currentRevisionId: true,
+        expiresAt: true,
+        currentRevision: {
+          select: {
+            id: true,
+            lineItems: { select: { quantity: true, unitPrice: true, discountAmount: true, taxable: true } },
+          },
+        },
+      },
+    });
+    // Cross-tenant / missing both surface as the same 404 — no existence leak.
+    if (!document) throw ApiError.notFound("Quote not found");
+
+    // Single lifecycle authority — throws ApiError.conflict (409) for any
+    // non-DRAFT status (SENT/ACCEPTED/DECLINED/CANCELED/EXPIRED).
+    assertLegalQuoteTransition(document.status, "SEND");
+
+    if (!document.currentRevisionId || !document.currentRevision) {
+      // A DRAFT always has a current revision (set at creation); treat the
+      // impossible case as a conflict rather than a 500.
+      throw ApiError.conflict("This quote has no current revision to send");
+    }
+    if (input.expectedCurrentRevisionId && input.expectedCurrentRevisionId !== document.currentRevisionId) {
+      throw ApiError.conflict("This quote has changed since you loaded it — reload and try again");
+    }
+
+    // Reuse the domain send-eligibility gate (rejects zero-line documents
+    // and malformed line items). Its recomputed totals are intentionally
+    // discarded: the persisted immutable revision totals are authoritative.
+    const lineItems: QuoteLineItemInput[] = document.currentRevision.lineItems.map((li) => ({
+      quantity: li.quantity.toFixed(2),
+      unitPrice: li.unitPrice.toFixed(2),
+      discountAmount: li.discountAmount.toFixed(2),
+      taxable: li.taxable,
+    }));
+    const eligibility = canSendQuote({ status: document.status, lineItems });
+    if (!eligibility.ok) throw ApiError.badRequest(eligibility.reason);
+
+    const now = new Date();
+    const token = generateOpaqueToken();
+    const tokenExpiresAt = resolveAcceptanceTokenExpiry(document.expiresAt, now);
+
+    // Single-winner transition: matches exactly the DRAFT row whose
+    // current revision is the one just validated. A concurrent send that
+    // already flipped it to SENT, a concurrent edit that advanced
+    // currentRevisionId, or a concurrent delete all make this match zero
+    // rows -> the losing request creates no token and no event.
+    const transitioned = await tx.quoteDocument.updateMany({
+      where: { id: document.id, businessId, status: "DRAFT", currentRevisionId: document.currentRevisionId },
+      data: { status: "SENT" },
+    });
+    if (transitioned.count !== 1) {
+      throw ApiError.conflict("This quote has changed since you loaded it — reload and try again");
+    }
+
+    await tx.quoteAcceptanceToken.create({
+      data: {
+        // Store the token id as the row PK (mirrors PublicBookingAccess) so
+        // a future public lookup can parse the id from the raw bearer,
+        // fetch by id, then constant-time compare the hash.
+        id: token.id,
+        quoteRevisionId: document.currentRevisionId,
+        tokenHash: token.hash,
+        expiresAt: tokenExpiresAt,
+      },
+    });
+
+    await tx.quoteEvent.create({
+      data: {
+        quoteDocumentId: document.id,
+        quoteRevisionId: document.currentRevisionId,
+        eventType: "SENT",
+        actorType: "BUSINESS_MEMBER",
+        actorId: actorMemberId,
+        // No metadata — the raw token is NEVER written to the ledger.
+      },
+    });
+
+    return token.raw;
+  });
+
+  // Safe read model (no token data) + the one-time raw bearer token.
+  const quote = await getQuoteDetail(businessId, documentId);
+  return { quote, acceptanceToken: rawToken };
 }
 
 // ---------------------------------------------------------------------------

@@ -4,8 +4,8 @@ import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
-import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema } from "./quotes.schemas.js";
-import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail } from "./quotes.service.js";
+import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema, sendQuoteSchema } from "./quotes.schemas.js";
+import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote } from "./quotes.service.js";
 
 // PROGRAM 3 LOOP 3B: BUSINESS-facing draft + read API for Quotes &
 // Estimates. Route handlers do ONLY: auth (preHandler) -> validation ->
@@ -68,5 +68,18 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
     const { id } = quoteIdParamSchema.parse(request.params);
     await deleteQuoteDraft(request.businessId!, id);
     reply.status(204).send();
+  });
+
+  // PROGRAM 3 LOOP 3C: DRAFT -> SENT. Same pipeline as every route above.
+  // The successful response carries the raw acceptance token exactly once
+  // (for a future delivery/customer-access stage); it is never persisted
+  // or logged and never appears in any GET response.
+  fastify.post<{ Params: { id: string } }>("/:id/send", async (request, reply) => {
+    requireBusinessRole(request, QUOTE_ROLES);
+    assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
+    const { id } = quoteIdParamSchema.parse(request.params);
+    const input = sendQuoteSchema.parse(request.body ?? {});
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await sendQuote(request.businessId!, memberId, id, input));
   });
 }

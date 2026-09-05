@@ -49,6 +49,16 @@ export interface SubscriptionStatusResponse {
     extendedHistory: boolean;
     unlimitedTemplates: boolean;
     teamManagement: boolean;
+    // PROGRAM 3 LOOP 1: entitlement foundation for roadmap capabilities
+    // that do not exist yet — see src/lib/entitlements.ts's Feature union.
+    // Always false until each capability actually ships and starts
+    // enforcing its own gate; safe to read today for read-only "coming
+    // soon" display.
+    aiReceptionist: boolean;
+    quotesEstimates: boolean;
+    invoicing: boolean;
+    marketplaceDiscovery: boolean;
+    accountingIntegrations: boolean;
   };
   usage: {
     leads: MonthlyUsage;
@@ -142,6 +152,13 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       // TEAM_MANAGEMENT is status-sensitive like AUTOMATION/OUTBOUND_MESSAGING
       // above — a downgraded/expired Business account must report false here.
       teamManagement: hasFeature(plan, status, "TEAM_MANAGEMENT"),
+      // Plan-only, like ADVANCED_ANALYTICS/EXTENDED_HISTORY/UNLIMITED_TEMPLATES
+      // — none of these are status-sensitive because nothing enforces them yet.
+      aiReceptionist: hasFeature(plan, "AI_RECEPTIONIST"),
+      quotesEstimates: hasFeature(plan, "QUOTES_ESTIMATES"),
+      invoicing: hasFeature(plan, "INVOICING"),
+      marketplaceDiscovery: hasFeature(plan, "MARKETPLACE_DISCOVERY"),
+      accountingIntegrations: hasFeature(plan, "ACCOUNTING_INTEGRATIONS"),
     },
     usage: {
       leads: { current: leadsCurrent, limit: limits.leadsPerMonth, period: "month", resetsAt },

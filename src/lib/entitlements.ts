@@ -33,7 +33,19 @@ export type Feature =
   // actually justifies BUSINESS as a distinct tier rather than "Pro with a
   // higher price" — see the Business Phase 1 report's "product goal"
   // section.
-  | "TEAM_MANAGEMENT";
+  | "TEAM_MANAGEMENT"
+  // --- PROGRAM 3 LOOP 1: revenue & entitlement foundation ---------------
+  // Placeholder capability gates for roadmap items that do not exist yet
+  // (no route, screen, or worker checks these). They exist only so the
+  // plans below can declare who WILL get each capability once it ships,
+  // without every future loop having to touch this file's Feature union
+  // again. Do not wire real behavior to these until the capability itself
+  // is actually built — see each loop's own scope for when that happens.
+  | "AI_RECEPTIONIST" // AI-answered/triaged calls (ai.receptionist)
+  | "QUOTES_ESTIMATES" // customer-facing quotes/estimates (quotes.estimates)
+  | "INVOICING" // invoices + payment collection (payments.invoicing)
+  | "MARKETPLACE_DISCOVERY" // paid marketplace visibility/discovery add-on (marketplace.discovery)
+  | "ACCOUNTING_INTEGRATIONS"; // QuickBooks/Xero-style sync (integrations.accounting)
 
 const FEATURE_LABELS: Record<Feature, string> = {
   AUTOMATION: "Automation",
@@ -42,6 +54,11 @@ const FEATURE_LABELS: Record<Feature, string> = {
   EXTENDED_HISTORY: "Extended activity history",
   UNLIMITED_TEMPLATES: "Unlimited custom templates",
   TEAM_MANAGEMENT: "Team management",
+  AI_RECEPTIONIST: "AI receptionist",
+  QUOTES_ESTIMATES: "Quotes and estimates",
+  INVOICING: "Invoicing",
+  MARKETPLACE_DISCOVERY: "Marketplace discovery",
+  ACCOUNTING_INTEGRATIONS: "Accounting integrations",
 };
 
 /**
@@ -54,10 +71,18 @@ const FEATURE_LABELS: Record<Feature, string> = {
  */
 const PRO_FEATURES = new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVANCED_ANALYTICS", "EXTENDED_HISTORY", "UNLIMITED_TEMPLATES"]);
 
+// PROGRAM 3 LOOP 1: none of these five are checked by any route yet (see
+// the Feature union's doc comment) — this assignment only decides who
+// WILL get each capability once it exists. Placed on BUSINESS, the top
+// tier, as the reasonable default for capabilities beyond Pro's current
+// scope; trivially moved to another plan later since nothing depends on
+// it today.
+const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS"];
+
 const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   FREE: new Set(),
   PRO: PRO_FEATURES,
-  BUSINESS: new Set<Feature>([...PRO_FEATURES, "TEAM_MANAGEMENT"]),
+  BUSINESS: new Set<Feature>([...PRO_FEATURES, "TEAM_MANAGEMENT", ...FUTURE_BUSINESS_FEATURES]),
 };
 
 /**

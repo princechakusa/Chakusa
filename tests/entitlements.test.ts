@@ -476,6 +476,47 @@ describe("entitlements", () => {
     });
   });
 
+  // ---------------------------------------------------------------------
+  // PROGRAM 3 LOOP 1: revenue & entitlement foundation — placeholder
+  // capability keys. None of these are enforced by any route yet; these
+  // tests only lock the plan-mapping contract so a later loop can safely
+  // build the real feature against it.
+  // ---------------------------------------------------------------------
+
+  it("denies AI_RECEPTIONIST on FREE and PRO", () => {
+    expect(hasFeature("FREE", "AI_RECEPTIONIST")).toBe(false);
+    expect(hasFeature("PRO", "AI_RECEPTIONIST")).toBe(false);
+  });
+
+  it("allows AI_RECEPTIONIST on BUSINESS", () => {
+    expect(hasFeature("BUSINESS", "AI_RECEPTIONIST")).toBe(true);
+  });
+
+  it("denies QUOTES_ESTIMATES, INVOICING, MARKETPLACE_DISCOVERY and ACCOUNTING_INTEGRATIONS on FREE and PRO", () => {
+    for (const plan of ["FREE", "PRO"] as const) {
+      expect(hasFeature(plan, "QUOTES_ESTIMATES")).toBe(false);
+      expect(hasFeature(plan, "INVOICING")).toBe(false);
+      expect(hasFeature(plan, "MARKETPLACE_DISCOVERY")).toBe(false);
+      expect(hasFeature(plan, "ACCOUNTING_INTEGRATIONS")).toBe(false);
+    }
+  });
+
+  it("allows QUOTES_ESTIMATES, INVOICING, MARKETPLACE_DISCOVERY and ACCOUNTING_INTEGRATIONS on BUSINESS", () => {
+    expect(hasFeature("BUSINESS", "QUOTES_ESTIMATES")).toBe(true);
+    expect(hasFeature("BUSINESS", "INVOICING")).toBe(true);
+    expect(hasFeature("BUSINESS", "MARKETPLACE_DISCOVERY")).toBe(true);
+    expect(hasFeature("BUSINESS", "ACCOUNTING_INTEGRATIONS")).toBe(true);
+  });
+
+  it("treats the new placeholder features as plan-only (not status-sensitive)", () => {
+    // A CANCELED Business account still reports true — only
+    // AUTOMATION/OUTBOUND_MESSAGING/TEAM_MANAGEMENT are status-sensitive.
+    // hasFeature's plan-only overload would throw for a status-sensitive
+    // feature, so calling it here at all is part of the assertion.
+    expect(hasFeature("BUSINESS", "AI_RECEPTIONIST")).toBe(true);
+    expect(() => hasFeature("BUSINESS", "AI_RECEPTIONIST")).not.toThrow();
+  });
+
   it("32. returns a fully-shaped FEATURE_NOT_AVAILABLE error", () => {
     try {
       assertFeatureAvailable("FREE", "ACTIVE", "AUTOMATION");

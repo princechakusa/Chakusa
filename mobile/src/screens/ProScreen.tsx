@@ -5,6 +5,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { AppHeader, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { BILLING_ENABLED, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
 import { canPurchasePlan, isEntitledStatus, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
+import { capabilityStatusCopy, FUTURE_CAPABILITIES, isCapabilityUnlocked } from '../domain/futureCapabilities';
 import { trialProgressCopy } from '../domain/trialExperience';
 import { legalDestination } from '../domain/trustSettings';
 import { openExternalDestination } from '../services/externalDestinations';
@@ -49,7 +50,22 @@ export function ProScreen() {
       <View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text></View>
     </View> : null}
     <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic lead follow-up and customer win-back SMS once Pro is active{Platform.OS === 'android' ? ', including missed-call recovery' : ''}.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
+    {subscription ? <View style={styles.card}>
+      <Text style={styles.cardTitle}>Coming to Chakusa</Text>
+      <Text style={styles.body}>Capabilities we're building next. Nothing to set up yet.</Text>
+      {FUTURE_CAPABILITIES.map((capability) => {
+        const unlocked = isCapabilityUnlocked(subscription.features, capability.key);
+        return <View key={capability.key} style={styles.feature}>
+          <Ionicons name={unlocked ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={unlocked ? colors.primary : colors.textSecondary} />
+          <View style={styles.featureCopy}>
+            <Text style={styles.featureText}>{capability.label}</Text>
+            <Text style={styles.featureDetail}>{capability.description}</Text>
+            <Text style={styles.featureStatus}>{capabilityStatusCopy(subscription.features, capability.key)}</Text>
+          </View>
+        </View>;
+      })}
+    </View> : null}
     <Text style={styles.footnote}>The localized price and introductory offer shown by your App Store or Google Play account are the purchase authority.</Text>
   </Screen>;
 }
-const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, statusCard: { borderColor: colors.success }, purchase: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, planChoices: { gap: spacing.sm }, cardTitle: { ...typography.subheading, color: colors.text }, feature: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, featureText: { ...typography.body, color: colors.text, flex: 1 }, body: { ...typography.body, color: colors.textSecondary }, price: { alignItems: 'center', paddingVertical: spacing.sm }, priceValue: { fontSize: 36, lineHeight: 44, fontWeight: '700', color: colors.text }, pricePeriod: { ...typography.body, color: colors.textSecondary }, offer: { ...typography.bodyStrong, color: colors.text }, dev: { ...typography.caption, color: colors.textSecondary }, legal: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg }, link: { ...typography.bodyStrong, color: colors.primary, minHeight: 44, textAlignVertical: 'center' }, message: { ...typography.body, color: colors.text }, error: { ...typography.body, color: colors.negative }, footnote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' } });
+const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, statusCard: { borderColor: colors.success }, purchase: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, planChoices: { gap: spacing.sm }, cardTitle: { ...typography.subheading, color: colors.text }, feature: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, featureText: { ...typography.body, color: colors.text, flex: 1 }, featureCopy: { flex: 1, gap: 2 }, featureDetail: { ...typography.caption, color: colors.textSecondary }, featureStatus: { ...typography.caption, color: colors.textSecondary, fontStyle: 'italic' }, body: { ...typography.body, color: colors.textSecondary }, price: { alignItems: 'center', paddingVertical: spacing.sm }, priceValue: { fontSize: 36, lineHeight: 44, fontWeight: '700', color: colors.text }, pricePeriod: { ...typography.body, color: colors.textSecondary }, offer: { ...typography.bodyStrong, color: colors.text }, dev: { ...typography.caption, color: colors.textSecondary }, legal: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg }, link: { ...typography.bodyStrong, color: colors.primary, minHeight: 44, textAlignVertical: 'center' }, message: { ...typography.body, color: colors.text }, error: { ...typography.body, color: colors.negative }, footnote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' } });

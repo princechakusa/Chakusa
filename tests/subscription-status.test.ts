@@ -96,6 +96,39 @@ describe("GET /subscription/status", () => {
   });
 
   // ---------------------------------------------------------------------
+  // PROGRAM 3 LOOP 1: placeholder future-capability entitlements in the
+  // same snapshot — no route enforces these yet, but the read-only
+  // business-facing display (mobile ProScreen) and any future loop that
+  // builds the real feature both read this contract.
+  // ---------------------------------------------------------------------
+
+  it("FREE and PRO report all future-capability placeholders as false", async () => {
+    const { token, businessId } = await registerAccount(app);
+    await setPlan(businessId, "PRO");
+    const response = await getStatus(app, token);
+    expect(response.json().features).toMatchObject({
+      aiReceptionist: false,
+      quotesEstimates: false,
+      invoicing: false,
+      marketplaceDiscovery: false,
+      accountingIntegrations: false,
+    });
+  });
+
+  it("BUSINESS reports all future-capability placeholders as true", async () => {
+    const { token, businessId } = await registerAccount(app);
+    await setPlan(businessId, "BUSINESS");
+    const response = await getStatus(app, token);
+    expect(response.json().features).toMatchObject({
+      aiReceptionist: true,
+      quotesEstimates: true,
+      invoicing: true,
+      marketplaceDiscovery: true,
+      accountingIntegrations: true,
+    });
+  });
+
+  // ---------------------------------------------------------------------
   // Leads / review requests (monthly)
   // ---------------------------------------------------------------------
 

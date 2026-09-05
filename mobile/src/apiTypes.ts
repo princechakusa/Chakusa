@@ -212,7 +212,13 @@ export interface SubscriptionStatusDto {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
-  features: { automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean; teamManagement: boolean };
+  features: {
+    automation: boolean; outboundMessaging: boolean; advancedAnalytics: boolean; extendedHistory: boolean; unlimitedTemplates: boolean; teamManagement: boolean;
+    // PROGRAM 3 LOOP 1: entitlement foundation for roadmap capabilities
+    // that do not exist as real features yet — see src/lib/entitlements.ts.
+    // Read-only "coming soon" display only; no screen enforces these.
+    aiReceptionist: boolean; quotesEstimates: boolean; invoicing: boolean; marketplaceDiscovery: boolean; accountingIntegrations: boolean;
+  };
   usage: {
     leads: MonthlyUsageDto;
     reviewRequests: MonthlyUsageDto;

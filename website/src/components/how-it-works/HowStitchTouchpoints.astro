@@ -1,0 +1,5 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { touchpoints } from "../../data/howItWorksStitch";
+---
+<section class="hw-touchpoints hw-shell" aria-labelledby="touchpoints-title"><div class="hw-touchpoints__panel"><header><p>Real-Time Equilibrium</p><h2 id="touchpoints-title">Where the Two Paths Meet: The 4 Core Handshakes</h2><div>A single platform event triggers instantaneous state changes for both participants simultaneously.</div></header><div class="hw-touchpoints__grid">{touchpoints.map((item) => <article><i><StoryIcon name={item.icon} /></i><span>Handshake {item.number}</span><h3>{item.title}</h3><p>{item.body}</p><footer>{item.meta}</footer></article>)}</div><aside><StoryIcon name="trending_up" /><span><strong>Engineered for 99.99% Operational Uptime</strong><small>Real-time WebSocket connection guarantees neither party sees out-of-date slots.</small></span><b>Live Protocol Status: Synchronized</b></aside></div></section>

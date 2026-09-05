@@ -1,0 +1,4 @@
+---
+import { tradeStories } from "../../data/howItWorksStitch";
+---
+<section class="hw-trades hw-shell" aria-label="Real trades in motion"><div>{tradeStories.map((trade) => <article><img src={trade.image} alt={trade.alt} width="512" height="384" loading="lazy" /><section><span>Trade Discipline</span><h2>{trade.title}</h2><p>{trade.body}</p><footer><span>Avg. Setup Time</span><strong>{trade.setup}</strong></footer></section></article>)}</div></section>

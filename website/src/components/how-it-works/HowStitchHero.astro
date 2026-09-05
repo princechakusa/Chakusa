@@ -1,0 +1,13 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+---
+<section class="hw-hero hw-shell" aria-labelledby="how-title">
+  <p>Step-By-Step Operational Guide</p>
+  <h1 id="how-title">How Chakusa works for customers and businesses.</h1>
+  <div>Clear, transparent, and completely synchronized. See how a simple appointment connects an everyday patron with a trusted independent master of their craft.</div>
+  <div class="hw-switcher" role="group" aria-label="Choose journey view">
+    <button class="is-active" type="button" data-journey-mode="synchronized"><StoryIcon name="repeat" />Synchronized Flow</button>
+    <button type="button" data-journey-mode="customer"><StoryIcon name="person" />Customer Journey</button>
+    <button type="button" data-journey-mode="business"><StoryIcon name="storefront" />Business Journey</button>
+  </div>
+</section>

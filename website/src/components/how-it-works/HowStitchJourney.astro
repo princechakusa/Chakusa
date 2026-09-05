@@ -1,0 +1,19 @@
+---
+import StoryIcon from "../homepage/StoryIcon.astro";
+import { customerJourney, businessJourney } from "../../data/howItWorksStitch";
+const streams = [{ id:"customer", title:"The Customer Journey", subtitle:"The reliable 7-step experience for local patrons", tag:"Consumer Web", icon:"person", steps:customerJourney },{ id:"business", title:"The Business Journey", subtitle:"The 7-step powerhouse engine for craft specialists", tag:"Pro Console", icon:"storefront", steps:businessJourney }];
+---
+<section class="hw-journey hw-shell" aria-labelledby="parallel-title">
+  <header><div><p>Dual Lifecycle Architecture</p><h2 id="parallel-title">Parallel operational paths in real time</h2></div><span><b>Customer Actions</b><b>Merchant Handshakes</b></span></header>
+  <div class="hw-streams" data-flow-container>
+    {streams.map((stream) => <article class={`hw-stream hw-stream--${stream.id}`} data-journey-column={stream.id}>
+      <header><span><i><StoryIcon name={stream.icon} /></i><span><strong>{stream.title}</strong><small>{stream.subtitle}</small></span></span><b>{stream.tag}</b></header>
+      <div class="hw-stream__steps">{stream.steps.map((step) => <section class:list={[step.touchpoint && "is-touchpoint"]}><header><span><b>{step.number}</b><strong>{step.label}</strong></span><StoryIcon name={step.icon} /></header><h3>{step.title}</h3><p>{step.body}</p><footer><strong>{step.detail}</strong><span>{step.meta}</span></footer></section>)}</div>
+    </article>)}
+  </div>
+</section>
+<script>
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-journey-mode]")];
+  const columns = [...document.querySelectorAll<HTMLElement>("[data-journey-column]")];
+  buttons.forEach((button) => button.addEventListener("click", () => { const mode=button.dataset.journeyMode || "synchronized"; buttons.forEach((item) => { const active=item===button; item.classList.toggle("is-active",active); item.setAttribute("aria-pressed",String(active)); }); columns.forEach((column) => { column.hidden=mode!=="synchronized" && column.dataset.journeyColumn!==mode; }); }));
+</script>

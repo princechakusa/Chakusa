@@ -1,0 +1,4 @@
+---
+import { stitchHowFaqs } from "../../data/howItWorksStitch";
+---
+<section class="hw-faq hw-shell" aria-labelledby="how-faq-title"><header><p>Straight Answers</p><h2 id="how-faq-title">Frequently Asked Questions</h2><div>Everything you need to know about the platform protocols.</div></header><div>{stitchHowFaqs.map((item) => <details open><summary>{item.question}<span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></section>

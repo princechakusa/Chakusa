@@ -425,6 +425,55 @@ export async function sendQuote(businessId: string, actorMemberId: string, docum
 }
 
 // ---------------------------------------------------------------------------
+// Cancel (SENT -> CANCELED) — PROGRAM 3 LOOP 3F
+//
+// Terminal, atomic, single-winner. Revokes every live acceptance token
+// for the document so a customer holding the link can no longer accept
+// (the link still RESOLVES read-only, showing "canceled"). Historical
+// revisions/line items are never touched.
+// ---------------------------------------------------------------------------
+
+export async function cancelQuote(businessId: string, actorMemberId: string, documentId: string) {
+  await withLimitCheck(async (tx) => {
+    const document = await tx.quoteDocument.findFirst({
+      where: { id: documentId, businessId },
+      select: { id: true, status: true, currentRevisionId: true },
+    });
+    if (!document) throw ApiError.notFound("Quote not found");
+
+    // Lifecycle authority — non-SENT (DRAFT, or already terminal) throws
+    // ApiError.conflict (409). A DRAFT is deleted, never canceled.
+    assertLegalQuoteTransition(document.status, "CANCEL");
+
+    const transitioned = await tx.quoteDocument.updateMany({
+      where: { id: document.id, businessId, status: "SENT" },
+      data: { status: "CANCELED" },
+    });
+    if (transitioned.count !== 1) {
+      // Lost a race to a concurrent customer accept/decline or another cancel.
+      throw ApiError.conflict("This quote has already been actioned");
+    }
+
+    await tx.quoteAcceptanceToken.updateMany({
+      where: { quoteRevision: { quoteDocumentId: document.id }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    await tx.quoteEvent.create({
+      data: {
+        quoteDocumentId: document.id,
+        quoteRevisionId: document.currentRevisionId,
+        eventType: "CANCELED",
+        actorType: "BUSINESS_MEMBER",
+        actorId: actorMemberId,
+      },
+    });
+  });
+
+  return getQuoteDetail(businessId, documentId);
+}
+
+// ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
 

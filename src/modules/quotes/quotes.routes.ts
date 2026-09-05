@@ -5,7 +5,7 @@ import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema, sendQuoteSchema } from "./quotes.schemas.js";
-import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote } from "./quotes.service.js";
+import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote } from "./quotes.service.js";
 
 // PROGRAM 3 LOOP 3B: BUSINESS-facing draft + read API for Quotes &
 // Estimates. Route handlers do ONLY: auth (preHandler) -> validation ->
@@ -18,6 +18,12 @@ import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQu
 // This explicit allow-list still exists so that a future BusinessRole
 // added to the enum is NOT silently granted access.
 const QUOTE_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN", "STAFF"];
+
+// PROGRAM 3 LOOP 3F: canceling a SENT quote is a higher-impact action
+// than draft editing - locked policy is OWNER/ADMIN only (STAFF may
+// create/edit/send drafts but not retract a document already in front of
+// a customer).
+const QUOTE_CANCEL_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN"];
 
 async function resolveMemberId(businessId: string, userId: string): Promise<string> {
   const member = await prisma.businessMember.findFirst({ where: { businessId, userId }, select: { id: true } });
@@ -81,5 +87,15 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
     const input = sendQuoteSchema.parse(request.body ?? {});
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(200).send(await sendQuote(request.businessId!, memberId, id, input));
+  });
+
+  // PROGRAM 3 LOOP 3F: SENT -> CANCELED. OWNER/ADMIN only. Revokes every
+  // live acceptance token so the customer link can no longer accept.
+  fastify.post<{ Params: { id: string } }>("/:id/cancel", async (request, reply) => {
+    requireBusinessRole(request, QUOTE_CANCEL_ROLES);
+    assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
+    const { id } = quoteIdParamSchema.parse(request.params);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await cancelQuote(request.businessId!, memberId, id));
   });
 }

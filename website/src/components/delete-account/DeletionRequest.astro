@@ -1,0 +1,74 @@
+<section id="request-deletion" class="da-request" aria-labelledby="request-title">
+  <div class="da-shell da-request__grid">
+    <div class="da-request__copy">
+      <p class="da-overline">Web request</p>
+      <h2 id="request-title">Start a verified deletion request</h2>
+      <p>This form opens a prepared message in your email application. Your request is not sent until you review and send that email.</p>
+      <p>For security, an email address alone is not enough to delete an account. Chakusa will reply with the steps needed to verify ownership before processing the request.</p>
+      <a href="mailto:privacy@chakusarecovery.com?subject=Chakusa%20account%20deletion%20request">Email privacy@chakusarecovery.com directly</a>
+    </div>
+    <form class="da-form" action="mailto:privacy@chakusarecovery.com" method="post" enctype="text/plain" data-deletion-form>
+      <div class="da-field">
+        <label for="deletion-email">Chakusa account email</label>
+        <input id="deletion-email" name="email" type="email" autocomplete="email" required aria-describedby="deletion-email-help" />
+        <small id="deletion-email-help">Use the email connected to the account you want deleted.</small>
+      </div>
+      <fieldset>
+        <legend>How do you use Chakusa?</legend>
+        <label><input type="radio" name="experience" value="Customer" required /> Customer</label>
+        <label><input type="radio" name="experience" value="Business" /> Business</label>
+        <label><input type="radio" name="experience" value="Customer and Business" /> Both</label>
+      </fieldset>
+      <div class="da-field">
+        <label for="deletion-business">Business name <span>optional</span></label>
+        <input id="deletion-business" name="business" type="text" autocomplete="organization" maxlength="120" />
+      </div>
+      <div class="da-field">
+        <label for="deletion-note">Additional context <span>optional</span></label>
+        <textarea id="deletion-note" name="note" rows="4" maxlength="800" aria-describedby="deletion-note-help"></textarea>
+        <small id="deletion-note-help">Do not include passwords, codes, payment details, or customer information.</small>
+      </div>
+      <label class="da-confirm">
+        <input type="checkbox" name="understanding" required />
+        <span>I understand that account deletion is permanent and that store subscriptions must be canceled separately.</span>
+      </label>
+      <button class="da-button da-button--primary" type="submit" data-submit>Open deletion request email</button>
+      <p class="da-form__status" role="status" aria-live="polite" data-form-status></p>
+    </form>
+  </div>
+</section>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-deletion-form]");
+  const status = form?.querySelector<HTMLElement>("[data-form-status]");
+  const button = form?.querySelector<HTMLButtonElement>("[data-submit]");
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    const data = new FormData(form);
+    const email = String(data.get("email") || "").trim();
+    const experience = String(data.get("experience") || "").trim();
+    const business = String(data.get("business") || "").trim() || "Not provided";
+    const note = String(data.get("note") || "").trim() || "No additional context";
+    const body = [
+      "I am requesting permanent deletion of my Chakusa account and associated data.",
+      "",
+      `Account email: ${email}`,
+      `Chakusa experience: ${experience}`,
+      `Business name: ${business}`,
+      `Additional context: ${note}`,
+      "",
+      "I understand that Chakusa must verify account ownership before processing this request.",
+      "I understand that App Store or Google Play subscriptions must be canceled separately.",
+    ].join("\n");
+
+    if (status) status.textContent = "Your email application is opening. Review and send the message to submit your request.";
+    if (button) {
+      button.disabled = true;
+      window.setTimeout(() => { button.disabled = false; }, 4000);
+    }
+    window.location.href = `mailto:privacy@chakusarecovery.com?subject=${encodeURIComponent("Chakusa account deletion request")}&body=${encodeURIComponent(body)}`;
+  });
+</script>

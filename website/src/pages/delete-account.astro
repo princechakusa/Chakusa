@@ -1,0 +1,27 @@
+---
+import MarketingLayout from "../layouts/MarketingLayout.astro";
+import SkipLink from "../components/foundation/SkipLink.astro";
+import Header from "../components/header/Header.astro";
+import Footer from "../components/footer/Footer.astro";
+import DeleteAccountHero from "../components/delete-account/DeleteAccountHero.astro";
+import DeletionPaths from "../components/delete-account/DeletionPaths.astro";
+import DeletionDetails from "../components/delete-account/DeletionDetails.astro";
+import DeletionRequest from "../components/delete-account/DeletionRequest.astro";
+import DeletionFaq from "../components/delete-account/DeletionFaq.astro";
+import "../styles/delete-account/delete-account.css";
+
+const title = "Delete Your Chakusa Account | Account and Data Deletion";
+const description = "Delete your Chakusa account in the app or start a verified account and data deletion request from the web.";
+---
+<MarketingLayout {title} {description}>
+  <SkipLink />
+  <Header />
+  <main id="main-content" class="delete-account-page">
+    <DeleteAccountHero />
+    <DeletionPaths />
+    <DeletionDetails />
+    <DeletionRequest />
+    <DeletionFaq />
+  </main>
+  <Footer />
+</MarketingLayout>

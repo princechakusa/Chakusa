@@ -33,6 +33,7 @@
   <url><loc>https://chakusarecovery.com/login</loc><priority>0.3</priority></url>
   <url><loc>https://chakusarecovery.com/privacy</loc><priority>0.2</priority></url>
   <url><loc>https://chakusarecovery.com/terms</loc><priority>0.2</priority></url>
+  <url><loc>https://chakusarecovery.com/delete-account</loc><priority>0.3</priority></url>
   <url><loc>https://chakusarecovery.com/cookies</loc><priority>0.1</priority></url>
   <url><loc>https://chakusarecovery.com/ai-disclosure</loc><priority>0.3</priority></url>
 </urlset>

@@ -1,5 +1,5 @@
 export type PublicPage = 'privacy' | 'terms' | 'support' | 'delete-account';
-export type PublicRoute = { kind: 'document'; page: PublicPage } | { kind: 'feedback'; token: string | null } | { kind: 'quote'; token: string | null } | { kind: 'team-invite'; token: string | null } | { kind: 'business-profile'; slug: string | null } | { kind: 'business-booking'; slug: string | null; token: string | null } | null;
+export type PublicRoute = { kind: 'document'; page: PublicPage } | { kind: 'feedback'; token: string | null } | { kind: 'quote'; token: string | null } | { kind: 'invoice'; token: string | null } | { kind: 'team-invite'; token: string | null } | { kind: 'business-profile'; slug: string | null } | { kind: 'business-booking'; slug: string | null; token: string | null } | null;
 
 const pages: Record<string, PublicPage> = { '/privacy': 'privacy', '/terms': 'terms', '/support': 'support', '/delete-account': 'delete-account' };
 
@@ -16,6 +16,11 @@ export function publicRouteFromPath(pathname: string): PublicRoute {
     const match = pathname.match(/^\/q\/([^/]+)\/?$/);
     if (!match) return { kind: 'quote', token: null };
     try { return { kind: 'quote', token: decodeURIComponent(match[1]) }; } catch { return { kind: 'quote', token: null }; }
+  }
+  if (/^\/i(?:\/|$)/.test(pathname)) {
+    const match = pathname.match(/^\/i\/([^/]+)\/?$/);
+    if (!match) return { kind: 'invoice', token: null };
+    try { return { kind: 'invoice', token: decodeURIComponent(match[1]) }; } catch { return { kind: 'invoice', token: null }; }
   }
   if (/^\/team-invite(?:\/|$)/.test(pathname)) {
     const match = pathname.match(/^\/team-invite\/([^/]+)\/?$/);

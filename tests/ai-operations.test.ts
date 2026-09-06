@@ -149,15 +149,21 @@ describe("AI Operations: Evaluation, Monitoring & Analytics (3B-4)", () => {
 
     it("reports historical trends from bucketed metrics", async () => {
       const { businessId } = await registerAccount(app);
-      const base = new Date("2026-08-30T10:15:00Z");
+      // Anchor the events to the current time (in-window for sinceHours: 96)
+      // rather than a fixed absolute date that drifts out of the query
+      // window as the calendar advances. Two events share one hour bucket;
+      // a third sits in an earlier bucket 12h back — both still < 96h old.
+      const base = new Date();
+      base.setUTCHours(base.getUTCHours() - 20, 15, 0, 0);
+      const earlierBucket = new Date(base.getTime() - 12 * 3_600_000);
       await recordAIEvent({ businessId, metric: "cost", value: 0.5, at: base });
       await recordAIEvent({ businessId, metric: "cost", value: 1.5, at: new Date(base.getTime() + 5 * 60_000) });
-      await recordAIEvent({ businessId, metric: "cost", value: 2, at: new Date("2026-08-31T09:00:00Z") });
+      await recordAIEvent({ businessId, metric: "cost", value: 2, at: earlierBucket });
 
       const trend = await getAITrend({ businessId, metric: "cost", sinceHours: 96, bucket: "hour" });
       const totalSum = trend.reduce((sum, point) => sum + point.sum, 0);
       expect(Number(totalSum.toFixed(2))).toBe(4);
-      const firstBucket = trend.find((p) => p.windowStart.startsWith("2026-08-30T10"));
+      const firstBucket = trend.find((p) => p.windowStart.startsWith(base.toISOString().slice(0, 13)));
       expect(firstBucket?.count).toBe(2);
       expect(firstBucket?.sum).toBe(2);
       expect(firstBucket?.min).toBe(0.5);

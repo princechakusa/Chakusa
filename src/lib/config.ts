@@ -52,6 +52,13 @@ export const envSchema = z.object({
   // expiresAt, the token never outlives it: effective expiry is
   // min(now + this, document.expiresAt).
   QUOTE_ACCEPTANCE_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // PROGRAM 3 / Invoicing I4: how long the opaque bearer token returned
+  // once from POST /invoices/:id/send stays valid. 30 days by default -
+  // long enough that a customer who opens the link weeks later still
+  // sees their invoice (an over-deadline invoice is still collectible),
+  // while staying a bounded, non-permanent credential. Configurable
+  // product behaviour, not a legal retention statement.
+  INVOICE_ACCESS_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   // Placeholder pending a real commercial decision (see
   // entitlements.ts's PLAN_LIMITS) — how many ACTIVE BusinessMember rows
   // (owner included) a BUSINESS-tier business may have at once.
@@ -80,6 +87,12 @@ export const envSchema = z.object({
   // introduced. Set this only if the customer quote page is served from a
   // different host than the review page. Must be https:// when set.
   PUBLIC_QUOTE_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  // PROGRAM 3 / Invoicing I4: base URL of the public web page that
+  // consumes GET /public/invoices/:token. Optional even in production -
+  // falls back to PUBLIC_REVIEW_BASE_URL (the shared customer web origin,
+  // already production-required). Set only if the invoice page is served
+  // from a different host. Must be https:// when set.
+  PUBLIC_INVOICE_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
   // Production Infrastructure Phase 2.2: email delivery (password reset,
   // team invitations) is a real product feature but — unlike
   // PUBLIC_REVIEW_BASE_URL above — is deliberately NOT unconditionally
@@ -289,6 +302,9 @@ export const envSchema = z.object({
   }
   if (env.PUBLIC_QUOTE_BASE_URL && !env.PUBLIC_QUOTE_BASE_URL.startsWith("https://")) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_QUOTE_BASE_URL"], message: "PUBLIC_QUOTE_BASE_URL must use https:// in production" });
+  }
+  if (env.PUBLIC_INVOICE_BASE_URL && !env.PUBLIC_INVOICE_BASE_URL.startsWith("https://")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_INVOICE_BASE_URL"], message: "PUBLIC_INVOICE_BASE_URL must use https:// in production" });
   }
   if (env.GOOGLE_AUTH_ENABLED && !env.GOOGLE_OAUTH_CLIENT_IDS) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["GOOGLE_OAUTH_CLIENT_IDS"], message: "GOOGLE_OAUTH_CLIENT_IDS is required in production when GOOGLE_AUTH_ENABLED=true" });

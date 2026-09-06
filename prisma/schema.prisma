@@ -4128,11 +4128,12 @@ model InvoiceRevision {
   createdAt         DateTime @default(now()) @map("created_at")
   createdByMemberId String   @map("created_by_member_id")
 
-  invoice           Invoice           @relation("InvoiceRevisionOwnership", fields: [invoiceId], references: [id], onDelete: Cascade)
-  createdByMember    BusinessMember    @relation("InvoiceRevisionCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  invoice           Invoice              @relation("InvoiceRevisionOwnership", fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdByMember    BusinessMember       @relation("InvoiceRevisionCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
   lineItems         InvoiceLineItem[]
   events            InvoiceEvent[]
-  currentForInvoice Invoice?          @relation("InvoiceCurrentRevision")
+  accessTokens      InvoiceAccessToken[]
+  currentForInvoice Invoice?             @relation("InvoiceCurrentRevision")
 
   @@unique([invoiceId, revisionNumber])
   @@unique([id, invoiceId])
@@ -4176,4 +4177,24 @@ model InvoiceEvent {
 
   @@index([invoiceId, createdAt])
   @@map("invoice_events")
+}
+
+// PROGRAM 3 / Invoicing I4: account-less customer access to a SENT
+// invoice. Mirrors QuoteAcceptanceToken / PublicBookingAccess exactly -
+// only a SHA-256 hash of the opaque bearer token is stored; the raw
+// token is returned once from POST /invoices/:id/send and never
+// persisted or logged. Bound to the exact revision that was current at
+// send time.
+model InvoiceAccessToken {
+  id                String    @id @default(uuid())
+  invoiceRevisionId String    @map("invoice_revision_id")
+  tokenHash         String    @unique @map("token_hash")
+  expiresAt         DateTime  @map("expires_at")
+  revokedAt         DateTime? @map("revoked_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  invoiceRevision InvoiceRevision @relation(fields: [invoiceRevisionId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceRevisionId])
+  @@map("invoice_access_tokens")
 }

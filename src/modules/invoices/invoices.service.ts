@@ -1,8 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
+import { config } from "../../lib/config.js";
+import { generateOpaqueToken } from "../../lib/authTokens.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
-import { calculateInvoiceTotals, formatInvoiceNumber } from "../../lib/invoices/invoices.domain.js";
+import { assertLegalInvoiceTransition, calculateInvoiceTotals, canSendInvoice, formatInvoiceNumber } from "../../lib/invoices/invoices.domain.js";
+import { buildPublicInvoiceUrl } from "../../lib/invoices/publicInvoiceLinks.js";
 import type { InvoiceLineItemInput, InvoiceTotals } from "../../lib/invoices/invoices.types.js";
 import type { CreateInvoiceInput, ListInvoicesQuery, UpdateInvoiceInput } from "./invoices.schemas.js";
 
@@ -261,6 +264,130 @@ export async function deleteInvoiceDraft(businessId: string, invoiceId: string) 
     if (existing) throw ApiError.conflict("Only draft invoices can be deleted");
     throw ApiError.notFound("Invoice not found");
   });
+}
+
+// ---------------------------------------------------------------------------
+// Send (DRAFT -> SENT) + secure customer access token issuance - I4.
+//
+// One atomic Serializable transaction: validate DRAFT + current revision
+// -> single-winner conditional DRAFT->SENT transition -> create exactly
+// one hashed InvoiceAccessToken bound to the frozen revision -> record
+// one SENT event. The raw token is returned once (for delivery) and
+// never persisted or logged. issueDate defaults to the send moment.
+// ---------------------------------------------------------------------------
+
+function resolveInvoiceTokenExpiry(now: Date): Date {
+  // Unlike a quote (which becomes un-actionable at expiry), an
+  // over-deadline invoice is still collectible - so the token expiry is
+  // simply a bounded, configurable TTL and is NOT capped by dueDate.
+  return new Date(now.getTime() + config.INVOICE_ACCESS_TOKEN_TTL_DAYS * 86_400_000);
+}
+
+export async function sendInvoice(businessId: string, actorMemberId: string, invoiceId: string) {
+  const rawToken = await withLimitCheck(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, businessId },
+      select: {
+        id: true,
+        status: true,
+        currentRevisionId: true,
+        issueDate: true,
+        dueDate: true,
+        currentRevision: {
+          select: { id: true, lineItems: { select: { quantity: true, unitPrice: true, discountAmount: true, taxable: true } } },
+        },
+      },
+    });
+    if (!invoice) throw ApiError.notFound("Invoice not found");
+
+    // Lifecycle authority - non-DRAFT (SENT / VOID) throws ApiError.conflict (409).
+    assertLegalInvoiceTransition(invoice.status, "SEND");
+
+    if (!invoice.currentRevisionId || !invoice.currentRevision) {
+      throw ApiError.conflict("This invoice has no current revision to send");
+    }
+    if (invoice.dueDate && invoice.issueDate && invoice.dueDate.getTime() < invoice.issueDate.getTime()) {
+      throw ApiError.badRequest("The due date cannot be before the issue date");
+    }
+
+    const lineItems: InvoiceLineItemInput[] = invoice.currentRevision.lineItems.map((li) => ({
+      quantity: li.quantity.toFixed(2),
+      unitPrice: li.unitPrice.toFixed(2),
+      discountAmount: li.discountAmount.toFixed(2),
+      taxable: li.taxable,
+    }));
+    const eligibility = canSendInvoice({ status: invoice.status, lineItems });
+    if (!eligibility.ok) throw ApiError.badRequest(eligibility.reason);
+
+    const now = new Date();
+    if (invoice.dueDate && !invoice.issueDate && invoice.dueDate.getTime() < now.getTime()) {
+      throw ApiError.badRequest("The due date cannot be in the past");
+    }
+
+    const token = generateOpaqueToken();
+
+    const transitioned = await tx.invoice.updateMany({
+      where: { id: invoice.id, businessId, status: "DRAFT", currentRevisionId: invoice.currentRevisionId },
+      data: { status: "SENT", issueDate: invoice.issueDate ?? now },
+    });
+    if (transitioned.count !== 1) {
+      throw ApiError.conflict("This invoice has changed since you loaded it — reload and try again");
+    }
+
+    await tx.invoiceAccessToken.create({
+      data: {
+        id: token.id,
+        invoiceRevisionId: invoice.currentRevisionId,
+        tokenHash: token.hash,
+        expiresAt: resolveInvoiceTokenExpiry(now),
+      },
+    });
+
+    await tx.invoiceEvent.create({
+      data: { invoiceId: invoice.id, invoiceRevisionId: invoice.currentRevisionId, eventType: "SENT", actorType: "BUSINESS_MEMBER", actorId: actorMemberId },
+    });
+
+    return token.raw;
+  });
+
+  const invoice = await getInvoiceDetail(businessId, invoiceId);
+  return { invoice, accessToken: rawToken, accessUrl: buildPublicInvoiceUrl(rawToken) };
+}
+
+// ---------------------------------------------------------------------------
+// Void - terminal. Legal from DRAFT or SENT. Revokes every live access
+// token so the customer link can no longer resolve as "open". Never
+// erases revisions or financial history.
+// ---------------------------------------------------------------------------
+
+export async function voidInvoice(businessId: string, actorMemberId: string, invoiceId: string) {
+  await withLimitCheck(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, businessId },
+      select: { id: true, status: true, currentRevisionId: true },
+    });
+    if (!invoice) throw ApiError.notFound("Invoice not found");
+    assertLegalInvoiceTransition(invoice.status, "VOID");
+
+    const transitioned = await tx.invoice.updateMany({
+      where: { id: invoice.id, businessId, status: { in: ["DRAFT", "SENT"] } },
+      data: { status: "VOID" },
+    });
+    if (transitioned.count !== 1) {
+      throw ApiError.conflict("This invoice has already been actioned");
+    }
+
+    await tx.invoiceAccessToken.updateMany({
+      where: { invoiceRevision: { invoiceId: invoice.id }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    await tx.invoiceEvent.create({
+      data: { invoiceId: invoice.id, invoiceRevisionId: invoice.currentRevisionId, eventType: "VOIDED", actorType: "BUSINESS_MEMBER", actorId: actorMemberId },
+    });
+  });
+
+  return getInvoiceDetail(businessId, invoiceId);
 }
 
 // ---------------------------------------------------------------------------

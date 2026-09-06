@@ -40,6 +40,7 @@ import publicReviewRoutes from "./modules/public/public.routes.js";
 import legalRoutes from "./modules/legal/legal.routes.js";
 import publicBusinessProfileRoutes from "./modules/public/publicBusinessProfile.routes.js";
 import publicQuoteRoutes from "./modules/public/publicQuotes.routes.js";
+import publicInvoiceRoutes from "./modules/public/publicInvoices.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
 import teamRoutes from "./modules/team/team.routes.js";
 import type { TeamInvitationEmailSender } from "./modules/team/teamInvitationEmail.js";
@@ -277,6 +278,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Unauthenticated, rate-limited, revision-bound-bearer-token access to a
   // sent quote - same discipline as publicReviewRoutes above. Read-only.
   await app.register(publicQuoteRoutes, { prefix: "/public/quotes" });
+  await app.register(publicInvoiceRoutes, { prefix: "/public/invoices" });
   // GET is unauthenticated; POST /:token/accept applies fastify.authenticate
   // per-route — see publicTeamInviteRoutes's top-level doc comment.
   await app.register(publicTeamInviteRoutes, { prefix: "/public/team-invites" });

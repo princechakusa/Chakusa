@@ -6,7 +6,7 @@ import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createInvoiceSchema, updateInvoiceSchema, listInvoicesQuerySchema, invoiceIdParamSchema } from "./invoices.schemas.js";
-import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote } from "./invoices.service.js";
+import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote, sendInvoice, voidInvoice } from "./invoices.service.js";
 
 // PROGRAM 3 / Invoicing I2: BUSINESS-facing draft + read API. Route
 // handlers do ONLY: auth (preHandler) -> role -> entitlement ->
@@ -18,6 +18,9 @@ import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoice
 // mirrors the locked Quotes draft policy. An explicit allow-list so a
 // future BusinessRole is not silently granted access.
 const INVOICE_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN", "STAFF"];
+// Voiding an invoice already in front of a customer is higher-impact -
+// OWNER/ADMIN only, mirroring the locked quote-cancel policy.
+const INVOICE_VOID_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN"];
 
 async function resolveMemberId(businessId: string, userId: string): Promise<string> {
   const member = await prisma.businessMember.findFirst({ where: { businessId, userId }, select: { id: true } });
@@ -77,5 +80,25 @@ export default async function invoiceRoutes(fastify: FastifyInstance) {
     const { id } = invoiceIdParamSchema.parse(request.params);
     await deleteInvoiceDraft(request.businessId!, id);
     reply.status(204).send();
+  });
+
+  // I4: DRAFT -> SENT. Freezes the current revision and issues the
+  // one-time raw access token + assembled customer URL.
+  fastify.post<{ Params: { id: string } }>("/:id/send", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id } = invoiceIdParamSchema.parse(request.params);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await sendInvoice(request.businessId!, memberId, id));
+  });
+
+  // I4: DRAFT|SENT -> VOID (terminal). OWNER/ADMIN only. Revokes every
+  // live access token; never erases financial history.
+  fastify.post<{ Params: { id: string } }>("/:id/void", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_VOID_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id } = invoiceIdParamSchema.parse(request.params);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(200).send(await voidInvoice(request.businessId!, memberId, id));
   });
 }

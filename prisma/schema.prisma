@@ -3893,6 +3893,13 @@ model QuoteDocument {
   @@unique([acceptedRevisionId, id])
   @@index([businessId, status])
   @@index([businessId, createdAt])
+  // PROGRAM 3 LOOP 3J / Q5: the expiration worker sweeps
+  // `WHERE status = 'SENT' AND expires_at <= now()` on every tick, across
+  // all tenants. The (business_id, status) index can't serve that (its
+  // leading column isn't in the predicate), so without this the sweep is a
+  // full scan of quote_documents. This composite keeps it proportional to
+  // the number of genuinely-due rows.
+  @@index([status, expiresAt])
   @@index([customerProfileId])
   @@index([customerId])
   @@index([leadId])

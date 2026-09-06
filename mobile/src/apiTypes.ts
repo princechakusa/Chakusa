@@ -937,3 +937,67 @@ export interface CreateQuoteBody {
 }
 export interface UpdateQuoteBody extends Omit<CreateQuoteBody, 'documentType'> { expectedCurrentRevisionId: string; }
 export interface ReviseQuoteBody extends Omit<CreateQuoteBody, 'documentType'> { expectedCurrentRevisionId: string; }
+
+// PROGRAM 3 / Invoicing I5: Invoices (business surface)
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'VOID';
+export interface InvoiceLineItemDto {
+  id: string;
+  serviceOfferingId: string | null;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  discountAmount: string;
+  taxable: boolean;
+  lineTotal: string;
+  sortOrder: number;
+}
+export interface InvoiceRevisionDto {
+  id: string;
+  revisionNumber: number;
+  notes: string | null;
+  terms: string | null;
+  totals: QuoteTotalsDto;
+  lineItems: InvoiceLineItemDto[];
+}
+export interface InvoiceRevisionHistoryEntryDto { id: string; revisionNumber: number; total: string; createdAt: string; }
+export interface InvoiceListItemDto {
+  id: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  currency: string;
+  totals: QuoteTotalsDto;
+  customer: { id: string; name: string } | null;
+  issueDate: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface InvoiceListResponse { items: InvoiceListItemDto[]; total: number; page: number; pageSize: number; }
+export interface InvoiceDetailDto {
+  id: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  currency: string;
+  origins: { customerId: string | null; customerProfileId: string | null; appointmentId: string | null };
+  quoteProvenance: { quoteDocumentId: string; quoteRevisionId: string | null } | null;
+  customer: { id: string; name: string; phone: string | null; email: string | null } | null;
+  issueDate: string | null;
+  dueDate: string | null;
+  currentRevision: InvoiceRevisionDto | null;
+  revisionHistory: InvoiceRevisionHistoryEntryDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+export interface InvoiceMutationResult { invoice: InvoiceDetailDto; accessToken: string; accessUrl: string; }
+export interface CreateInvoiceBody {
+  customerId?: string | null;
+  customerProfileId?: string | null;
+  appointmentId?: string | null;
+  lineItems?: QuoteLineItemInput[];
+  notes?: string | null;
+  terms?: string | null;
+  issueDate?: string | null;
+  dueDate?: string | null;
+  taxRatePercent?: string | number;
+}
+export interface UpdateInvoiceBody extends CreateInvoiceBody { expectedCurrentRevisionId: string; }

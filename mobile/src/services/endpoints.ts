@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CreateQuoteBody, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, QuoteDetailDto, QuoteDocumentStatus, QuoteDocumentType, QuoteListResponse, QuoteMutationResult, ReminderDto, ReviewRequestDto, ReviseQuoteBody, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, UpdateQuoteBody, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CreateInvoiceBody, CreateQuoteBody, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, InvoiceDetailDto, InvoiceListResponse, InvoiceMutationResult, InvoiceStatus, PublicTeamInvitationDto, QuoteDetailDto, QuoteDocumentStatus, QuoteDocumentType, QuoteListResponse, QuoteMutationResult, ReminderDto, ReviewRequestDto, ReviseQuoteBody, ServiceOfferingDto, UpdateInvoiceBody, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, UpdateQuoteBody, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
 import { api } from './api';
 import type { AiConversationRunDto, AiValueCenterDto, AiHealthDto, AiEvaluationRunDto } from '../apiTypes';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
@@ -84,6 +84,18 @@ export const quotesApi = {
   revise: (id: string, body: ReviseQuoteBody) => api.post<QuoteMutationResult>(`/quotes/${id}/revise`, body),
   cancel: (id: string) => api.post<QuoteDetailDto>(`/quotes/${id}/cancel`, {}),
   resend: (id: string) => api.post<QuoteMutationResult>(`/quotes/${id}/resend`, {}),
+};
+export const invoicesApi = {
+  list: (params: { status?: InvoiceStatus; customerId?: string; page?: number; pageSize?: number } = {}) =>
+    api.get<InvoiceListResponse>(`/invoices${query({ status: params.status, customerId: params.customerId, page: params.page, pageSize: params.pageSize })}`),
+  create: (body: CreateInvoiceBody) => api.post<InvoiceDetailDto>('/invoices', body),
+  get: (id: string) => api.get<InvoiceDetailDto>(`/invoices/${id}`),
+  patch: (id: string, body: UpdateInvoiceBody) => api.patch<InvoiceDetailDto>(`/invoices/${id}`, body),
+  remove: (id: string) => api.delete<void>(`/invoices/${id}`),
+  send: (id: string) => api.post<InvoiceMutationResult>(`/invoices/${id}/send`, {}),
+  reissueLink: (id: string) => api.post<InvoiceMutationResult>(`/invoices/${id}/reissue-link`, {}),
+  void: (id: string) => api.post<InvoiceDetailDto>(`/invoices/${id}/void`, {}),
+  createFromQuote: (quoteId: string) => api.post<InvoiceDetailDto>(`/invoices/from-quote/${quoteId}`, {}),
 };
 export const remindersApi = {
   list: () => api.get<ReminderDto[]>('/reminders'), create: (body: { customerId?: string; serviceName?: string; lastVisitDate?: string; dueDate?: string }) => api.post<ReminderDto>('/reminders', body), get: (id: string) => api.get<ReminderDto>(`/reminders/${id}`), patch: (id: string, body: Partial<Pick<ReminderDto, 'serviceName' | 'lastVisitDate' | 'dueDate' | 'status'>>) => api.patch<ReminderDto>(`/reminders/${id}`, body), generateMessage: (id: string) => api.post<{ message: string }>(`/reminders/${id}/generate-message`), markSent: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-sent`), markCompleted: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-completed`), dismiss: (id: string) => api.post<ReminderDto>(`/reminders/${id}/dismiss`),

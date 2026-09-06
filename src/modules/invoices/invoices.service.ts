@@ -355,6 +355,50 @@ export async function sendInvoice(businessId: string, actorMemberId: string, inv
 }
 
 // ---------------------------------------------------------------------------
+// Reissue link (I4/I5) - re-mint the customer access token for a SENT
+// invoice (same current revision, no lifecycle change) so the business
+// can hand the customer a working link again after the previous one was
+// lost or expired. Any still-live token for the current revision is
+// revoked. Not a lifecycle transition; no event.
+// ---------------------------------------------------------------------------
+
+export async function reissueInvoiceLink(businessId: string, invoiceId: string) {
+  const rawToken = await withLimitCheck(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, businessId },
+      select: { id: true, status: true, currentRevisionId: true },
+    });
+    if (!invoice) throw ApiError.notFound("Invoice not found");
+    if (invoice.status !== "SENT" || !invoice.currentRevisionId) {
+      throw ApiError.conflict("Only a sent invoice can have its link reissued");
+    }
+
+    // Conditional write on the row itself: enforces the SENT guard
+    // atomically and makes a concurrent void abort under Serializable
+    // isolation rather than racing the token swap.
+    const claimed = await tx.invoice.updateMany({
+      where: { id: invoice.id, businessId, status: "SENT", currentRevisionId: invoice.currentRevisionId },
+      data: { status: "SENT" },
+    });
+    if (claimed.count !== 1) throw ApiError.conflict("This invoice has changed since you loaded it — reload and try again");
+
+    await tx.invoiceAccessToken.updateMany({
+      where: { invoiceRevisionId: invoice.currentRevisionId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    const token = generateOpaqueToken();
+    await tx.invoiceAccessToken.create({
+      data: { id: token.id, invoiceRevisionId: invoice.currentRevisionId, tokenHash: token.hash, expiresAt: resolveInvoiceTokenExpiry(new Date()) },
+    });
+    return token.raw;
+  });
+
+  const invoice = await getInvoiceDetail(businessId, invoiceId);
+  return { invoice, accessToken: rawToken, accessUrl: buildPublicInvoiceUrl(rawToken) };
+}
+
+// ---------------------------------------------------------------------------
 // Void - terminal. Legal from DRAFT or SENT. Revokes every live access
 // token so the customer link can no longer resolve as "open". Never
 // erases revisions or financial history.

@@ -72,6 +72,7 @@ export function AccountHubScreen() {
       <MenuRow icon="chatbubble-ellipses-outline" tone="green" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
       {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
       <MenuRow icon="document-text-outline" tone="blue" title="Quotes & estimates" detail={features?.quotesEstimates ? 'Create, send and track priced quotes' : 'Send priced quotes customers can accept'} onPress={() => navigation.navigate('Quotes')} />
+      <MenuRow icon="receipt-outline" tone="blue" title="Invoices" detail={features?.invoicing ? 'Create, send and track invoices with a secure link' : 'Send invoices customers can view securely'} onPress={() => navigation.navigate('Invoices')} />
 
       <MenuRow icon="ribbon-outline" tone="purple" title="Loyalty & rewards" detail="Points, tiers, rewards, memberships and campaigns" onPress={() => navigation.navigate('LoyaltyManagement')} />
       <MenuRow icon="qr-code-outline" tone="green" title="Redeem a reward" detail="Look up a customer's reward code" onPress={() => navigation.navigate('LoyaltyRedemptions')} />

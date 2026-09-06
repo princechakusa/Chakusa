@@ -6,7 +6,7 @@ import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createInvoiceSchema, updateInvoiceSchema, listInvoicesQuerySchema, invoiceIdParamSchema } from "./invoices.schemas.js";
-import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote, sendInvoice, voidInvoice } from "./invoices.service.js";
+import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote, sendInvoice, voidInvoice, reissueInvoiceLink } from "./invoices.service.js";
 
 // PROGRAM 3 / Invoicing I2: BUSINESS-facing draft + read API. Route
 // handlers do ONLY: auth (preHandler) -> role -> entitlement ->
@@ -90,6 +90,15 @@ export default async function invoiceRoutes(fastify: FastifyInstance) {
     const { id } = invoiceIdParamSchema.parse(request.params);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(200).send(await sendInvoice(request.businessId!, memberId, id));
+  });
+
+  // I4/I5: re-mint the customer link for a SENT invoice (same revision,
+  // no lifecycle change). OWNER/ADMIN/STAFF - same as send.
+  fastify.post<{ Params: { id: string } }>("/:id/reissue-link", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id } = invoiceIdParamSchema.parse(request.params);
+    reply.status(200).send(await reissueInvoiceLink(request.businessId!, id));
   });
 
   // I4: DRAFT|SENT -> VOID (terminal). OWNER/ADMIN only. Revokes every

@@ -173,6 +173,35 @@ describe("Invoicing send + void + public access (Program 3, Invoicing I4)", () =
     expect((await app.inject({ method: "POST", url: `/invoices/${d.id}/void`, headers: authHeader(account.token) })).statusCode).toBe(409);
   });
 
+  // --- reissue link ---
+
+  it("reissues the customer link for a SENT invoice: old link dies, new link works, no lifecycle change", async () => {
+    const account = await businessAccount(app);
+    const d = await draftInvoice(app, account.token);
+    const sent = await app.inject({ method: "POST", url: `/invoices/${d.id}/send`, headers: authHeader(account.token) });
+    const oldToken = sent.json().accessToken as string;
+
+    const res = await app.inject({ method: "POST", url: `/invoices/${d.id}/reissue-link`, headers: authHeader(account.token) });
+    expect(res.statusCode).toBe(200);
+    const newToken = res.json().accessToken as string;
+    expect(newToken).not.toBe(oldToken);
+    expect(res.json().accessUrl).toBe(`http://localhost:19006/i/${newToken}`);
+    expect(res.json().invoice.status).toBe("SENT");
+
+    expect((await app.inject({ method: "GET", url: `/public/invoices/${oldToken}` })).json().state).toBe("expired");
+    expect((await app.inject({ method: "GET", url: `/public/invoices/${newToken}` })).json().state).toBe("open");
+    // No extra SENT event for a reissue.
+    expect(await prisma.invoiceEvent.count({ where: { invoiceId: d.id, eventType: "SENT" } })).toBe(1);
+  });
+
+  it("rejects reissue for a DRAFT or a VOID invoice", async () => {
+    const account = await businessAccount(app);
+    const draft = await draftInvoice(app, account.token);
+    expect((await app.inject({ method: "POST", url: `/invoices/${draft.id}/reissue-link`, headers: authHeader(account.token) })).statusCode).toBe(409);
+    await app.inject({ method: "POST", url: `/invoices/${draft.id}/void`, headers: authHeader(account.token) });
+    expect((await app.inject({ method: "POST", url: `/invoices/${draft.id}/reissue-link`, headers: authHeader(account.token) })).statusCode).toBe(409);
+  });
+
   // --- public read ---
 
   it("resolves a valid token to a safe read model of the sent revision", async () => {

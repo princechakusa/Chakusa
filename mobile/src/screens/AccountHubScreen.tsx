@@ -71,6 +71,8 @@ export function AccountHubScreen() {
       <MenuRow icon="notifications-outline" tone="amber" title="Notifications" detail="Choose what Chakusa highlights for you" onPress={() => navigation.navigate('NotificationPreferences')} />
       <MenuRow icon="chatbubble-ellipses-outline" tone="green" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
       {canManageBusiness ? <MenuRow icon="pricetag-outline" tone="blue" title="Services" detail={`${business?.defaultServices?.length ?? 0} configured · duration, pricing and staff`} onPress={() => navigation.navigate('ServiceCatalog')} /> : null}
+      <MenuRow icon="document-text-outline" tone="blue" title="Quotes & estimates" detail={features?.quotesEstimates ? 'Create, send and track priced quotes' : 'Send priced quotes customers can accept'} onPress={() => navigation.navigate('Quotes')} />
+
       <MenuRow icon="ribbon-outline" tone="purple" title="Loyalty & rewards" detail="Points, tiers, rewards, memberships and campaigns" onPress={() => navigation.navigate('LoyaltyManagement')} />
       <MenuRow icon="qr-code-outline" tone="green" title="Redeem a reward" detail="Look up a customer's reward code" onPress={() => navigation.navigate('LoyaltyRedemptions')} />
       {canManageBusiness ? <MenuRow icon="calendar-outline" tone="green" title="Booking availability" detail="Hours, leave and blocked time" onPress={() => navigation.navigate('AvailabilitySettings')} /> : null}

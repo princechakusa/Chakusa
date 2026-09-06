@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, ReminderDto, ReviewRequestDto, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CreateQuoteBody, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, PublicTeamInvitationDto, QuoteDetailDto, QuoteDocumentStatus, QuoteDocumentType, QuoteListResponse, QuoteMutationResult, ReminderDto, ReviewRequestDto, ReviseQuoteBody, ServiceOfferingDto, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, UpdateQuoteBody, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
 import { api } from './api';
 import type { AiConversationRunDto, AiValueCenterDto, AiHealthDto, AiEvaluationRunDto } from '../apiTypes';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
@@ -73,6 +73,18 @@ export const reviewsApi = {
   bulkSend: () => api.post<{ sentCount: number; failedCount: number; skippedCount: number; results: { id: string; customerName: string; outcome: 'sent' | 'failed'; reason?: string }[] }>('/review-requests/bulk-send'),
 };
 export const feedbackApi = { list: () => api.get<FeedbackDto[]>('/feedback'), create: (body: { customerId?: string; reviewRequestId?: string; rating: number; comment?: string }) => api.post<FeedbackDto>('/feedback', body) };
+export const quotesApi = {
+  list: (params: { documentType?: QuoteDocumentType; status?: QuoteDocumentStatus; customerId?: string; leadId?: string; page?: number; pageSize?: number } = {}) =>
+    api.get<QuoteListResponse>(`/quotes${query({ documentType: params.documentType, status: params.status, customerId: params.customerId, leadId: params.leadId, page: params.page, pageSize: params.pageSize })}`),
+  create: (body: CreateQuoteBody) => api.post<QuoteDetailDto>('/quotes', body),
+  get: (id: string) => api.get<QuoteDetailDto>(`/quotes/${id}`),
+  patch: (id: string, body: UpdateQuoteBody) => api.patch<QuoteDetailDto>(`/quotes/${id}`, body),
+  remove: (id: string) => api.delete<void>(`/quotes/${id}`),
+  send: (id: string, expectedCurrentRevisionId?: string) => api.post<QuoteMutationResult>(`/quotes/${id}/send`, expectedCurrentRevisionId ? { expectedCurrentRevisionId } : {}),
+  revise: (id: string, body: ReviseQuoteBody) => api.post<QuoteMutationResult>(`/quotes/${id}/revise`, body),
+  cancel: (id: string) => api.post<QuoteDetailDto>(`/quotes/${id}/cancel`, {}),
+  resend: (id: string) => api.post<QuoteMutationResult>(`/quotes/${id}/resend`, {}),
+};
 export const remindersApi = {
   list: () => api.get<ReminderDto[]>('/reminders'), create: (body: { customerId?: string; serviceName?: string; lastVisitDate?: string; dueDate?: string }) => api.post<ReminderDto>('/reminders', body), get: (id: string) => api.get<ReminderDto>(`/reminders/${id}`), patch: (id: string, body: Partial<Pick<ReminderDto, 'serviceName' | 'lastVisitDate' | 'dueDate' | 'status'>>) => api.patch<ReminderDto>(`/reminders/${id}`, body), generateMessage: (id: string) => api.post<{ message: string }>(`/reminders/${id}/generate-message`), markSent: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-sent`), markCompleted: (id: string) => api.post<ReminderDto>(`/reminders/${id}/mark-completed`), dismiss: (id: string) => api.post<ReminderDto>(`/reminders/${id}/dismiss`),
   bulkGenerateMessages: () => api.post<{ id: string; customerName: string | null; message: string }[]>('/reminders/bulk-generate-messages'),

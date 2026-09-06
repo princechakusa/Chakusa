@@ -859,3 +859,81 @@ export interface LegalDocumentDto {
 export interface LegalAcceptanceStatusDto {
   pending: Array<{ type: LegalDocumentType; currentVersionId: string; currentVersion: number }>;
 }
+
+// PROGRAM 3 LOOP 3H: Quotes & Estimates (business surface)
+export type QuoteDocumentType = 'QUOTE' | 'ESTIMATE';
+export type QuoteDocumentStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'CANCELED' | 'EXPIRED';
+export interface QuoteLineItemInput {
+  description: string;
+  quantity: string | number;
+  unitPrice: string | number;
+  discountAmount?: string | number;
+  taxable?: boolean;
+  serviceOfferingId?: string | null;
+  sortOrder?: number;
+}
+export interface QuoteTotalsDto { subtotal: string; discountTotal: string; taxTotal: string; total: string; }
+export interface QuoteLineItemDto {
+  id: string;
+  serviceOfferingId: string | null;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  discountAmount: string;
+  taxable: boolean;
+  lineTotal: string;
+  sortOrder: number;
+}
+export interface QuoteRevisionDto {
+  id: string;
+  revisionNumber: number;
+  notes: string | null;
+  terms: string | null;
+  totals: QuoteTotalsDto;
+  lineItems: QuoteLineItemDto[];
+}
+export interface QuoteRevisionHistoryEntryDto { id: string; revisionNumber: number; total: string; createdAt: string; }
+export interface QuoteListItemDto {
+  id: string;
+  documentType: QuoteDocumentType;
+  documentNumber: string;
+  status: QuoteDocumentStatus;
+  currency: string;
+  totals: QuoteTotalsDto;
+  customer: { id: string; name: string } | null;
+  lead: { id: string; serviceRequested: string | null } | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface QuoteListResponse { items: QuoteListItemDto[]; total: number; page: number; pageSize: number; }
+export interface QuoteDetailDto {
+  id: string;
+  documentType: QuoteDocumentType;
+  documentNumber: string;
+  status: QuoteDocumentStatus;
+  currency: string;
+  origins: { leadId: string | null; customerId: string | null; customerProfileId: string | null; appointmentId: string | null };
+  customer: { id: string; name: string; phone: string | null; email: string | null } | null;
+  lead: { id: string; serviceRequested: string | null; status: string } | null;
+  currentRevision: QuoteRevisionDto | null;
+  revisionHistory: QuoteRevisionHistoryEntryDto[];
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface QuoteMutationResult { quote: QuoteDetailDto; acceptanceToken: string; acceptanceUrl: string; }
+export interface CreateQuoteBody {
+  documentType: QuoteDocumentType;
+  leadId?: string | null;
+  customerId?: string | null;
+  customerProfileId?: string | null;
+  appointmentId?: string | null;
+  lineItems?: QuoteLineItemInput[];
+  notes?: string | null;
+  terms?: string | null;
+  expiresAt?: string | null;
+  taxRatePercent?: string | number;
+}
+export interface UpdateQuoteBody extends Omit<CreateQuoteBody, 'documentType'> { expectedCurrentRevisionId: string; }
+export interface ReviseQuoteBody extends Omit<CreateQuoteBody, 'documentType'> { expectedCurrentRevisionId: string; }

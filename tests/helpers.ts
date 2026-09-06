@@ -140,6 +140,12 @@ export async function resetDatabase() {
     // Cascades to quoteRevision/quoteLineItem/quoteAcceptanceToken/quoteEvent.
     prisma.quoteDocument.deleteMany(),
     prisma.commercialDocumentCounter.deleteMany(),
+    // Invoicing I1: Invoice.createdByMemberId / InvoiceRevision.
+    // createdByMemberId are onDelete: Restrict — same reasoning as the
+    // quote rows above; must be cleared BEFORE businessMember.deleteMany().
+    // Deleting the Invoice cascades its revisions / line items / events.
+    prisma.invoice.deleteMany(),
+    prisma.invoiceCounter.deleteMany(),
     prisma.businessMember.deleteMany(),
     prisma.deviceToken.deleteMany(),
     prisma.passwordResetToken.deleteMany(),

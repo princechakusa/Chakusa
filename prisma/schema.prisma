@@ -981,6 +981,8 @@ model Business {
   loyaltyCampaigns               LoyaltyCampaign[]
   quoteDocuments                 QuoteDocument[]
   commercialDocumentCounters     CommercialDocumentCounter[]
+  invoices                       Invoice[]
+  invoiceCounters                InvoiceCounter[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1092,6 +1094,8 @@ model BusinessMember {
   workingHours       Json?                     @map("working_hours")
   createdQuoteDocuments QuoteDocument[]        @relation("QuoteDocumentCreatedBy")
   createdQuoteRevisions QuoteRevision[]        @relation("QuoteRevisionCreatedBy")
+  createdInvoices        Invoice[]             @relation("InvoiceCreatedBy")
+  createdInvoiceRevisions InvoiceRevision[]    @relation("InvoiceRevisionCreatedBy")
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -1177,6 +1181,7 @@ model Customer {
   tagAssignments CustomerTagAssignment[]
   appointments   Appointment[]
   quoteDocuments QuoteDocument[]
+  invoices       Invoice[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
@@ -1228,6 +1233,7 @@ model Appointment {
   publicAccess         PublicBookingAccess?
   paymentTransactions  AppointmentPaymentTransaction[]
   quoteDocuments       QuoteDocument[]
+  invoices             Invoice[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -1325,6 +1331,7 @@ model ServiceOffering {
   assignments   ServiceMemberAssignment[]
   appointments  Appointment[]
   quoteLineItems QuoteLineItem[]
+  invoiceLineItems InvoiceLineItem[]
 
   @@unique([businessId, name])
   @@index([businessId, active, publiclyBookable, sortOrder])
@@ -3199,6 +3206,7 @@ model CustomerProfile {
   referralsMade      Referral[]              @relation("ReferralReferrer")
   referralsReceived  Referral[]              @relation("ReferralReferee")
   quoteDocuments     QuoteDocument[]
+  invoices           Invoice[]
 
   @@index([status])
   @@index([phoneE164])
@@ -3882,6 +3890,7 @@ model QuoteDocument {
   currentRevision  QuoteRevision?   @relation("QuoteDocumentCurrentRevision", fields: [currentRevisionId, id], references: [id, quoteDocumentId])
   acceptedRevision QuoteRevision?   @relation("QuoteDocumentAcceptedRevision", fields: [acceptedRevisionId, id], references: [id, quoteDocumentId])
   events           QuoteEvent[]
+  sourcedInvoices  Invoice[]        @relation("InvoiceSourceQuote")
 
   // documentNumber is unique per (business, type) — not globally — since
   // QUOTE and ESTIMATE each run their own independent sequence.
@@ -3933,6 +3942,7 @@ model QuoteRevision {
   // here, since QuoteRevision does not own those columns.
   currentForDocument  QuoteDocument?         @relation("QuoteDocumentCurrentRevision")
   acceptedForDocument QuoteDocument?         @relation("QuoteDocumentAcceptedRevision")
+  sourcedInvoices     Invoice[]              @relation("InvoiceSourceQuoteRevision")
 
   // Locked requirement: no duplicate revision numbers within one document.
   @@unique([quoteDocumentId, revisionNumber])
@@ -4008,4 +4018,162 @@ model QuoteEvent {
 
   @@index([quoteDocumentId, createdAt])
   @@map("quote_events")
+}
+
+// ===========================================================================
+// INVOICING - PROGRAM 3 / Invoicing I1
+//
+// Mirrors the approved Quotes & Estimates storage model exactly: an
+// Invoice aggregate carries a pointer to its current immutable
+// InvoiceRevision; every edit writes a NEW revision (financial snapshots
+// are never mutated in place); InvoiceLineItem rows are immutable and
+// scoped to one revision; InvoiceEvent is an append-only audit ledger.
+//
+// Payment truth is NOT stored here. The provider payment ledger (Stripe
+// Connect / AppointmentPaymentTransaction and its successors) remains
+// authoritative; "amount paid" / "outstanding" / "paid state" are DERIVED
+// in a later stage from verified transactions, never written directly
+// onto an invoice row. This file therefore models only the document
+// lifecycle: DRAFT (editable) -> SENT (frozen, customer-visible) -> VOID.
+// ===========================================================================
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VOID
+}
+
+enum InvoiceEventType {
+  CREATED
+  REVISED
+  SENT
+  VOIDED
+  CONVERTED_FROM_QUOTE
+}
+
+enum InvoiceActorType {
+  BUSINESS_MEMBER
+  CUSTOMER
+  SYSTEM
+}
+
+// One invoice-number sequence per (business, year): INV-2026-0001,
+// INV-2026-0002, ... Allocation is a single atomic
+// UPDATE ... SET next_value = next_value + 1 RETURNING next_value - never
+// MAX(number)+1, never an in-memory counter, never client-supplied.
+model InvoiceCounter {
+  id         String @id @default(uuid())
+  businessId String @map("business_id")
+  year       Int
+  nextValue  Int    @default(1) @map("next_value")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, year])
+  @@map("invoice_counters")
+}
+
+model Invoice {
+  id                    String        @id @default(uuid())
+  businessId            String        @map("business_id")
+  createdByMemberId     String        @map("created_by_member_id")
+  customerId            String?       @map("customer_id")
+  customerProfileId     String?       @map("customer_profile_id")
+  appointmentId         String?       @map("appointment_id")
+  sourceQuoteDocumentId String?       @map("source_quote_document_id")
+  sourceQuoteRevisionId String?       @map("source_quote_revision_id")
+  invoiceNumber         String        @map("invoice_number")
+  status                InvoiceStatus @default(DRAFT)
+  currentRevisionId     String?       @map("current_revision_id")
+  currency              String
+  issueDate             DateTime?     @map("issue_date")
+  dueDate               DateTime?     @map("due_date")
+  nextRevisionNumber    Int           @default(1) @map("next_revision_number")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByMember   BusinessMember    @relation("InvoiceCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  customer         Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerProfile  CustomerProfile?  @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+  appointment      Appointment?      @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  sourceQuote      QuoteDocument?    @relation("InvoiceSourceQuote", fields: [sourceQuoteDocumentId], references: [id], onDelete: SetNull)
+  sourceQuoteRev   QuoteRevision?    @relation("InvoiceSourceQuoteRevision", fields: [sourceQuoteRevisionId], references: [id], onDelete: SetNull)
+  revisions        InvoiceRevision[] @relation("InvoiceRevisionOwnership")
+  currentRevision  InvoiceRevision?  @relation("InvoiceCurrentRevision", fields: [currentRevisionId, id], references: [id, invoiceId])
+  events           InvoiceEvent[]
+
+  @@unique([businessId, invoiceNumber])
+  @@unique([currentRevisionId, id])
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+  @@index([status, dueDate])
+  @@index([customerId])
+  @@index([customerProfileId])
+  @@index([appointmentId])
+  @@index([sourceQuoteDocumentId])
+  @@map("invoices")
+}
+
+model InvoiceRevision {
+  id                String   @id @default(uuid())
+  invoiceId         String   @map("invoice_id")
+  revisionNumber    Int      @map("revision_number")
+  subtotal          Decimal  @db.Decimal(10, 2)
+  taxTotal          Decimal  @default(0) @map("tax_total") @db.Decimal(10, 2)
+  discountTotal     Decimal  @default(0) @map("discount_total") @db.Decimal(10, 2)
+  total             Decimal  @db.Decimal(10, 2)
+  notes             String?
+  terms             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  createdByMemberId String   @map("created_by_member_id")
+
+  invoice           Invoice           @relation("InvoiceRevisionOwnership", fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdByMember    BusinessMember    @relation("InvoiceRevisionCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  lineItems         InvoiceLineItem[]
+  events            InvoiceEvent[]
+  currentForInvoice Invoice?          @relation("InvoiceCurrentRevision")
+
+  @@unique([invoiceId, revisionNumber])
+  @@unique([id, invoiceId])
+  @@index([invoiceId])
+  @@map("invoice_revisions")
+}
+
+model InvoiceLineItem {
+  id                String   @id @default(uuid())
+  invoiceRevisionId String   @map("invoice_revision_id")
+  serviceOfferingId String?  @map("service_offering_id")
+  description       String
+  quantity          Decimal  @db.Decimal(10, 2)
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(10, 2)
+  discountAmount    Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  taxable           Boolean  @default(false)
+  lineTotal         Decimal  @map("line_total") @db.Decimal(10, 2)
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  invoiceRevision InvoiceRevision  @relation(fields: [invoiceRevisionId], references: [id], onDelete: Cascade)
+  serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceRevisionId])
+  @@index([serviceOfferingId])
+  @@map("invoice_line_items")
+}
+
+model InvoiceEvent {
+  id                String           @id @default(uuid())
+  invoiceId         String           @map("invoice_id")
+  invoiceRevisionId String?          @map("invoice_revision_id")
+  eventType         InvoiceEventType @map("event_type")
+  actorType         InvoiceActorType @map("actor_type")
+  actorId           String?          @map("actor_id")
+  metadata          Json?
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  invoice         Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceRevision InvoiceRevision? @relation(fields: [invoiceRevisionId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId, createdAt])
+  @@map("invoice_events")
 }

@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
+import { PublicQuoteScreen } from './src/screens/PublicQuoteScreen';
 import { publicRouteFromPath } from './src/domain/publicRoutes';
 import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
 import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfileScreen';
@@ -26,6 +27,7 @@ export default function App() {
   const pathname = typeof window === 'undefined' || !window.location ? '' : window.location.pathname;
   const publicRoute = publicRouteFromPath(pathname);
   if (publicRoute?.kind === 'feedback') return <SafeAreaProvider><StatusBar style="dark" /><PublicFeedbackScreen token={publicRoute.token} /></SafeAreaProvider>;
+  if (publicRoute?.kind === 'quote') return <SafeAreaProvider><StatusBar style="dark" /><PublicQuoteScreen token={publicRoute.token} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;

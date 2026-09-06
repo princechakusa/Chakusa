@@ -1,0 +1,29 @@
+---
+interface Props { realm: "client" | "business" }
+const { realm } = Astro.props;
+const business = realm === "business";
+const industries = [
+  ["barber", "Barber"], ["hair_salon", "Hair salon"], ["beauty_salon", "Beauty salon"], ["spa", "Spa and massage"],
+  ["dentist", "Dentist"], ["gym", "Gym"], ["restaurant", "Restaurant"], ["mechanic", "Mechanic"],
+  ["car_wash", "Car wash"], ["cleaning", "Cleaning"], ["electrician", "Electrician"], ["photographer", "Photographer"],
+  ["moving_company", "Moving company"], ["plumber", "Plumber"], ["hvac", "HVAC"], ["home_services", "Other home service"],
+];
+---
+<form class="registration-form" data-registration-form data-realm={realm}>
+  <div class="field-grid">
+    <label>Full name<input name="fullName" autocomplete="name" maxlength="120" placeholder="Your full name" required /></label>
+    {business ? <label>Business name<input name="businessName" autocomplete="organization" maxlength="200" placeholder="Your business name" required /></label> : <label>Display name <span>Optional</span><input name="displayName" autocomplete="nickname" maxlength="80" placeholder="How businesses see you" /></label>}
+  </div>
+  {business ? <label>Industry<select name="industry" required><option value="">Choose your industry</option>{industries.map(([value,label]) => <option value={value}>{label}</option>)}</select></label> : <label>Mobile number <span>Optional</span><input name="phone" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="Include your country code" /></label>}
+  <label>Email address<input name="email" type="email" inputmode="email" autocomplete="username" maxlength="254" placeholder={business ? "owner@business.com" : "you@example.com"} required /></label>
+  <div class="field-grid">
+    <label>Password<span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" placeholder="At least 12 characters" required /><button type="button" data-password-toggle aria-label="Show password">Show</button></span></label>
+    <label>Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" placeholder="Repeat your password" required /></label>
+  </div>
+  <p class="password-guidance">Use at least 12 characters with uppercase, lowercase, and a number.</p>
+  <label class="legal-check"><input name="acceptedLegal" type="checkbox" required /><span>I agree to the <a href="/terms" target="_blank">Terms of Service</a>, <a href="/privacy" target="_blank">Privacy Policy</a>, and <a href="/ai-disclosure" target="_blank">AI Disclosure</a>.</span></label>
+  <label class="remember"><input name="remember" type="checkbox" checked /> <span>Keep me signed in on this private device for 30 days</span></label>
+  <div class="turnstile-slot" data-turnstile aria-label="Security check"></div>
+  <button class={`registration-submit registration-submit--${realm}`} type="submit" disabled>{business ? "Create business workspace" : "Create client account"} <span aria-hidden="true">→</span></button>
+  <p class="form-message" data-form-message aria-live="polite"></p>
+</form>

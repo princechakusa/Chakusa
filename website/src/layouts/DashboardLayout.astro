@@ -1,0 +1,20 @@
+---
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/plus-jakarta-sans/wght.css";
+import "../styles/homepage/tokens.css";
+import "../styles/homepage/foundation.css";
+import "../styles/dashboard.css";
+import SeoHead from "../components/seo/SeoHead.astro";
+import chakusaAppIcon from "../assets/chakusa-app-icon.png";
+interface Props { title: string; description: string; realm: "client" | "business" }
+const { title, description, realm } = Astro.props;
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#f8f9fb"/><meta name="robots" content="noindex,nofollow"/><link rel="icon" href={chakusaAppIcon.src} type="image/png"/><SeoHead {title} {description}/><title>{title}</title></head>
+<body class="dashboard-body" data-dashboard-realm={realm}>
+  <a class="skip-link" href="#dashboard-main">Skip to dashboard</a>
+  <header class="dashboard-topbar"><a class="dashboard-brand" href="/" aria-label="Chakusa home"><img src={chakusaAppIcon.src} alt="" width="34" height="34"/><strong>CHAKUSA</strong></a><div class="dashboard-security"><span></span> Secure session</div><button class="dashboard-signout" type="button" data-signout>Sign out</button></header>
+  <div class="dashboard-frame"><aside class="dashboard-sidebar"><slot name="sidebar"/><div class="dashboard-sidebar__foot"><small>Signed in through</small><strong>Cloudflare protected access</strong></div></aside><main id="dashboard-main" class="dashboard-main"><slot/></main></div>
+  <script>
+    document.querySelector<HTMLButtonElement>("[data-signout]")?.addEventListener("click",async()=>{const button=document.querySelector<HTMLButtonElement>("[data-signout]");if(button)button.disabled=true;try{await fetch("https://auth.chakusarecovery.com/v1/logout",{method:"POST",credentials:"include"});}finally{location.replace("/login");}});
+  </script>
+</body></html>

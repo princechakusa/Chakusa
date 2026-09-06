@@ -9,7 +9,7 @@ import TradeCharacterAlt from "../components/homepage/TradeCharacterAlt.astro";
 import StoryIcon from "../components/homepage/StoryIcon.astro";
 
 const title = "Get started | Chakusa";
-const description = "One Chakusa app, two experiences: customers discover and book local services, businesses run their day. Download the app to start your 14-day free trial and choose the plan that fits your business.";
+const description = "One Chakusa account, two experiences: clients discover and book local services while businesses run their day from the secure website or mobile app.";
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
@@ -18,7 +18,7 @@ const description = "One Chakusa app, two experiences: customers discover and bo
     <section class="gs-hero container">
       <p class="gs-badge">One Chakusa, two experiences</p>
       <h1>Step into Chakusa, whichever side you're on.</h1>
-      <p>Whether you're discovering a local business or running one, Chakusa is the same connected app.</p>
+      <p>Whether you're discovering a local business or running one, your secure Chakusa account works across the website and mobile app.</p>
     </section>
 
     <section class="gs-panels container">
@@ -33,7 +33,7 @@ const description = "One Chakusa app, two experiences: customers discover and bo
             <li><StoryIcon name="event_available" />Book straight into the business's calendar</li>
             <li><StoryIcon name="rate_review" />Ungated reviews from other customers</li>
           </ul>
-          <Button href="/industries" variant="secondary">Explore local businesses</Button>
+          <Button href="/create-account?type=client" variant="secondary">Create a client account</Button>
         </div>
         <div class="gs-panel gs-panel--dark">
           <div class="gs-panel__icon" aria-hidden="true"><TradeCharacter /></div>
@@ -45,7 +45,7 @@ const description = "One Chakusa app, two experiences: customers discover and bo
             <li><StoryIcon name="tune" />One calendar and dashboard for the working day</li>
             <li><StoryIcon name="repeat" />Comeback reminders for customers who go quiet</li>
           </ul>
-          <Button href="#steps">Start 14-day free trial</Button>
+          <Button href="/create-account?type=business">Create your business</Button>
         </div>
       </div>
     </section>
@@ -56,15 +56,11 @@ const description = "One Chakusa app, two experiences: customers discover and bo
         <h2>Three steps, a couple of minutes.</h2>
       </div>
       <ol class="gs-steps__list">
-        <li><span>1</span><div><strong>Download Chakusa</strong><p>Available for iPhone and Android.</p></div></li>
-        <li><span>2</span><div><strong>Create your account</strong><p>Tell us your business name and industry, takes about two minutes.</p></div></li>
-        <li><span>3</span><div><strong>Start tracking</strong><p>Add your first customer, lead, or reminder right away, during your 14-day free trial.</p></div></li>
+        <li><span>1</span><div><strong>Create your secure account</strong><p>Choose a client account or a business workspace.</p></div></li>
+        <li><span>2</span><div><strong>Set up your details</strong><p>Add your business hours and services, or open your client home.</p></div></li>
+        <li><span>3</span><div><strong>Use your dashboard</strong><p>See bookings, business activity, leads, customers, and recovery progress.</p></div></li>
       </ol>
-      <div class="gs-badges">
-        <span>App Store: coming soon</span>
-        <span>Google Play: coming soon</span>
-      </div>
-      <p class="gs-note">Store listings aren't live yet. This page will link directly to them once they are.</p>
+      <div class="gs-badges"><a class="ui-button ui-button--primary" href="/create-account?type=business">Start on the website</a><a class="ui-button ui-button--secondary" href="/login">Sign in</a></div>
     </section>
   </main>
   <Footer />

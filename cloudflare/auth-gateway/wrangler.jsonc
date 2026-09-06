@@ -2,8 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "chakusa-auth-gateway",
   "main": "worker.mjs",
-  "compatibility_date": "2026-09-05",
-  "observability": { "enabled": true },
+  "compatibility_date": "2026-09-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 }
+  },
   "vars": {
     "API_BASE_URL": "https://chakusa-api.onrender.com"
   }

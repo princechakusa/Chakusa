@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { CreateQuoteBody, QuoteDetailDto, QuoteDocumentType, ReviseQuoteBody, UpdateQuoteBody } from '../apiTypes';
+import { CreateQuoteBody, CustomerDto, QuoteDetailDto, QuoteDocumentType, ReviseQuoteBody, ServiceOfferingDto, UpdateQuoteBody } from '../apiTypes';
 import { AppHeader, Divider, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '../components/ui';
 import {
   canSendDraft,
@@ -15,7 +15,7 @@ import {
   type LineItemDraft,
 } from '../domain/quotes';
 import { ApiError } from '../services/api';
-import { quotesApi } from '../services/endpoints';
+import { customersApi, quotesApi, servicesApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { formatMoney } from '../utils/format';
@@ -36,19 +36,30 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([emptyLineItem()]);
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [existing, setExisting] = useState<QuoteDetailDto | null>(null);
+  const [customers, setCustomers] = useState<CustomerDto[]>([]);
+  const [services, setServices] = useState<ServiceOfferingDto[]>([]);
 
   const load = useCallback(async () => {
-    if (mode === 'create' || !quoteId) return;
     setLoadError(null);
     try {
-      const detail = await quotesApi.get(quoteId);
-      setExisting(detail);
-      setDocumentType(detail.documentType);
-      const drafts = detailLineItemsToDrafts(detail);
-      setLineItems(drafts.length ? drafts : [emptyLineItem()]);
-      setNotes(detail.currentRevision?.notes ?? '');
-      setTerms(detail.currentRevision?.terms ?? '');
+      const [customerPage, catalog, detail] = await Promise.all([
+        customersApi.list('', 1, 100).catch(() => ({ items: [] as CustomerDto[] })),
+        servicesApi.list(true).catch(() => [] as ServiceOfferingDto[]),
+        mode !== 'create' && quoteId ? quotesApi.get(quoteId) : Promise.resolve(null),
+      ]);
+      setCustomers(customerPage.items);
+      setServices(catalog);
+      if (detail) {
+        setExisting(detail);
+        setDocumentType(detail.documentType);
+        setCustomerId(detail.origins.customerId ?? '');
+        const drafts = detailLineItemsToDrafts(detail);
+        setLineItems(drafts.length ? drafts : [emptyLineItem()]);
+        setNotes(detail.currentRevision?.notes ?? '');
+        setTerms(detail.currentRevision?.terms ?? '');
+      }
     } catch (caught) {
       setLoadError(caught instanceof ApiError ? caught.message : 'Unable to load this quote.');
     } finally {
@@ -69,6 +80,22 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
   };
   const addItem = () => setLineItems((current) => [...current, emptyLineItem()]);
   const removeItem = (index: number) => setLineItems((current) => (current.length <= 1 ? current : current.filter((_, i) => i !== index)));
+
+  const pickService = (index: number, service: ServiceOfferingDto) => {
+    const current = lineItems[index]!;
+    // Same service tapped again clears the link; otherwise adopt its name +
+    // price (the user can still edit both afterwards - serviceOfferingId is
+    // provenance only on the backend).
+    if (current.serviceOfferingId === service.id) {
+      setItem(index, { serviceOfferingId: null });
+      return;
+    }
+    setItem(index, {
+      serviceOfferingId: service.id,
+      description: current.description.trim() ? current.description : service.name,
+      unitPrice: service.price != null ? String(service.price) : current.unitPrice,
+    });
+  };
 
   const buildContent = () => ({
     lineItems: nonEmpty.map((li, i) => lineItemDraftToInput(li, i)),
@@ -97,17 +124,24 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
     try {
       let saved: QuoteDetailDto;
       if (mode === 'create') {
-        const body: CreateQuoteBody = { documentType, ...buildContent() };
+        const body: CreateQuoteBody = { documentType, customerId: customerId || undefined, ...buildContent() };
         saved = await quotesApi.create(body);
       } else if (mode === 'revise') {
-        const body: ReviseQuoteBody = { expectedCurrentRevisionId: existing!.currentRevision!.id, ...buildContent() };
+        // Send customerId only when the user actually changed it, so the
+        // backend's PATCH-like preservation keeps every other association.
+        const changedCustomer = customerId !== (existing!.origins.customerId ?? '');
+        const body: ReviseQuoteBody = {
+          expectedCurrentRevisionId: existing!.currentRevision!.id,
+          ...(changedCustomer ? { customerId: customerId || null } : {}),
+          ...buildContent(),
+        };
         const result = await quotesApi.revise(existing!.id, body);
         saved = result.quote;
       } else {
         const body: UpdateQuoteBody = {
           expectedCurrentRevisionId: existing!.currentRevision!.id,
           leadId: existing!.origins.leadId,
-          customerId: existing!.origins.customerId,
+          customerId: customerId || null,
           customerProfileId: existing!.origins.customerProfileId,
           appointmentId: existing!.origins.appointmentId,
           ...buildContent(),
@@ -159,6 +193,18 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
+      {customers.length > 0 ? (
+        <>
+          <SectionHeader title="Customer" />
+          <View style={styles.chipRow}>
+            <Chip label="No customer" active={!customerId} onPress={() => setCustomerId('')} />
+            {customers.map((c) => (
+              <Chip key={c.id} label={c.name} active={customerId === c.id} onPress={() => setCustomerId(c.id)} />
+            ))}
+          </View>
+        </>
+      ) : null}
+
       <SectionHeader title="Line items" />
       {lineItems.map((item, index) => {
         const itemErrors = validation.filter((e) => e.index === index);
@@ -172,6 +218,13 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
                 </Pressable>
               ) : null}
             </View>
+            {services.length > 0 ? (
+              <View style={styles.chipRow}>
+                {services.map((s) => (
+                  <Chip key={s.id} label={s.name} active={item.serviceOfferingId === s.id} onPress={() => pickService(index, s)} small />
+                ))}
+              </View>
+            ) : null}
             <TextInput
               value={item.description}
               onChangeText={(v) => setItem(index, { description: v })}
@@ -232,6 +285,19 @@ export function QuoteEditorScreen({ route, navigation }: Props) {
   );
 }
 
+function Chip({ label, active, onPress, small }: { label: string; active: boolean; onPress: () => void; small?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={[styles.chip, small && styles.chipSmall, active && styles.chipActive]}
+    >
+      <Text numberOfLines={1} style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function LabeledInput({ label, value, onChangeText, keyboardType }: { label: string; value: string; onChangeText: (v: string) => void; keyboardType?: 'decimal-pad' }) {
   return (
     <View style={styles.labeled}>
@@ -252,6 +318,12 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 
 const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', gap: spacing.xs },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
+  chip: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.round, borderWidth: 1, borderColor: colors.border, maxWidth: 220 },
+  chipSmall: { paddingVertical: 4 },
+  chipActive: { borderColor: colors.primary, backgroundColor: colors.surface },
+  chipText: { ...typography.caption, color: colors.textSecondary },
+  chipTextActive: { color: colors.primary, fontWeight: '700' },
   typeChip: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.round, borderWidth: 1, borderColor: colors.border },
   typeChipActive: { borderColor: colors.primary, backgroundColor: colors.surface },
   typeChipText: { ...typography.caption, color: colors.textSecondary },

@@ -505,7 +505,7 @@ export async function reviseQuote(businessId: string, actorMemberId: string, doc
   const rawToken = await withLimitCheck(async (tx) => {
     const document = await tx.quoteDocument.findFirst({
       where: { id: documentId, businessId },
-      select: { id: true, status: true, currentRevisionId: true, nextRevisionNumber: true },
+      select: { id: true, status: true, currentRevisionId: true, nextRevisionNumber: true, expiresAt: true },
     });
     if (!document) throw ApiError.notFound("Quote not found");
 
@@ -520,16 +520,26 @@ export async function reviseQuote(businessId: string, actorMemberId: string, doc
 
     const revision = await createRevision(tx, document.id, document.nextRevisionNumber, actorMemberId, input, totals);
 
+    // PATCH-like preservation for document METADATA on a SENT->SENT
+    // revision (locked product decision): a field the client did not send
+    // (`undefined`) keeps its current value; only an explicitly supplied
+    // value replaces it. This differs from the commercial CONTENT
+    // (notes/terms/line items), which the new revision always fully
+    // replaces. `expiresAt: null` sent explicitly is honored as a
+    // deliberate clear (the schema permits it).
+    const metadata: Prisma.QuoteDocumentUncheckedUpdateManyInput = {};
+    if (input.expiresAt !== undefined) metadata.expiresAt = input.expiresAt;
+    if (input.leadId !== undefined) metadata.leadId = input.leadId;
+    if (input.customerId !== undefined) metadata.customerId = input.customerId;
+    if (input.customerProfileId !== undefined) metadata.customerProfileId = input.customerProfileId;
+    if (input.appointmentId !== undefined) metadata.appointmentId = input.appointmentId;
+
     const advanced = await tx.quoteDocument.updateMany({
       where: { id: document.id, businessId, status: "SENT", currentRevisionId: input.expectedCurrentRevisionId },
       data: {
         currentRevisionId: revision.id,
         nextRevisionNumber: { increment: 1 },
-        leadId: input.leadId ?? null,
-        customerId: input.customerId ?? null,
-        customerProfileId: input.customerProfileId ?? null,
-        appointmentId: input.appointmentId ?? null,
-        expiresAt: input.expiresAt ?? null,
+        ...metadata,
       },
     });
     if (advanced.count !== 1) {
@@ -542,14 +552,17 @@ export async function reviseQuote(businessId: string, actorMemberId: string, doc
       data: { revokedAt: new Date() },
     });
 
-    // Fresh bearer token bound to the NEW revision.
+    // Fresh bearer token bound to the NEW revision. Its expiry is capped
+    // by the document's EFFECTIVE commercial expiry after this revision
+    // (the preserved value when the client didn't send a new one).
+    const effectiveExpiresAt = input.expiresAt !== undefined ? input.expiresAt : document.expiresAt;
     const token = generateOpaqueToken();
     await tx.quoteAcceptanceToken.create({
       data: {
         id: token.id,
         quoteRevisionId: revision.id,
         tokenHash: token.hash,
-        expiresAt: resolveAcceptanceTokenExpiry(input.expiresAt ?? null, new Date()),
+        expiresAt: resolveAcceptanceTokenExpiry(effectiveExpiresAt, new Date()),
       },
     });
 

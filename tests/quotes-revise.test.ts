@@ -22,8 +22,8 @@ async function addMember(app: FastifyInstance, businessId: string, role: Busines
   return app.jwt.sign({ userId: user.id, sessionId: session.id, type: "access" }, { expiresIn: 900 });
 }
 
-async function sendQuote(app: FastifyInstance, token: string) {
-  const body = { documentType: "QUOTE", lineItems: [{ description: "Labor", quantity: 2, unitPrice: "50.00", discountAmount: "10.00" }] };
+async function sendQuote(app: FastifyInstance, token: string, extra: Record<string, unknown> = {}) {
+  const body = { documentType: "QUOTE", lineItems: [{ description: "Labor", quantity: 2, unitPrice: "50.00", discountAmount: "10.00" }], ...extra };
   const draft = await app.inject({ method: "POST", url: "/quotes", headers: authHeader(token), payload: body });
   const sent = await app.inject({ method: "POST", url: `/quotes/${draft.json().id}/send`, headers: authHeader(token) });
   if (sent.statusCode !== 200) throw new Error(`send failed: ${sent.body}`);
@@ -161,6 +161,59 @@ describe("Business quote revise, SENT -> SENT (Program 3, Loop 3F.3)", () => {
     await app.inject({ method: "POST", url: `/quotes/${quoteId}/revise`, headers: authHeader(account.token), payload: reviseBody({ expectedCurrentRevisionId: revisionId }) });
     const stale = await app.inject({ method: "POST", url: `/quotes/${quoteId}/revise`, headers: authHeader(account.token), payload: reviseBody({ expectedCurrentRevisionId: revisionId }) });
     expect(stale.statusCode).toBe(409);
+  });
+
+  it("preserves the existing expiresAt when the revise payload omits it (PATCH-like metadata semantics)", async () => {
+    const account = await businessAccount(app);
+    const deadline = new Date(Date.now() + 20 * 86_400_000);
+    deadline.setMilliseconds(0);
+    const { quoteId, revisionId } = await sendQuote(app, account.token, { expiresAt: deadline.toISOString() });
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/quotes/${quoteId}/revise`,
+      headers: authHeader(account.token),
+      payload: { expectedCurrentRevisionId: revisionId, lineItems: [{ description: "Revised", quantity: 1, unitPrice: "10.00" }] },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(new Date(res.json().quote.expiresAt).toISOString()).toBe(deadline.toISOString());
+
+    const doc = await prisma.quoteDocument.findUniqueOrThrow({ where: { id: quoteId } });
+    expect(doc.expiresAt?.toISOString()).toBe(deadline.toISOString());
+    // The fresh token is still capped by the preserved deadline.
+    const token = await prisma.quoteAcceptanceToken.findFirstOrThrow({ where: { quoteRevisionId: doc.currentRevisionId! } });
+    expect(token.expiresAt.toISOString()).toBe(deadline.toISOString());
+  });
+
+  it("replaces expiresAt when the revise payload supplies a new value", async () => {
+    const account = await businessAccount(app);
+    const { quoteId, revisionId } = await sendQuote(app, account.token, { expiresAt: new Date(Date.now() + 5 * 86_400_000).toISOString() });
+    const newDeadline = new Date(Date.now() + 40 * 86_400_000);
+    newDeadline.setMilliseconds(0);
+    const res = await app.inject({
+      method: "POST",
+      url: `/quotes/${quoteId}/revise`,
+      headers: authHeader(account.token),
+      payload: { expectedCurrentRevisionId: revisionId, expiresAt: newDeadline.toISOString(), lineItems: [{ description: "Revised", quantity: 1, unitPrice: "10.00" }] },
+    });
+    expect(res.statusCode).toBe(200);
+    const doc = await prisma.quoteDocument.findUniqueOrThrow({ where: { id: quoteId } });
+    expect(doc.expiresAt?.toISOString()).toBe(newDeadline.toISOString());
+  });
+
+  it("preserves customer/lead/appointment association when the revise payload omits them", async () => {
+    const account = await businessAccount(app);
+    const customer = await prisma.customer.create({ data: { businessId: account.businessId, name: "Assoc Customer" } });
+    const { quoteId, revisionId } = await sendQuote(app, account.token, { customerId: customer.id });
+
+    await app.inject({
+      method: "POST",
+      url: `/quotes/${quoteId}/revise`,
+      headers: authHeader(account.token),
+      payload: { expectedCurrentRevisionId: revisionId, lineItems: [{ description: "Revised", quantity: 1, unitPrice: "10.00" }] },
+    });
+    const doc = await prisma.quoteDocument.findUniqueOrThrow({ where: { id: quoteId } });
+    expect(doc.customerId).toBe(customer.id);
   });
 
   it("rejects a revision with zero line items", async () => {

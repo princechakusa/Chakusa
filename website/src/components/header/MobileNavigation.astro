@@ -24,6 +24,6 @@ import { industryGroups } from "../../data/industryNavigation";
       <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>
     ))}
     <a href="/login">Sign in</a>
-    <a class="ui-button ui-button--primary" href="/get-started">Start free trial</a>
+    <a class="ui-button ui-button--primary" href="/create-account?type=business">Start free trial</a>
   </nav>
 </div>

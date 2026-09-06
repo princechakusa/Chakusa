@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type { BusinessRole } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createInvoiceSchema, updateInvoiceSchema, listInvoicesQuerySchema, invoiceIdParamSchema } from "./invoices.schemas.js";
-import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail } from "./invoices.service.js";
+import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote } from "./invoices.service.js";
 
 // PROGRAM 3 / Invoicing I2: BUSINESS-facing draft + read API. Route
 // handlers do ONLY: auth (preHandler) -> role -> entitlement ->
@@ -41,6 +42,17 @@ export default async function invoiceRoutes(fastify: FastifyInstance) {
     const input = createInvoiceSchema.parse(request.body);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(201).send(await createInvoiceDraft(request.businessId!, memberId, input));
+  });
+
+  // I3: explicit "Create invoice from accepted quote". Copies the exact
+  // accepted revision's immutable financial snapshot; one live invoice
+  // per quote.
+  fastify.post<{ Params: { quoteId: string } }>("/from-quote/:quoteId", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { quoteId } = z.object({ quoteId: z.string().uuid() }).parse(request.params);
+    const memberId = await resolveMemberId(request.businessId!, request.user.userId);
+    reply.status(201).send(await createInvoiceFromQuote(request.businessId!, memberId, quoteId));
   });
 
   fastify.get<{ Params: { id: string } }>("/:id", async (request, reply) => {

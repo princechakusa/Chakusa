@@ -264,6 +264,120 @@ export async function deleteInvoiceDraft(businessId: string, invoiceId: string) 
 }
 
 // ---------------------------------------------------------------------------
+// Create from an accepted quote (I3) - an explicit business action, never
+// automatic. The financial snapshot is copied VERBATIM from the exact
+// accepted QuoteRevision (never the document's current revision if they
+// somehow differ). Provenance is recorded on the Invoice + a
+// CONVERTED_FROM_QUOTE event. One live invoice per quote: a second
+// conversion is rejected while a non-VOID invoice already exists for it.
+// ---------------------------------------------------------------------------
+
+export async function createInvoiceFromQuote(businessId: string, createdByMemberId: string, quoteId: string) {
+  const invoiceId = await withLimitCheck(async (tx) => {
+    const quote = await tx.quoteDocument.findFirst({
+      where: { id: quoteId, businessId },
+      select: {
+        id: true,
+        status: true,
+        currency: true,
+        acceptedRevisionId: true,
+        customerId: true,
+        customerProfileId: true,
+        appointmentId: true,
+        acceptedRevision: {
+          select: {
+            id: true,
+            subtotal: true,
+            taxTotal: true,
+            discountTotal: true,
+            total: true,
+            notes: true,
+            terms: true,
+            lineItems: {
+              orderBy: { sortOrder: "asc" },
+              select: { serviceOfferingId: true, description: true, quantity: true, unitPrice: true, discountAmount: true, taxable: true, lineTotal: true, sortOrder: true },
+            },
+          },
+        },
+      },
+    });
+    if (!quote) throw ApiError.notFound("Quote not found");
+    if (quote.status !== "ACCEPTED" || !quote.acceptedRevisionId || !quote.acceptedRevision) {
+      throw ApiError.conflict("Only an accepted quote can be turned into an invoice");
+    }
+
+    const existing = await tx.invoice.findFirst({
+      where: { businessId, sourceQuoteDocumentId: quote.id, status: { not: "VOID" } },
+      select: { id: true },
+    });
+    if (existing) throw ApiError.conflict("An invoice already exists for this quote");
+
+    const year = new Date().getUTCFullYear();
+    const counterValue = await allocateNextCounterValue(tx, businessId, year);
+    const invoiceNumber = formatInvoiceNumber({ year, counterValue });
+    const rev = quote.acceptedRevision;
+
+    const invoice = await tx.invoice.create({
+      data: {
+        businessId,
+        createdByMemberId,
+        invoiceNumber,
+        currency: quote.currency,
+        status: "DRAFT",
+        nextRevisionNumber: 2,
+        customerId: quote.customerId,
+        customerProfileId: quote.customerProfileId,
+        appointmentId: quote.appointmentId,
+        sourceQuoteDocumentId: quote.id,
+        sourceQuoteRevisionId: quote.acceptedRevisionId,
+      },
+    });
+
+    const revision = await tx.invoiceRevision.create({
+      data: {
+        invoiceId: invoice.id,
+        revisionNumber: 1,
+        subtotal: rev.subtotal,
+        taxTotal: rev.taxTotal,
+        discountTotal: rev.discountTotal,
+        total: rev.total,
+        notes: rev.notes,
+        terms: rev.terms,
+        createdByMemberId,
+        lineItems: {
+          create: rev.lineItems.map((li) => ({
+            serviceOfferingId: li.serviceOfferingId,
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+            discountAmount: li.discountAmount,
+            taxable: li.taxable,
+            lineTotal: li.lineTotal,
+            sortOrder: li.sortOrder,
+          })),
+        },
+      },
+    });
+
+    await tx.invoice.update({ where: { id: invoice.id }, data: { currentRevisionId: revision.id } });
+    await tx.invoiceEvent.create({
+      data: {
+        invoiceId: invoice.id,
+        invoiceRevisionId: revision.id,
+        eventType: "CONVERTED_FROM_QUOTE",
+        actorType: "BUSINESS_MEMBER",
+        actorId: createdByMemberId,
+        metadata: { quoteDocumentId: quote.id, quoteRevisionId: quote.acceptedRevisionId },
+      },
+    });
+
+    return invoice.id;
+  });
+
+  return getInvoiceDetail(businessId, invoiceId);
+}
+
+// ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
 

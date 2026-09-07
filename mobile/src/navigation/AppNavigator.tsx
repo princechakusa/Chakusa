@@ -1,5 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { m3, m3Space } from '../experience/businessTheme';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -62,11 +63,46 @@ import { usePendingIntentConsumer } from '../experience/usePendingIntentConsumer
 import { navigationRef } from './navigationRef';
 
 const Root = createNativeStackNavigator<RootStackParamList>(); const Tabs = createBottomTabNavigator<MainTabParamList>();
-const icons: Record<keyof MainTabParamList, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
-  Dashboard: { active: 'home', inactive: 'home-outline' }, Calendar: { active: 'calendar', inactive: 'calendar-outline' }, Leads: { active: 'call', inactive: 'call-outline' }, Reviews: { active: 'star', inactive: 'star-outline' }, Customers: { active: 'people', inactive: 'people-outline' }, Settings: { active: 'person', inactive: 'person-outline' },
+// Material 3 business tab bar: 5 primary tabs matching the Stitch mockups.
+// Reviews stays registered for deep links but is reached from Dashboard /
+// More rather than the bar.
+const TAB_META: Partial<Record<keyof MainTabParamList, { label: string; icon: keyof typeof MaterialIcons.glyphMap }>> = {
+  Dashboard: { label: 'Dashboard', icon: 'space-dashboard' },
+  Calendar: { label: 'Calendar', icon: 'calendar-today' },
+  Leads: { label: 'Leads', icon: 'person-add' },
+  Customers: { label: 'Clients', icon: 'contacts' },
+  Settings: { label: 'More', icon: 'more-horiz' },
 };
-export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets(); return <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, spacing.xs) }]}>{state.routes.map((route, index) => { const focused = state.index === index; const label = descriptors[route.key].options.title ?? route.name; const config = icons[route.name as keyof MainTabParamList]; return <Pressable key={route.key} accessibilityRole="tab" accessibilityState={focused ? { selected: true } : {}} accessibilityLabel={`${String(label)} tab`} onPress={() => { const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true }); if (!focused && !event.defaultPrevented) navigation.navigate(route.name); }} style={styles.tab}><Ionicons name={focused ? config.active : config.inactive} size={23} color={focused ? colors.primary : colors.tabInactive} /><Text numberOfLines={1} style={[styles.tabLabel, focused && styles.tabLabelActive]}>{String(label)}</Text></Pressable>; })}</View>;
+const TAB_ORDER: (keyof MainTabParamList)[] = ['Dashboard', 'Calendar', 'Leads', 'Customers', 'Settings'];
+export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, m3Space.xs) }]}>
+      {TAB_ORDER.map((name) => {
+        const route = state.routes.find((r) => r.name === name);
+        if (!route) return null;
+        const focused = state.routes[state.index]?.name === name;
+        const meta = TAB_META[name]!;
+        return (
+          <Pressable
+            key={name}
+            accessibilityRole="tab"
+            accessibilityState={focused ? { selected: true } : {}}
+            accessibilityLabel={`${meta.label} tab`}
+            onPress={() => {
+              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+            }}
+            style={styles.tab}
+          >
+            <MaterialIcons name={meta.icon} size={22} color={focused ? m3.primary : m3.onSurfaceVariant} />
+            <Text numberOfLines={1} style={[styles.tabLabel, focused && styles.tabLabelActive]}>{meta.label}</Text>
+            <View style={[styles.tabPill, focused && styles.tabPillActive]} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 function MainTabs() { return <Tabs.Navigator tabBar={props => <BottomTabBar {...props} />} screenOptions={{ headerShown: false }}><Tabs.Screen name="Dashboard" component={DashboardScreen} /><Tabs.Screen name="Calendar" component={CalendarScreen} /><Tabs.Screen name="Leads" component={LeadsScreen} /><Tabs.Screen name="Reviews" component={ReviewsScreen} /><Tabs.Screen name="Customers" component={CustomersScreen} /><Tabs.Screen name="Settings" component={SettingsScreen} options={{ title: 'Account' }} /></Tabs.Navigator>; }
 
@@ -118,4 +154,4 @@ export function AppNavigator({ navReady = false }: { navReady?: boolean }) {
     <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>
   </Root.Navigator>;
 }
-const styles = StyleSheet.create({ restoring: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.background }, routeTransition: { flex: 1, backgroundColor: colors.background }, restoringText: { ...typography.body, color: colors.textSecondary }, tabBar: { minHeight: 64, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', paddingTop: spacing.xs, paddingHorizontal: spacing.xs }, tab: { flex: 1, minWidth: 0, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 3 }, tabLabel: { ...typography.micro, fontSize: 10, color: colors.tabInactive }, tabLabelActive: { color: colors.primary } });
+const styles = StyleSheet.create({ restoring: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.background }, routeTransition: { flex: 1, backgroundColor: colors.background }, restoringText: { ...typography.body, color: colors.textSecondary }, tabBar: { minHeight: 64, backgroundColor: m3.surfaceContainerLowest, borderTopWidth: 1, borderTopColor: m3.surfaceContainerHigh, flexDirection: 'row', paddingTop: m3Space.xs, paddingHorizontal: m3Space.xs }, tab: { flex: 1, minWidth: 0, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 2 }, tabLabel: { fontFamily: 'Inter_500Medium', fontSize: 11, color: m3.onSurfaceVariant }, tabLabelActive: { fontFamily: 'Inter_600SemiBold', color: m3.primary }, tabPill: { height: 3, width: 0, borderRadius: 2, marginTop: 2, backgroundColor: 'transparent' }, tabPillActive: { width: 16, backgroundColor: m3.primary } });

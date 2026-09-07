@@ -1,217 +1,451 @@
-import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Reveal, Screen, SectionHeader, StatusBadge } from '../components/ui';
-import { AppointmentDto, AudienceCenterDto, BusinessHealthLabel, SmartAudienceKey, WeeklyOwnerReportDto } from '../apiTypes';
-import { DashboardAudienceSummary } from '../components/DashboardAudienceSummary';
-import { ActivationJourneyCard } from '../components/ActivationJourneyCard';
-import { ValueProofCard } from '../components/ValueProofCard';
-import { PublicProfileGrowthCard } from '../components/PublicProfileGrowthCard';
-import { AUTOMATION_ENABLED } from '../config';
-import { automationAvailability, missedCallRules } from '../domain/automation';
-import { CallDetectionAvailability } from '../domain/callDetection';
-import { dashboardMilestones, Milestone, milestoneCopy, recoveryEngineReadyMilestone, unseenMilestones } from '../domain/milestones';
-import { recoveryEngineStatus } from '../domain/recoveryEngineStatus';
-import { audienceCoachingDestination } from '../domain/coachingNavigation';
+import { AppointmentDto } from '../apiTypes';
 import { endOfDay, startOfDay } from '../domain/calendar';
-import { activationJourney } from '../domain/activationJourney';
-import { computeSetupScore } from '../domain/setupScore';
-import { getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
-import { appointmentsApi, automationApi, customersApi, weeklyReportsApi } from '../services/endpoints';
-import { getSeenMilestones, markMilestonesSeen } from '../services/milestoneStorage';
-import { getPushPermissionStatus } from '../services/pushNotifications';
+import { appointmentsApi } from '../services/endpoints';
 import { useAppState } from '../state/AppContext';
 import { useAuth } from '../state/AuthContext';
-import { usePlanExperience } from '../state/PlanExperienceContext';
-import { usePreferences } from '../state/PreferencesContext';
-import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
-import { formatDateTime, formatMoney, titleCase } from '../utils/format';
+import { formatMoney } from '../utils/format';
+import { m3, m3Radius, m3Shadow, m3Space, m3Type } from '../experience/businessTheme';
+import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen, SectionTitle } from '../experience/businessKit';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const STATUS_TONE: Record<string, { label: string; tone: 'secondary' | 'neutral' | 'primaryFixed' | 'error' }> = {
+  SCHEDULED: { label: 'Confirmed', tone: 'neutral' },
+  CONFIRMED: { label: 'Confirmed', tone: 'secondary' },
+  COMPLETED: { label: 'Completed', tone: 'neutral' },
+  CANCELED: { label: 'Canceled', tone: 'error' },
+  NO_SHOW: { label: 'No show', tone: 'error' },
+};
+
+function initials(name: string | null | undefined) {
+  if (!name) return 'WI';
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+function timeParts(iso: string) {
+  const d = new Date(iso);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return { time: `${hour12}:${String(m).padStart(2, '0')}`, ampm: h < 12 ? 'AM' : 'PM' };
+}
+
+function minutesUntil(iso: string) {
+  return Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+}
 
 export function DashboardScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<Nav>();
   const { user, business } = useAuth();
-  const { attention } = usePreferences();
-  const { plan, status: planStatus, features, subscription } = usePlanExperience();
   const { dashboard, leads, reviews, reminders, state, loadDashboard, loadLeads, loadReviews, loadReminders } = useAppState();
-  const [callDetectionAvail, setCallDetectionAvail] = useState<CallDetectionAvailability>('unsupported');
-  const [hasContactsPermission, setHasContactsPermission] = useState(false);
-  const [pushGranted, setPushGranted] = useState(false);
-  const [automationEnabled, setAutomationEnabled] = useState(false);
-  const [milestone, setMilestone] = useState<Milestone | null>(null);
-  const [audiences, setAudiences] = useState<AudienceCenterDto | null>(null);
-  const [todayAppointments, setTodayAppointments] = useState<AppointmentDto[]>([]);
-  const [weeklyReport, setWeeklyReport] = useState<WeeklyOwnerReportDto | null>(null);
-  const loadAudiences = useCallback(async () => {
-    try { setAudiences(await customersApi.audiences()); }
-    catch { setAudiences(null); }
-  }, []);
-  const loadAppointments = useCallback(async () => { const now = new Date(); try { setTodayAppointments(await appointmentsApi.list(startOfDay(now).toISOString(), endOfDay(now).toISOString())); } catch { setTodayAppointments([]); } }, []);
-  const loadWeeklyReport = useCallback(async () => { try { setWeeklyReport((await weeklyReportsApi.list())[0] ?? null); } catch { setWeeklyReport(null); } }, []);
-  useEffect(() => { void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments(), loadWeeklyReport()]); }, [loadAppointments, loadAudiences, loadDashboard, loadLeads, loadReminders, loadReviews, loadWeeklyReport]);
-  useEffect(() => {
-    let active = true;
-    void Promise.all([getCallDetectionAvailability(), getContactsPermissionStatus(), getPushPermissionStatus(), automationApi.listRules().catch(() => [])]).then(([detection, contacts, push, rules]) => {
-      if (!active) return;
-      setCallDetectionAvail(detection);
-      setHasContactsPermission(contacts);
-      setPushGranted(push === 'granted');
-      setAutomationEnabled(missedCallRules(rules).length > 0 && rules.some(rule => rule.enabled));
-    });
-    return () => { active = false; };
+  const [appointments, setAppointments] = useState<AppointmentDto[]>([]);
+
+  const loadAppointments = useCallback(async () => {
+    const now = new Date();
+    try {
+      setAppointments(await appointmentsApi.list(startOfDay(now).toISOString(), endOfDay(now).toISOString()));
+    } catch {
+      setAppointments([]);
+    }
   }, []);
 
-  const automationAvail = automationAvailability(plan, planStatus, features?.automation ?? null, AUTOMATION_ENABLED);
-  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: automationAvail, automationEnabled, pushGranted });
-  const setup = computeSetupScore({ business, automationAvailability: automationAvail, automationConfigured: automationEnabled, pushEnabled: pushGranted });
-  const firstIncompleteSetupItem = setup.checklist.find(item => !item.complete);
+  const refreshAll = useCallback(
+    () => Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAppointments()]),
+    [loadAppointments, loadDashboard, loadLeads, loadReminders, loadReviews],
+  );
 
   useEffect(() => {
-    if (!dashboard) return;
-    let active = true;
-    const reached = [...dashboardMilestones(dashboard), ...recoveryEngineReadyMilestone(engine.overall)];
-    if (reached.length === 0) return;
-    void getSeenMilestones().then(async seen => {
-      if (!active) return;
-      const [next] = unseenMilestones(reached, seen);
-      if (!next) return;
-      setMilestone(milestoneCopy(next));
-      await markMilestonesSeen([next]);
-    });
-    return () => { active = false; };
-  }, [dashboard, engine.overall]);
+    void refreshAll();
+  }, [refreshAll]);
 
-  const initialLoading = !state.dashboard.loaded && state.dashboard.loading;
-  const error = state.dashboard.error ?? state.leads.error ?? state.reviews.error ?? state.reminders.error;
-  if (initialLoading) return <Screen><LoadingState label="Loading your dashboard..." /></Screen>;
-  if (error && !dashboard) return <Screen><ErrorState message={error} onRetry={() => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders()])} /></Screen>;
-  if (!dashboard) return <Screen><EmptyState title="No dashboard data" message="Your business activity will appear here." /></Screen>;
+  const upcoming = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.status !== 'CANCELED' && new Date(a.endsAt).getTime() > Date.now())
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+    [appointments],
+  );
+  const [next, ...rest] = upcoming;
 
-  const newLeads = attention.missedCalls ? leads.filter(item => item.status === 'new') : [];
-  const pendingReviews = attention.reviews ? reviews.filter(item => item.status === 'pending') : [];
-  const dueReminders = attention.comebacks ? reminders.filter(item => item.status === 'due' && new Date(item.dueDate) <= new Date()) : [];
-  const attentionCount = newLeads.length + pendingReviews.length + dueReminders.length;
-  const firstName = user?.fullName.split(' ')[0] ?? 'there';
+  const newLeads = leads.filter((l) => l.status === 'new');
+  const pendingReviews = reviews.filter((r) => r.status === 'pending');
+  const dueReminders = reminders.filter((r) => r.status === 'due' && new Date(r.dueDate) <= new Date());
+  const attention = [
+    ...newLeads.map((l) => ({ kind: 'lead' as const, item: l })),
+    ...pendingReviews.map((r) => ({ kind: 'review' as const, item: r })),
+    ...dueReminders.map((r) => ({ kind: 'reminder' as const, item: r })),
+  ];
+
+  const firstName = user?.fullName?.split(' ')[0] ?? 'there';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some(item => item.loading);
-  const activation = activationJourney(dashboard);
-  const refresh = () => void Promise.all([loadDashboard(), loadLeads(), loadReviews(), loadReminders(), loadAudiences(), loadAppointments(), loadWeeklyReport()]);
-  const openAudience = (audienceKey: SmartAudienceKey) => {
-    const destination = audienceCoachingDestination(audienceKey);
-    navigation.navigate(destination.screen, destination.params);
-  };
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
-  return <Screen>
-    <AppHeader eyebrow={business?.name ?? 'CHAKUSA'} title={`${greeting}, ${firstName}`} subtitle={todayAppointments.length ? `${todayAppointments.length} appointment${todayAppointments.length === 1 ? '' : 's'} today · ${attentionCount} item${attentionCount === 1 ? '' : 's'} need attention` : attentionCount ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention.` : 'No appointments today · Your recovery work is up to date.'} right={<Pressable accessibilityRole="button" accessibilityLabel="Open calendar" onPress={() => navigation.navigate('Main', { screen: 'Calendar' })} style={styles.attentionButton}><Ionicons name="calendar-outline" size={23} color={colors.text} />{todayAppointments.length ? <View style={styles.count}><Text style={styles.countText}>{todayAppointments.length > 9 ? '9+' : todayAppointments.length}</Text></View> : null}</Pressable>} />
+  const header = (
+    <M3Header
+      businessName={business?.name ?? 'Chakusa'}
+      location={business?.publicSlug ? 'Primary location' : undefined}
+      verified={Boolean(business?.publicSlug)}
+      onNotificationsPress={() => navigation.navigate('AttentionCenter')}
+      onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
+      hasNotifications={attention.length > 0}
+    />
+  );
 
-    {milestone ? <Reveal><View accessibilityRole="alert" style={styles.milestone}><Ionicons name="sparkles" size={22} color={colors.surface} /><View style={styles.milestoneCopy}><Text style={styles.milestoneTitle}>{milestone.title}</Text><Text style={styles.milestoneMessage}>{milestone.message}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} onPress={() => setMilestone(null)}><Ionicons name="close" size={20} color={colors.surface} /></Pressable></View></Reveal> : null}
+  const initialLoading = !state.dashboard.loaded && state.dashboard.loading;
+  const error = state.dashboard.error;
+  const refreshing = [state.dashboard, state.leads, state.reviews, state.reminders].some((s) => s.loading);
 
-    <ActivationJourneyCard journey={activation} onContinue={() => {
-      const destination = activation.next?.destination;
-      if (!destination) return;
-      if (destination.kind === 'root') navigation.navigate(destination.screen);
-      else navigation.navigate('Main', { screen: destination.screen });
-    }} />
-    {subscription?.value ? <ValueProofCard value={subscription.value} currency={business?.currency} free={plan === 'FREE'} onPress={() => navigation.navigate(plan === 'FREE' ? 'Pro' : 'Insights')} /> : null}
-    {business?.publicSlug ? <PublicProfileGrowthCard businessName={business.name} slug={business.publicSlug} /> : null}
-    {weeklyReport ? <View><SectionHeader title="Your weekly report" /><View style={styles.breakdown}><Row label="Appointments completed" value={String(weeklyReport.summary.appointmentsCompleted)} /><Row label="Revenue collected" value={formatMoney(weeklyReport.summary.collectedRevenue, business?.currency ?? undefined)} /><Row label="Revenue recovered" value={formatMoney(weeklyReport.summary.revenueRecovered ?? 0, business?.currency ?? undefined)} /><Row label="Customers returned" value={String(weeklyReport.summary.customersReturned ?? 0)} /><Row label="Outstanding revenue" value={formatMoney(weeklyReport.summary.outstandingRevenue ?? 0, business?.currency ?? undefined)} /><Row label="Top opportunity" value={weeklyReport.summary.topOpportunity ?? 'None recorded'} /><Row label="Highest risk" value={weeklyReport.summary.highestRisk ?? 'None recorded'} /><Row label="New customers" value={String(weeklyReport.summary.newCustomers)} /><Row label="Customers messaged" value={String(weeklyReport.summary.customerMessagesSent)} last /></View></View> : null}
+  if (initialLoading) {
+    return (
+      <M3Screen header={header} scroll={false}>
+        <M3Loading label="Loading your dashboard…" />
+      </M3Screen>
+    );
+  }
+  if (error && !dashboard) {
+    return (
+      <M3Screen header={header} scroll={false}>
+        <M3Error message={error} onRetry={() => void refreshAll()} />
+      </M3Screen>
+    );
+  }
 
-    {setup.score < 100 ? <Pressable accessibilityRole="button" accessibilityLabel="Business setup progress" onPress={() => navigation.navigate('BusinessSettings')} style={styles.engineSummary}>
-      <View style={[styles.engineSummaryIcon, { backgroundColor: colors.attention }]}><Ionicons name="clipboard-outline" size={20} color={colors.surface} /></View>
-      <View style={styles.engineSummaryCopy}>
-        <Text style={styles.engineSummaryTitle}>Business Setup</Text>
-        <Text style={styles.engineSummaryDetail}>{firstIncompleteSetupItem ? `Add ${firstIncompleteSetupItem.label.toLowerCase()} to finish setting up your profile.` : 'Finish setting up your business profile.'}</Text>
+  const metrics: { label: string; value: number; accent?: boolean; onPress: () => void }[] = [
+    { label: 'Bookings', value: upcoming.length, onPress: () => navigation.navigate('Main', { screen: 'Calendar' }) },
+    { label: 'New Leads', value: newLeads.length, accent: newLeads.length > 0, onPress: () => navigation.navigate('Main', { screen: 'Leads' }) },
+    { label: 'Reviews', value: pendingReviews.length, onPress: () => navigation.navigate('Main', { screen: 'Reviews' }) },
+    { label: 'Due back', value: dueReminders.length, onPress: () => navigation.navigate('Comeback') },
+  ];
+
+  const quickActions: { label: string; icon: string; tone: 'primary' | 'neutral'; onPress: () => void }[] = [
+    { label: 'New Booking', icon: 'add_circle', tone: 'primary', onPress: () => navigation.navigate('AppointmentEditor') },
+    { label: 'New Client', icon: 'person_add', tone: 'neutral', onPress: () => navigation.navigate('Main', { screen: 'Customers' }) },
+    { label: 'Estimate', icon: 'receipt_long', tone: 'neutral', onPress: () => navigation.navigate('QuoteEditor') },
+    { label: 'Block Time', icon: 'event_busy', tone: 'neutral', onPress: () => navigation.navigate('AvailabilitySettings') },
+  ];
+
+  return (
+    <M3Screen header={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} tintColor={m3.primary} />}>
+      <View style={styles.greetingRow}>
+        <View style={styles.flex}>
+          <Text style={styles.greeting}>{`${greeting}, ${firstName}`}</Text>
+          <View style={styles.greetingMetaRow}>
+            <Text style={styles.greetingMeta}>{today}</Text>
+            {business?.publicSlug ? <Icon name="check_circle" size={13} color={m3.secondary} /> : null}
+          </View>
+        </View>
+        <View style={styles.livePill}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>Studio Live</Text>
+        </View>
       </View>
-      <StatusBadge label={`${setup.complete}/${setup.total}`} />
-    </Pressable> : null}
 
-    <Pressable accessibilityRole="button" accessibilityLabel="Recovery engine status" onPress={() => navigation.navigate('Automation')} style={styles.engineSummary}>
-      <View style={styles.engineSummaryIcon}><Ionicons name={engine.overall === 'active' ? 'shield-checkmark' : 'shield-half'} size={20} color={colors.surface} /></View>
-      <View style={styles.engineSummaryCopy}>
-        <Text style={styles.engineSummaryTitle}>Recovery Engine</Text>
-        <Text style={styles.engineSummaryDetail}>{engine.overall === 'active' ? 'Active — Chakusa is watching for missed calls and following up for you.' : `${engine.items.filter(item => item.status === 'attention').length} thing${engine.items.filter(item => item.status === 'attention').length === 1 ? '' : 's'} need your attention to turn this on fully.`}</Text>
+      <M3Card style={styles.metricStrip} padded={false}>
+        {metrics.map((m) => (
+          <Pressable key={m.label} accessibilityRole="button" onPress={m.onPress} style={styles.metric}>
+            {m.accent ? <View style={styles.metricDot} /> : null}
+            <Text style={[styles.metricValue, m.accent && { color: m3.primary }]}>{m.value}</Text>
+            <Text style={styles.metricLabel}>{m.label}</Text>
+          </Pressable>
+        ))}
+      </M3Card>
+
+      {next ? (
+        <View style={styles.gap8}>
+          <View style={styles.nextHeadRow}>
+            <Text style={styles.eyebrow}>NEXT IN CHAIR</Text>
+            <View style={styles.nextInPill}>
+              <Text style={styles.nextInText}>
+                {(() => {
+                  const mins = minutesUntil(next.startsAt);
+                  return mins <= 0 ? 'Now' : mins < 60 ? `In ${mins} min` : `In ${Math.round(mins / 60)}h`;
+                })()}
+              </Text>
+            </View>
+          </View>
+          <M3Card raised style={styles.nextCard}>
+            <View style={styles.nextGlow} />
+            <View style={styles.nextTopRow}>
+              <View style={styles.nextClientRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials(next.customer?.name)}</Text>
+                </View>
+                <View style={styles.flex}>
+                  <Text numberOfLines={1} style={styles.nextName}>
+                    {next.customer?.name ?? 'Walk-in'}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.nextService}>
+                    {next.serviceName}
+                  </Text>
+                  <Text style={styles.nextPrice}>
+                    {next.price != null ? `${formatMoney(next.price)} · ` : ''}
+                    {Math.max(1, Math.round((new Date(next.endsAt).getTime() - new Date(next.startsAt).getTime()) / 60000))} min
+                  </Text>
+                </View>
+              </View>
+              <Chip label={STATUS_TONE[next.status]?.label ?? next.status} tone={STATUS_TONE[next.status]?.tone ?? 'neutral'} />
+            </View>
+            <View style={styles.nextMetaRow}>
+              <View style={styles.nextMetaItem}>
+                <Icon name="schedule" size={16} color={m3.secondary} />
+                <Text style={styles.nextMetaStrong}>
+                  {timeParts(next.startsAt).time} {timeParts(next.startsAt).ampm}
+                </Text>
+              </View>
+              {next.assignedMember ? (
+                <View style={styles.nextMetaItem}>
+                  <Icon name="chair" size={16} color={m3.onSurfaceVariant} />
+                  <Text style={styles.nextMeta}>{next.assignedMember.user.fullName}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.nextActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('AppointmentEditor', { appointmentId: next.id })}
+                style={[styles.nextAction, styles.nextActionPrimary]}
+              >
+                <Icon name="how_to_reg" size={16} color={m3.onPrimary} />
+                <Text style={styles.nextActionPrimaryText}>Check in</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('AppointmentEditor', { appointmentId: next.id })}
+                style={[styles.nextAction, styles.nextActionGhost]}
+              >
+                <Icon name="visibility" size={16} color={m3.onSurface} />
+                <Text style={styles.nextActionGhostText}>Details</Text>
+              </Pressable>
+              {next.customerId ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => navigation.navigate('CustomerProfile', { customerId: next.customerId! })}
+                  style={[styles.nextAction, styles.nextActionGhost]}
+                >
+                  <Icon name="chat" size={16} color={m3.onSurface} />
+                  <Text style={styles.nextActionGhostText}>Client</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </M3Card>
+        </View>
+      ) : null}
+
+      <View style={styles.gap8}>
+        <SectionTitle
+          title="Today's Schedule"
+          actionLabel={`View Full (${appointments.length})`}
+          onAction={() => navigation.navigate('Main', { screen: 'Calendar' })}
+        />
+        {rest.length ? (
+          <M3Card padded={false}>
+            {rest.slice(0, 3).map((a, i) => {
+              const { time, ampm } = timeParts(a.startsAt);
+              return (
+                <Pressable
+                  key={a.id}
+                  accessibilityRole="button"
+                  onPress={() => navigation.navigate('AppointmentEditor', { appointmentId: a.id })}
+                  style={[styles.scheduleRow, i > 0 && styles.rowDivider]}
+                >
+                  <View style={styles.scheduleTime}>
+                    <Text style={styles.scheduleTimeText}>{time}</Text>
+                    <Text style={styles.scheduleAmPm}>{ampm}</Text>
+                  </View>
+                  <View style={styles.flex}>
+                    <Text numberOfLines={1} style={styles.scheduleName}>
+                      {a.customer?.name ?? 'Walk-in'}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.scheduleSub}>
+                      {a.serviceName}
+                      {a.assignedMember ? ` · ${a.assignedMember.user.fullName}` : ''}
+                    </Text>
+                  </View>
+                  <Chip label={STATUS_TONE[a.status]?.label ?? a.status} tone={STATUS_TONE[a.status]?.tone ?? 'neutral'} />
+                </Pressable>
+              );
+            })}
+          </M3Card>
+        ) : next ? null : (
+          <M3Empty icon="event_available" title="No appointments today" message="Your day is clear. Tap New Booking to add one." />
+        )}
       </View>
-      <StatusBadge label={engine.overall === 'active' ? 'Active' : 'Needs attention'} />
-    </Pressable>
 
-    {dashboard.businessHealth.score != null ? <View style={styles.engineSummary}>
-      <View style={[styles.engineSummaryIcon, { backgroundColor: healthColor(dashboard.businessHealth.label) }]}><Ionicons name="pulse" size={20} color={colors.surface} /></View>
-      <View style={styles.engineSummaryCopy}>
-        <Text style={styles.engineSummaryTitle}>Business Health</Text>
-        <Text style={styles.engineSummaryDetail}>{healthMessage(dashboard.businessHealth.label)}</Text>
+      <View style={styles.gap8}>
+        <SectionTitle title="Attention Required" dot={m3.error} actionLabel={attention.length ? `${attention.length} pending` : undefined} />
+        {attention.length ? (
+          <View style={styles.gap10}>
+            {newLeads[0] ? (
+              <M3Card style={styles.attnCard}>
+                <View style={styles.attnHead}>
+                  <View style={[styles.attnIcon, { backgroundColor: 'rgba(0,106,97,0.12)' }]}>
+                    <Icon name="chat" size={18} color={m3.secondary} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.attnName}>{newLeads[0].customer?.name ?? 'New lead'}</Text>
+                    <Text numberOfLines={1} style={styles.attnBody}>
+                      {newLeads[0].serviceRequested ?? 'New enquiry — needs follow-up'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.attnActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => navigation.navigate('LeadDetail', { leadId: newLeads[0].id })}
+                    style={styles.attnGhostBtn}
+                  >
+                    <Text style={styles.attnGhostText}>Reply</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => navigation.navigate('LeadDetail', { leadId: newLeads[0].id })}
+                    style={styles.attnPrimaryBtn}
+                  >
+                    <Text style={styles.attnPrimaryText}>Convert to Booking</Text>
+                  </Pressable>
+                </View>
+              </M3Card>
+            ) : null}
+            {pendingReviews[0] ? (
+              <M3Card style={styles.attnCard}>
+                <View style={styles.attnHead}>
+                  <View style={[styles.attnIcon, { backgroundColor: m3.surfaceContainerHigh }]}>
+                    <Icon name="star" size={18} color={m3.primary} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.attnName}>{pendingReviews[0].customer?.name ?? 'Review opportunity'}</Text>
+                    <Text numberOfLines={1} style={styles.attnBody}>
+                      {pendingReviews[0].serviceName ?? 'Ask this client for a review'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.attnActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => navigation.navigate('ReviewDetail', { reviewId: pendingReviews[0].id })}
+                    style={styles.attnGhostBtn}
+                  >
+                    <Text style={styles.attnGhostText}>Request review</Text>
+                  </Pressable>
+                </View>
+              </M3Card>
+            ) : null}
+            {dueReminders[0] ? (
+              <M3Card style={styles.attnCard}>
+                <View style={styles.attnHead}>
+                  <View style={[styles.attnIcon, { backgroundColor: 'rgba(171,45,25,0.10)' }]}>
+                    <Icon name="event_repeat" size={18} color={m3.primary} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.attnName}>{dueReminders[0].customer?.name ?? 'Customer due back'}</Text>
+                    <Text numberOfLines={1} style={styles.attnBody}>
+                      {dueReminders[0].serviceName ?? 'Time to bring this client back in'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.attnActions}>
+                  <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Comeback')} style={styles.attnPrimaryBtn}>
+                    <Text style={styles.attnPrimaryText}>Bring back</Text>
+                  </Pressable>
+                </View>
+              </M3Card>
+            ) : null}
+          </View>
+        ) : (
+          <M3Empty icon="task_alt" title="You're all caught up" message="New leads, reviews, and comebacks land here." />
+        )}
       </View>
-      <StatusBadge label={`${dashboard.businessHealth.score}/100`} />
-    </View> : null}
 
-    {dashboard.recommendations.length ? <View style={styles.recommendations}>
-      {dashboard.recommendations.map(item => <Pressable accessibilityRole="button" key={item.key} onPress={() => goToRecommendation(navigation, item.key)} style={styles.recommendationRow}><View style={[styles.recommendationDot, item.severity === 'attention' && styles.recommendationDotAttention]} /><Text style={styles.recommendationText}>{item.message}</Text><Ionicons color={colors.tabInactive} name="chevron-forward" size={16} /></Pressable>)}
-    </View> : null}
-
-    <Pressable accessibilityRole="button" accessibilityLabel="Business Insights" onPress={() => navigation.navigate('Insights')} style={styles.engineSummary}>
-      <View style={[styles.engineSummaryIcon, { backgroundColor: colors.text }]}><Ionicons name="trending-up" size={20} color={colors.surface} /></View>
-      <View style={styles.engineSummaryCopy}>
-        <Text style={styles.engineSummaryTitle}>Business Insights</Text>
-        <Text style={styles.engineSummaryDetail}>See growth trends, top services, and your most valuable customers.</Text>
+      <View style={styles.quickGrid}>
+        {quickActions.map((qa) => (
+          <Pressable key={qa.label} accessibilityRole="button" onPress={qa.onPress} style={styles.quickItem}>
+            <View style={[styles.quickIcon, qa.tone === 'primary' ? { backgroundColor: 'rgba(171,45,25,0.14)' } : { backgroundColor: m3.surfaceContainerHigh }]}>
+              <Icon name={qa.icon} size={20} color={qa.tone === 'primary' ? m3.primary : m3.onSurface} />
+            </View>
+            <Text numberOfLines={1} style={styles.quickLabel}>
+              {qa.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
-      <Ionicons color={colors.tabInactive} name="chevron-forward" size={18} />
-    </Pressable>
-
-    <View>
-      <SectionHeader title="Needs action" action="See all" onAction={() => navigation.navigate('AttentionCenter')} />
-      {attentionCount ? <View style={styles.actionList}>
-        {newLeads[0] ? <ActionRow icon="call-outline" color={colors.primary} title={`Missed call · ${newLeads[0].customer?.name ?? 'Unassigned lead'}`} detail={`${newLeads[0].serviceRequested ?? 'Service not specified'} · ${formatDateTime(newLeads[0].missedCallTime)}`} action="Follow up" onPress={() => navigation.navigate('LeadDetail', { leadId: newLeads[0].id })} /> : null}
-        {dueReminders[0] ? <ActionRow icon="refresh-outline" color={colors.attention} title={`Customer due back · ${dueReminders[0].customer?.name ?? 'Unassigned customer'}`} detail={`${dueReminders[0].serviceName ?? 'Service not specified'} · Due ${formatDateTime(dueReminders[0].dueDate)}`} action="Bring back" onPress={() => navigation.navigate('Comeback')} /> : null}
-        {pendingReviews[0] ? <ActionRow icon="star-outline" color={colors.success} title={`Review opportunity · ${pendingReviews[0].customer?.name ?? 'Unassigned customer'}`} detail={`${pendingReviews[0].serviceName ?? 'Service not specified'} · ${pendingReviews[0].message ? 'Message prepared' : 'Message needs preparation'}`} action="Request review" onPress={() => navigation.navigate('ReviewDetail', { reviewId: pendingReviews[0].id })} /> : null}
-      </View> : <EmptyState title={engine.overall === 'active' ? 'Waiting for your first recovery opportunity' : 'Nothing needs attention yet'} message={dashboard.leads.total === 0 && dashboard.reviews.requestsSent === 0 ? (engine.overall === 'active' ? 'Recovery Engine is active — as soon as a call is missed, Chakusa will catch it here.' : 'Finish setting up your Recovery Engine, or add your first customer to start your recovery workflow.') : "You're caught up for today."} />}
-    </View>
-
-    <Reveal delay={80}><View accessibilityLabel={`Recovered revenue ${formatMoney(dashboard.recoveredRevenue.total)}`} style={styles.revenue}><View style={styles.revenueCopy}><Text style={styles.revenueLabel}>RECOVERED REVENUE</Text><Text style={styles.revenueValue}>{formatMoney(dashboard.recoveredRevenue.total)}</Text><Text style={styles.revenueDetail}>{dashboard.recoveredRevenue.total === 0 ? 'Revenue from won leads will appear here.' : 'Calculated from won leads'}</Text></View><View style={styles.revenueIcon}><Ionicons name="trending-up" size={23} color={colors.surface} /></View></View></Reveal>
-    <View><SectionHeader title="Appointment payments" /><View style={styles.breakdown}><Row label="Collected" value={formatMoney(dashboard.recoveredRevenue.appointmentCollected ?? 0)} /><Row label="Still owed" value={formatMoney(dashboard.recoveredRevenue.appointmentOutstanding ?? 0)} last /></View></View>
-    <View><SectionHeader title="Lead funnel" />{dashboard.leads.total === 0 ? <Guidance title="No leads yet" message="Add a missed-call lead to start tracking recovery." /> : null}<View style={styles.metricGrid}>{([['Missed calls', dashboard.leads.missedCalls], ['New', dashboard.leads.new], ['Contacted', dashboard.leads.contacted], ['Booked', dashboard.leads.booked], ['Won', dashboard.leads.won], ['Lost', dashboard.leads.lost]] as const).map(([label, value]) => <MetricCard key={label} label={label} value={String(value)} />)}</View></View>
-    <View><SectionHeader title="Recovery summary" /><View style={styles.breakdown}><Row label="Missed-call revenue" value={formatMoney(dashboard.recoveredRevenue.missedCall)} /><Row label="Completed comebacks" value={String(dashboard.recoveredRevenue.comebackCompletedCount)} /><Row label="Customers due" value={String(dashboard.customersDue)} /><Row label="Average response" value={dashboard.responseTime.averageSeconds == null ? 'No responses yet' : `${Math.round(dashboard.responseTime.averageSeconds / 60)} min`} last /></View></View>
-    <View><SectionHeader title="Customers" />{dashboard.customerIntelligence.totalCustomers === 0 ? <Guidance title="No customers yet" message="Add your first customer to start tracking repeat business." /> : <View style={styles.metricGrid}>
-      <MetricCard label="Total customers" value={String(dashboard.customerIntelligence.totalCustomers)} />
-      <MetricCard label="New this month" value={String(dashboard.customerIntelligence.newCustomersThisPeriod)} />
-      <MetricCard label="Repeat rate" value={dashboard.customerIntelligence.repeatCustomerRate == null ? '—' : `${Math.round(dashboard.customerIntelligence.repeatCustomerRate * 100)}%`} detail={dashboard.customerIntelligence.repeatCustomerRate == null ? 'No won jobs yet' : undefined} />
-      <MetricCard label="Avg. customer value" value={dashboard.customerIntelligence.averageLifetimeValue == null ? '—' : formatMoney(dashboard.customerIntelligence.averageLifetimeValue)} />
-    </View>}</View>
-    {audiences ? <DashboardAudienceSummary data={audiences} onSelect={openAudience} onViewAll={() => navigation.navigate('Main', { screen: 'Customers' })} /> : null}
-    <View><SectionHeader title="Reviews" />{dashboard.reviews.requestsSent === 0 && dashboard.reviews.reviewsReceived === 0 && dashboard.reviews.feedbackReceived === 0 ? <Guidance title="Generate your first review" message="Request a review after completing a customer job — it only takes a minute." /> : null}<View style={styles.metricGrid}><MetricCard label="Requests sent" value={String(dashboard.reviews.requestsSent)} /><MetricCard label="Reviews received" value={String(dashboard.reviews.reviewsReceived)} /><MetricCard label="Private feedback" value={String(dashboard.reviews.feedbackReceived)} /></View></View>
-    <View><SectionHeader title="Recent activity" action={refreshing ? 'Refreshing...' : 'Refresh'} onAction={refresh} />{dashboard.recentActivity.length ? <View>{dashboard.recentActivity.map(item => <View key={item.id} style={styles.activity}><View style={styles.activityIcon}><Ionicons name="checkmark" size={17} color={colors.success} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{titleCase(item.eventType)}</Text><Text style={styles.activityDetail}>{titleCase(item.entityType)} · {formatDateTime(item.createdAt)}</Text></View></View>)}</View> : <Text style={styles.muted}>Your activity will appear here as you use Chakusa.</Text>}</View>
-  </Screen>;
+    </M3Screen>
+  );
 }
 
-function ActionRow({ icon, color, title, detail, action, onPress }: { icon: keyof typeof Ionicons.glyphMap; color: string; title: string; detail: string; action: string; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.actionRow, { borderLeftColor: color }, pressed && styles.pressed]}><View style={styles.activityIcon}><Ionicons name={icon} size={19} color={color} /></View><View style={styles.activityCopy}><Text style={styles.activityTitle}>{title}</Text><Text style={styles.activityDetail}>{detail}</Text></View><Text style={[styles.actionText, { color }]}>{action}</Text><Ionicons name="chevron-forward" size={17} color={colors.tabInactive} /></Pressable>;
-}
-function Row({ label, value, last }: { label: string; value: string; last?: boolean }) { return <View style={[styles.breakdownRow, last && styles.lastRow]}><Text style={styles.breakdownLabel}>{label}</Text><Text style={styles.breakdownValue}>{value}</Text></View>; }
-/** One tap from a recommendation straight to where it can be acted on — the exact category tab in Attention Center that has the quick actions for it, or Business Settings for the one recommendation that isn't customer-level. */
-function goToRecommendation(navigation: NativeStackNavigationProp<RootStackParamList>, key: string) {
-  if (key === 'complete_profile') { navigation.navigate('BusinessSettings'); return; }
-  const category = ({ contact_customers: 'missed_call_followup', request_reviews: 'review_opportunity', collect_outstanding_revenue: 'payment_outstanding', bring_back_customers: 'customer_due' } as const)[key as 'contact_customers' | 'request_reviews' | 'collect_outstanding_revenue' | 'bring_back_customers'];
-  if (category) navigation.navigate('AttentionCenter', { category });
-}
-function healthColor(label: BusinessHealthLabel | null) { return label === 'excellent' || label === 'good' ? colors.success : label === 'needs_attention' ? colors.attention : colors.negative; }
-function healthMessage(label: BusinessHealthLabel | null) { return ({ excellent: 'Your recovery workflow is performing excellently.', good: 'Your recovery workflow is performing well.', needs_attention: 'A few things could use your attention to improve this.', at_risk: 'Several things need your attention — check Recover, Reputation, and Grow.' } as const)[label ?? 'good']; }
-function Guidance({ title, message }: { title: string; message: string }) { return <View style={styles.guidance}><Text style={styles.guidanceTitle}>{title}</Text><Text style={styles.guidanceText}>{message}</Text></View>; }
 const styles = StyleSheet.create({
-  attentionButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  count: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 4, backgroundColor: colors.negative, borderWidth: 2, borderColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  countText: { fontSize: 10, lineHeight: 12, fontWeight: '700', color: colors.surface },
-  actionList: { gap: spacing.xs, marginTop: spacing.sm },
-  actionRow: { minHeight: 76, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderLeftWidth: 4, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  actionText: { ...typography.caption, fontWeight: '700' }, pressed: { opacity: .72 },
-  revenue: { minHeight: 160, borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.xl, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md }, revenueCopy: { flex: 1 }, revenueLabel: { ...typography.micro, color: colors.surface }, revenueValue: { fontSize: 42, lineHeight: 50, fontWeight: '700', color: colors.surface, marginTop: spacing.sm }, revenueDetail: { ...typography.caption, color: colors.surface, marginTop: spacing.xs }, revenueIcon: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }, breakdown: { marginTop: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md }, breakdownRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.divider }, lastRow: { borderBottomWidth: 0 }, breakdownLabel: { ...typography.body, color: colors.textSecondary }, breakdownValue: { ...typography.bodyStrong, color: colors.text },
-  activity: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }, activityIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }, activityCopy: { flex: 1, minWidth: 0 }, activityTitle: { ...typography.bodyStrong, color: colors.text }, activityDetail: { ...typography.caption, color: colors.textSecondary }, muted: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm }, guidance: { marginTop: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, guidanceTitle: { ...typography.bodyStrong, color: colors.text }, guidanceText: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxs },
-  milestone: { minHeight: 72, borderRadius: radius.md, backgroundColor: colors.success, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, milestoneCopy: { flex: 1 }, milestoneTitle: { ...typography.bodyStrong, color: colors.surface }, milestoneMessage: { ...typography.caption, color: colors.surface, marginTop: 2 },
-  engineSummary: { minHeight: 68, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, engineSummaryIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }, engineSummaryCopy: { flex: 1, minWidth: 0 }, engineSummaryTitle: { ...typography.bodyStrong, color: colors.text }, engineSummaryDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  recommendations: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  recommendationRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  recommendationDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 6 },
-  recommendationDotAttention: { backgroundColor: colors.attention },
-  recommendationText: { ...typography.caption, color: colors.text, flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
+  gap8: { gap: m3Space.xs },
+  gap10: { gap: 10 },
+
+  greetingRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: m3Space.sm, paddingTop: m3Space.xxs },
+  greeting: { ...m3Type.headlineMd, color: m3.onSurface },
+  greetingMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  greetingMeta: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(134,242,228,0.4)', paddingHorizontal: 10, height: 26, borderRadius: m3Radius.full },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: m3.secondary },
+  liveText: { ...m3Type.labelSm, color: m3.onSecondaryContainer, letterSpacing: 0 },
+
+  metricStrip: { flexDirection: 'row', padding: m3Space.sm, gap: m3Space.xs },
+  metric: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: m3Radius.md, backgroundColor: m3.surfaceContainerLow },
+  metricDot: { position: 'absolute', top: 8, right: 10, width: 7, height: 7, borderRadius: 4, backgroundColor: m3.primary },
+  metricValue: { ...m3Type.headlineSm, color: m3.onSurface },
+  metricLabel: { ...m3Type.labelXs, color: m3.onSurfaceVariant, marginTop: 2, letterSpacing: 0 },
+
+  eyebrow: { ...m3Type.labelSm, color: m3.onSurfaceVariant },
+  nextHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 },
+  nextInPill: { backgroundColor: 'rgba(255,218,211,0.55)', paddingHorizontal: 10, height: 24, borderRadius: m3Radius.full, justifyContent: 'center' },
+  nextInText: { ...m3Type.labelSm, color: m3.primary, letterSpacing: 0 },
+  nextCard: { overflow: 'hidden', gap: m3Space.sm },
+  nextGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: m3.primary },
+  nextTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: m3Space.sm, paddingTop: 4 },
+  nextClientRow: { flexDirection: 'row', alignItems: 'flex-start', gap: m3Space.sm, flex: 1, minWidth: 0 },
+  avatar: { width: 44, height: 44, borderRadius: m3Radius.md, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...m3Type.headlineSm, fontSize: 16, color: m3.primary },
+  nextName: { ...m3Type.headlineSm, fontSize: 18, color: m3.onSurface },
+  nextService: { ...m3Type.bodyMd, color: m3.onSurface, marginTop: 1 },
+  nextPrice: { ...m3Type.labelSm, color: m3.onSurfaceVariant, marginTop: 2, letterSpacing: 0 },
+  nextMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(242,243,255,0.7)', borderRadius: m3Radius.sm, paddingHorizontal: m3Space.sm, paddingVertical: 8 },
+  nextMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nextMeta: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0 },
+  nextMetaStrong: { ...m3Type.labelMd, color: m3.onSurface },
+  nextActions: { flexDirection: 'row', gap: m3Space.xs },
+  nextAction: { flex: 1, height: 38, borderRadius: m3Radius.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  nextActionPrimary: { backgroundColor: m3.primary },
+  nextActionPrimaryText: { ...m3Type.labelMd, color: m3.onPrimary },
+  nextActionGhost: { backgroundColor: m3.surfaceContainerHigh },
+  nextActionGhostText: { ...m3Type.labelMd, color: m3.onSurface },
+
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, padding: m3Space.sm },
+  rowDivider: { borderTopWidth: 1, borderTopColor: m3.surfaceContainerHigh },
+  scheduleTime: { width: 52, alignItems: 'center', backgroundColor: m3.surfaceContainerLow, borderRadius: m3Radius.sm, paddingVertical: 6 },
+  scheduleTimeText: { ...m3Type.labelSm, color: m3.onSurface, letterSpacing: 0 },
+  scheduleAmPm: { ...m3Type.labelXs, fontSize: 10, color: m3.onSurfaceVariant },
+  scheduleName: { ...m3Type.labelLg, color: m3.onSurface },
+  scheduleSub: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 1 },
+
+  attnCard: { gap: 10 },
+  attnHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  attnIcon: { width: 32, height: 32, borderRadius: m3Radius.sm, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  attnName: { ...m3Type.labelLg, color: m3.onSurface },
+  attnBody: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 1 },
+  attnActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: m3Space.xs },
+  attnGhostBtn: { paddingHorizontal: 14, height: 34, borderRadius: m3Radius.sm, backgroundColor: m3.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
+  attnGhostText: { ...m3Type.labelMd, color: m3.onSurface },
+  attnPrimaryBtn: { paddingHorizontal: 14, height: 34, borderRadius: m3Radius.sm, backgroundColor: m3.primary, alignItems: 'center', justifyContent: 'center' },
+  attnPrimaryText: { ...m3Type.labelMd, color: m3.onPrimary },
+
+  quickGrid: { flexDirection: 'row', gap: m3Space.xs, paddingTop: 4 },
+  quickItem: { flex: 1, alignItems: 'center', backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.lg, paddingVertical: 10, ...m3Shadow.card },
+  quickIcon: { width: 36, height: 36, borderRadius: m3Radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  quickLabel: { ...m3Type.labelXs, color: m3.onSurface },
 });

@@ -1,6 +1,9 @@
 import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
+import { deriveInvoicePayment } from "../../lib/invoices/invoicePayments.domain.js";
+
+const PAYMENT_TXN_SELECT = { status: true, amount: true, refundedAmount: true } as const;
 
 // PROGRAM 3 / Invoicing I7: authenticated customer invoice inbox.
 //
@@ -46,6 +49,7 @@ export async function listCustomerInvoices(customerProfileId: string) {
       createdAt: true,
       business: { select: { name: true } },
       currentRevision: { select: { total: true } },
+      payments: { select: PAYMENT_TXN_SELECT },
     },
   });
 
@@ -58,6 +62,13 @@ export async function listCustomerInvoices(customerProfileId: string) {
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
       total: invoice.currentRevision ? invoice.currentRevision.total.toFixed(2) : "0.00",
+      payment: deriveInvoicePayment({
+        invoiceStatus: invoice.status,
+        dueDate: invoice.dueDate,
+        currency: invoice.currency,
+        invoiceTotal: invoice.currentRevision?.total ?? null,
+        transactions: invoice.payments,
+      }),
       business: { name: invoice.business.name },
       createdAt: invoice.createdAt,
     })),
@@ -91,6 +102,7 @@ export async function getCustomerInvoiceForProfile(customerProfileId: string, in
           },
         },
       },
+      payments: { select: PAYMENT_TXN_SELECT },
     },
   });
   if (!invoice) throw ApiError.notFound("Invoice not found");
@@ -105,6 +117,13 @@ export async function getCustomerInvoiceForProfile(customerProfileId: string, in
     dueDate: invoice.dueDate,
     createdAt: invoice.createdAt,
     business: { name: invoice.business.name },
+    payment: deriveInvoicePayment({
+      invoiceStatus: invoice.status,
+      dueDate: invoice.dueDate,
+      currency: invoice.currency,
+      invoiceTotal: revision?.total ?? null,
+      transactions: invoice.payments,
+    }),
     revision: revision
       ? {
           notes: revision.notes,

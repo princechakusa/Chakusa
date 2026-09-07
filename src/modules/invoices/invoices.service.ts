@@ -5,6 +5,7 @@ import { config } from "../../lib/config.js";
 import { generateOpaqueToken } from "../../lib/authTokens.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
 import { assertLegalInvoiceTransition, calculateInvoiceTotals, canSendInvoice, formatInvoiceNumber } from "../../lib/invoices/invoices.domain.js";
+import { deriveInvoicePayment } from "../../lib/invoices/invoicePayments.domain.js";
 import { buildPublicInvoiceUrl } from "../../lib/invoices/publicInvoiceLinks.js";
 import type { InvoiceLineItemInput, InvoiceTotals } from "../../lib/invoices/invoices.types.js";
 import type { CreateInvoiceInput, ListInvoicesQuery, UpdateInvoiceInput } from "./invoices.schemas.js";
@@ -576,6 +577,7 @@ export async function listInvoices(businessId: string, query: ListInvoicesQuery)
         updatedAt: true,
         currentRevision: { select: { id: true, revisionNumber: true, subtotal: true, discountTotal: true, taxTotal: true, total: true } },
         customer: { select: { id: true, name: true } },
+        payments: { select: { status: true, amount: true, refundedAmount: true } },
       },
     }),
     prisma.invoice.count({ where }),
@@ -598,6 +600,13 @@ export async function listInvoices(businessId: string, query: ListInvoicesQuery)
       customer: inv.customer,
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
+      payment: deriveInvoicePayment({
+        invoiceStatus: inv.status,
+        dueDate: inv.dueDate,
+        currency: inv.currency,
+        invoiceTotal: inv.currentRevision?.total ?? null,
+        transactions: inv.payments,
+      }),
       createdAt: inv.createdAt,
       updatedAt: inv.updatedAt,
     })),
@@ -629,6 +638,7 @@ export async function getInvoiceDetail(businessId: string, invoiceId: string) {
       currentRevision: { select: REVISION_SELECT },
       customer: { select: { id: true, name: true, phone: true, email: true } },
       revisions: { select: { id: true, revisionNumber: true, total: true, createdAt: true }, orderBy: { revisionNumber: "asc" } },
+      payments: { select: { status: true, amount: true, refundedAmount: true } },
     },
   });
   if (!invoice) throw ApiError.notFound("Invoice not found");
@@ -677,6 +687,13 @@ export async function getInvoiceDetail(businessId: string, invoiceId: string) {
         }
       : null,
     revisionHistory: invoice.revisions.map((r) => ({ id: r.id, revisionNumber: r.revisionNumber, total: r.total.toFixed(2), createdAt: r.createdAt })),
+    payment: deriveInvoicePayment({
+      invoiceStatus: invoice.status,
+      dueDate: invoice.dueDate,
+      currency: invoice.currency,
+      invoiceTotal: current?.total ?? null,
+      transactions: invoice.payments,
+    }),
     createdAt: invoice.createdAt,
     updatedAt: invoice.updatedAt,
   };

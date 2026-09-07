@@ -1,6 +1,7 @@
 import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
+import { deriveInvoicePayment } from "../../lib/invoices/invoicePayments.domain.js";
 
 // PROGRAM 3 / Invoicing I4: account-less customer access to a SENT
 // invoice via the bearer token from POST /invoices/:id/send.
@@ -46,6 +47,7 @@ const TOKEN_ROW_SELECT = {
           dueDate: true,
           currentRevisionId: true,
           business: { select: { name: true, platformStatus: true } },
+          payments: { select: { status: true, amount: true, refundedAmount: true } },
         },
       },
     },
@@ -107,6 +109,14 @@ export function serializePublicInvoice(resolved: ResolvedPublicInvoice) {
   const revision = token.invoiceRevision;
   const invoice = revision.invoice;
 
+  const payment = deriveInvoicePayment({
+    invoiceStatus: invoice.status,
+    dueDate: invoice.dueDate,
+    currency: invoice.currency,
+    invoiceTotal: revision.total,
+    transactions: invoice.payments,
+  });
+
   return {
     state,
     invoiceNumber: invoice.invoiceNumber,
@@ -114,6 +124,13 @@ export function serializePublicInvoice(resolved: ResolvedPublicInvoice) {
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate,
     business: { name: invoice.business.name },
+    payment: {
+      currency: payment.currency,
+      invoiceTotal: payment.invoiceTotal,
+      amountPaid: payment.amountPaid,
+      outstandingBalance: payment.outstandingBalance,
+      state: payment.state,
+    },
     revision: {
       notes: revision.notes,
       terms: revision.terms,

@@ -85,12 +85,14 @@ describe("Authenticated customer invoice inbox (Program 3, Invoicing I7)", () =>
     const body = detail.json();
     expect(body.revision.totals.total).toBe("140.00");
     expect(body.revision.lineItems).toHaveLength(1);
+    // Derived payment position is customer-visible; provider internals are not.
+    expect(body.payment).toMatchObject({ currency: "USD", outstandingBalance: "140.00", state: null });
     const raw = JSON.stringify(body);
     expect(raw).not.toContain("tokenHash");
     expect(raw).not.toContain("createdByMemberId");
     expect(raw).not.toContain("customerProfileId");
     expect(raw).not.toContain("businessId");
-    expect(raw).not.toContain("amountPaid");
+    expect(raw).not.toContain("stripe");
   });
 
   it("shows a SENT invoice addressed to a linked business contact row", async () => {

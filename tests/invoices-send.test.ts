@@ -221,11 +221,17 @@ describe("Invoicing send + void + public access (Program 3, Invoicing I4)", () =
     expect(body.revision.terms).toBe("Net 30");
     expect(body.revision.totals).toEqual({ subtotal: "150.00", discountTotal: "10.00", taxTotal: "0.00", total: "140.00" });
     expect(body.revision.lineItems[0]).toEqual({ description: "Consulting", quantity: "2.00", unitPrice: "75.00", discountAmount: "10.00", taxable: false, lineTotal: "140.00" });
-    // No leakage.
-    for (const forbidden of ["tokenHash", "token_hash", "businessId", "createdByMemberId", "amountPaid", "balance", "id\":", hashToken(raw)]) {
+    // Authoritative payment position only (derived, no provider internals).
+    expect(body.payment).toEqual({ currency: "USD", invoiceTotal: "140.00", amountPaid: "0.00", outstandingBalance: "140.00", state: null });
+    // No leakage: no token material, no internal record ids, no provider refs.
+    for (const forbidden of ["tokenHash", "token_hash", "businessId", "createdByMemberId", "invoiceRevisionId", "stripe", "checkoutUrl", "paymentIntent", hashToken(raw)]) {
       expect(res.body).not.toContain(forbidden);
     }
-    expect(body).not.toHaveProperty("payment");
+    for (const key of ["id", "invoiceId", "revisionId", "currentRevisionId", "customerId"]) {
+      expect(body).not.toHaveProperty(key);
+      expect(body.revision).not.toHaveProperty(key);
+      expect(body.payment).not.toHaveProperty(key);
+    }
   });
 
   it("returns a generic 404 for malformed / unknown / forged tokens", async () => {

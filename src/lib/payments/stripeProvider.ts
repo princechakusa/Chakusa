@@ -18,7 +18,10 @@ export interface StripePaymentProvider {
   createCheckout(input: {
     accountId: string;
     transactionId: string;
-    appointmentId: string;
+    /** Present for an appointment payment; absent for an invoice payment. */
+    appointmentId?: string;
+    /** Present for an invoice payment; absent for an appointment payment. */
+    invoiceId?: string;
     businessId: string;
     label: string;
     amountMinor: number;
@@ -77,13 +80,20 @@ export class StripeSdkPaymentProvider implements StripePaymentProvider {
   async createCheckout(input: {
     accountId: string;
     transactionId: string;
-    appointmentId: string;
+    appointmentId?: string;
+    invoiceId?: string;
     businessId: string;
     label: string;
     amountMinor: number;
     currency: string;
     customerEmail?: string | null;
   }) {
+    const metadata: Record<string, string> = {
+      chakusaTransactionId: input.transactionId,
+      chakusaBusinessId: input.businessId,
+    };
+    if (input.appointmentId) metadata.chakusaAppointmentId = input.appointmentId;
+    if (input.invoiceId) metadata.chakusaInvoiceId = input.invoiceId;
     const session = await this.client.checkout.sessions.create(
       {
         mode: "payment",
@@ -100,18 +110,8 @@ export class StripeSdkPaymentProvider implements StripePaymentProvider {
             },
           },
         ],
-        metadata: {
-          chakusaTransactionId: input.transactionId,
-          chakusaAppointmentId: input.appointmentId,
-          chakusaBusinessId: input.businessId,
-        },
-        payment_intent_data: {
-          metadata: {
-            chakusaTransactionId: input.transactionId,
-            chakusaAppointmentId: input.appointmentId,
-            chakusaBusinessId: input.businessId,
-          },
-        },
+        metadata,
+        payment_intent_data: { metadata },
       },
       { stripeAccount: input.accountId, idempotencyKey: input.transactionId },
     );

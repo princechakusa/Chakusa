@@ -241,7 +241,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(leadRoutes, { prefix: "/leads" });
   await app.register(quoteRoutes, { prefix: "/quotes" });
-  await app.register(invoiceRoutes, { prefix: "/invoices" });
+  await app.register(invoiceRoutes, { prefix: "/invoices", provider: options.stripePaymentProvider });
   await app.register(templateRoutes, { prefix: "/message-templates" });
   await app.register(reviewRequestRoutes, { prefix: "/review-requests" });
   await app.register(feedbackRoutes, { prefix: "/feedback" });

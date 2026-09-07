@@ -198,6 +198,18 @@ enum AppointmentPaymentTransactionStatus {
   refunded
 }
 
+// PROGRAM 3 / Invoicing I8: settled-transaction ledger for invoice
+// payments. Same lifecycle values as the appointment ledger. Invoice
+// payment state (PAID / PARTIALLY_PAID / OVERDUE) is DERIVED from these
+// rows minus refunds - never stored on the Invoice.
+enum InvoicePaymentTransactionStatus {
+  pending
+  paid
+  failed
+  partially_refunded
+  refunded
+}
+
 enum MessageType {
   missed_call
   booking_confirmation
@@ -966,6 +978,7 @@ model Business {
   bookingBlocks                  BookingBlock[]
   publicBookingAccess            PublicBookingAccess[]
   appointmentPaymentTransactions AppointmentPaymentTransaction[]
+  invoicePaymentTransactions     InvoicePaymentTransaction[]
   weeklyOwnerReports             WeeklyOwnerReport[]
   externalCalendarSubscriptions  ExternalCalendarSubscription[]
   supportTickets                 SupportTicket[]
@@ -4102,6 +4115,7 @@ model Invoice {
   revisions        InvoiceRevision[] @relation("InvoiceRevisionOwnership")
   currentRevision  InvoiceRevision?  @relation("InvoiceCurrentRevision", fields: [currentRevisionId, id], references: [id, invoiceId])
   events           InvoiceEvent[]
+  payments         InvoicePaymentTransaction[]
 
   @@unique([businessId, invoiceNumber])
   @@unique([currentRevisionId, id])
@@ -4133,6 +4147,7 @@ model InvoiceRevision {
   lineItems         InvoiceLineItem[]
   events            InvoiceEvent[]
   accessTokens      InvoiceAccessToken[]
+  payments          InvoicePaymentTransaction[]
   currentForInvoice Invoice?             @relation("InvoiceCurrentRevision")
 
   @@unique([invoiceId, revisionNumber])
@@ -4197,4 +4212,40 @@ model InvoiceAccessToken {
 
   @@index([invoiceRevisionId])
   @@map("invoice_access_tokens")
+}
+
+// PROGRAM 3 / Invoicing I8: one row per attempted invoice payment via
+// Stripe Connect (business <-> customer commerce - never the SaaS
+// subscription rail). Mirrors AppointmentPaymentTransaction. Bound to the
+// exact InvoiceRevision that was current when the invoice was sent, so a
+// payment can never be misattributed if the document is later reissued.
+// The webhook claims a row atomically (status: pending -> paid) so a
+// retried Stripe delivery can never double-count. Invoice payment state
+// is DERIVED from these rows at read time.
+model InvoicePaymentTransaction {
+  id                      String                          @id @default(uuid())
+  businessId              String                          @map("business_id")
+  invoiceId               String                          @map("invoice_id")
+  invoiceRevisionId       String                          @map("invoice_revision_id")
+  status                  InvoicePaymentTransactionStatus @default(pending)
+  amount                  Decimal                         @db.Decimal(10, 2)
+  refundedAmount          Decimal                         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  currency                String
+  stripeCheckoutSessionId String?                         @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId   String?                         @unique @map("stripe_payment_intent_id")
+  checkoutUrl             String?                         @map("checkout_url")
+  failureCode             String?                         @map("failure_code")
+  paidAt                  DateTime?                       @map("paid_at")
+  refundedAt              DateTime?                       @map("refunded_at")
+  createdAt               DateTime                        @default(now()) @map("created_at")
+  updatedAt               DateTime                        @updatedAt @map("updated_at")
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoice         Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceRevision InvoiceRevision @relation(fields: [invoiceRevisionId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status, createdAt])
+  @@index([invoiceId, createdAt])
+  @@index([status, createdAt])
+  @@map("invoice_payment_transactions")
 }

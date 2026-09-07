@@ -9,6 +9,7 @@ import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js
 import { prisma } from "../../lib/prisma.js";
 import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
 import { applyStripeEvent } from "../payments/payments.service.js";
+import { applyInvoiceStripeEvent } from "../invoices/invoicePayments.service.js";
 import { createHash } from "node:crypto";
 import { recordDeliveryReceipt, recordInboundMessage } from "../../lib/messaging/messagingPlatform.js";
 import { handleInboundAIMessage } from "../../lib/ai/agent/customerAgent.js";
@@ -115,6 +116,7 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     let event;
     try { event = stripePaymentProvider.constructEvent(request.rawBody, signature); } catch { throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid Stripe webhook signature"); }
     await applyStripeEvent(event);
+    await applyInvoiceStripeEvent(event);
     reply.send({ received: true });
   });
 

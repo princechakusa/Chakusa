@@ -7,27 +7,8 @@ import {
   type StripePaymentProvider,
 } from "../../lib/payments/stripeProvider.js";
 import { recordOutboxEvent } from "../../lib/outbox.js";
+import { toMinorUnits as toMinor } from "../../lib/payments/money.js";
 
-const ZERO_DECIMAL = new Set([
-  "BIF",
-  "CLP",
-  "DJF",
-  "GNF",
-  "JPY",
-  "KMF",
-  "KRW",
-  "MGA",
-  "PYG",
-  "RWF",
-  "UGX",
-  "VND",
-  "VUV",
-  "XAF",
-  "XOF",
-  "XPF",
-]);
-const toMinor = (amount: number, currency: string) =>
-  Math.round(amount * (ZERO_DECIMAL.has(currency.toUpperCase()) ? 1 : 100));
 function requireEnabled() {
   if (!config.STRIPE_PAYMENTS_ENABLED)
     throw ApiError.conflict(
@@ -68,13 +49,14 @@ export async function connectStatus(
   });
   if (!business.stripeAccountId)
     return {
+      enabled: config.STRIPE_PAYMENTS_ENABLED,
       connected: false,
       chargesEnabled: false,
       detailsSubmitted: false,
       payoutsEnabled: false,
     };
   const status = await provider.getAccountStatus(business.stripeAccountId);
-  return { connected: true, ...status };
+  return { enabled: config.STRIPE_PAYMENTS_ENABLED, connected: true, ...status };
 }
 
 export async function createAppointmentPaymentLink(
@@ -131,7 +113,7 @@ export async function createAppointmentPaymentLink(
       transactionId: transaction.id,
       appointmentId,
       businessId,
-      label: `${appointment.serviceName} — ${kind === "deposit" ? "deposit" : "payment"}`,
+      label: `${appointment.serviceName} - ${kind === "deposit" ? "deposit" : "payment"}`,
       amountMinor: toMinor(amount, currency),
       currency,
       customerEmail: appointment.customer?.email,

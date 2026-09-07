@@ -7,6 +7,8 @@ import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createInvoiceSchema, updateInvoiceSchema, listInvoicesQuerySchema, invoiceIdParamSchema } from "./invoices.schemas.js";
 import { createInvoiceDraft, updateInvoiceDraft, deleteInvoiceDraft, listInvoices, getInvoiceDetail, createInvoiceFromQuote, sendInvoice, voidInvoice, reissueInvoiceLink } from "./invoices.service.js";
+import { createInvoicePaymentLink, listInvoicePayments, refundInvoicePayment } from "./invoicePayments.service.js";
+import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
 
 // PROGRAM 3 / Invoicing I2: BUSINESS-facing draft + read API. Route
 // handlers do ONLY: auth (preHandler) -> role -> entitlement ->
@@ -28,7 +30,12 @@ async function resolveMemberId(businessId: string, userId: string): Promise<stri
   return member.id;
 }
 
-export default async function invoiceRoutes(fastify: FastifyInstance) {
+export interface InvoiceRoutesOptions {
+  provider?: StripePaymentProvider;
+}
+
+export default async function invoiceRoutes(fastify: FastifyInstance, options: InvoiceRoutesOptions = {}) {
+  const provider = options.provider ?? defaultStripePaymentProvider;
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
 
@@ -109,5 +116,32 @@ export default async function invoiceRoutes(fastify: FastifyInstance) {
     const { id } = invoiceIdParamSchema.parse(request.params);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
     reply.status(200).send(await voidInvoice(request.businessId!, memberId, id));
+  });
+
+  // I8: collect an invoice payment over Stripe Connect. A SENT invoice
+  // with an outstanding balance -> a Checkout Session the business hands
+  // to the customer (or that the customer reaches from the secure link).
+  // Payment STATE is always derived, never stored (locked decision §3).
+  fastify.post<{ Params: { id: string } }>("/:id/payment-link", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id } = invoiceIdParamSchema.parse(request.params);
+    reply.status(201).send(await createInvoicePaymentLink(request.businessId!, id, provider));
+  });
+
+  fastify.get<{ Params: { id: string } }>("/:id/payments", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id } = invoiceIdParamSchema.parse(request.params);
+    reply.send(await listInvoicePayments(request.businessId!, id));
+  });
+
+  // Refunding money already collected is OWNER/ADMIN only, matching VOID.
+  fastify.post<{ Params: { id: string; paymentId: string } }>("/:id/payments/:paymentId/refund", async (request, reply) => {
+    requireBusinessRole(request, INVOICE_VOID_ROLES);
+    assertFeatureAvailable(request.plan!, "INVOICING");
+    const { id, paymentId } = z.object({ id: z.string().uuid(), paymentId: z.string().uuid() }).parse(request.params);
+    const { amount } = z.object({ amount: z.number().positive().max(99_999_999).optional() }).parse(request.body ?? {});
+    reply.send(await refundInvoicePayment(request.businessId!, id, paymentId, amount, provider));
   });
 }

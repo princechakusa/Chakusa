@@ -251,7 +251,7 @@ describe("Invoicing draft + read API (Program 3, Invoicing I2)", () => {
     expect(drafts.json().total).toBe(2);
   });
 
-  it("detail returns the current revision, revision history and no payment fields", async () => {
+  it("detail returns the current revision, revision history and a derived payment position", async () => {
     const account = await businessAccount(app);
     const h = authHeader(account.token);
     const created = (await app.inject({ method: "POST", url: "/invoices", headers: h, payload: createBody() })).json();
@@ -261,9 +261,11 @@ describe("Invoicing draft + read API (Program 3, Invoicing I2)", () => {
     expect(body.currentRevision.lineItems[0]).toMatchObject({ description: "Consulting", quantity: "2.00", unitPrice: "75.00", lineTotal: "140.00" });
     expect(body.revisionHistory).toHaveLength(1);
     expect(body.quoteProvenance).toBeNull();
-    // No payment / paid / balance leakage in the read model.
-    expect(detail.body).not.toContain("amountPaid");
-    expect(detail.body).not.toContain("paidAmount");
-    expect(detail.body).not.toContain("balance");
+    // Payment state is DERIVED, not stored: a fresh DRAFT owes its full total and has no state yet.
+    expect(body.payment).toMatchObject({ currency: "USD", invoiceTotal: "140.00", amountPaid: "0.00", outstandingBalance: "140.00", state: null });
+    // No Stripe identifiers or provider internals leak into the read model.
+    expect(detail.body).not.toContain("stripe");
+    expect(detail.body).not.toContain("checkoutUrl");
+    expect(detail.body).not.toContain("paymentIntent");
   });
 });

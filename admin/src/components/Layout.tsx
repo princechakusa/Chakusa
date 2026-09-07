@@ -1,6 +1,6 @@
 import {
-  Activity, BarChart3, Building2, ChevronDown, CircleHelp, CreditCard, FileClock, LayoutDashboard,
-  LogOut, Menu, MessageSquareText, Moon, Scale, Search, Settings, ShieldCheck, Sun, Users, Workflow, X,
+  BarChart3, Bot, Building2, CalendarDays, ChevronDown, CircleHelp, CreditCard, FileClock, Gift, LayoutDashboard,
+  LogOut, Menu, MessageSquareText, Moon, Scale, Search, Settings, ShieldCheck, ShoppingBag, Sun, Users, Workflow, X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -11,7 +11,13 @@ const navigation = [
   { to: "/analytics", label: "Analytics", icon: BarChart3, permission: "platform.read" },
   { to: "/businesses", label: "Businesses", icon: Building2, permission: "business.read" },
   { to: "/users", label: "Users", icon: Users, permission: "user.read" },
+  { to: "/customers", label: "Customers", icon: Users, permission: "customer.read" },
+  { to: "/bookings", label: "Bookings", icon: CalendarDays, permission: "booking.read" },
+  { to: "/marketplace", label: "Marketplace", icon: ShoppingBag, permission: "marketplace.read" },
+  { to: "/loyalty", label: "Loyalty", icon: Gift, permission: "loyalty.read" },
   { to: "/subscriptions", label: "Subscriptions", icon: CreditCard, permission: "subscription.read" },
+  { to: "/finance", label: "Finance operations", icon: CreditCard, permission: "finance.read" },
+  { to: "/ai", label: "AI operations", icon: Bot, permission: "platform.read" },
   { to: "/automation", label: "Automation", icon: Workflow, permission: "automation.read" },
   { to: "/communications", label: "Communications", icon: MessageSquareText, permission: "communication.read" },
   { to: "/support", label: "Support", icon: CircleHelp, permission: "support.read" },
@@ -41,13 +47,13 @@ export default function Layout() {
         <p>Workspace</p>
         {visibleNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/"}><Icon size={18} /><span>{label}</span></NavLink>)}
       </nav>
-      <div className="sidebar-foot"><div className="security-note"><ShieldCheck size={18} /><div><strong>Secure workspace</strong><span>All actions are audited</span></div></div><div className="environment"><i />Local test environment</div></div>
+      <div className="sidebar-foot"><div className="security-note"><ShieldCheck size={18} /><div><strong>Secure workspace</strong><span>Administrative actions are audited</span></div></div><div className="environment"><i />{window.location.hostname === "localhost" ? "Local environment" : "Production environment"}</div></div>
     </aside>
     {menuOpen && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
     <div className="main-column">
       <header className="topbar">
         <button className="menu-button" onClick={() => setMenuOpen(true)} aria-label="Open navigation"><Menu size={20} /></button>
-        <button className="command-search" onClick={() => navigate("/businesses")}><Search size={16} /><span>Search businesses, users, or customers</span><kbd>/</kbd></button>
+        <button className="command-search" onClick={() => navigate(auth.hasPermission("customer.read") ? "/customers" : "/businesses")}><Search size={16} /><span>Search customers and businesses</span><kbd>/</kbd></button>
         <div className="topbar-actions">
           <button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle color theme">{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}</button>
           <div className="profile-menu"><button onClick={() => setProfileOpen(!profileOpen)}><span className="avatar">{auth.user?.fullName.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><span className="profile-copy"><strong>{auth.user?.fullName}</strong><small>{auth.admin?.role.replaceAll("_", " ")}</small></span><ChevronDown size={14} /></button>{profileOpen && <div className="profile-popover"><div><strong>{auth.user?.fullName}</strong><span>{auth.user?.email}</span></div><button onClick={() => void auth.logout()}><LogOut size={16} />Secure logout</button></div>}</div>

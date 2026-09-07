@@ -33,6 +33,7 @@ import {
   listAdminSupportTickets,
   listAdminUsers,
 } from "./adminRead.service.js";
+import { getAdminFinanceOperations } from "./financeAdmin.service.js";
 import { recordAdminAudit } from "./adminAudit.service.js";
 import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
 import { getOutboxStatus } from "./outboxRead.service.js";
@@ -385,6 +386,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get("/subscriptions", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "subscription.read");
     reply.send(await listAdminSubscriptions(adminSubscriptionListQuerySchema.parse(request.query)));
+  });
+
+  fastify.get("/finance/operations", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "finance.read");
+    reply.send(await getAdminFinanceOperations());
   });
 
   fastify.get("/automation/runs", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {

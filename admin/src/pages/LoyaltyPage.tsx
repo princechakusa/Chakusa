@@ -1,0 +1,21 @@
+import { useQuery } from "@tanstack/react-query";
+import { Gift } from "lucide-react";
+import { apiFetch, type PageEnvelope } from "../api";
+import { DataTable, ErrorState, formatNumber, LoadingState, MetricCard, PageHeader, StatusBadge } from "../components/ui";
+
+interface Analytics { programs: number; activePrograms: number; businessesWithActiveProgram: number; loyaltyAccounts: number; enrolledCustomers: number; outstandingPoints: number; lifetimePointsIssued: number; last30Days: { pointsEarned: number; earnEvents: number; pointsRedeemed: number; redeemEvents: number } }
+interface Program { id: string; active: boolean; programName: string; pointsName: string; updatedAt: string; members: number; business: { id: string; name: string; publicSlug: string | null } | null }
+interface Fraud { rapidRedeemers: unknown[]; negativeBalanceAccounts: unknown[]; rejectedReferrals: number; highVolumeReferrers: unknown[] }
+
+export default function LoyaltyPage() {
+  const analytics = useQuery({ queryKey: ["admin-loyalty-analytics"], queryFn: () => apiFetch<Analytics>("/admin/loyalty/analytics") });
+  const programs = useQuery({ queryKey: ["admin-loyalty-programs"], queryFn: () => apiFetch<PageEnvelope<Program>>("/admin/loyalty/programs?page=1&pageSize=50") });
+  const fraud = useQuery({ queryKey: ["admin-loyalty-fraud"], queryFn: () => apiFetch<Fraud>("/admin/loyalty/fraud-review") });
+  if (analytics.error) return <div className="page"><ErrorState message={(analytics.error as Error).message} onRetry={() => void analytics.refetch()} /></div>;
+  const stats = analytics.data; const rows = programs.data?.items ?? []; const reviewCount = (fraud.data?.rapidRedeemers.length ?? 0) + (fraud.data?.negativeBalanceAccounts.length ?? 0) + (fraud.data?.highVolumeReferrers.length ?? 0);
+  return <div className="page"><PageHeader eyebrow="Retention system" title="Loyalty" description="Oversight for business loyalty programs, customer enrollment, point liability, rewards, referrals, and fraud signals." actions={<button className="button secondary" onClick={() => { void analytics.refetch(); void programs.refetch(); void fraud.refetch(); }}>Refresh data</button>} />
+    <section className="metric-grid primary-metrics"><MetricCard label="Programs" value={formatNumber(stats?.programs)} /><MetricCard label="Active programs" value={formatNumber(stats?.activePrograms)} tone="good" /><MetricCard label="Loyalty accounts" value={formatNumber(stats?.loyaltyAccounts)} /><MetricCard label="Enrolled customers" value={formatNumber(stats?.enrolledCustomers)} /><MetricCard label="Outstanding points" value={formatNumber(stats?.outstandingPoints)} /><MetricCard label="Review signals" value={formatNumber(reviewCount)} detail={`${formatNumber(fraud.data?.rejectedReferrals)} rejected referrals`} tone={reviewCount ? "warning" : "default"} /></section>
+    <section className="metric-grid secondary-metrics"><MetricCard label="Points earned, 30 days" value={formatNumber(stats?.last30Days.pointsEarned)} detail={`${formatNumber(stats?.last30Days.earnEvents)} events`} /><MetricCard label="Points redeemed, 30 days" value={formatNumber(stats?.last30Days.pointsRedeemed)} detail={`${formatNumber(stats?.last30Days.redeemEvents)} events`} /><MetricCard label="Lifetime points issued" value={formatNumber(stats?.lifetimePointsIssued)} /><MetricCard label="Businesses participating" value={formatNumber(stats?.businessesWithActiveProgram)} /></section>
+    <section className="panel table-panel">{programs.isLoading ? <LoadingState label="Loading loyalty programs" /> : programs.error ? <ErrorState message={(programs.error as Error).message} onRetry={() => void programs.refetch()} /> : <DataTable columns={["Business", "Program", "Points name", "Members", "Status"]} rows={rows.map((item) => [<div className="primary-cell"><span className="entity-icon"><Gift size={16} /></span><div><strong>{item.business?.name || "Unknown business"}</strong><span>{item.business?.publicSlug || "No public slug"}</span></div></div>, item.programName, item.pointsName, formatNumber(item.members), <StatusBadge value={item.active ? "active" : "inactive"} />])} empty={{ title: "No loyalty programs", description: "Businesses have not configured loyalty programs yet." }} />}</section>
+  </div>;
+}

@@ -12,6 +12,12 @@ const BusinessDetailPage = lazy(() => import("./pages/BusinessDetailPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const UserDetailPage = lazy(() => import("./pages/UserDetailPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
+const CustomersPage = lazy(() => import("./pages/CustomersPage"));
+const BookingsPage = lazy(() => import("./pages/BookingsPage"));
+const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
+const LoyaltyPage = lazy(() => import("./pages/LoyaltyPage"));
+const AIOperationsPage = lazy(() => import("./pages/AIOperationsPage"));
+const FinanceOperationsPage = lazy(() => import("./pages/FinanceOperationsPage"));
 const AutomationPage = lazy(() => import("./pages/AutomationPage"));
 const CommunicationsPage = lazy(() => import("./pages/CommunicationsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
@@ -41,6 +47,12 @@ export default function App() {
       <Route path="users" element={<UsersPage />} />
       <Route path="users/:id" element={<UserDetailPage />} />
       <Route path="subscriptions" element={<SubscriptionsPage />} />
+      <Route path="customers" element={<CustomersPage />} />
+      <Route path="bookings" element={<BookingsPage />} />
+      <Route path="marketplace" element={<MarketplacePage />} />
+      <Route path="loyalty" element={<LoyaltyPage />} />
+      <Route path="ai" element={<AIOperationsPage />} />
+      <Route path="finance" element={<FinanceOperationsPage />} />
       <Route path="automation" element={<AutomationPage />} />
       <Route path="communications" element={<CommunicationsPage />} />
       <Route path="support" element={<SupportPage />} />

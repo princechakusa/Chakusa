@@ -1,0 +1,21 @@
+import { useQuery } from "@tanstack/react-query";
+import { ShoppingBag } from "lucide-react";
+import { useDeferredValue, useState } from "react";
+import { apiFetch, queryString, type PageEnvelope } from "../api";
+import { DataTable, ErrorState, formatNumber, LoadingState, MetricCard, PageHeader, Pagination, SearchInput, StatusBadge } from "../components/ui";
+
+interface Listing { businessId: string; name: string; slug: string | null; industry: string | null; verified: boolean; platformStatus: string; category: string; listing: { listed: boolean; discoverable: boolean; featured: boolean; viewCount: number; favouriteCount: number } | null }
+interface Analytics { listedBusinesses: number; featuredBusinesses: number; activePromotions: number; openReports: number; totalViews: number; totalFavourites: number; searchesLast7Days: number; businessesByCategory: Array<{ key?: string; categorySlug?: string; count?: number; _count?: { _all: number } }> }
+
+export default function MarketplacePage() {
+  const [search, setSearch] = useState(""); const [featured, setFeatured] = useState(false); const [page, setPage] = useState(1);
+  const params = { search: useDeferredValue(search) || undefined, featured: featured || undefined, page, pageSize: 25 };
+  const list = useQuery({ queryKey: ["admin-marketplace", params], queryFn: () => apiFetch<PageEnvelope<Listing>>(`/admin/marketplace/listings?${queryString(params)}`) });
+  const analytics = useQuery({ queryKey: ["admin-marketplace-analytics"], queryFn: () => apiFetch<Analytics>("/admin/marketplace/analytics") });
+  const rows = list.data?.items ?? []; const stats = analytics.data;
+  return <div className="page"><PageHeader eyebrow="Customer discovery" title="Marketplace" description="Manage how business profiles from the dashboard appear in customer discovery and monitor marketplace health." actions={<button className="button secondary" onClick={() => { void list.refetch(); void analytics.refetch(); }}>Refresh data</button>} />
+    <section className="metric-grid primary-metrics"><MetricCard label="Listed businesses" value={formatNumber(stats?.listedBusinesses)} /><MetricCard label="Featured" value={formatNumber(stats?.featuredBusinesses)} /><MetricCard label="Active promotions" value={formatNumber(stats?.activePromotions)} /><MetricCard label="Open reports" value={formatNumber(stats?.openReports)} tone={stats?.openReports ? "warning" : "default"} /><MetricCard label="Profile views" value={formatNumber(stats?.totalViews)} /><MetricCard label="Favourites" value={formatNumber(stats?.totalFavourites)} detail={`${formatNumber(stats?.searchesLast7Days)} searches in 7 days`} /></section>
+    <div className="toolbar panel"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Search marketplace businesses" /><div className="filters"><label className="check-filter"><input type="checkbox" checked={featured} onChange={(event) => { setFeatured(event.target.checked); setPage(1); }} /> Featured only</label></div></div>
+    <section className="panel table-panel">{list.isLoading ? <LoadingState label="Loading marketplace" /> : list.error ? <ErrorState message={(list.error as Error).message} onRetry={() => void list.refetch()} /> : <><DataTable columns={["Business", "Category", "Platform", "Listed", "Discoverable", "Featured", "Views", "Favourites"]} rows={rows.map((item) => [<div className="primary-cell"><span className="entity-icon"><ShoppingBag size={16} /></span><div><strong>{item.name}</strong><span>{item.slug || "No public slug"}</span></div></div>, item.category || item.industry || "Uncategorised", <StatusBadge value={item.platformStatus} />, <StatusBadge value={item.listing?.listed ? "active" : "inactive"} />, <StatusBadge value={item.listing?.discoverable ? "active" : "inactive"} />, <StatusBadge value={item.listing?.featured ? "active" : "inactive"} />, formatNumber(item.listing?.viewCount), formatNumber(item.listing?.favouriteCount)])} empty={{ title: "No marketplace listings", description: "No public business profiles match the selected filters." }} /><Pagination page={list.data!.page} pageSize={list.data!.pageSize} total={list.data!.total} onPage={setPage} /></>}</section>
+  </div>;
+}

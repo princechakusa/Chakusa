@@ -1,4 +1,5 @@
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://localhost:4000";
+const DEFAULT_API_URL = import.meta.env.DEV ? "http://localhost:4000" : "https://chakusa-api.onrender.com";
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? DEFAULT_API_URL;
 
 let accessToken: string | null = null;
 let csrfToken: string | null = sessionStorage.getItem("chakusa_admin_csrf");

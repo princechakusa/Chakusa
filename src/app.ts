@@ -24,6 +24,7 @@ import leadRoutes from "./modules/leads/leads.routes.js";
 import quoteRoutes from "./modules/quotes/quotes.routes.js";
 import invoiceRoutes from "./modules/invoices/invoices.routes.js";
 import financialRoutes from "./modules/financial/financial.routes.js";
+import accountingRoutes from "./modules/accounting/accounting.routes.js";
 import templateRoutes from "./modules/templates/templates.routes.js";
 import reviewRequestRoutes from "./modules/reviews/reviews.routes.js";
 import feedbackRoutes from "./modules/feedback/feedback.routes.js";
@@ -244,6 +245,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(quoteRoutes, { prefix: "/quotes" });
   await app.register(invoiceRoutes, { prefix: "/invoices", provider: options.stripePaymentProvider });
   await app.register(financialRoutes, { prefix: "/financial" });
+  await app.register(accountingRoutes, { prefix: "/accounting" });
   await app.register(templateRoutes, { prefix: "/message-templates" });
   await app.register(reviewRequestRoutes, { prefix: "/review-requests" });
   await app.register(feedbackRoutes, { prefix: "/feedback" });

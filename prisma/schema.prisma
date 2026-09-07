@@ -1000,6 +1000,8 @@ model Business {
   expenses                       Expense[]
   expenseReceipts                ExpenseReceipt[]
   mileageTrips                   MileageTrip[]
+  accountingConnections          AccountingConnection[]
+  accountingSyncLogs             AccountingSyncLog[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -4410,4 +4412,105 @@ model MileageTrip {
 
   @@index([businessId, deletedAt, tripDate])
   @@map("mileage_trips")
+}
+
+// ===========================================================================
+// ACCOUNTING INTEGRATIONS - Roadmap stage 9 (master directive §19)
+//
+// Provider-neutral connection + sync-ledger foundation. This stage models
+// ONLY the OAuth connection lifecycle and an append-only sync ledger. It
+// invents NO accounting policy: there is no chart of accounts, no tax
+// treatment, no account mapping here - those are owner/product decisions
+// (§30 stop condition) and belong to a later, separately-audited stage.
+//
+// OAuth access/refresh tokens are stored AES-256-GCM encrypted at rest
+// (encryptProviderCredential) - the raw tokens are never persisted or
+// logged. No provider adapter is wired yet, so a connection cannot reach
+// `connected` in production until real QuickBooks/Xero credentials are
+// configured: FOUNDATION COMPLETE, PRODUCTION CONFIGURATION REQUIRED.
+// ===========================================================================
+
+enum AccountingProvider {
+  quickbooks
+  xero
+}
+
+enum AccountingConnectionStatus {
+  pending
+  connected
+  error
+  disconnected
+}
+
+enum AccountingSyncDirection {
+  push
+  pull
+}
+
+enum AccountingSyncEntity {
+  customer
+  invoice
+  payment
+  expense
+}
+
+enum AccountingSyncStatus {
+  pending
+  success
+  failed
+  skipped
+}
+
+model AccountingConnection {
+  id              String                     @id @default(uuid())
+  businessId      String                     @map("business_id")
+  provider        AccountingProvider
+  status          AccountingConnectionStatus @default(pending)
+  externalOrgId   String?                    @map("external_org_id")
+  externalOrgName String?                    @map("external_org_name")
+  accessTokenEnc  String?                    @map("access_token_enc")
+  refreshTokenEnc String?                    @map("refresh_token_enc")
+  tokenExpiresAt  DateTime?                  @map("token_expires_at")
+  scopes          String?
+  lastSyncAt      DateTime?                  @map("last_sync_at")
+  lastError       String?                    @map("last_error")
+  connectedAt     DateTime?                  @map("connected_at")
+  disconnectedAt  DateTime?                  @map("disconnected_at")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  syncLogs  AccountingSyncLog[]
+
+  @@unique([businessId, provider])
+  @@index([status, updatedAt])
+  @@map("accounting_connections")
+}
+
+// Append-only. No application code path may update a row's identity or
+// delete it; only `status` / `attempts` / `error` / `completedAt`
+// transition forward as a queued sync item settles.
+model AccountingSyncLog {
+  id             String                  @id @default(uuid())
+  businessId     String                  @map("business_id")
+  connectionId   String                  @map("connection_id")
+  provider       AccountingProvider
+  direction      AccountingSyncDirection
+  entity         AccountingSyncEntity
+  localId        String?                 @map("local_id")
+  externalId     String?                 @map("external_id")
+  idempotencyKey String                  @unique @map("idempotency_key")
+  status         AccountingSyncStatus    @default(pending)
+  attempts       Int                     @default(0)
+  error          String?
+  payloadDigest  String?                 @map("payload_digest")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  completedAt    DateTime?               @map("completed_at")
+
+  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connection AccountingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+  @@index([businessId, entity, status])
+  @@map("accounting_sync_logs")
 }

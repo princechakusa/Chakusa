@@ -12,7 +12,7 @@ import { colors, radius, spacing, typography } from '../theme';
 
 // PROGRAM 2 LOOP 4: gates Main (see authenticationFlow.ts's legalAcceptance
 // route) the same single-screen/step-counter way PremiumFtueScreen gates
-// onboarding — one document at a time, in whatever order the backend
+// onboarding - one document at a time, in whatever order the backend
 // listed them in pendingLegalDocuments, no way to skip ahead. Reuses
 // publicDocument.ts's Markdown-ish renderer rather than duplicating it,
 // since the stored content is identical to what the public document

@@ -42,7 +42,7 @@ const category = (over: Partial<MarketplaceCategoryDto> = {}): MarketplaceCatego
 });
 
 describe('marketplace domain (Program 2, Loop 2)', () => {
-  describe('navigation guards — no booking', () => {
+  describe('navigation guards - no booking', () => {
     it('allows the five marketplace routes', () => {
       expect(canNavigateMarketplace('Marketplace')).toBe(true);
       expect(canNavigateMarketplace('Search')).toBe(true);
@@ -184,7 +184,7 @@ describe('marketplace domain (Program 2, Loop 2)', () => {
       expect(Object.values(bare).every((v) => v === false)).toBe(true);
     });
 
-    it('renders services as information only — never bookable', () => {
+    it('renders services as information only - never bookable', () => {
       const display = serviceDisplay(profile().services[0], '£');
       expect(display).toEqual({ name: 'Massage', meta: '60 min · £80', canBook: false });
     });

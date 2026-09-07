@@ -44,7 +44,7 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
   // Best-effort: a real browser tab gets the business's name and a
   // description-derived summary, matching PublicDocumentScreen's
   // document.title pattern. This does not help a non-JS-executing social
-  // link-preview crawler (WhatsApp, Facebook) render a rich card — that
+  // link-preview crawler (WhatsApp, Facebook) render a rich card - that
   // needs server-rendered Open Graph meta tags, which this Expo-web page
   // cannot produce on its own. Real browsers and JS-executing crawlers
   // (e.g. Googlebot) still benefit.
@@ -61,7 +61,7 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     if (!slug || view.kind !== 'loaded' || !canSubmitContact(view, name, phone)) return;
     const details = view.details;
     setView({ kind: 'submitting', details });
-    // Referral-program attribution only — a customer's personal share link
+    // Referral-program attribution only - a customer's personal share link
     // carries their own id as ?ref=, which the backend validates belongs to
     // this business (or silently ignores) before attributing the resulting
     // lead. Read directly from the URL rather than plumbed through

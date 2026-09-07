@@ -97,7 +97,7 @@ export function LoyaltyProgramSettingsScreen({ navigation }: Props) {
         <Text style={styles.cardTitle}>Earning</Text>
         <NumberField label="Points per unit of currency spent" value={draft.pointsPerCurrency} onChangeText={field('pointsPerCurrency')} hint={programCheck.errors.pointsPerCurrency ?? 'e.g. 10 gives 300 points for a 30.00 booking'} />
         <NumberField label="Bonus points per completed booking" value={draft.pointsPerBookingBonus} onChangeText={field('pointsPerBookingBonus')} hint={programCheck.errors.pointsPerBookingBonus ?? undefined} />
-        <NumberField label="Points per review" value={draft.pointsPerReview} onChangeText={field('pointsPerReview')} hint={programCheck.errors.pointsPerReview ?? 'Awarded for any submitted review — never gated on rating'} />
+        <NumberField label="Points per review" value={draft.pointsPerReview} onChangeText={field('pointsPerReview')} hint={programCheck.errors.pointsPerReview ?? 'Awarded for any submitted review - never gated on rating'} />
         <NumberField label="Points per completed referral" value={draft.pointsPerReferral} onChangeText={field('pointsPerReferral')} hint={programCheck.errors.pointsPerReferral ?? undefined} />
         <NumberField label="Welcome bonus on joining" value={draft.welcomeBonus} onChangeText={field('welcomeBonus')} hint={programCheck.errors.welcomeBonus ?? undefined} />
         <NumberField label="Points expire after (days)" value={draft.pointExpiryDays} onChangeText={field('pointExpiryDays')} placeholder="Never" hint={programCheck.errors.pointExpiryDays ?? 'Leave blank for points that never expire'} />

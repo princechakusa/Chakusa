@@ -65,7 +65,7 @@ export function QuoteDetailScreen({ route, navigation }: Props) {
     try {
       const result = await quotesApi.send(quote.id, quote.currentRevision?.id);
       await copyMessage(result.acceptanceUrl);
-      Alert.alert('Quote sent', 'A secure link is on your clipboard — share it with your customer however you like.');
+      Alert.alert('Quote sent', 'A secure link is on your clipboard - share it with your customer however you like.');
       await load();
     } catch (caught) {
       Alert.alert('Couldn’t send this quote', caught instanceof ApiError ? caught.message : 'Please try again.');

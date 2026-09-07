@@ -17,7 +17,7 @@ import { BillingProvider } from './state/BillingContext';
 import { RootStackParamList } from './types';
 
 // PROGRAM 2 LOOP 9: the existing business-owner application, extracted from
-// App.tsx unchanged. This is a STRUCTURAL extraction only — the provider
+// App.tsx unchanged. This is a STRUCTURAL extraction only - the provider
 // order, the NavigationContainer, the linking config, the business
 // managers and AppNavigator are byte-for-byte what App.tsx rendered
 // before. The ExperienceRouter mounts exactly one of BusinessRoot /

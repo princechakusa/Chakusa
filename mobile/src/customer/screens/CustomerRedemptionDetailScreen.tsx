@@ -8,7 +8,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRedemptionDetail'>;
 
 // PROGRAM 2 LOOP 8: the redemption code, shown large for the business to
-// read. The customer app does not mark it redeemed — Loop 6's business app
+// read. The customer app does not mark it redeemed - Loop 6's business app
 // consumes it.
 
 export function CustomerRedemptionDetailScreen({ route, navigation }: Props) {

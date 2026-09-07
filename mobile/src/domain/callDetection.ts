@@ -2,7 +2,7 @@ import type { CallScreeningRoleStatus, PendingMissedCallEvent } from 'chakusa-ca
 
 /**
  * The native queue (MissedCallStore.kt) is a best-effort SharedPreferences
- * store, not a validated database — this is the one place the JS layer
+ * store, not a validated database - this is the one place the JS layer
  * checks that a queued event is actually usable before spending a network
  * call on it. An event that fails this check can never be fixed by
  * retrying, so the sync layer clears it immediately rather than leaving it
@@ -24,7 +24,7 @@ export function partitionMissedCallEvents(events: PendingMissedCallEvent[]): { v
 
 export type CallDetectionAvailability = 'ready' | 'needs_role' | 'needs_phone_permission' | 'needs_both' | 'unsupported';
 
-/** Both the call-screening role and the phone-state permission are required for detection to actually work — this is the single place that combines them into one status. */
+/** Both the call-screening role and the phone-state permission are required for detection to actually work - this is the single place that combines them into one status. */
 export function callDetectionAvailability(roleStatus: CallScreeningRoleStatus, hasPhoneStatePermission: boolean): CallDetectionAvailability {
   if (roleStatus === 'unsupported') return 'unsupported';
   const needsRole = roleStatus !== 'granted';

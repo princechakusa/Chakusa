@@ -10,7 +10,7 @@ export function ValueProofCard({ value, currency = 'USD', free, onPress }: { val
   return <View style={styles.card} accessibilityLabel="Your Chakusa value this month">
     <View style={styles.top}><View><Text style={styles.eyebrow}>YOUR CHAKUSA VALUE</Text><Text style={styles.title}>Real outcomes this month</Text></View><View style={styles.icon}><Ionicons name="trending-up" size={20} color={colors.surface} /></View></View>
     <View style={styles.metrics}><Metric label="Recovered" value={formatMoney(value.recoveredRevenueThisMonth, currency ?? 'USD')} /><Metric label="Jobs completed" value={String(value.completedAppointmentsThisMonth)} /><Metric label="Upcoming value" value={formatMoney(value.scheduledAppointmentValue, currency ?? 'USD')} /></View>
-    <Text style={styles.body}>{value.customerMessagesSentThisMonth} customer messages sent · {value.reviewsReceivedThisMonth} reviews received. These figures come from recorded Chakusa activity—not projections.</Text>
+    <Text style={styles.body}>{value.customerMessagesSentThisMonth} customer messages sent · {value.reviewsReceivedThisMonth} reviews received. These figures come from recorded Chakusa activity - not projections.</Text>
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.action, pressed && styles.pressed]}><Text style={styles.actionText}>{free ? 'See what Pro can automate' : 'View business insights'}</Text><Ionicons name="chevron-forward" size={17} color={colors.primary} /></Pressable>
   </View>;
 }

@@ -50,7 +50,7 @@ const booking = (over: Partial<CustomerBookingDto> = {}): CustomerBookingDto => 
 });
 
 describe('booking domain (Program 2, Loop 3)', () => {
-  describe('navigation — no payments/loyalty/rewards', () => {
+  describe('navigation - no payments/loyalty/rewards', () => {
     it('allows the four booking routes', () => {
       for (const route of ['BookingFlow', 'BookingCalendar', 'AppointmentDetails', 'BookingHistory']) {
         expect(canNavigateBooking(route)).toBe(true);

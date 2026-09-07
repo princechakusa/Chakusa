@@ -5,7 +5,7 @@ export type EngineItemStatus = 'active' | 'attention' | 'locked' | 'unsupported'
 export interface EngineItem {
   key: 'detection' | 'contactCoverage' | 'followUp' | 'notifications';
   label: string;
-  /** Business-value framing — never mentions a permission, role, or API by name. */
+  /** Business-value framing - never mentions a permission, role, or API by name. */
   value: string;
   status: EngineItemStatus;
   /** Present only when the owner can act on it directly from this card. */
@@ -18,7 +18,7 @@ export interface RecoveryEngineInput {
   /** 'unsupported' on iOS/web, or an Android device where the OS capability itself isn't available. */
   callDetection: CallDetectionAvailability;
   /**
-   * Only meaningful once callDetection is 'ready' — Android's Telecom
+   * Only meaningful once callDetection is 'ready' - Android's Telecom
    * framework skips ChakusaCallScreeningService entirely for calls from
    * numbers already saved in the device's contacts unless this permission
    * is held. Without it, detection still works, but only for calls from
@@ -32,12 +32,12 @@ export interface RecoveryEngineInput {
 
 /**
  * Combines the three independent capabilities that together make up "the
- * Recovery Engine" from the owner's point of view — missed-call detection,
- * automatic follow-up, and notifications — into one status a business
+ * Recovery Engine" from the owner's point of view - missed-call detection,
+ * automatic follow-up, and notifications - into one status a business
  * owner can read at a glance. Each capability is graded on its own terms:
  * 'locked' (a real plan limitation, not something a tap fixes) is
  * deliberately excluded from the pass/fail calculation below, matching the
- * same principle setupScore.ts already uses for automation — a Free
+ * same principle setupScore.ts already uses for automation - a Free
  * business should never be told the engine "needs attention" over a
  * feature it isn't paying for.
  */
@@ -54,7 +54,7 @@ export function recoveryEngineStatus(input: RecoveryEngineInput): RecoveryEngine
       action: ready ? undefined : 'Turn on',
     });
 
-    // Showing this before base detection is ready would be confusing — a
+    // Showing this before base detection is ready would be confusing - a
     // business owner can't do anything useful with "also cover saved
     // contacts" advice until missed-call detection itself is on.
     if (ready) {

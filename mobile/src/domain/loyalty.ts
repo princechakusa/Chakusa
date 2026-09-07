@@ -9,7 +9,7 @@ import type {
 } from '../apiTypes';
 
 // PROGRAM 2 LOOP 5: pure product rules for the loyalty / membership / reward
-// / wallet / referral mobile surface — points + tier formatting, reward
+// / wallet / referral mobile surface - points + tier formatting, reward
 // affordability, redemption code display, membership savings, referral
 // progress, wallet aggregation, transaction labels, navigation guards. No
 // networking, no payment / stored-value / redemption-of-cash logic.
@@ -168,5 +168,5 @@ export function referralStatusLabel(status: ReferralOverviewDto['referrals'][num
 }
 
 export function shareInviteMessage(code: string, inviteUrl: string): string {
-  return `Join me on Chakusa — use my code ${code}: ${inviteUrl}`;
+  return `Join me on Chakusa - use my code ${code}: ${inviteUrl}`;
 }

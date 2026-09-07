@@ -15,7 +15,7 @@ import type {
 import { api } from './api';
 
 // PROGRAM 2 LOOP 6: the mobile business app's client for the existing
-// /loyalty/* management API (Program 2 Loop 5). No new engine — this only
+// /loyalty/* management API (Program 2 Loop 5). No new engine - this only
 // calls the approved production routes with the business (PRODUCT) session.
 
 const query = (values: Record<string, string | number | undefined>) => {

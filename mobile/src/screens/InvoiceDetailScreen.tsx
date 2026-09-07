@@ -50,7 +50,7 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
     try {
       const result = await invoicesApi.send(invoice.id);
       await copyMessage(result.accessUrl);
-      Alert.alert('Invoice sent', 'A secure link is on your clipboard — share it with your customer however you like.');
+      Alert.alert('Invoice sent', 'A secure link is on your clipboard - share it with your customer however you like.');
       await load();
     } catch (caught) {
       Alert.alert('Couldn’t send this invoice', caught instanceof ApiError ? caught.message : 'Please try again.');
@@ -66,7 +66,7 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
       const result = await invoicesApi.paymentLink(invoice.id);
       if (result.checkoutUrl) {
         await copyMessage(result.checkoutUrl);
-        Alert.alert('Payment link copied', 'A secure Stripe payment link is on your clipboard — send it to your customer.');
+        Alert.alert('Payment link copied', 'A secure Stripe payment link is on your clipboard - send it to your customer.');
       } else {
         Alert.alert('Payment not ready', 'Could not start a payment for this invoice.');
       }

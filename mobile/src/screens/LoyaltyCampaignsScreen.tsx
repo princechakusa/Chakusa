@@ -89,7 +89,7 @@ export function LoyaltyCampaignsScreen(_props: Props) {
                     <View style={styles.icon}><Ionicons name="flash-outline" size={20} color={colors.primary} /></View>
                     <View style={styles.copy}>
                       <Text style={styles.name}>{campaign.name}</Text>
-                      <Text style={styles.detail}>{campaign.kind === 'multiplier' ? `${campaign.multiplier}× points` : `+${campaign.bonusPoints} points`} · {formatDate(campaign.startsAt)} – {formatDate(campaign.endsAt)}</Text>
+                      <Text style={styles.detail}>{campaign.kind === 'multiplier' ? `${campaign.multiplier}× points` : `+${campaign.bonusPoints} points`} · {formatDate(campaign.startsAt)} - {formatDate(campaign.endsAt)}</Text>
                     </View>
                     <StatusBadge label={campaignWindowLabel(campaign)} />
                   </View>
@@ -107,7 +107,7 @@ export function LoyaltyCampaignsScreen(_props: Props) {
         <TextField label="Description (optional)" value={draft.description} onChangeText={(v) => set('description', v)} multiline />
         <Segmented label="Boost type" options={KINDS} value={draft.kind} onChange={(v) => set('kind', v)} renderLabel={campaignKindLabel} />
         {draft.kind === 'multiplier'
-          ? <NumberField label="Points multiplier (1–20)" value={draft.multiplier} onChangeText={(v) => set('multiplier', v)} placeholder="2" />
+          ? <NumberField label="Points multiplier (1-20)" value={draft.multiplier} onChangeText={(v) => set('multiplier', v)} placeholder="2" />
           : <NumberField label="Bonus points per event" value={draft.bonusPoints} onChangeText={(v) => set('bonusPoints', v)} placeholder="50" />}
         <DateStepper label="Starts" value={draft.startsAt} onShift={(days) => shiftDate('startsAt', days)} />
         <DateStepper label="Ends" value={draft.endsAt} onShift={(days) => shiftDate('endsAt', days)} />

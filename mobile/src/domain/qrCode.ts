@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 /**
  * Pure QR-matrix generation, kept separate from any rendering concern.
  * `qrcode`'s `create()` is synchronous and dependency-free at runtime (no
- * Canvas/DOM) — it only computes the module grid, which is exactly what a
+ * Canvas/DOM) - it only computes the module grid, which is exactly what a
  * plain View-based renderer needs. Deliberately not using `toDataURL`/
  * `toCanvas` (both require a Canvas implementation React Native doesn't
  * have) or a native SVG library (would require a new native dependency and

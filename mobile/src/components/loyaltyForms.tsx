@@ -5,7 +5,7 @@ import { colors, radius, spacing, typography } from '../theme';
 
 // PROGRAM 2 LOOP 6: shared form primitives for the business loyalty screens,
 // built on the existing ui.tsx components + theme tokens. No new design
-// system — this is the same bottom-sheet form pattern ServiceCatalogScreen
+// system - this is the same bottom-sheet form pattern ServiceCatalogScreen
 // already uses, factored out so the loyalty screens stay small.
 
 export function FieldLabel({ children }: { children: ReactNode }) {

@@ -10,7 +10,7 @@ import { rewardEligibilityReason, redemptionStatusLabel } from '../domain/custom
 import type { HubBusiness } from '../domain/customerLoyalty';
 
 // PROGRAM 2 LOOP 8: presentational loyalty pieces. Theme tokens only; all
-// values come from the server. No color-only status — every state also has
+// values come from the server. No color-only status - every state also has
 // text.
 
 export function PointsSummary({ total, caption }: { total: number; caption: string }) {
@@ -45,7 +45,7 @@ export function TierProgressBar({ account }: { account: LoyaltyAccountSummaryDto
   const pct = Math.round(progress.ratio * 100);
   const label = progress.nextTier
     ? `${progress.currentTier} tier. ${formatPoints(progress.pointsAway)} to ${progress.nextTier}. ${pct}% of the way.`
-    : `${progress.currentTier} tier — top tier reached.`;
+    : `${progress.currentTier} tier - top tier reached.`;
   return (
     <View style={styles.tier} accessibilityLabel={label}>
       <View style={styles.tierRow}>

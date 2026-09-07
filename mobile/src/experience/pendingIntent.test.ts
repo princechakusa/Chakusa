@@ -65,7 +65,7 @@ describe('normalizeNotificationIntent', () => {
     expect(normalizeNotificationIntent({ experience: 'business', type: 'lead_created' }, NOW)).toEqual({ experience: 'business', source: 'notification', route: null, createdAt: NOW });
   });
 
-  it('returns null for an unclassifiable payload — no privileged navigation', () => {
+  it('returns null for an unclassifiable payload - no privileged navigation', () => {
     expect(normalizeNotificationIntent(null, NOW)).toBeNull();
     expect(normalizeNotificationIntent({}, NOW)).toBeNull();
     expect(normalizeNotificationIntent({ title: 'You have a new lead' }, NOW)).toBeNull();

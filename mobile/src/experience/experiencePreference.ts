@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { coerceExperiencePreference, Experience, EXPERIENCE_PREFERENCE_KEY, ExperienceOrUnselected } from './experience';
 
 // PROGRAM 2 LOOP 9: persistence for the last-used experience. This is
-// untrusted local UI state — it holds NO token and NO customer/business
+// untrusted local UI state - it holds NO token and NO customer/business
 // data, only the string 'customer' or 'business'. A corrupt or unknown
 // value reads back as 'unselected' (see coerceExperiencePreference).
 

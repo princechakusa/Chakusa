@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // PROGRAM 2 LOOP 7: customer session storage. Deliberately NAMESPACED away
-// from the business session (`chakusa.auth.session.v2`) — the two token
+// from the business session (`chakusa.auth.session.v2`) - the two token
 // stores never touch. A customer build reads/writes only these keys; a
 // business build reads/writes only its own. See CUSTOMER_APP.md.
 

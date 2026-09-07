@@ -22,7 +22,7 @@ describe('isCapabilityUnlocked', () => {
 
 describe('capabilityStatusCopy', () => {
   it('never claims a locked capability is included', () => {
-    expect(capabilityStatusCopy(allLocked, 'invoicing')).toBe('Not yet available — coming to Chakusa');
+    expect(capabilityStatusCopy(allLocked, 'invoicing')).toBe('Not yet available - coming to Chakusa');
   });
 
   it('reports an unlocked capability as included', () => {

@@ -18,7 +18,7 @@ async function syncOnce(): Promise<void> {
       synced.push(event.clientEventId);
     } catch (error) {
       // The endpoint is idempotent on clientEventId (see leads.service.ts's
-      // createLeadFromMissedCall) — leaving this event queued is always
+      // createLeadFromMissedCall) - leaving this event queued is always
       // safe, whether the failure was a dropped connection or a transient
       // server error; the next sync (next foreground, or the next detected
       // call triggering one) retries it. Signed-out is the one case worth
@@ -28,13 +28,13 @@ async function syncOnce(): Promise<void> {
     }
   }
 
-  // Malformed events (should never occur — see MissedCallStore.kt) can
+  // Malformed events (should never occur - see MissedCallStore.kt) can
   // never be fixed by retrying, so they're cleared immediately rather than
   // left to accumulate in the queue forever.
   await clearEvents([...synced, ...invalidIds]);
 }
 
-/** Drains the native missed-call queue into real Leads. Safe to call as often as convenient — concurrent calls collapse into one in-flight sync, matching the same dedup pattern pushNotifications.ts uses for device registration. */
+/** Drains the native missed-call queue into real Leads. Safe to call as often as convenient - concurrent calls collapse into one in-flight sync, matching the same dedup pattern pushNotifications.ts uses for device registration. */
 export function syncPendingMissedCalls(): Promise<void> {
   if (syncPromise) return syncPromise;
   syncPromise = syncOnce()

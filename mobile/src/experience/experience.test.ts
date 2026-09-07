@@ -27,7 +27,7 @@ describe('resolveInitialExperience', () => {
     expect(resolveInitialExperience(base)).toBe('unselected');
   });
 
-  it('migrates an existing business user (business session, no preference) to business — never the selector', () => {
+  it('migrates an existing business user (business session, no preference) to business - never the selector', () => {
     expect(resolveInitialExperience({ ...base, hasBusinessSession: true })).toBe('business');
   });
 
@@ -79,7 +79,7 @@ describe('classifyDeepLinkExperience', () => {
     expect(classifyDeepLinkExperience('chakusa://dashboard')).toBe('business');
   });
 
-  it('returns null for unknown, malformed or empty links — the router does not switch', () => {
+  it('returns null for unknown, malformed or empty links - the router does not switch', () => {
     expect(classifyDeepLinkExperience('chakusa://')).toBeNull();
     expect(classifyDeepLinkExperience('garbage')).toBeNull();
     expect(classifyDeepLinkExperience('')).toBeNull();
@@ -88,7 +88,7 @@ describe('classifyDeepLinkExperience', () => {
   });
 });
 
-describe('shouldStartExperienceSwitch — Android Fabric crash re-entrancy guard', () => {
+describe('shouldStartExperienceSwitch - Android Fabric crash re-entrancy guard', () => {
   it('allows a switch to a different experience when nothing is in flight', () => {
     expect(shouldStartExperienceSwitch('business', 'customer', false)).toBe(true);
     expect(shouldStartExperienceSwitch('customer', 'unselected', false)).toBe(true);

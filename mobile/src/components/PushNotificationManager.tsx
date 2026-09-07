@@ -10,7 +10,7 @@ export function PushNotificationManager() {
   const { onboardingComplete } = usePreferences();
 
   // Registration (which can trigger the OS permission prompt) is deferred
-  // until onboarding is complete — the explicit onboarding notifications
+  // until onboarding is complete - the explicit onboarding notifications
   // step is the only place that prompt should first appear. See
   // OnboardingScreen's notifications step, which calls
   // registerCurrentDeviceForPush() directly for that first, explained ask.

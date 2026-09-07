@@ -93,7 +93,7 @@ export function LoyaltyRewardsScreen(_props: Props) {
         <AppHeader eyebrow="LOYALTY & REWARDS" title="Rewards" subtitle="What your customers can unlock with points. Types are shown to customers in plain language." />
         {!loaded ? <LoadingState label="Loading rewards…" />
           : error && !rewards.length ? <ErrorState message={error} onRetry={() => void load()} />
-          : !rewards.length ? <EmptyState icon="gift-outline" title="No rewards yet" message="Add a reward customers can redeem — a free service, a percentage discount, or a milestone reward that grants automatically." />
+          : !rewards.length ? <EmptyState icon="gift-outline" title="No rewards yet" message="Add a reward customers can redeem - a free service, a percentage discount, or a milestone reward that grants automatically." />
           : (
             <View style={styles.list}>
               {rewards.map((reward) => (

@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingDetail'>
 
 // PROGRAM 2 LOOP 7: one booking + its management. `/customer/bookings/:id`
 // for the detail; reschedule and cancel call the matching server routes,
-// which own the actual eligibility rules — `domain/booking.ts` only mirrors
+// which own the actual eligibility rules - `domain/booking.ts` only mirrors
 // them to decide what to show.
 
 export function BookingDetailScreen({ route, navigation }: Props) {

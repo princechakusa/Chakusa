@@ -148,7 +148,7 @@ export function AutomationScreen({ navigation }: Props) {
       } else if (key === 'followUp') {
         if (availability === 'free-locked' || availability === 'subscription-unavailable' || availability === 'service-unavailable') { navigation.navigate('Pro'); return; }
         if (rule && !rule.enabled) await automationApi.enableRule(rule.id);
-        // No rule yet: nothing to one-tap here — the "Set up missed-call
+        // No rule yet: nothing to one-tap here - the "Set up missed-call
         // follow-up" card below (visible on this same screen) is the next
         // step, and duplicating a delay picker inside this summary would
         // be redundant, not a shortcut.

@@ -7,7 +7,7 @@ import type {
 } from '../apiTypes';
 
 // PROGRAM 2 LOOP 1: pure product rules for the customer-side mobile
-// foundation — authentication flow, dashboard, profile/settings and
+// foundation - authentication flow, dashboard, profile/settings and
 // notifications. No Marketplace / Booking logic (later loops).
 
 // --- Authentication flow -------------------------------------------------

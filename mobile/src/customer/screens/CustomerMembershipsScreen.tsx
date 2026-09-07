@@ -64,7 +64,7 @@ export function CustomerMembershipsScreen(_: Props) {
                 <Text style={styles.meta}>{membership.business?.name ?? 'Membership'} · {membershipStatusLabel(membership)}</Text>
                 {membership.plan.discountPercent > 0 ? <Text style={styles.meta}>{membership.plan.discountPercent}% off services{membership.plan.priorityBooking ? ' · priority booking' : ''}</Text> : membership.plan.priorityBooking ? <Text style={styles.meta}>Priority booking</Text> : null}
                 <Text style={styles.meta}>
-                  {formatMoney(membership.plan.priceAmount, membership.plan.currency ?? 'USD')} / {membership.billingInterval === 'annual' ? 'year' : membership.billingInterval === 'unlimited' ? 'one-off' : 'month'} — Chakusa is not collecting this payment
+                  {formatMoney(membership.plan.priceAmount, membership.plan.currency ?? 'USD')} / {membership.billingInterval === 'annual' ? 'year' : membership.billingInterval === 'unlimited' ? 'one-off' : 'month'} - Chakusa is not collecting this payment
                 </Text>
                 {membership.currentPeriodEnd ? <Text style={styles.meta}>{membership.cancelAtPeriodEnd ? 'Ends' : 'Renews'} {formatDate(membership.currentPeriodEnd)}</Text> : null}
                 {isMembershipActive(membership) && !membership.cancelAtPeriodEnd ? (

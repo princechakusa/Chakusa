@@ -9,7 +9,7 @@ import { customerLinking } from './navigation/customerLinking';
 import { navigationRef } from './navigation/customerNavigationRef';
 
 // PROGRAM 2 LOOP 7: the root of the CUSTOMER experience. Mounted by the
-// ExperienceRouter — never at the same time as BusinessRoot. Its own auth
+// ExperienceRouter - never at the same time as BusinessRoot. Its own auth
 // context, navigation container + ref and deep-link config; the business
 // provider tree is never constructed here.
 //

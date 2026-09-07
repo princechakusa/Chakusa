@@ -157,7 +157,7 @@ export function InvoiceEditorScreen({ route, navigation }: Props) {
         try {
           const result = await invoicesApi.send(saved.id);
           await copyMessage(result.accessUrl);
-          Alert.alert('Invoice sent', 'A secure link is on your clipboard — share it with your customer.');
+          Alert.alert('Invoice sent', 'A secure link is on your clipboard - share it with your customer.');
         } catch (caught) {
           Alert.alert('Saved as draft', caught instanceof ApiError ? caught.message : 'The invoice was saved but could not be sent.');
         }
@@ -256,7 +256,7 @@ export function InvoiceEditorScreen({ route, navigation }: Props) {
         {totals.discountTotal > 0 ? <Row label="Discount" value={`−${formatMoney(totals.discountTotal, existing?.currency ?? 'USD')}`} /> : null}
         <Divider />
         <Row label="Estimated total" value={formatMoney(totals.total, existing?.currency ?? 'USD')} strong />
-        <Text style={styles.previewNote}>Preview only — the server calculates the final totals on save.</Text>
+        <Text style={styles.previewNote}>Preview only - the server calculates the final totals on save.</Text>
       </View>
 
       {formError ? <Text accessibilityRole="alert" style={styles.formError}>{formError}</Text> : null}

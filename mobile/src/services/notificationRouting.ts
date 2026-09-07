@@ -19,13 +19,13 @@ interface RawNotificationData {
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 /**
- * There is no dedicated feedback screen — feedback is only ever displayed
+ * There is no dedicated feedback screen - feedback is only ever displayed
  * embedded in ReviewDetail (when linked to a review request) or in
  * CustomerProfile's activity timeline (when linked to a customer). This
  * looks the feedback row up through the existing authenticated /feedback
  * list endpoint (the only way to resolve a feedbackId to its parent) and
- * picks whichever existing screen actually shows it. Returns null — never
- * throws — so a stale id, a network failure, or a feedback row with neither
+ * picks whichever existing screen actually shows it. Returns null - never
+ * throws - so a stale id, a network failure, or a feedback row with neither
  * link fails safely into "no navigation" instead of a crash.
  */
 async function resolveFeedbackTarget(feedbackId: string): Promise<NotificationTarget | null> {
@@ -43,7 +43,7 @@ async function resolveFeedbackTarget(feedbackId: string): Promise<NotificationTa
 
 /**
  * Resolves a tapped push notification's `data` payload to an existing
- * screen + params, or null for anything malformed/unknown. Never throws —
+ * screen + params, or null for anything malformed/unknown. Never throws - 
  * the notification payload is untrusted input (it's just routing data, not
  * an authorization grant; the destination screens themselves fetch through
  * the normal authenticated API and enforce tenant isolation server-side).

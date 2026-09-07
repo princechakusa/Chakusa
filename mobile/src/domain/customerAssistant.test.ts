@@ -54,7 +54,7 @@ const rec = (over: Partial<CustomerAIRecommendationDto> = {}): CustomerAIRecomme
 });
 
 describe('customer assistant domain (Program 2, Loop 4)', () => {
-  describe('navigation — no payment/loyalty/wallet', () => {
+  describe('navigation - no payment/loyalty/wallet', () => {
     it('allows the four assistant routes', () => {
       for (const route of ['AIAssistant', 'AIConversation', 'AIRecommendations', 'AISettings']) {
         expect(canNavigateAssistant(route)).toBe(true);
@@ -114,7 +114,7 @@ describe('customer assistant domain (Program 2, Loop 4)', () => {
     });
   });
 
-  describe('recommendations — explainable, ranked', () => {
+  describe('recommendations - explainable, ranked', () => {
     it('requires a reason and a target', () => {
       expect(isExplainable(rec())).toBe(true);
       expect(isExplainable(rec({ reason: '   ' }))).toBe(false);

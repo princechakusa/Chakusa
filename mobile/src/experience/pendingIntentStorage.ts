@@ -11,7 +11,7 @@ import {
 
 // PROGRAM 2 LOOP 10: persistence for the pending intent. Kept separate
 // from the pure `pendingIntent.ts` so that module stays unit-testable
-// without pulling in react-native / expo. Stores no token — only the
+// without pulling in react-native / expo. Stores no token - only the
 // validated destination produced by the normalisers.
 
 async function readRaw(): Promise<string | null> {

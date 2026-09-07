@@ -36,7 +36,7 @@ export function publicBusinessProfileUrl(slug: string, referredByCustomerId?: st
   return referredByCustomerId ? `${base}?ref=${encodeURIComponent(referredByCustomerId)}` : base;
 }
 
-/** Pre-filled WhatsApp greeting for the public profile's "Message on WhatsApp" button — a visitor can still edit it before sending. */
+/** Pre-filled WhatsApp greeting for the public profile's "Message on WhatsApp" button - a visitor can still edit it before sending. */
 export function publicProfileWhatsAppGreeting(businessName: string): string {
   return `Hi ${businessName}, I found your page on Chakusa and I'd like to know more.`;
 }

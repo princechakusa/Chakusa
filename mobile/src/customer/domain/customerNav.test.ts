@@ -72,7 +72,7 @@ describe('parseCustomerDeepLink', () => {
   });
 });
 
-describe('parseCustomerDeepLink — loyalty (Loop 8)', () => {
+describe('parseCustomerDeepLink - loyalty (Loop 8)', () => {
   it('parses loyalty destinations', () => {
     expect(parseCustomerDeepLink('chakusa://loyalty/biz-123')).toEqual({ route: 'CustomerLoyaltyBusiness', params: { businessId: 'biz-123' } });
     expect(parseCustomerDeepLink('chakusa://loyalty')).toEqual({ route: 'CustomerRewards', params: {} });

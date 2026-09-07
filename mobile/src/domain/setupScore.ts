@@ -26,7 +26,7 @@ export function computeSetupScore(input: SetupScoreInput): SetupScoreResult {
     { key: 'notifications', label: 'Notifications enabled', complete: input.pushEnabled },
   ];
   // Automation is Pro-gated, so a business whose plan can't use it yet
-  // (or whose availability isn't known yet — 'loading') would always fail
+  // (or whose availability isn't known yet - 'loading') would always fail
   // this check through no fault of its own. Only score it once availability
   // is confirmed 'available', keeping the score honest instead of
   // penalizing a tier Chakusa itself hasn't unlocked. See

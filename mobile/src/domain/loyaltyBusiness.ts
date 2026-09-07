@@ -9,7 +9,7 @@ import type {
 } from '../apiTypes';
 
 // PROGRAM 2 LOOP 6: pure product rules for the business loyalty management
-// mobile experience. Client-side validation for UX only — the backend
+// mobile experience. Client-side validation for UX only - the backend
 // (/loyalty/*) stays authoritative. No engine, no networking, no payment.
 
 // --- Program config -------------------------------------------------------
@@ -151,7 +151,7 @@ export function validateRewardDraft(draft: RewardFormDraft): { ok: boolean; erro
   }
   if (draft.redemptionValidityDays.trim() !== '') {
     const d = Number(draft.redemptionValidityDays);
-    if (!(Number.isInteger(d) && d >= 1 && d <= 365)) return { ok: false, error: 'Validity must be 1–365 days, or leave blank' };
+    if (!(Number.isInteger(d) && d >= 1 && d <= 365)) return { ok: false, error: 'Validity must be 1-365 days, or leave blank' };
   }
   return { ok: true, error: null };
 }
@@ -181,11 +181,11 @@ export function validatePlanDraft(draft: PlanFormDraft): { ok: boolean; error: s
 }
 
 /**
- * The membership backend records an entitlement — it does NOT take a
+ * The membership backend records an entitlement - it does NOT take a
  * payment. Every plan surface must say so.
  */
 export const MEMBERSHIP_NO_PAYMENT_NOTE =
-  'Enrolling a customer records the membership entitlement. Chakusa does not collect payment here — arrange billing with the customer directly.';
+  'Enrolling a customer records the membership entitlement. Chakusa does not collect payment here - arrange billing with the customer directly.';
 
 // --- Campaigns --------------------------------------------------------
 

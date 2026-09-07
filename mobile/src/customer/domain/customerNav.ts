@@ -1,4 +1,4 @@
-// PROGRAM 2 LOOP 7: customer navigation rules — pure functions.
+// PROGRAM 2 LOOP 7: customer navigation rules - pure functions.
 //
 // Two jobs:
 //  1. Parse an incoming deep link (chakusa://…) into a customer
@@ -109,7 +109,7 @@ export function parseCustomerDeepLink(raw: string): CustomerDeepLink | null {
       return { route: 'CustomerRewards', params: {} };
     case 'loyalty':
       // `loyalty/<businessId>` opens that business's loyalty detail. The
-      // id is a public business id already used by /customer/loyalty/* —
+      // id is a public business id already used by /customer/loyalty/* - 
       // no business-owner route is reachable from here.
       return a ? { route: 'CustomerLoyaltyBusiness', params: { businessId: a } } : { route: 'CustomerRewards', params: {} };
     case 'redemptions':

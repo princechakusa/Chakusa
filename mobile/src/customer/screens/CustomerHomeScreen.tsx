@@ -19,7 +19,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
 // PROGRAM 2 LOOP 7: Customer Home. Renders exactly the aggregate returned
-// by `/customer/dashboard` — greeting, next appointments, saved
+// by `/customer/dashboard` - greeting, next appointments, saved
 // businesses, unread badge, and (only when the backend says so) the AI
 // assistant entry point.
 

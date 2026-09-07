@@ -12,7 +12,7 @@ async function writeRaw(value: string): Promise<void> {
   else await SecureStore.setItemAsync(STORAGE_KEY, value);
 }
 
-/** Which milestone celebrations have already been shown on this device — each one shows exactly once, ever, per device. */
+/** Which milestone celebrations have already been shown on this device - each one shows exactly once, ever, per device. */
 export async function getSeenMilestones(): Promise<Set<string>> {
   try {
     const raw = await readRaw();

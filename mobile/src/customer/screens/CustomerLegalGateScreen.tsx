@@ -10,7 +10,7 @@ import { useCustomerAuth } from '../CustomerAuthContext';
 // PROGRAM 2 LOOP 7: the legal-acceptance gate. Shown after sign-in while
 // `/customer/legal/status` still reports pending documents. Nothing else
 // in the customer app is reachable until every pending document is
-// accepted — the navigator swaps this out once the list is empty.
+// accepted - the navigator swaps this out once the list is empty.
 
 export function CustomerLegalGateScreen({
   onViewDocument,

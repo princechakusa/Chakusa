@@ -49,7 +49,7 @@ export function hubBusinesses(wallet: WalletDto): HubBusiness[] {
 
 /**
  * Total points across businesses, with copy that makes clear the total is
- * NOT a single spendable balance — each business's points stay with that
+ * NOT a single spendable balance - each business's points stay with that
  * business. Never call this a wallet balance or money.
  */
 export function pointsAcrossBusinesses(wallet: WalletDto): { total: number; businessCount: number; caption: string } {
@@ -116,7 +116,7 @@ export function redemptionIsUsable(r: Pick<RewardRedemptionDto, 'status' | 'expi
 export function membershipPlanPriceCaption(plan: { priceAmount: number; currency: string | null; billingInterval: string }): string {
   const interval = plan.billingInterval === 'annual' ? 'year' : plan.billingInterval === 'unlimited' ? 'one-off' : 'month';
   const price = formatMoney(plan.priceAmount, plan.currency ?? 'USD');
-  return `${price} / ${interval} — Chakusa is not collecting this payment`;
+  return `${price} / ${interval} - Chakusa is not collecting this payment`;
 }
 
 // --- Marketplace / profile loyalty visibility ------------------------
@@ -174,7 +174,7 @@ export interface MemberPriceDisplay {
   member: string | null;
 }
 
-/** Regular vs member price for a bookable service — server values only. */
+/** Regular vs member price for a bookable service - server values only. */
 export function memberPriceDisplay(service: Pick<BookableServiceDto, 'price' | 'memberPrice'>, currency: string | null): MemberPriceDisplay {
   if (service.price == null) return { hasMemberPrice: false, regular: null, member: null };
   const regular = formatMoney(service.price, currency ?? 'USD');

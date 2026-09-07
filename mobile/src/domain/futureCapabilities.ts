@@ -3,8 +3,8 @@ import type { SubscriptionStatusDto } from '../apiTypes';
 // PROGRAM 3 LOOP 1: revenue & entitlement foundation. This is a read-only
 // awareness layer over the future capability flags the backend already
 // returns in /subscription/status (src/lib/entitlements.ts's placeholder
-// Feature keys). It does not gate anything — no route enforces these yet
-// — and it never fabricates data: every value comes from the real
+// Feature keys). It does not gate anything - no route enforces these yet
+// - and it never fabricates data: every value comes from the real
 // subscription snapshot the account screen already loads.
 
 export type FutureCapabilityKey =
@@ -33,9 +33,9 @@ export function isCapabilityUnlocked(features: Pick<SubscriptionStatusDto['featu
   return features[key];
 }
 
-/** Read-only status copy for a capability row — never a purchase prompt or checkout affordance. */
+/** Read-only status copy for a capability row - never a purchase prompt or checkout affordance. */
 export function capabilityStatusCopy(features: Pick<SubscriptionStatusDto['features'], FutureCapabilityKey>, key: FutureCapabilityKey): string {
-  return isCapabilityUnlocked(features, key) ? 'Included on your plan' : 'Not yet available — coming to Chakusa';
+  return isCapabilityUnlocked(features, key) ? 'Included on your plan' : 'Not yet available - coming to Chakusa';
 }
 
 /** The capabilities not yet available on the account's current plan, in display order. */

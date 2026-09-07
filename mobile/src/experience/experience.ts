@@ -6,13 +6,13 @@ import { parseCustomerDeepLink } from '../customer/domain/customerNav';
 // This module holds NO tokens and performs NO I/O. It only decides which
 // experience to show given facts the router gathers (a stored preference,
 // whether each session store has something, an incoming deep link). The
-// two security boundaries are untouched — a customer session is never a
+// two security boundaries are untouched - a customer session is never a
 // business session and vice-versa.
 
 export type Experience = 'customer' | 'business';
 export type ExperienceOrUnselected = Experience | 'unselected';
 
-/** The persisted last-used experience. Untrusted local UI state — never authorization. */
+/** The persisted last-used experience. Untrusted local UI state - never authorization. */
 export const EXPERIENCE_PREFERENCE_KEY = 'chakusa.experience.v1';
 
 export function isExperience(value: unknown): value is Experience {
@@ -47,7 +47,7 @@ export interface ExperienceResolutionInput {
  *  5. otherwise → 'unselected' (show the selector)
  *
  * An existing logged-in business owner (business session, no preference,
- * no customer session) resolves to 'business' — they never see the
+ * no customer session) resolves to 'business' - they never see the
  * selector on upgrade.
  */
 export function resolveInitialExperience(input: ExperienceResolutionInput): ExperienceOrUnselected {

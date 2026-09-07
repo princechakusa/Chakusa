@@ -27,7 +27,7 @@ export function ActionQueueScreen({ navigation, route }: Props) {
   const open = (item: AttentionItemDto) => item.category === 'missed_call_followup' ? navigation.navigate('LeadDetail', { leadId: item.id }) : item.category === 'customer_due' ? navigation.navigate('Comeback') : item.category === 'payment_outstanding' ? navigation.navigate('LeadDetail', { leadId: item.id }) : navigation.navigate('ReviewDetail', { reviewId: item.id });
 
   // Completing a quick action changes real underlying state (lead status,
-  // reminder status, review status, payment status) — the item then stops
+  // reminder status, review status, payment status) - the item then stops
   // matching this category's query on the next load, so it naturally
   // disappears rather than needing any local "dismissed" tracking. Also
   // refreshes the Dashboard/lists so recommendations and counts elsewhere

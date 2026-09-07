@@ -19,7 +19,7 @@ const TABS = ['active', 'used'] as const;
 // PROGRAM 2 LOOP 8: the customer's issued reward redemptions.
 // `/customer/loyalty/rewards`. A still-valid "issued" reward opens to a
 // full-screen code the customer shows the business. The customer app never
-// marks a reward redeemed — that is the business app's job (Loop 6).
+// marks a reward redeemed - that is the business app's job (Loop 6).
 
 export function CustomerRedemptionsScreen() {
   const navigation = useNavigation<Nav>();

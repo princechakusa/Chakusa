@@ -15,7 +15,7 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
 // PROGRAM 2 LOOP 7: discovery. `/customer/marketplace` for the default
 // feed, `/customer/marketplace/search` once the customer types, and the
-// category list as quick filters. Read-only browsing — the profile screen
+// category list as quick filters. Read-only browsing - the profile screen
 // owns favourite/follow/report.
 
 export function CustomerExploreScreen() {

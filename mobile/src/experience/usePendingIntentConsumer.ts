@@ -9,7 +9,7 @@ import type { Experience } from './experience';
 //   (that experience's auth / legal / onboarding prerequisites are met)
 //   AND (the NavigationContainer signalled onReady)
 // so a pending intent can never open a screen before those gates pass and
-// never races the navigator. No timers, no polling — the effect simply
+// never races the navigator. No timers, no polling - the effect simply
 // re-runs when `ready` flips true.
 
 interface NavHandle {
@@ -29,7 +29,7 @@ export function usePendingIntentConsumer(experience: Experience, ready: boolean,
     void consumePendingIntent(experience).then((intent) => {
       if (cancelled || !intent || !intent.route) return;
       // A cold-start deep link may already have been routed by the
-      // container's own linking config — don't navigate on top of it.
+      // container's own linking config - don't navigate on top of it.
       if (nav.currentRouteName() === intent.route) return;
       nav.navigate(intent.route, intent.params);
     });

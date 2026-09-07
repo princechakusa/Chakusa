@@ -277,7 +277,7 @@ export const customerApi = {
 };
 
 // PROGRAM 2 LOOP 2: Marketplace & Business Discovery. Read + lightweight
-// customer actions only — NO booking, calendar, payments or staff selection.
+// customer actions only - NO booking, calendar, payments or staff selection.
 export const marketplaceApi = {
   discover: (params: { mode?: MarketplaceDiscoveryMode; category?: string; q?: string; city?: string; verifiedOnly?: boolean; lat?: number; lng?: number; radiusKm?: number; limit?: number; cursor?: string } = {}) =>
     api.get<MarketplacePageDto>(`/customer/marketplace${query({ ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
@@ -306,7 +306,7 @@ export const marketplaceApi = {
 };
 
 // PROGRAM 2 LOOP 3: Customer Booking & Calendar. Every scheduling decision
-// is the existing appointment/availability engine server-side — no payment,
+// is the existing appointment/availability engine server-side - no payment,
 // loyalty or rewards surface in this client.
 export const bookingApi = {
   services: (slug: string) => api.get<BookableServicesDto>(`/customer/bookings/businesses/${encodeURIComponent(slug)}/services`),
@@ -374,7 +374,7 @@ export const loyaltyApi = {
 // document-fetch call is public (no account needed, matches
 // src/modules/legal/legal.routes.ts). Acceptance-status/accept calls are
 // scoped per account type, since a person can hold both a customer and a
-// business account with independent acceptance records — see
+// business account with independent acceptance records - see
 // src/lib/legal/legalDocuments.service.ts's LegalAcceptanceScope.
 export const legalApi = {
   document: (type: import('../apiTypes').LegalDocumentType) =>

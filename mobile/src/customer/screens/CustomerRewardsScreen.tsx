@@ -20,7 +20,7 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 // PROGRAM 2 LOOP 8: the customer loyalty hub. `/customer/loyalty/wallet`
 // aggregates points, tiers, rewards, memberships and referrals across every
-// business. Points shown here stay business-specific — the copy makes that
+// business. Points shown here stay business-specific - the copy makes that
 // explicit; they are never one spendable balance.
 
 export function CustomerRewardsScreen() {

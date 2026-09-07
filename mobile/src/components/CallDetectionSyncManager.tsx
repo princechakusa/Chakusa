@@ -5,11 +5,11 @@ import { syncPendingMissedCalls } from '../services/callDetectionSync';
 import { useAuth } from '../state/AuthContext';
 
 /**
- * Android-only headless bootstrap — same pattern as PushNotificationManager:
+ * Android-only headless bootstrap - same pattern as PushNotificationManager:
  * drains the native missed-call queue (see MissedCallStore.kt) whenever the
  * app is authenticated and comes to the foreground, plus immediately on a
  * live detection event while the app is already running. This is the only
- * place a queued native detection actually becomes a real Lead — the
+ * place a queued native detection actually becomes a real Lead - the
  * native layer never talks to the network itself.
  */
 export function CallDetectionSyncManager() {

@@ -23,7 +23,7 @@ import { clearCustomerSession, getCustomerSession, storeCustomerSession } from '
 export type CustomerAuthStatus =
   | 'restoring'        // reading a stored session on boot
   | 'restore-error'    // a stored session existed but could not be validated (offline etc.)
-  | 'signed-out'       // no session — show the auth screen
+  | 'signed-out'       // no session - show the auth screen
   | 'authenticating'   // a sign-in / register call is in flight
   | 'authenticated';   // a valid customer session is held
 
@@ -65,7 +65,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   const clearLocal = useCallback(async (event: CustomerAuthEvent) => {
     await clearCustomerSession();
     // PROGRAM 2 LOOP 10: drop any preserved customer destination on an
-    // explicit sign-out / account close — but NOT on 'session-expired',
+    // explicit sign-out / account close - but NOT on 'session-expired',
     // where the intent must survive so it opens after re-authentication.
     if (event === 'signed-out' || event === 'account-deleted') void clearPendingIntent();
     setUser(null);
@@ -75,7 +75,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     setStatus('signed-out');
   }, []);
 
-  // The transport calls this when a refresh attempt is finally rejected —
+  // The transport calls this when a refresh attempt is finally rejected - 
   // i.e. the session is genuinely gone, not just a transient failure.
   useEffect(() => {
     setCustomerUnauthorizedHandler(() => clearLocal('session-expired'));

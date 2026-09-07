@@ -8,7 +8,7 @@ import type {
 } from '../apiTypes';
 
 // PROGRAM 2 LOOP 2: pure product rules for the customer-side Marketplace &
-// Business Discovery mobile foundation — discovery feeds, categories, search,
+// Business Discovery mobile foundation - discovery feeds, categories, search,
 // business profile and favourites/follow state. NO booking, calendar,
 // payments or staff-selection logic (those belong to later loops).
 
@@ -233,7 +233,7 @@ export function profileSections(profile: MarketplaceBusinessProfileDto): Busines
   };
 }
 
-/** Services are shown for information only in this loop — a price, never a "Book" affordance. */
+/** Services are shown for information only in this loop - a price, never a "Book" affordance. */
 export function serviceDisplay(service: MarketplaceBusinessProfileDto['services'][number], currency = ''): { name: string; meta: string; canBook: false } {
   const parts = [`${service.durationMinutes} min`];
   if (service.price != null) parts.push(`${currency}${service.price}`.trim());

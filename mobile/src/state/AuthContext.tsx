@@ -30,8 +30,8 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue | null>(null);
 // Mirrors exactly what the live onboarding wizard (PremiumFtueScreen.tsx)
 // persists before it marks itself complete: a name (step 3), a phone number
-// (step 4), and at least one service (step 5). It never sets workingHours —
-// that field belongs to the legacy, unrouted OnboardingScreen.tsx — so this
+// (step 4), and at least one service (step 5). It never sets workingHours - 
+// that field belongs to the legacy, unrouted OnboardingScreen.tsx - so this
 // must not require it. Requiring a field the real wizard never writes made
 // every completed business look permanently unfinished on every session
 // restore, since reconcileOnboarding() below re-derives completion from
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await clearStoredSession(); await preferencesRef.current.activateScope(null, false); setUser(null); setBusiness(null); setRole(null); setPendingLegalDocuments([]); setStatus('anonymous');
   }, []);
   // PROGRAM 2 LOOP 4: a business account's legal-acceptance status is a
-  // server fact, not a device preference like onboardingComplete — so it's
+  // server fact, not a device preference like onboardingComplete - so it's
   // re-fetched here rather than cached in PreferencesContext's local
   // storage. Failures are swallowed: this must never block sign-in or
   // session restore just because the legal-status check couldn't reach the

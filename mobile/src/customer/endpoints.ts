@@ -3,8 +3,8 @@
 // These clients are byte-for-byte the same routes the business-app file
 // `src/services/endpoints.ts` already declares for the customer backend
 // (Program 2 Loops 1-5). They are re-declared here ONLY so they run
-// through `customerHttp` — the transport bound to the namespaced customer
-// session (`chakusa.customer.session.v1`) and `/customer/auth/refresh` —
+// through `customerHttp` - the transport bound to the namespaced customer
+// session (`chakusa.customer.session.v1`) and `/customer/auth/refresh` - 
 // instead of the shared business `api` singleton. A customer build never
 // imports `src/services/endpoints.ts`; a business build never imports
 // this file. Token scope stays fully separated (Loop 7 spec §13, §53).

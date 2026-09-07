@@ -35,7 +35,7 @@ describe('walletIsEmpty', () => {
   });
 });
 
-describe('pointsAcrossBusinesses — business-specific separation', () => {
+describe('pointsAcrossBusinesses - business-specific separation', () => {
   it('names the single business when there is one account', () => {
     const wallet = { ...emptyWallet, totalPoints: 120, accounts: [account('b1', 'Glow Studio', 120)] };
     expect(pointsAcrossBusinesses(wallet)).toEqual({ total: 120, businessCount: 1, caption: 'at Glow Studio' });
@@ -112,7 +112,7 @@ describe('redemption helpers', () => {
   });
 });
 
-describe('membershipPlanPriceCaption — no payment taken', () => {
+describe('membershipPlanPriceCaption - no payment taken', () => {
   it('always states Chakusa is not collecting the payment', () => {
     const caption = membershipPlanPriceCaption({ priceAmount: 20, currency: 'USD', billingInterval: 'monthly' });
     expect(caption).toMatch(/month/);
@@ -158,7 +158,7 @@ describe('profileLoyaltyState', () => {
   });
 });
 
-describe('memberPriceDisplay — server values only', () => {
+describe('memberPriceDisplay - server values only', () => {
   const svc = (patch: Partial<BookableServiceDto>): Pick<BookableServiceDto, 'price' | 'memberPrice'> => ({ price: 100, memberPrice: 100, ...patch });
 
   it('shows a member price only when it is genuinely lower', () => {
@@ -168,7 +168,7 @@ describe('memberPriceDisplay — server values only', () => {
   });
 });
 
-describe('loyaltyNotificationTarget — customer-app deep link only', () => {
+describe('loyaltyNotificationTarget - customer-app deep link only', () => {
   const note = (data: Record<string, unknown>, businessId: string | null = 'b1'): Pick<CustomerNotificationDto, 'category' | 'businessId' | 'data'> =>
     ({ category: 'loyalty', businessId, data });
 

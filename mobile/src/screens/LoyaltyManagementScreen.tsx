@@ -50,7 +50,7 @@ export function LoyaltyManagementScreen({ navigation }: Props) {
 
   return (
     <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="LOYALTY & REWARDS" title="Loyalty" subtitle="Reward customers for booking, reviewing and referring — points, tiers, rewards and memberships." />
+      <AppHeader eyebrow="LOYALTY & REWARDS" title="Loyalty" subtitle="Reward customers for booking, reviewing and referring - points, tiers, rewards and memberships." />
 
       {!loaded ? (
         <LoadingState label="Loading your loyalty program…" />

@@ -4,7 +4,7 @@ export type AuthenticationMode = 'login' | 'register';
 export type AuthenticationStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 
 // PROGRAM 2 LOOP 4: hasPendingLegalAcceptance gates Main the same way
-// onboardingComplete does — a business account with a required document it
+// onboardingComplete does - a business account with a required document it
 // hasn't accepted yet (a first acceptance, or a mandatory re-acceptance
 // after a new version publishes, see legalDocumentVersion.
 // requiresReacceptance) sees LegalAcceptance instead of the dashboard.

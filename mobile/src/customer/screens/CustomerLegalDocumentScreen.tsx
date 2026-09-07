@@ -12,7 +12,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLegalDocument'>;
 
 // PROGRAM 2 LOOP 7: read-only legal document viewer. Uses the public
-// `/legal/documents/:type` route — no account required — so it works from
+// `/legal/documents/:type` route - no account required - so it works from
 // the acceptance gate before anything else is unlocked.
 
 export function CustomerLegalDocumentScreen({ route }: Props) {

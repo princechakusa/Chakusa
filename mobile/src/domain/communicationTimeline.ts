@@ -3,7 +3,7 @@ import { TimelineItem } from '../types';
 import { formatDate } from '../utils/format';
 
 /**
- * The Conversation & Communication Center's filter tabs (Stage 9, Part 5) —
+ * The Conversation & Communication Center's filter tabs (Stage 9, Part 5) - 
  * "all" plus whichever CommunicationFilter values the backend's timeline
  * entries actually carry. Kept in domain (not the screen) so the ordering
  * and tab→label mapping have one home, matching the architecture standard
@@ -27,7 +27,7 @@ export function communicationTabLabel(tab: CommunicationTab): string {
   return TAB_LABELS[tab];
 }
 
-/** Only ever offers a tab when at least one timeline entry actually carries it — "Only expose filters backed by repository data" (Part 5). */
+/** Only ever offers a tab when at least one timeline entry actually carries it - "Only expose filters backed by repository data" (Part 5). */
 export function availableCommunicationTabs(entries: CommunicationTimelineEntryDto[]): CommunicationTab[] {
   const present = new Set<CommunicationTab>(['all']);
   for (const entry of entries) {
@@ -47,7 +47,7 @@ export interface CommunicationEntryActions {
 }
 
 /**
- * Reuses the existing Timeline component (mobile/src/components/ui.tsx) —
+ * Reuses the existing Timeline component (mobile/src/components/ui.tsx) - 
  * this only shapes data into the TimelineItem it already accepts, adding
  * an optional per-row "View" action (Part 3) that deep-links to the exact
  * existing detail screen for that entry's source, never a new screen.

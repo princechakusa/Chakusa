@@ -18,7 +18,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingFlow'>;
 
 // PROGRAM 2 LOOP 7: the booking wizard. Every scheduling decision is the
-// server's — this screen only walks the customer through
+// server's - this screen only walks the customer through
 // service → staff → date → time → confirm using `domain/booking.ts`, then
 // posts to `/customer/bookings`. No payment surface.
 
@@ -103,7 +103,7 @@ export function BookingFlowScreen({ route, navigation }: Props) {
       {services?.membership ? (
         <View style={styles.memberBanner}>
           <Text style={styles.memberBannerText}>
-            {services.membership.planName} member — {services.membership.discountPercent}% off{services.membership.priorityBooking ? ' · priority booking' : ''}. Member prices shown below.
+            {services.membership.planName} member - {services.membership.discountPercent}% off{services.membership.priorityBooking ? ' · priority booking' : ''}. Member prices shown below.
           </Text>
         </View>
       ) : null}

@@ -1,6 +1,6 @@
 import type { AiConversationRunDto, AiDraftReviewDecision, AiEvaluationRunDto, AiRunStatus, AiValueCenterDto } from '../apiTypes';
 
-// LOOP 3B-4: pure product rules for the mobile AI management surface —
+// LOOP 3B-4: pure product rules for the mobile AI management surface - 
 // conversation history, draft review, human approval, suggestions, AI
 // analytics, AI health, escalation review and evaluation summaries.
 

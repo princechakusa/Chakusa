@@ -35,7 +35,7 @@ const txn = (over: Partial<LoyaltyTransactionDto> = {}): LoyaltyTransactionDto =
 });
 
 describe('loyalty domain (Program 2, Loop 5)', () => {
-  describe('navigation — no payment/cash-out', () => {
+  describe('navigation - no payment/cash-out', () => {
     it('allows the five loyalty routes', () => {
       for (const r of ['Loyalty', 'Membership', 'Rewards', 'Wallet', 'Referrals']) expect(canNavigateLoyalty(r)).toBe(true);
     });

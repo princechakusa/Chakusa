@@ -1,7 +1,7 @@
 import type { AvailabilitySlotDto, BookableServiceDto, CustomerBookingDto } from '../apiTypes';
 
 // PROGRAM 2 LOOP 3: pure product rules for the customer booking & calendar
-// mobile experience — the choose-service -> choose-staff -> choose-date ->
+// mobile experience - the choose-service -> choose-staff -> choose-date ->
 // choose-time -> confirm flow, the calendar/history split, and
 // reschedule/cancel eligibility. No payment, loyalty, membership or rewards
 // logic (explicitly out of scope for this loop).
@@ -33,7 +33,7 @@ export interface BookingDraft {
 
 export const emptyDraft: BookingDraft = { serviceId: null, staffId: null, date: null, startsAt: null };
 
-/** The first step that is not yet satisfied — where the wizard should sit. */
+/** The first step that is not yet satisfied - where the wizard should sit. */
 export function currentBookingStep(draft: BookingDraft): BookingStep {
   if (!draft.serviceId) return 'service';
   if (draft.staffId === null) return 'staff';
@@ -139,7 +139,7 @@ export type BookingActionAvailability = { canReschedule: boolean; canCancel: boo
 export function bookingActions(booking: Pick<CustomerBookingDto, 'status' | 'cancellationCutoff'>, now: Date = new Date()): BookingActionAvailability {
   if (!OPEN_STATUSES.includes(booking.status)) return { canReschedule: false, canCancel: false, reason: 'This booking is closed.' };
   if (now.getTime() >= new Date(booking.cancellationCutoff).getTime()) {
-    return { canReschedule: false, canCancel: false, reason: 'Too close to the appointment — contact the business.' };
+    return { canReschedule: false, canCancel: false, reason: 'Too close to the appointment - contact the business.' };
   }
   return { canReschedule: true, canCancel: true, reason: null };
 }

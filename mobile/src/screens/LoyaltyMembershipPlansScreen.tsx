@@ -85,7 +85,7 @@ export function LoyaltyMembershipPlansScreen(_props: Props) {
         </View>
         {!loaded ? <LoadingState label="Loading plans…" />
           : error && !plans.length ? <ErrorState message={error} onRetry={() => void load()} />
-          : !plans.length ? <EmptyState icon="card-outline" title="No membership plans" message="Create a plan to give members a discount on every booking, priority slots, or both. No payment is taken here — this configures the entitlement." />
+          : !plans.length ? <EmptyState icon="card-outline" title="No membership plans" message="Create a plan to give members a discount on every booking, priority slots, or both. No payment is taken here - this configures the entitlement." />
           : (
             <View style={styles.list}>
               {plans.map((plan) => (

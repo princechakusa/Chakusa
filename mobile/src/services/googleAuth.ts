@@ -52,7 +52,7 @@ export async function requestGoogleIdToken(options: { fresh?: boolean } = {}): P
       // DEVELOPER_ERROR: this build's package name + signing certificate
       // (SHA-1) is not attached to an Android OAuth client in the Google
       // project, or the configured webClientId is not a Web client.
-      const detail = error instanceof Error && error.message ? ` — ${error.message}` : '';
+      const detail = error instanceof Error && error.message ? ` - ${error.message}` : '';
       if (String(error.code) === 'DEVELOPER_ERROR' || String(error.code) === '10') {
         throw new GoogleAuthenticationError(`Google config rejected (DEVELOPER_ERROR)${detail}`);
       }

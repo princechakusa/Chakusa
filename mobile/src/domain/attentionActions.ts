@@ -2,16 +2,16 @@ import { AttentionItemDto } from '../apiTypes';
 
 /**
  * Which quick actions an Attention Center row can offer, derived purely
- * from the item's own data — never inventing a workflow the rest of the
+ * from the item's own data - never inventing a workflow the rest of the
  * product doesn't already support. `call`/`whatsapp` only appear when
  * there's a real phone number (and, for whatsapp, a real pre-rendered
- * message — never generated here, see attentionCenter.service.ts's doc
+ * message - never generated here, see attentionCenter.service.ts's doc
  * comment). The category-specific completion action
  * (`markDone`/`markSent`/`markPaid`) reuses the exact endpoint its own
  * detail screen already calls; there is no new business logic here, only
  * a decision about which existing action applies to which item.
  *
- * `view` is always offered as the fallback to the full detail screen —
+ * `view` is always offered as the fallback to the full detail screen - 
  * useful whenever a quick action isn't available yet (e.g. no message
  * prepared) or the owner wants more context before acting.
  */

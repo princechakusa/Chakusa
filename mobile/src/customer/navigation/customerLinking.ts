@@ -7,7 +7,7 @@ import type { CustomerRootStackParamList } from './types';
 // The static `config` covers the simple, direct paths. `getStateFromPath`
 // is overridden so every incoming URL is first run through
 // `parseCustomerDeepLink`, which refuses to resolve business-owner links
-// — a crafted `chakusa://dashboard` produces no navigation rather than
+// - a crafted `chakusa://dashboard` produces no navigation rather than
 // leaking into a business screen.
 
 export const customerLinking: LinkingOptions<CustomerRootStackParamList> = {

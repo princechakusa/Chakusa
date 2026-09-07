@@ -28,7 +28,7 @@ export { useExperience } from './experienceContext';
 
 // PROGRAM 2 LOOP 9: the runtime experience router. Exactly ONE experience
 // shell is mounted at a time. This component holds no token and touches no
-// session store beyond a boolean "is something there?" probe — the actual
+// session store beyond a boolean "is something there?" probe - the actual
 // auth/session/transport isolation stays entirely inside BusinessRoot and
 // CustomerRoot.
 
@@ -52,8 +52,8 @@ export function ExperienceRouter() {
   // animation/gesture (a stack transition, a Modal dismiss) still owns a
   // view can race Fabric's view manager. `switchingRef` makes a rapid
   // double-tap or a manual-switch-racing-a-deep-link-switch a no-op, and
-  // `InteractionManager.runAfterInteractions` — the standard React Native
-  // mechanism for "wait until animations/gestures settle", not a timer —
+  // `InteractionManager.runAfterInteractions` - the standard React Native
+  // mechanism for "wait until animations/gestures settle", not a timer - 
   // defers the actual unmount/mount until nothing native is in flight.
   const switchingRef = useRef(false);
   const [switching, setSwitching] = useState(false);
@@ -92,7 +92,7 @@ export function ExperienceRouter() {
         ?? normalizeNotificationIntent(lastNotification?.notification.request.content.data as Record<string, unknown> | undefined);
       // A new launch intent replaces whatever was there. With no new
       // intent, any previously persisted one is left for its owning shell
-      // to consume — the TTL in peek/consume is what expires it, so an
+      // to consume - the TTL in peek/consume is what expires it, so an
       // intent survives an OAuth / process bounce.
       if (launchIntent) await writePendingIntent(launchIntent);
 
@@ -135,7 +135,7 @@ export function ExperienceRouter() {
   }), [experience, switching]);
 
   // NOTE: `switching` intentionally does NOT change what renders here. The
-  // whole point of deferring is to keep the CURRENT shell mounted —
+  // whole point of deferring is to keep the CURRENT shell mounted - 
   // unmounting it early would tear down its native tree immediately and
   // reintroduce the exact race this guard exists to prevent. `switching`
   // only disables the "Switch to …" affordance and delays `apply()`.

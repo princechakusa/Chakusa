@@ -14,7 +14,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerAssistant'>;
 
 // PROGRAM 2 LOOP 7: the Customer AI Assistant entry point. Thin client over
-// `/customer/ai/assistant/*` — the AI Platform runs the turn server-side.
+// `/customer/ai/assistant/*` - the AI Platform runs the turn server-side.
 // Shown only because `/customer/dashboard` reports the entry is enabled
 // (Home guards the link); this screen also degrades gracefully if a call
 // is refused.

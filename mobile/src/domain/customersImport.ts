@@ -10,12 +10,12 @@ export interface ParseCustomerImportResult {
 }
 
 /**
- * Parses pasted text into import rows — one customer per line, fields
+ * Parses pasted text into import rows - one customer per line, fields
  * separated by a comma or tab (matching what a business owner would get
  * copying a list out of Notes, WhatsApp, or a spreadsheet). Deliberately
  * text-only, not a file picker: no new native dependency, and it works the
  * same on every platform. A line with no name is skipped rather than
- * failing the whole paste — the business owner sees the skipped count and
+ * failing the whole paste - the business owner sees the skipped count and
  * can fix their input, but one malformed line never blocks the rest.
  */
 export function parseCustomerImportText(text: string): ParseCustomerImportResult {

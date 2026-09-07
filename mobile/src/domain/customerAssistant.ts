@@ -7,7 +7,7 @@ import type {
 } from '../apiTypes';
 
 // PROGRAM 2 LOOP 4: pure product rules for the Customer AI Assistant mobile
-// surface — conversation list ordering, title derivation, message grouping,
+// surface - conversation list ordering, title derivation, message grouping,
 // tool-call summaries, recommendation copy, settings toggle state, cursor
 // pagination and navigation guards. No AI, no networking, no payment /
 // loyalty / wallet logic.
@@ -121,14 +121,14 @@ export function assistantStatusLabel(status: 'COMPLETED' | 'ESCALATED' | 'FAILED
 export function recommendationHeadline(rec: CustomerAIRecommendationDto): string {
   switch (rec.type) {
     case 'repeat_booking': return `Time to rebook ${rec.name}`;
-    case 'similar_to_favourite': return `${rec.name} — like your favourites`;
+    case 'similar_to_favourite': return `${rec.name} - like your favourites`;
     case 'nearby_top_rated': return `${rec.name} nearby`;
     case 'promotion': return `Offer at ${rec.name}`;
-    case 'highly_rated': return `${rec.name} — highly rated`;
+    case 'highly_rated': return `${rec.name} - highly rated`;
   }
 }
 
-/** Every recommendation must be explainable — this asserts the reason string is present. */
+/** Every recommendation must be explainable - this asserts the reason string is present. */
 export function isExplainable(rec: CustomerAIRecommendationDto): boolean {
   return Boolean(rec.reason && rec.reason.trim().length > 0 && (rec.slug || rec.name));
 }

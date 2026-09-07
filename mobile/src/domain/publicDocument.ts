@@ -16,7 +16,7 @@ const stripEmphasis = (text: string) => text.replace(/\*\*(.+?)\*\*/g, '$1');
  * `## heading` starts a new section, `- ` lines become bullets, blank lines
  * separate paragraphs, everything else is a paragraph. `**bold**` markers
  * are stripped rather than rendered, since this content is read top-to-
- * bottom rather than skimmed for emphasis. Not a full Markdown engine —
+ * bottom rather than skimmed for emphasis. Not a full Markdown engine - 
  * intentionally, to avoid pulling in a dependency for four documents whose
  * structure is this simple.
  */
@@ -53,7 +53,7 @@ export function sectionsFromMarkdown(content: string): DocumentSection[] {
 
 export function viewStateFromDocument(doc: LegalDocumentDto): PublicDocumentViewState {
   const meta = doc.publishedAt
-    ? `Version ${doc.version} — published ${new Date(doc.publishedAt).toLocaleDateString()}`
+    ? `Version ${doc.version} - published ${new Date(doc.publishedAt).toLocaleDateString()}`
     : `Version ${doc.version}`;
   return { kind: 'loaded', heading: doc.title.toUpperCase(), meta, sections: sectionsFromMarkdown(doc.content) };
 }

@@ -50,7 +50,7 @@ describe('recovery engine status', () => {
   it('still reads attention off notifications alone when detection and automation are both excluded', () => {
     // Notifications is always gradable on every platform/plan, so in
     // practice overall never actually settles on 'not_started' in this
-    // app — it exists in the type for defensive completeness, not because
+    // app - it exists in the type for defensive completeness, not because
     // a reachable all-excluded state exists today.
     expect(recoveryEngineStatus({ callDetection: 'unsupported', hasContactsPermission: false, automationAvailability: 'service-unavailable', automationEnabled: false, pushGranted: false }).overall).toBe('attention');
   });

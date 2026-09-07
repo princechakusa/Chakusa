@@ -14,7 +14,7 @@ type Details = { resource?: string; feature?: string; limit?: number; current?: 
 type Notice = { title: string; body: string; reset?: string };
 
 interface PlanExperienceValue {
-  /** @deprecated use `plan` — kept so existing call sites (ProScreen, SettingsScreen) keep working unchanged. */
+  /** @deprecated use `plan` - kept so existing call sites (ProScreen, SettingsScreen) keep working unchanged. */
   serverPlan: ServerPlan | null;
   plan: ServerPlan | null;
   status: SubscriptionStatusDto['status'] | null;
@@ -58,7 +58,7 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
 
   // Deduplicates concurrent refresh() calls (foreground-resume racing a
   // post-create refresh, say) into a single in-flight request rather than
-  // firing the network call twice — later callers just await the request
+  // firing the network call twice - later callers just await the request
   // already underway.
   const inFlightRef = useRef<Promise<void> | null>(null);
   const refresh = useCallback(async () => {
@@ -70,7 +70,7 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
         setSubscription(next);
         setError(null);
       } catch (caught) {
-        // Product-state loading is independent of the rest of the app —
+        // Product-state loading is independent of the rest of the app - 
         // a transient failure here must never log the user out, must
         // never be mistaken for PRO, and must never zero out usage that
         // was previously known. Keep the last-good subscription snapshot
@@ -89,7 +89,7 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
   }, []);
 
   // Initial load: fires once the session is actually authenticated (not
-  // during 'restoring' or 'anonymous') — this covers both a fresh sign-in
+  // during 'restoring' or 'anonymous') - this covers both a fresh sign-in
   // and a restored session, since both transition status to
   // 'authenticated' through the same AuthContext path.
   useEffect(() => {
@@ -97,14 +97,14 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
       void refresh();
     } else if (authStatus === 'anonymous') {
       // A second user on this device must never see the previous
-      // business's plan/usage — clear every field, not just the plan.
+      // business's plan/usage - clear every field, not just the plan.
       setSubscription(null);
       setError(null);
       setNotice(null);
     }
   }, [authStatus, refresh]);
 
-  // Foreground refresh — same AppState pattern as PushNotificationManager.
+  // Foreground refresh - same AppState pattern as PushNotificationManager.
   useEffect(() => {
     if (authStatus !== 'authenticated') return;
     const subscriptionListener = AppState.addEventListener('change', nextState => {
@@ -115,7 +115,7 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
 
   const handleEntitlementError = useCallback((caught: unknown) => {
     if (!(caught instanceof ApiError) || !['LIMIT_REACHED', 'FEATURE_NOT_AVAILABLE', 'PLAN_REQUIRED'].includes(caught.code ?? '')) return false;
-    // Show the dialog immediately using the server's error details — never
+    // Show the dialog immediately using the server's error details - never
     // delay it waiting on the network. refresh() runs in the background so
     // the usage UI catches up once it resolves.
     setNotice(noticeFor(caught));

@@ -4,7 +4,7 @@ import { generateQrMatrix } from '../domain/qrCode';
 import { colors } from '../theme';
 
 /**
- * Renders a QR code as a plain grid of Views — no react-native-svg, no
+ * Renders a QR code as a plain grid of Views - no react-native-svg, no
  * Canvas, no native dependency. See domain/qrCode.ts for why: this is a
  * static, share-and-screenshot use case (print it, put it on a flyer), not
  * a scanning/decoding feature, so a flexbox grid is all the fidelity it

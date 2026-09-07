@@ -92,7 +92,7 @@ export function LoyaltyMembersScreen({ route }: Props) {
 
         {!loaded ? <LoadingState label="Loading members…" />
           : error && !members.length ? <ErrorState message={error} onRetry={() => void load(1, false)} />
-          : !members.length ? <EmptyState icon="people-outline" title="No members yet" message="Customers appear here once they earn their first points — from a completed booking, a review, or a manual credit." />
+          : !members.length ? <EmptyState icon="people-outline" title="No members yet" message="Customers appear here once they earn their first points - from a completed booking, a review, or a manual credit." />
           : (
             <View style={styles.list}>
               {members.map((member) => (
@@ -120,7 +120,7 @@ export function LoyaltyMembersScreen({ route }: Props) {
 
       <FormModal
         visible={Boolean(adjusting)}
-        title={adjusting ? `Adjust points — ${adjusting.name}` : 'Adjust points'}
+        title={adjusting ? `Adjust points - ${adjusting.name}` : 'Adjust points'}
         busy={saving}
         submitLabel="Apply adjustment"
         onClose={() => setAdjusting(null)}
@@ -132,7 +132,7 @@ export function LoyaltyMembersScreen({ route }: Props) {
         </View>
         <Segmented label="Direction" options={['add', 'remove'] as const} value={adjustDraft.direction} onChange={(v) => setAdjust('direction', v)} renderLabel={(v) => (v === 'add' ? 'Add points' : 'Remove points')} />
         <NumberField label="Points" value={adjustDraft.amount} onChangeText={(v) => setAdjust('amount', v)} placeholder="100" />
-        <TextField label="Reason (required — recorded in the audit trail)" value={adjustDraft.reason} onChangeText={(v) => setAdjust('reason', v)} multiline placeholder="e.g. Goodwill credit for a delayed appointment" />
+        <TextField label="Reason (required - recorded in the audit trail)" value={adjustDraft.reason} onChangeText={(v) => setAdjust('reason', v)} multiline placeholder="e.g. Goodwill credit for a delayed appointment" />
         {adjusting && check.ok ? (
           <Text style={styles.projected}>New balance will be {formatPoints(projectedBalance(adjusting.pointsBalance, check.points!))} once the server confirms.</Text>
         ) : null}

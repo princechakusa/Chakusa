@@ -1,7 +1,7 @@
 import type { CustomerDashboardDto } from '../../apiTypes';
 
 // PROGRAM 2 LOOP 7: pure shaping for the Customer Home screen. The screen
-// renders exactly what `/customer/dashboard` returns — this module only
+// renders exactly what `/customer/dashboard` returns - this module only
 // re-arranges that payload into the sections Home shows and derives a few
 // display labels. No fabricated data, no network.
 

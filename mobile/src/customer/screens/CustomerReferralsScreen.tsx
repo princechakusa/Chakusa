@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerReferra
 
 // PROGRAM 2 LOOP 8: referrals. `/customer/loyalty/referrals` for progress,
 // `/referrals/code` for the invite code + link (the server returns the
-// URL — we never build it), `/referrals/redeem` to apply a friend's code.
+// URL - we never build it), `/referrals/redeem` to apply a friend's code.
 // Self-referral / double-referral / exhausted-code rules are the server's;
 // we just surface its error text.
 
@@ -107,7 +107,7 @@ export function CustomerReferralsScreen(_: Props) {
 
       <SectionHeader title="Friends you’ve invited" />
       {!overview || !overview.referrals.length ? (
-        <EmptyState icon="people-outline" title="No invites yet" message="Share your code above — friends who join and book will show up here." />
+        <EmptyState icon="people-outline" title="No invites yet" message="Share your code above - friends who join and book will show up here." />
       ) : (
         <View style={styles.list}>
           {overview.referrals.map((referral) => (

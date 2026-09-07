@@ -13,7 +13,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRewardDetail'>;
 
 // PROGRAM 2 LOOP 8: reward detail + redemption. The server validates
-// eligibility, deducts points and issues the code — this screen shows
+// eligibility, deducts points and issues the code - this screen shows
 // success only after that confirmation and guards against a double tap.
 
 export function CustomerRewardDetailScreen({ route, navigation }: Props) {

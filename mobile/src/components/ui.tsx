@@ -105,7 +105,7 @@ export function InfoRow({ label, value, icon }: { label: string; value: string; 
 export function Divider() { return <View style={styles.divider} />; }
 
 export function UsageCard({ label, current, limit, periodResetsAt, onViewPro }: { label: string; current: number; limit: number | null; periodResetsAt?: string; onViewPro?: () => void }) {
-  // limit === null is PRO/unlimited — never render a progress bar, ratio,
+  // limit === null is PRO/unlimited - never render a progress bar, ratio,
   // or "of N" copy for it, and never treat it as reached/strong/blocked.
   // See PlanExperienceContext: this is the same null-means-unlimited
   // contract the backend returns.

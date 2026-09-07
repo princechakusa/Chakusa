@@ -7,7 +7,7 @@ import {
   isExperience,
 } from './experience';
 
-// PROGRAM 2 LOOP 10: pending-intent handoff — the PURE half (no RN / no
+// PROGRAM 2 LOOP 10: pending-intent handoff - the PURE half (no RN / no
 // expo imports so it is unit-testable). Persistence lives in
 // `pendingIntentStorage.ts`.
 //
@@ -18,7 +18,7 @@ import {
 // and the destination screen stay authoritative.
 
 export const PENDING_INTENT_KEY = 'chakusa.pending-intent.v1';
-export const PENDING_INTENT_TTL_MS = 15 * 60 * 1000; // 15 min — covers an OAuth round trip.
+export const PENDING_INTENT_TTL_MS = 15 * 60 * 1000; // 15 min - covers an OAuth round trip.
 const SCHEMA_VERSION = 1;
 
 export type IntentSource = 'deep-link' | 'notification';
@@ -79,7 +79,7 @@ export function normalizeDeepLinkIntent(raw: string | null | undefined, now: num
 /**
  * Turn a structured notification payload into a validated PendingIntent.
  * Routing uses ONLY structured fields (`data.experience`, `data.category`,
- * `data.loyaltyKind`, `data.deepLink`) — never the title or body. Unknown
+ * `data.loyaltyKind`, `data.deepLink`) - never the title or body. Unknown
  * payloads → null (no privileged navigation).
  */
 export function normalizeNotificationIntent(data: Record<string, unknown> | null | undefined, now: number = Date.now()): PendingIntent | null {

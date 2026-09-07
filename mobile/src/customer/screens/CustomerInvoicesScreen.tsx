@@ -15,7 +15,7 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
-// PROGRAM 3 / Invoicing I7: the customer's invoice inbox. Read-only —
+// PROGRAM 3 / Invoicing I7: the customer's invoice inbox. Read-only - 
 // invoices a linked business has sent. No pay action (no payment flow
 // exists yet).
 

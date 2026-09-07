@@ -132,8 +132,36 @@ export const availabilityApi = {
   deleteBlock: (id: string) => api.delete<void>(`/availability/blocks/${id}`),
 };
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
+export interface ConversationSummaryDto {
+  id: string;
+  status: string;
+  priority: string;
+  automationMode: string;
+  assignedMemberId: string | null;
+  updatedAt: string;
+  messages: Array<{ id: string; body: string; direction: string; channel?: string; status?: string; customerId?: string | null; createdAt?: string }>;
+  slas: Array<{ type: string; status: string; dueAt: string }>;
+}
+export interface ConversationDetailDto extends ConversationSummaryDto {
+  participants: Array<{ id: string; customerId: string | null; memberId: string | null; role: string; externalAddress: string | null }>;
+  notes: Array<{ id: string; body: string; createdAt: string }>;
+  messages: Array<{
+    id: string;
+    body: string;
+    direction: string;
+    channel: string;
+    status: string;
+    customerId: string | null;
+    createdAt: string;
+    sentAt: string | null;
+    contents?: Array<{ body: string; subject: string | null }>;
+  }>;
+}
 export const messagingApi = {
-  conversations: () => api.get<Array<{id:string;status:string;priority:string;automationMode:string;assignedMemberId:string|null;updatedAt:string;messages:Array<{id:string;body:string;direction:string}>;slas:Array<{type:string;status:string;dueAt:string}>}>>('/messages/conversations?limit=50'),
+  conversations: () => api.get<ConversationSummaryDto[]>('/messages/conversations?limit=50'),
+  conversation: (id: string) => api.get<ConversationDetailDto>(`/messages/conversations/${id}`),
+  send: (body: { customerId: string; body: string; channel?: 'sms' | 'whatsapp' }) =>
+    api.post<{ id: string }>('/messages/send', body),
   failures: () => api.get<Array<{id:string;status:string;lastError:string|null;message:{body:string}}>>('/messages/failures'),
   analytics: () => api.get<{conversations:Array<{status:string;_count:number}>;delivery:Array<{status:string;channel:string;_count:number}>;verifiedCost:string}>('/messages/analytics'),
   retry: (id: string) => api.post<{queued:boolean}>(`/messages/failures/${id}/retry`),

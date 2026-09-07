@@ -113,6 +113,11 @@ export function AccountHubScreen() {
         {owner ? <Icon name="chevron_right" size={20} color={m3.outline} /> : null}
       </M3Card>
 
+      <MenuSection title="Inbox & reputation">
+        <MenuRow icon="forum" tone="primary" title="Messages" detail="Client conversations across SMS and WhatsApp" onPress={() => navigation.navigate('Messages')} />
+        <MenuRow icon="star" tone="secondary" title="Reviews & ratings" detail="Requests, public reviews and private feedback" onPress={() => navigation.navigate('Main', { screen: 'Reviews' })} last />
+      </MenuSection>
+
       <MenuSection title="Manage your business">
         {owner ? (
           <MenuRow icon="storefront" tone="primary" title="Business profile" detail="Details, hours and public page" onPress={() => navigation.navigate('BusinessSettings')} />
@@ -139,8 +144,7 @@ export function AccountHubScreen() {
         <MenuRow icon="bolt" tone="tertiary" title="Automation" detail={features?.automation ? 'Manage active customer workflows' : 'Explore recovery workflows'} onPress={() => navigation.navigate('Automation')} last />
       </MenuSection>
 
-      <MenuSection title="Reputation & growth">
-        <MenuRow icon="star" tone="primary" title="Reviews & ratings" detail="Public endorsements and requests" onPress={() => navigation.navigate('Main', { screen: 'Reviews' })} />
+      <MenuSection title="Growth">
         <MenuRow icon="insights" tone="tertiary" title="Business insights" detail="Growth trends, top services, top customers" onPress={() => navigation.navigate('Insights')} last />
       </MenuSection>
 

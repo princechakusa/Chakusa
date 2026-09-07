@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="My invoices | Chakusa" description="View invoices connected to your client account." realm="client"><DashboardNav slot="sidebar" realm="client" active="invoices"/><DashboardCollection realm="client" eyebrow="Billing" title="Invoices" intro="See invoices safely linked to your verified customer relationships." endpoint="/v1/client/invoices" kind="invoices"/></DashboardLayout>

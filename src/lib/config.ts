@@ -34,7 +34,7 @@ export const envSchema = z.object({
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
-  PASSWORD_RESET_URL: z.string().url().default("chakusa://reset-password"),
+  PASSWORD_RESET_URL: z.string().url().default("https://chakusarecovery.com/reset-password"),
   // How long a public review/private-feedback link (see
   // src/modules/reviews/reviews.service.ts's generatePublicReviewLink)
   // stays usable after generation. 30 days by default — long enough that a

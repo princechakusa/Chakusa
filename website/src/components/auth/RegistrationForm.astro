@@ -25,5 +25,7 @@ const industries = [
   <label class="remember"><input name="remember" type="checkbox" checked /> <span>Keep me signed in on this private device for 30 days</span></label>
   <div class="turnstile-slot" data-turnstile aria-label="Security check"></div>
   <button class={`registration-submit registration-submit--${realm}`} type="submit" disabled>{business ? "Create business workspace" : "Create client account"} <span aria-hidden="true">→</span></button>
+  <div class="auth-divider"><span></span><strong>or</strong><span></span></div>
+  <div class="google-button" data-google-button data-google-realm={realm} data-google-flow="register" aria-label={`Create a ${realm} account with Google`}></div>
   <p class="form-message" data-form-message aria-live="polite"></p>
 </form>

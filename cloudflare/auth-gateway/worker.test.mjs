@@ -38,3 +38,15 @@ test("cross-site browser contexts are rejected before authentication", async () 
   const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/dashboard", { headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "cross-site" } }), {});
   assert.equal(response.status, 403);
 });
+
+test("dashboard proxy uses only explicit realm-scoped routes and approved query keys", () => {
+  const route = internals.matchProtectedRoute(new URL("https://auth.example/v1/business/customers?page=2&admin=true&search=Sam"), "GET");
+  assert.equal(route.realm, "business");
+  assert.equal(route.path, "/customers?search=Sam&page=2");
+  assert.equal(internals.matchProtectedRoute(new URL("https://auth.example/v1/business/payments/refunds"), "POST"), null);
+});
+
+test("an allowed protected route still rejects a missing session", async () => {
+  const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/customers", { headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site" } }), {});
+  assert.equal(response.status, 401);
+});

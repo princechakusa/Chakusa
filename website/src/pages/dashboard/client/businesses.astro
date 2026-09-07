@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="My businesses | Chakusa" description="View service providers connected to your account." realm="client"><DashboardNav slot="sidebar" realm="client" active="businesses"/><DashboardCollection realm="client" eyebrow="Your providers" title="Businesses" intro="Find businesses you have booked with or saved." endpoint="/v1/client/businesses" kind="businesses"/></DashboardLayout>

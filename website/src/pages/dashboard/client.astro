@@ -1,9 +1,10 @@
 ---
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../components/dashboard/DashboardNav.astro";
 const title="Client dashboard | Chakusa";const description="Your private Chakusa client dashboard.";
 ---
 <DashboardLayout {title} {description} realm="client">
-  <nav slot="sidebar" aria-label="Client dashboard"><a href="/dashboard/client" aria-current="page"><span>⌂</span>Home</a><a href="#upcoming"><span>□</span>Bookings</a><a href="#businesses"><span>♡</span>My businesses</a><a href="/contact"><span>?</span>Support</a></nav>
+  <DashboardNav slot="sidebar" realm="client" active="overview" />
   <section class="dashboard-loading" data-loading><span></span><p>Opening your secure client dashboard...</p></section>
   <section class="dashboard-auth-required" data-auth-required hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired. Sign in again to continue.</p><a href="/login">Return to sign in</a></section>
   <div class="dashboard-content" data-dashboard-content hidden>

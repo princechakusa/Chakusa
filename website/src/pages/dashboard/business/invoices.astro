@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Invoices | Chakusa" description="View protected business invoices." realm="business"><DashboardNav slot="sidebar" realm="business" active="invoices"/><DashboardCollection realm="business" eyebrow="Billing records" title="Invoices" intro="Track draft, sent, paid, and voided invoices without exposing payment controls before launch." endpoint="/v1/business/invoices?page=1&pageSize=100" kind="invoices"/></DashboardLayout>

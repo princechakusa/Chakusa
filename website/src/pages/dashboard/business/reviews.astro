@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Reviews | Chakusa" description="Manage review requests securely." realm="business"><DashboardNav slot="sidebar" realm="business" active="reviews"/><DashboardCollection realm="business" eyebrow="Reputation" title="Reviews" intro="Prepare honest review requests and keep private feedback visible." endpoint="/v1/business/reviews" kind="reviews" createLabel="Create request" fields={[{name:"serviceName",label:"Service"},{name:"message",label:"Message",type:"textarea",placeholder:"Thank your customer and ask for an honest review."}]}/></DashboardLayout>

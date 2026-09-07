@@ -9,5 +9,8 @@ const client = realm === "client";
   <label class="remember"><input name="remember" type="checkbox" /> <span>Remember this device for 30 days</span></label>
   <div class="turnstile-slot" data-turnstile aria-label="Security check"></div>
   <button class={`auth-submit auth-submit--${realm}`} type="submit" disabled><span>{client ? "Sign in as client" : "Sign in as business"}</span><span aria-hidden="true">→</span></button>
+  <div class="auth-divider"><span></span><strong>or</strong><span></span></div>
+  <div class="google-button" data-google-button data-google-realm={realm} data-google-flow="login" aria-label={`Continue to ${realm} account with Google`}></div>
+  <small class="google-legal">By continuing with Google, you agree to the <a href="/terms">Terms</a>, <a href="/privacy">Privacy Policy</a>, and <a href="/ai-disclosure">AI Disclosure</a>.</small>
   <p class="form-message" data-form-message aria-live="polite"></p>
 </form>

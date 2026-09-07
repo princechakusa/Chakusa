@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="My bookings | Chakusa" description="View your protected service bookings." realm="client"><DashboardNav slot="sidebar" realm="client" active="bookings"/><DashboardCollection realm="client" eyebrow="Your schedule" title="Bookings" intro="See upcoming and past appointments attached to your account." endpoint="/v1/client/bookings?scope=all" kind="bookings"/></DashboardLayout>

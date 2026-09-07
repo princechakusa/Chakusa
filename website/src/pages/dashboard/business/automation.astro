@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Automation | Chakusa" description="View protected business automations." realm="business"><DashboardNav slot="sidebar" realm="business" active="automation"/><DashboardCollection realm="business" eyebrow="Workflows" title="Automation" intro="Review approved workflows and their current operating state." endpoint="/v1/business/automations" kind="automation"/></DashboardLayout>

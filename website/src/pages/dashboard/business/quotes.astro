@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Quotes | Chakusa" description="View protected quotes and estimates." realm="business"><DashboardNav slot="sidebar" realm="business" active="quotes"/><DashboardCollection realm="business" eyebrow="Sales documents" title="Quotes" intro="Review drafts, sent estimates, and customer decisions from one protected workspace." endpoint="/v1/business/quotes?page=1&pageSize=100" kind="quotes"/></DashboardLayout>

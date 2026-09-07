@@ -1,0 +1,33 @@
+---
+interface Props { realm: "business" | "client"; active: string }
+const { realm, active } = Astro.props;
+const business = [
+  ["overview", "/dashboard/business", "Overview"],
+  ["customers", "/dashboard/business/customers", "Customers"],
+  ["leads", "/dashboard/business/leads", "Leads"],
+  ["bookings", "/dashboard/business/bookings", "Bookings"],
+  ["reviews", "/dashboard/business/reviews", "Reviews"],
+  ["quotes", "/dashboard/business/quotes", "Quotes"],
+  ["invoices", "/dashboard/business/invoices", "Invoices"],
+  ["messages", "/dashboard/business/messages", "Messages"],
+  ["reminders", "/dashboard/business/reminders", "Reminders"],
+  ["automation", "/dashboard/business/automation", "Automation"],
+  ["reports", "/dashboard/business/reports", "Reports"],
+  ["payments", "/dashboard/business/payments", "Payments"],
+  ["team", "/dashboard/business/team", "Team"],
+  ["setup", "/dashboard/business/setup", "Settings"],
+];
+const client = [
+  ["overview", "/dashboard/client", "Home"],
+  ["bookings", "/dashboard/client/bookings", "Bookings"],
+  ["businesses", "/dashboard/client/businesses", "My businesses"],
+  ["notifications", "/dashboard/client/notifications", "Notifications"],
+  ["invoices", "/dashboard/client/invoices", "Invoices"],
+  ["account", "/dashboard/client/account", "Account"],
+];
+const items = realm === "business" ? business : client;
+---
+<nav slot="sidebar" aria-label={`${realm === "business" ? "Business" : "Client"} dashboard`}>
+  {items.map(([key, href, label]) => <a href={href} aria-current={active === key ? "page" : undefined}><span aria-hidden="true">{label.slice(0,1)}</span>{label}</a>)}
+  <a href="/contact"><span aria-hidden="true">?</span>Support</a>
+</nav>

@@ -150,6 +150,60 @@ async function authenticate(request, env, origin, action) {
   }
 }
 
+async function googleAuthenticate(request, env, origin) {
+  let input;
+  try { input = await parseBody(request); } catch { return json({ error: "Invalid request." }, 400, origin); }
+  const realm = input?.realm;
+  if (!["client", "business"].includes(realm) || typeof input?.idToken !== "string" || input.idToken.length < 20 || input.idToken.length > 16_384 || typeof input?.turnstileToken !== "string") {
+    return json({ error: "Google sign-in could not be verified." }, 400, origin);
+  }
+  let human = false;
+  const googleAction = input.flow === "register" ? "chakusa_register" : "chakusa_login";
+  try { human = await verifyTurnstile(input.turnstileToken, googleAction, request, env); } catch { human = false; }
+  if (!human) return json({ error: "Security check failed. Please try again." }, 403, origin);
+  try {
+    const { response, payload } = await callApi(env, authPath(realm, "google"), { method: "POST", body: { idToken: input.idToken } });
+    if (!response.ok || typeof payload.refreshToken !== "string" || typeof payload.accessToken !== "string") {
+      const message = response.status === 409 ? "An account with this email already exists. Sign in with your password, then connect Google from account settings." : "Google sign-in was not completed.";
+      return json({ error: message }, response.status === 429 ? 429 : response.status === 409 ? 409 : 401, origin);
+    }
+    let business = payload.business;
+    if (realm === "business" && !business) {
+      const name = typeof input.businessName === "string" ? input.businessName.trim() : "";
+      if (!name) return json({ error: "Enter your business name before creating a business account with Google." }, 409, origin);
+      const created = await callApi(env, "/business", { method: "POST", body: { name, industry: typeof input.industry === "string" ? input.industry.trim() || undefined : undefined }, accessToken: payload.accessToken });
+      if (!created.response.ok) return json({ error: "Your Google account is secure, but the business workspace could not be created." }, 400, origin);
+      business = created.payload;
+    }
+    if (input.acceptedLegal === true) {
+      await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source: "website_google_auth", platform: "web" }, accessToken: payload.accessToken })));
+    }
+    const next = realm === "business" && (payload.isNewUser || !payload.business) ? "/dashboard/business/setup" : `/dashboard/${realm}`;
+    return json({ ...safeAuthPayload(payload), business, realm, next }, 200, origin, { cookies: sessionCookies(realm, payload, input.remember === true) });
+  } catch {
+    return json({ error: "Google sign-in is temporarily unavailable." }, 503, origin);
+  }
+}
+
+async function passwordRecovery(request, env, origin, action) {
+  let input;
+  try { input = await parseBody(request); } catch { return json({ error: "Invalid request." }, 400, origin); }
+  if (!["client", "business"].includes(input?.realm) || typeof input?.turnstileToken !== "string") return json({ error: "Check the details and try again." }, 400, origin);
+  if (action === "forgot-password" && !validEmail(input.email)) return json({ error: "Enter a valid email address." }, 400, origin);
+  if (action === "reset-password" && (typeof input.token !== "string" || input.token.length < 20 || !validPassword(input.password, true))) return json({ error: "Use a valid reset link and a password of at least 12 characters." }, 400, origin);
+  let human = false;
+  try { human = await verifyTurnstile(input.turnstileToken, action === "forgot-password" ? "chakusa_forgot" : "chakusa_reset", request, env); } catch { human = false; }
+  if (!human) return json({ error: "Security check failed. Please try again." }, 403, origin);
+  const body = action === "forgot-password" ? { email: input.email.trim().toLowerCase() } : { token: input.token, password: input.password };
+  try {
+    const { response, payload } = await callApi(env, authPath(input.realm, action), { method: "POST", body });
+    if (!response.ok) return json({ error: action === "forgot-password" ? "The request could not be completed." : "This reset link is invalid or has expired." }, response.status === 429 ? 429 : 400, origin);
+    return json({ message: typeof payload.message === "string" ? payload.message : action === "forgot-password" ? "If an account exists, reset instructions have been sent." : "Password reset successfully." }, 200, origin);
+  } catch {
+    return json({ error: "Account recovery is temporarily unavailable." }, 503, origin);
+  }
+}
+
 async function refreshSession(request, env) {
   const session = decodeRefreshCookie(readCookie(request.headers.get("cookie"), REFRESH_COOKIE));
   if (!session) return null;
@@ -205,13 +259,80 @@ async function protectedMutation(request, env, origin, expectedRealm, path, meth
   return json(result.payload, 200, origin, { cookies: session.cookies });
 }
 
+const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}";
+const protectedRoutes = [
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/customers$/, upstream: "/customers", query: ["search", "page", "pageSize"] },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/customers$/, upstream: "/customers" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/leads$/, upstream: "/leads", query: ["status", "page", "pageSize"] },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/leads$/, upstream: "/leads" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/appointments$/, upstream: "/appointments", query: ["from", "to", "status", "customerId"] },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/appointments$/, upstream: "/appointments" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/reviews$/, upstream: "/review-requests" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/reviews$/, upstream: "/review-requests" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/quotes$/, upstream: "/quotes", query: ["documentType", "status", "page", "pageSize"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/invoices$/, upstream: "/invoices", query: ["status", "customerId", "page", "pageSize"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/services$/, upstream: "/services", query: ["active"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/messages$/, upstream: "/messages/conversations", query: ["status", "cursor", "limit"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/automations$/, upstream: "/automation/workflows" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/reminders$/, upstream: "/reminders" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/reports$/, upstream: "/weekly-reports" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/attention$/, upstream: "/dashboard/attention", query: ["category", "page", "pageSize"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/insights$/, upstream: "/dashboard/insights" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/payments$/, upstream: "/payments/connect/status" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/payments\/connect$/, upstream: "/payments/connect/link" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/team$/, upstream: "/team/members" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/support$/, upstream: "/support-tickets" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/support$/, upstream: "/support-tickets" },
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/bookings$/, upstream: "/customer/bookings", query: ["scope"] },
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/businesses$/, upstream: "/customer/businesses" },
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/profile$/, upstream: "/customer/profile" },
+  { method: "PATCH", realm: "client", pattern: /^\/v1\/client\/profile$/, upstream: "/customer/profile" },
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/notifications$/, upstream: "/customer/notifications", query: ["unreadOnly", "limit"] },
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/invoices$/, upstream: "/customer/invoices" },
+  { method: "POST", realm: "client", pattern: new RegExp(`^/v1/client/bookings/(${UUID})/cancel$`), upstream: (match) => `/customer/bookings/${match[1]}/cancel` },
+];
+
+function matchProtectedRoute(url, method) {
+  for (const route of protectedRoutes) {
+    if (route.method !== method) continue;
+    const match = url.pathname.match(route.pattern);
+    if (!match) continue;
+    const base = typeof route.upstream === "function" ? route.upstream(match) : route.upstream;
+    const query = new URLSearchParams();
+    for (const key of route.query || []) { const value = url.searchParams.get(key); if (value !== null && value.length <= 200) query.set(key, value); }
+    return { ...route, path: `${base}${query.size ? `?${query}` : ""}` };
+  }
+  return null;
+}
+
+async function protectedProxy(request, env, origin, route) {
+  let session;
+  try { session = await authorizedSession(request, env); } catch { session = null; }
+  if (!session || session.realm !== route.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
+  let body;
+  if (["POST", "PATCH"].includes(route.method)) {
+    try { body = await parseBody(request); } catch { return json({ error: "Invalid request." }, 400, origin); }
+  }
+  let result = await callApi(env, route.path, { method: route.method, body, accessToken: session.accessToken });
+  if (result.response.status === 401) {
+    try { session = await refreshSession(request, env); } catch { session = null; }
+    if (!session || session.realm !== route.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
+    result = await callApi(env, route.path, { method: route.method, body, accessToken: session.accessToken });
+  }
+  if (!result.response.ok) {
+    const upstreamMessage = result.payload && typeof result.payload.message === "string" ? result.payload.message : null;
+    return json({ error: result.response.status >= 500 ? "This dashboard service is temporarily unavailable." : upstreamMessage || "Check the details and try again." }, result.response.status >= 500 ? 503 : result.response.status, origin, { cookies: session.cookies });
+  }
+  return json(result.payload, result.response.status === 201 ? 201 : 200, origin, { cookies: session.cookies });
+}
+
 async function logout(request, env, origin) {
   const session = decodeRefreshCookie(readCookie(request.headers.get("cookie"), REFRESH_COOKIE));
   if (session) { try { await callApi(env, authPath(session.realm, "logout"), { method: "POST", body: { refreshToken: session.refreshToken } }); } catch { /* Local cookie removal must still complete. */ } }
   return json({ ok: true }, 200, origin, { cookies: clearSessionCookies() });
 }
 
-export const internals = { decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath };
+export const internals = { decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };
 
 export default {
   async fetch(request, env) {
@@ -223,10 +344,15 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...securityHeaders, ...corsHeaders(origin), "access-control-allow-methods": "GET, POST, PATCH, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
     if (url.pathname === "/v1/login" && request.method === "POST") return authenticate(request, env, origin, "login");
     if (url.pathname === "/v1/register" && request.method === "POST") return authenticate(request, env, origin, "register");
+    if (url.pathname === "/v1/google" && request.method === "POST") return googleAuthenticate(request, env, origin);
+    if (url.pathname === "/v1/forgot-password" && request.method === "POST") return passwordRecovery(request, env, origin, "forgot-password");
+    if (url.pathname === "/v1/reset-password" && request.method === "POST") return passwordRecovery(request, env, origin, "reset-password");
     if (url.pathname === "/v1/dashboard" && request.method === "GET") return dashboardBundle(request, env, origin);
     if (url.pathname === "/v1/business" && request.method === "PATCH") return protectedMutation(request, env, origin, "business", "/business", "PATCH");
     if (url.pathname === "/v1/business/onboarding/complete" && request.method === "POST") return protectedMutation(request, env, origin, "business", "/business/onboarding/complete", "POST");
     if (url.pathname === "/v1/logout" && request.method === "POST") return logout(request, env, origin);
+    const protectedRoute = matchProtectedRoute(url, request.method);
+    if (protectedRoute) return protectedProxy(request, env, origin, protectedRoute);
     return json({ error: "Not found." }, 404, origin);
   },
 };

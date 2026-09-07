@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Messages | Chakusa" description="View protected customer conversations." realm="business"><DashboardNav slot="sidebar" realm="business" active="messages"/><DashboardCollection realm="business" eyebrow="Conversations" title="Messages" intro="Keep customer conversations visible to your authorised team." endpoint="/v1/business/messages?limit=100" kind="messages"/></DashboardLayout>

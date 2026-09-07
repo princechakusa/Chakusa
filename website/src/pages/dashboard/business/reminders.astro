@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Reminders | Chakusa" description="View protected customer comeback reminders." realm="business"><DashboardNav slot="sidebar" realm="business" active="reminders"/><DashboardCollection realm="business" eyebrow="Customer recovery" title="Reminders" intro="See which customer relationships need a thoughtful follow-up." endpoint="/v1/business/reminders" kind="reminders"/></DashboardLayout>

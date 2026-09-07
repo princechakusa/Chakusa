@@ -1,9 +1,10 @@
 ---
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../components/dashboard/DashboardNav.astro";
 const title="Business dashboard | Chakusa";const description="Your private Chakusa business dashboard.";
 ---
 <DashboardLayout {title} {description} realm="business">
-  <nav slot="sidebar" aria-label="Business dashboard"><a href="/dashboard/business" aria-current="page"><span>⌂</span>Overview</a><a href="#activity"><span>↗</span>Activity</a><a href="#recovery"><span>◎</span>Recovery</a><a href="/dashboard/business/setup"><span>⚙</span>Business setup</a><a href="/contact"><span>?</span>Support</a></nav>
+  <DashboardNav slot="sidebar" realm="business" active="overview" />
   <section class="dashboard-loading" data-loading><span></span><p>Opening your secure business dashboard...</p></section>
   <section class="dashboard-auth-required" data-auth-required hidden><h1>Sign in required</h1><p>Your business session is missing or has expired. Sign in again to continue.</p><a href="/login">Return to sign in</a></section>
   <div class="dashboard-content" data-dashboard-content hidden>

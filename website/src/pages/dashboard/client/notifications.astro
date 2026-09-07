@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Notifications | Chakusa" description="View protected account notifications." realm="client"><DashboardNav slot="sidebar" realm="client" active="notifications"/><DashboardCollection realm="client" eyebrow="Updates" title="Notifications" intro="Booking and account updates remain private to your secure session." endpoint="/v1/client/notifications?limit=100" kind="notifications"/></DashboardLayout>

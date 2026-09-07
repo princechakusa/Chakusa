@@ -1,10 +1,11 @@
 ---
 import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
 const title="Set up your business | Chakusa";const description="Complete your secure Chakusa business setup.";
 const industries=[["barber","Barber"],["hair_salon","Hair salon"],["beauty_salon","Beauty salon"],["spa","Spa and massage"],["dentist","Dentist"],["gym","Gym"],["restaurant","Restaurant"],["mechanic","Mechanic"],["car_wash","Car wash"],["cleaning","Cleaning"],["electrician","Electrician"],["photographer","Photographer"],["moving_company","Moving company"],["plumber","Plumber"],["hvac","HVAC"],["home_services","Other home service"]];
 ---
 <DashboardLayout {title} {description} realm="business">
-  <nav slot="sidebar" aria-label="Business dashboard"><a href="/dashboard/business"><span>⌂</span>Overview</a><a href="/dashboard/business/setup" aria-current="page"><span>⚙</span>Business setup</a><a href="/contact"><span>?</span>Support</a></nav>
+  <DashboardNav slot="sidebar" realm="business" active="setup" />
   <section class="dashboard-loading" data-loading><span></span><p>Checking your secure business session...</p></section>
   <section class="dashboard-auth-required" data-auth-required hidden><h1>Business access required</h1><p>Sign in with a business-owner account to complete this setup.</p><a href="/login">Return to sign in</a></section>
   <div class="dashboard-content setup-shell" data-dashboard-content hidden>

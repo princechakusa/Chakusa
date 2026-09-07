@@ -1,0 +1,4 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Reports | Chakusa" description="View protected weekly business reports." realm="business"><DashboardNav slot="sidebar" realm="business" active="reports"/><DashboardCollection realm="business" eyebrow="Performance" title="Reports" intro="Keep weekly operating and recovery summaries together." endpoint="/v1/business/reports" kind="reports"/></DashboardLayout>

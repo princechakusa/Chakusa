@@ -81,6 +81,7 @@ export function M3Header({
   businessName,
   location,
   verified,
+  onBack,
   onLocationPress,
   onNotificationsPress,
   onAvatarPress,
@@ -89,11 +90,37 @@ export function M3Header({
   businessName: string;
   location?: string | null;
   verified?: boolean;
+  /** When set, the header is a secondary-screen bar: back chevron + title, no brand logo. */
+  onBack?: () => void;
   onLocationPress?: () => void;
   onNotificationsPress?: () => void;
   onAvatarPress?: () => void;
   hasNotifications?: boolean;
 }) {
+  if (onBack) {
+    return (
+      <View style={styles.headerBack}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.headerBackBtn}>
+          <Icon name="arrow_back" size={22} color={m3.onSurface} />
+        </Pressable>
+        <Text numberOfLines={1} style={styles.headerBackLabel}>
+          {businessName}
+        </Text>
+        <View style={styles.flexSpacer} />
+        {onNotificationsPress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+            onPress={onNotificationsPress}
+            style={styles.headerIconButton}
+          >
+            <Icon name="notifications" size={22} color={m3.onSurfaceVariant} />
+            {hasNotifications ? <View style={styles.headerDot} /> : null}
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
   return (
     <View style={styles.header}>
       <View style={styles.headerBrand}>
@@ -321,6 +348,17 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, minWidth: 0 },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   headerTitle: { ...m3Type.headlineSm, fontSize: 17, lineHeight: 22, color: m3.onSurface, flexShrink: 1 },
+  headerBack: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: m3Space.sm,
+    backgroundColor: m3.surfaceContainerLowest,
+  },
+  headerBackBtn: { width: 40, height: 40, borderRadius: m3Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  headerBackLabel: { ...m3Type.labelMd, color: m3.primary },
+  flexSpacer: { flex: 1 },
   headerLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 1 },
   headerLocation: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: m3Space.xs },

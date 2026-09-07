@@ -34,7 +34,7 @@ export function ProScreen() {
   const selectedName = billing.selectedPlan === 'BUSINESS' ? 'Business' : 'Pro';
   const statusLabel = subscription ? subscriptionStatusLabel(subscription) : null; const period = subscription ? subscriptionPeriodCopy(subscription) : null;
   const trialProgress = subscription ? trialProgressCopy(subscription) : null;
-  return <M3Screen header={<M3Header businessName="Subscription & Billing" onNotificationsPress={() => navigation.navigate('AttentionCenter')} onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })} hasNotifications={false} />}>
+  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })} hasNotifications={false} />}>
     <View style={styles.titleBlock}>
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>Subscription & Billing</Text>

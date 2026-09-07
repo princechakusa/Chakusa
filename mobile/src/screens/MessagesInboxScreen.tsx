@@ -89,7 +89,7 @@ export function MessagesInboxScreen() {
 
   const header = (
     <M3Header
-      businessName="Messages"
+      businessName="More" onBack={() => navigation.goBack()}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('AccountInformation')}
       hasNotifications={unreadCount > 0}

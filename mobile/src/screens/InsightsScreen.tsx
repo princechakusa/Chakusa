@@ -76,7 +76,7 @@ export function InsightsScreen({ navigation }: Props) {
   const hasAnyServiceData = servicePerformance.mostRequested.length > 0;
   const goToCustomer = (customerId: string | null) => { if (customerId) navigation.navigate('CustomerProfile', { customerId }); };
 
-  return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />}>
+  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate("AttentionCenter")} hasNotifications={false} />}>
     <View style={styles.titleBlock}><Text style={styles.pageTitle}>Business Insights</Text><Text style={styles.pageSubtitle}>How your business is performing, in your own numbers.</Text></View>
 
     {value ? <ValueCreated value={value} currency={undefined} navigation={navigation} /> : null}

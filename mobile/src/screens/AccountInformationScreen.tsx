@@ -61,7 +61,7 @@ export function AccountInformationScreen() {
 
   const header = (
     <M3Header
-      businessName="Security & Sign-in"
+      businessName="More" onBack={() => navigation.goBack()}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
       hasNotifications={false}

@@ -173,7 +173,7 @@ export function TeamScreen({ navigation }: Props) {
 
   const header = (
     <M3Header
-      businessName="Team & Permissions"
+      businessName="More" onBack={() => navigation.goBack()}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
       hasNotifications={pending.length > 0}

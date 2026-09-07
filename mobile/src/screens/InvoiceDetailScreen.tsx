@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { InvoiceDetailDto } from '../apiTypes';
 import { AppHeader, Divider, EmptyState, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton, SectionHeader, StatusBadge } from '../components/ui';
-import { availableInvoiceActions, invoiceStatusLabel, isInvoiceOverdue, type BusinessRole } from '../domain/invoices';
+import { availableInvoiceActions, canCollectInvoicePayment, invoicePaymentStateLabel, invoiceStatusLabel, isInvoiceOverdue, type BusinessRole } from '../domain/invoices';
 import { ApiError } from '../services/api';
 import { invoicesApi } from '../services/endpoints';
 import { copyMessage } from '../services/messaging';
@@ -54,6 +54,25 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
       await load();
     } catch (caught) {
       Alert.alert('Couldn’t send this invoice', caught instanceof ApiError ? caught.message : 'Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const collectPayment = async () => {
+    if (!invoice || busy) return;
+    setBusy('pay');
+    try {
+      const result = await invoicesApi.paymentLink(invoice.id);
+      if (result.checkoutUrl) {
+        await copyMessage(result.checkoutUrl);
+        Alert.alert('Payment link copied', 'A secure Stripe payment link is on your clipboard — send it to your customer.');
+      } else {
+        Alert.alert('Payment not ready', 'Could not start a payment for this invoice.');
+      }
+      await load();
+    } catch (caught) {
+      Alert.alert('Couldn’t start a payment', caught instanceof ApiError ? caught.message : 'Please try again.');
     } finally {
       setBusy(null);
     }
@@ -148,6 +167,22 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
+      {invoice.status === 'SENT' || Number(invoice.payment.amountPaid) > 0 ? (
+        <>
+          <SectionHeader title="Payment" />
+          <View style={styles.card}>
+            <InfoRow label="Invoice total" value={formatMoney(invoice.payment.invoiceTotal, invoice.currency)} />
+            {Number(invoice.payment.amountPaid) > 0 ? <InfoRow label="Paid" value={formatMoney(invoice.payment.amountPaid, invoice.currency)} /> : null}
+            {Number(invoice.payment.amountRefunded) > 0 ? <InfoRow label="Refunded" value={`−${formatMoney(invoice.payment.amountRefunded, invoice.currency)}`} /> : null}
+            <Divider />
+            <InfoRow label="Outstanding" value={formatMoney(invoice.payment.outstandingBalance, invoice.currency)} />
+            {invoicePaymentStateLabel(invoice.payment.state) ? (
+              <InfoRow label="Status" value={invoicePaymentStateLabel(invoice.payment.state)!} />
+            ) : null}
+          </View>
+        </>
+      ) : null}
+
       <SectionHeader title="Line items" />
       {revision && revision.lineItems.length > 0 ? (
         <View style={styles.card}>
@@ -219,6 +254,9 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
         ) : null}
         {actions.includes('shareLink') ? (
           <SecondaryButton disabled={disabled} fullWidth icon="link-outline" label={busy === 'link' ? 'Working…' : 'Share secure link'} onPress={() => void shareLink()} />
+        ) : null}
+        {canCollectInvoicePayment(invoice.status, invoice.payment) ? (
+          <SecondaryButton disabled={disabled} fullWidth icon="card-outline" label={busy === 'pay' ? 'Working…' : 'Copy payment link'} onPress={() => void collectPayment()} />
         ) : null}
         {actions.includes('void') ? (
           <SecondaryButton disabled={disabled} fullWidth icon="close-circle-outline" label={busy === 'void' ? 'Voiding…' : 'Void invoice'} onPress={voidInvoice} />

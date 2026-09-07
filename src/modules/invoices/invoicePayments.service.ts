@@ -6,6 +6,8 @@ import { recordOutboxEvent } from "../../lib/outbox.js";
 import { toMinorUnits } from "../../lib/payments/money.js";
 import { deriveInvoicePayment, type InvoicePaymentSummary } from "../../lib/invoices/invoicePayments.domain.js";
 import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
+import { resolvePublicInvoiceToken } from "../public/publicInvoices.service.js";
+import { resolveCustomerInvoiceBusiness } from "../customer/invoices.service.js";
 
 // PROGRAM 3 / Invoicing I8: collect an invoice payment over Stripe Connect
 // (business <-> customer commerce - never the SaaS subscription rail).
@@ -124,6 +126,38 @@ export async function createInvoicePaymentLink(
     });
     throw error;
   }
+}
+
+/**
+ * Customer-facing "pay this invoice" from the account-less secure link.
+ * A malformed / unknown / expired / revoked / non-open token is an
+ * indistinguishable generic 404 (same discipline as the GET). Only the
+ * Checkout URL is returned - never an internal id.
+ */
+export async function payInvoiceViaToken(
+  rawToken: string,
+  provider: StripePaymentProvider = defaultStripePaymentProvider,
+): Promise<{ checkoutUrl: string }> {
+  const resolved = await resolvePublicInvoiceToken(rawToken);
+  if (!resolved || resolved.state !== "open") {
+    throw ApiError.notFound("This link is invalid or no longer available");
+  }
+  const invoice = resolved.token.invoiceRevision.invoice;
+  const transaction = await createInvoicePaymentLink(invoice.businessId, invoice.id, provider);
+  if (!transaction.checkoutUrl) throw ApiError.conflict("Could not start a payment for this invoice");
+  return { checkoutUrl: transaction.checkoutUrl };
+}
+
+/** Customer-facing "pay this invoice" from the authenticated inbox. */
+export async function payInvoiceForCustomer(
+  customerProfileId: string,
+  invoiceId: string,
+  provider: StripePaymentProvider = defaultStripePaymentProvider,
+): Promise<{ checkoutUrl: string }> {
+  const businessId = await resolveCustomerInvoiceBusiness(customerProfileId, invoiceId);
+  const transaction = await createInvoicePaymentLink(businessId, invoiceId, provider);
+  if (!transaction.checkoutUrl) throw ApiError.conflict("Could not start a payment for this invoice");
+  return { checkoutUrl: transaction.checkoutUrl };
 }
 
 export function listInvoicePayments(businessId: string, invoiceId: string) {

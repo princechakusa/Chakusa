@@ -1,4 +1,4 @@
-import type { CustomerInvoiceListItemDto, CustomerInvoiceStatus } from '../../apiTypes';
+import type { CustomerInvoiceListItemDto, CustomerInvoicePaymentDto, CustomerInvoiceStatus } from '../../apiTypes';
 
 // PROGRAM 3 / Invoicing I7: pure product rules for the customer invoice
 // inbox. Read-only surface: a customer views an invoice their business
@@ -37,8 +37,8 @@ export function customerInvoiceHeadline(status: CustomerInvoiceStatus): string {
  */
 export function customerInvoiceDetailNote(status: CustomerInvoiceStatus, overdue: boolean): string {
   if (status === 'VOID') return 'Your business canceled this invoice. You do not owe anything for it.';
-  if (overdue) return 'This invoice is past its due date. Contact your business if you have any questions.';
-  return 'Your business sent you this invoice. Contact them directly with any questions about payment.';
+  if (overdue) return 'This invoice is past its due date. You can pay it securely below, or contact your business with any questions.';
+  return 'Your business sent you this invoice. You can pay it securely below, or contact them with any questions.';
 }
 
 const STATUS_ORDER: Record<CustomerInvoiceStatus, number> = { SENT: 0, VOID: 1 };
@@ -54,5 +54,22 @@ export function sortCustomerInvoices(items: readonly CustomerInvoiceListItemDto[
 }
 
 export function outstandingInvoiceCount(items: readonly CustomerInvoiceListItemDto[]): number {
-  return items.filter((item) => item.status === 'SENT').length;
+  return items.filter((item) => item.status === 'SENT' && Number(item.payment.outstandingBalance) > 0).length;
+}
+
+// --- Payment (Invoicing I8) ------------------------------------------
+
+/** The customer may pay a SENT invoice that still owes money. */
+export function canPayCustomerInvoice(
+  item: Pick<CustomerInvoiceListItemDto, 'status' | 'payment'>,
+): boolean {
+  return item.status === 'SENT' && Number(item.payment.outstandingBalance) > 0;
+}
+
+export function customerInvoicePaymentLabel(payment: CustomerInvoicePaymentDto): string | null {
+  if (payment.state === 'PAID') return 'Paid in full';
+  const paid = Number(payment.amountPaid);
+  const outstanding = Number(payment.outstandingBalance);
+  if (paid > 0 && outstanding > 0) return `${payment.currency} ${payment.amountPaid} paid · ${payment.currency} ${payment.outstandingBalance} left`;
+  return null;
 }

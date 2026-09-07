@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { InvoiceDetailDto, InvoiceListItemDto } from '../apiTypes';
 import {
   availableInvoiceActions,
+  canCollectInvoicePayment,
   canPerformInvoiceAction,
   canSendInvoiceDraft,
   filterInvoicesByStatus,
   invoiceDetailLineItemsToDrafts,
   invoiceLineItemsToInputs,
+  invoicePaymentStateLabel,
+  invoicePaymentStateTone,
   invoiceStatusLabel,
   invoiceStatusTone,
   isInvoiceOverdue,
@@ -30,6 +33,7 @@ const listItem = (over: Partial<InvoiceListItemDto> = {}): InvoiceListItemDto =>
   status: 'SENT',
   currency: 'USD',
   totals: { subtotal: '150.00', discountTotal: '0.00', taxTotal: '0.00', total: '150.00' },
+  payment: { currency: 'USD', invoiceTotal: '150.00', amountPaid: '0.00', amountRefunded: '0.00', outstandingBalance: '150.00', state: null },
   customer: null,
   issueDate: '2026-09-01T00:00:00.000Z',
   dueDate: '2026-09-10T00:00:00.000Z',
@@ -157,6 +161,26 @@ describe('serialisation', () => {
 
   it('returns no drafts when there is no current revision', () => {
     expect(invoiceDetailLineItemsToDrafts({ currentRevision: null } as InvoiceDetailDto)).toEqual([]);
+  });
+});
+
+describe('invoice payment (I8)', () => {
+  it('labels and tones each derived payment state', () => {
+    expect(invoicePaymentStateLabel('PAID')).toBe('Paid');
+    expect(invoicePaymentStateLabel('PARTIALLY_PAID')).toBe('Part-paid');
+    expect(invoicePaymentStateLabel('OVERDUE')).toBe('Overdue');
+    expect(invoicePaymentStateLabel(null)).toBeNull();
+    expect(invoicePaymentStateTone('PAID')).toBe('success');
+    expect(invoicePaymentStateTone('OVERDUE')).toBe('negative');
+    expect(invoicePaymentStateTone('PARTIALLY_PAID')).toBe('attention');
+    expect(invoicePaymentStateTone(null)).toBe('default');
+  });
+
+  it('offers collection only for a SENT invoice that still owes money', () => {
+    expect(canCollectInvoicePayment('SENT', { outstandingBalance: '140.00' })).toBe(true);
+    expect(canCollectInvoicePayment('SENT', { outstandingBalance: '0.00' })).toBe(false);
+    expect(canCollectInvoicePayment('DRAFT', { outstandingBalance: '140.00' })).toBe(false);
+    expect(canCollectInvoicePayment('VOID', { outstandingBalance: '140.00' })).toBe(false);
   });
 });
 

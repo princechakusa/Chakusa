@@ -1,4 +1,4 @@
-import type { InvoiceDetailDto, InvoiceListItemDto, InvoiceStatus, QuoteLineItemInput } from '../apiTypes';
+import type { InvoiceDetailDto, InvoiceListItemDto, InvoicePaymentState, InvoicePaymentSummaryDto, InvoiceStatus, QuoteLineItemInput } from '../apiTypes';
 import {
   emptyLineItem,
   lineItemDraftToInput,
@@ -131,4 +131,39 @@ export function invoiceDetailLineItemsToDrafts(detail: InvoiceDetailDto): LineIt
 export function filterInvoicesByStatus(items: readonly InvoiceListItemDto[], status: InvoiceStatus | 'all'): InvoiceListItemDto[] {
   if (status === 'all') return [...items];
   return items.filter((item) => item.status === status);
+}
+
+// --- Payment (Invoicing I8) --------------------------------------------
+// Derived server-side; the mobile layer only labels it. There is no
+// client-authoritative paid state.
+
+export function invoicePaymentStateLabel(state: InvoicePaymentState): string | null {
+  switch (state) {
+    case 'PAID':
+      return 'Paid';
+    case 'PARTIALLY_PAID':
+      return 'Part-paid';
+    case 'OVERDUE':
+      return 'Overdue';
+    default:
+      return null;
+  }
+}
+
+export function invoicePaymentStateTone(state: InvoicePaymentState): InvoiceStatusTone {
+  switch (state) {
+    case 'PAID':
+      return 'success';
+    case 'OVERDUE':
+      return 'negative';
+    case 'PARTIALLY_PAID':
+      return 'attention';
+    default:
+      return 'default';
+  }
+}
+
+/** The business may collect payment on a SENT invoice that still owes money. */
+export function canCollectInvoicePayment(status: InvoiceStatus, payment: Pick<InvoicePaymentSummaryDto, 'outstandingBalance'>): boolean {
+  return status === 'SENT' && Number(payment.outstandingBalance) > 0;
 }

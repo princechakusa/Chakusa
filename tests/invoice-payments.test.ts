@@ -201,6 +201,46 @@ describe("Stripe Connect invoice payments (Program 3, Invoicing I8)", () => {
     expect(detail.json().payment.state).toBe("OVERDUE");
   });
 
+  it("lets the customer start a payment from the public secure link", async () => {
+    const account = await businessAccount(app);
+    const draft = await sentInvoice(app, account.token, { dueDate: "2999-01-01" });
+    const reissue = await app.inject({ method: "POST", url: `/invoices/${draft.id}/reissue-link`, headers: auth(account.token) });
+    const rawToken = (reissue.json().accessUrl as string).split("/i/")[1];
+
+    const pay = await app.inject({ method: "POST", url: `/public/invoices/${rawToken}/pay`, payload: {} });
+    expect(pay.statusCode).toBe(201);
+    expect(pay.json()).toEqual({ checkoutUrl: "https://checkout.stripe.test/session" });
+    expect(JSON.stringify(pay.json())).not.toContain("acct_");
+
+    expect(await prisma.invoicePaymentTransaction.count({ where: { invoiceId: draft.id } })).toBe(1);
+  });
+
+  it("returns a generic 404 when paying with a malformed or unknown token", async () => {
+    const bad = await app.inject({ method: "POST", url: "/public/invoices/not-a-real-token/pay", payload: {} });
+    expect(bad.statusCode).toBe(404);
+  });
+
+  it("lets an authenticated linked customer pay from their inbox, and 404s a stranger", async () => {
+    const account = await businessAccount(app);
+    const invoice = await sentInvoice(app, account.token, { dueDate: "2999-01-01" });
+    const contact = await prisma.customer.create({ data: { businessId: account.businessId, name: "Casey" } });
+    await prisma.invoice.update({ where: { id: invoice.id }, data: { customerId: contact.id } });
+
+    const ownerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `own-${Date.now()}@example.com`, password: "password123", fullName: "Casey" } });
+    const owner = ownerReg.json();
+    await prisma.customerBusinessLink.create({ data: { customerProfileId: owner.profile.id, businessId: account.businessId, businessCustomerId: contact.id } });
+
+    const strangerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `str-${Date.now()}@example.com`, password: "password123", fullName: "Stranger" } });
+    const stranger = strangerReg.json();
+
+    const strangerPay = await app.inject({ method: "POST", url: `/customer/invoices/${invoice.id}/pay`, headers: { authorization: `Bearer ${stranger.accessToken}` }, payload: {} });
+    expect(strangerPay.statusCode).toBe(404);
+
+    const ownerPay = await app.inject({ method: "POST", url: `/customer/invoices/${invoice.id}/pay`, headers: { authorization: `Bearer ${owner.accessToken}` }, payload: {} });
+    expect(ownerPay.statusCode).toBe(201);
+    expect(ownerPay.json().checkoutUrl).toBe("https://checkout.stripe.test/session");
+  });
+
   it("exposes authoritative outstanding balance on the public secure link", async () => {
     const account = await businessAccount(app);
     const draftRes = await app.inject({ method: "POST", url: "/invoices", headers: auth(account.token), payload: { lineItems: [{ description: "Consulting", quantity: 2, unitPrice: "75.00", discountAmount: "10.00" }], dueDate: "2999-01-01" } });

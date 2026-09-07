@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CustomerInvoiceListItemDto } from '../../apiTypes';
 import {
+  canPayCustomerInvoice,
   customerInvoiceDetailNote,
   customerInvoiceHeadline,
+  customerInvoicePaymentLabel,
   customerInvoiceStatusLabel,
   customerInvoiceStatusTone,
   isCustomerInvoiceOverdue,
@@ -18,6 +20,7 @@ const item = (over: Partial<CustomerInvoiceListItemDto> = {}): CustomerInvoiceLi
   issueDate: '2026-09-01T00:00:00.000Z',
   dueDate: '2026-09-10T00:00:00.000Z',
   total: '140.00',
+  payment: { currency: 'USD', invoiceTotal: '140.00', amountPaid: '0.00', outstandingBalance: '140.00', state: null },
   business: { name: 'Bright Studio' },
   createdAt: '2026-09-01T00:00:00.000Z',
   ...over,
@@ -68,6 +71,21 @@ describe('sortCustomerInvoices / outstandingInvoiceCount', () => {
   });
 
   it('counts only outstanding invoices', () => {
-    expect(outstandingInvoiceCount([item({ status: 'SENT' }), item({ status: 'VOID' }), item({ status: 'SENT' })])).toBe(2);
+    const paid = item({ status: 'SENT', payment: { currency: 'USD', invoiceTotal: '140.00', amountPaid: '140.00', outstandingBalance: '0.00', state: 'PAID' } });
+    expect(outstandingInvoiceCount([item({ status: 'SENT' }), item({ status: 'VOID' }), item({ status: 'SENT' }), paid])).toBe(2);
+  });
+});
+
+describe('canPayCustomerInvoice / customerInvoicePaymentLabel', () => {
+  it('allows paying only a SENT invoice that still owes money', () => {
+    expect(canPayCustomerInvoice(item())).toBe(true);
+    expect(canPayCustomerInvoice(item({ status: 'VOID' }))).toBe(false);
+    expect(canPayCustomerInvoice(item({ payment: { currency: 'USD', invoiceTotal: '140.00', amountPaid: '140.00', outstandingBalance: '0.00', state: 'PAID' } }))).toBe(false);
+  });
+
+  it('summarises a partial payment and reports paid-in-full', () => {
+    expect(customerInvoicePaymentLabel({ currency: 'USD', invoiceTotal: '140.00', amountPaid: '0.00', outstandingBalance: '140.00', state: null })).toBeNull();
+    expect(customerInvoicePaymentLabel({ currency: 'USD', invoiceTotal: '140.00', amountPaid: '40.00', outstandingBalance: '100.00', state: 'PARTIALLY_PAID' })).toContain('40.00 paid');
+    expect(customerInvoicePaymentLabel({ currency: 'USD', invoiceTotal: '140.00', amountPaid: '140.00', outstandingBalance: '0.00', state: 'PAID' })).toBe('Paid in full');
   });
 });

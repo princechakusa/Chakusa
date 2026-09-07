@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  canPayPublicInvoice,
   invoiceErrorViewState,
+  invoicePaymentSummaryLabel,
   invoiceStateDetail,
   invoiceStateHeadline,
   isInvoiceOverdue,
@@ -17,6 +19,7 @@ import { formatDate, formatMoney } from '../utils/format';
 
 export function PublicInvoiceScreen({ token }: { token: string | null }) {
   const [view, setView] = useState<PublicInvoiceViewState>(token ? { kind: 'loading' } : { kind: 'invalid' });
+  const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -34,6 +37,19 @@ export function PublicInvoiceScreen({ token }: { token: string | null }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const pay = useCallback(async () => {
+    if (!token || paying) return;
+    setPaying(true);
+    try {
+      const { checkoutUrl } = await publicInvoicesApi.pay(token);
+      await Linking.openURL(checkoutUrl);
+    } catch (error) {
+      Alert.alert('Couldn’t start the payment', error instanceof ApiError ? error.message : 'Please try again.');
+    } finally {
+      setPaying(false);
+    }
+  }, [token, paying]);
 
   const details = view.kind === 'ready' ? view.details : null;
   const overdue = details ? isInvoiceOverdue(details) : false;
@@ -100,7 +116,28 @@ export function PublicInvoiceScreen({ token }: { token: string | null }) {
                   <TotalRow label="Tax" value={formatMoney(details.revision.totals.taxTotal, details.currency)} />
                 ) : null}
                 <TotalRow label="Total" value={formatMoney(details.revision.totals.total, details.currency)} strong />
+                {Number(details.payment.amountPaid) > 0 ? (
+                  <TotalRow label="Paid" value={`−${formatMoney(details.payment.amountPaid, details.currency)}`} />
+                ) : null}
+                {Number(details.payment.amountPaid) > 0 ? (
+                  <TotalRow label="Amount due" value={formatMoney(details.payment.outstandingBalance, details.currency)} strong />
+                ) : null}
               </View>
+
+              {invoicePaymentSummaryLabel(details.payment) ? (
+                <Text style={styles.paySummary}>{invoicePaymentSummaryLabel(details.payment)}</Text>
+              ) : null}
+
+              {canPayPublicInvoice(details) ? (
+                <View style={styles.payWrap}>
+                  <Action
+                    label={paying ? 'Opening secure checkout…' : `Pay ${formatMoney(details.payment.outstandingBalance, details.currency)}`}
+                    disabled={paying}
+                    onPress={() => void pay()}
+                  />
+                  <Text style={styles.payNote}>You’ll be taken to Stripe to pay securely. Chakusa never sees your card details.</Text>
+                </View>
+              ) : null}
 
               {details.revision.notes ? (
                 <View style={styles.block}>
@@ -184,6 +221,9 @@ const styles = StyleSheet.create({
   totalLabel: { ...typography.body, color: colors.textSecondary },
   totalValue: { ...typography.body, color: colors.text },
   totalStrong: { ...typography.bodyStrong, color: colors.text },
+  paySummary: { ...typography.bodyStrong, color: colors.text, textAlign: 'center', marginTop: spacing.sm },
+  payWrap: { marginTop: spacing.md, gap: spacing.xs },
+  payNote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
   block: { marginTop: spacing.md, gap: spacing.xs },
   blockLabel: { ...typography.caption, color: colors.text },
   blockText: { ...typography.body, color: colors.textSecondary },

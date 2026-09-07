@@ -22,7 +22,7 @@ import type {
   WalletDto, LoyaltyAccountSummaryDto, LoyaltyRewardDto, LoyaltyTransactionDto,
   RewardRedemptionDto, CustomerMembershipDto, MembershipPlanDto,
   ReferralOverviewDto, ReferralCodeDto,
-  CustomerInvoiceListResponse, CustomerInvoiceDetailDto,
+  CustomerInvoiceListResponse, CustomerInvoiceDetailDto, CustomerInvoicePayResult,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -170,9 +170,11 @@ export const loyaltyApi = {
     customerHttp.post<{ referralId: string; status: string }>('/customer/loyalty/referrals/redeem', { code }),
 };
 
-// PROGRAM 3 / Invoicing I7: authenticated customer invoice inbox. Read-only —
-// a customer never sends, edits or voids an invoice. `/customer/invoices/*`.
+// PROGRAM 3 / Invoicing I7 + I8: authenticated customer invoice inbox.
+// Read-only except `pay`, which starts a Stripe Checkout Session for an
+// invoice the customer owns and returns its URL to open externally.
 export const customerInvoicesApi = {
   list: () => customerHttp.get<CustomerInvoiceListResponse>('/customer/invoices'),
   get: (id: string) => customerHttp.get<CustomerInvoiceDetailDto>(`/customer/invoices/${id}`),
+  pay: (id: string) => customerHttp.post<CustomerInvoicePayResult>(`/customer/invoices/${id}/pay`, {}),
 };

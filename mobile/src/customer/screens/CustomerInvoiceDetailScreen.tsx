@@ -1,21 +1,21 @@
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, Divider, EmptyState, ErrorState, InfoRow, LoadingState, Screen, SectionHeader, StatusBadge } from '../../components/ui';
+import { AppHeader, Divider, EmptyState, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge } from '../../components/ui';
 import type { CustomerInvoiceDetailDto } from '../../apiTypes';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { formatDate, formatMoney } from '../../utils/format';
-import { customerInvoiceDetailNote, customerInvoiceHeadline, customerInvoiceStatusLabel, isCustomerInvoiceOverdue } from '../domain/customerInvoices';
+import { canPayCustomerInvoice, customerInvoiceDetailNote, customerInvoiceHeadline, customerInvoicePaymentLabel, customerInvoiceStatusLabel, isCustomerInvoiceOverdue } from '../domain/customerInvoices';
 import { customerInvoicesApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
 type DetailRoute = RouteProp<CustomerRootStackParamList, 'CustomerInvoiceDetail'>;
 
-// PROGRAM 3 / Invoicing I7: a single invoice a business sent this
-// customer. Read-only. No pay button — payment happens directly with the
-// business until a real payment flow exists.
+// PROGRAM 3 / Invoicing I7 + I8: a single invoice a business sent this
+// customer. Read-only except a secure "Pay" action (Stripe Checkout) when
+// the invoice is still open and money is owed.
 
 export function CustomerInvoiceDetailScreen() {
   const route = useRoute<DetailRoute>();
@@ -23,6 +23,7 @@ export function CustomerInvoiceDetailScreen() {
   const [invoice, setInvoice] = useState<CustomerInvoiceDetailDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +37,19 @@ export function CustomerInvoiceDetailScreen() {
   }, [invoiceId]);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+
+  const pay = useCallback(async () => {
+    if (paying) return;
+    setPaying(true);
+    try {
+      const { checkoutUrl } = await customerInvoicesApi.pay(invoiceId);
+      await Linking.openURL(checkoutUrl);
+    } catch (caught) {
+      Alert.alert('Couldn’t start the payment', caught instanceof ApiError ? caught.message : 'Please try again.');
+    } finally {
+      setPaying(false);
+    }
+  }, [invoiceId, paying]);
 
   if (!loaded) return <Screen><LoadingState label="Loading invoice…" /></Screen>;
   if (error && !invoice) return <Screen><ErrorState message={error} onRetry={() => void load()} /></Screen>;
@@ -95,6 +109,25 @@ export function CustomerInvoiceDetailScreen() {
           {revision.totals.taxTotal !== '0.00' ? <InfoRow label="Tax" value={formatMoney(revision.totals.taxTotal, invoice.currency)} /> : null}
           <Divider />
           <InfoRow label="Total" value={formatMoney(revision.totals.total, invoice.currency)} />
+          {Number(invoice.payment.amountPaid) > 0 ? <InfoRow label="Paid" value={`−${formatMoney(invoice.payment.amountPaid, invoice.currency)}`} /> : null}
+          {Number(invoice.payment.amountPaid) > 0 ? <InfoRow label="Amount due" value={formatMoney(invoice.payment.outstandingBalance, invoice.currency)} /> : null}
+        </View>
+      ) : null}
+
+      {customerInvoicePaymentLabel(invoice.payment) ? (
+        <Text style={styles.payStatus}>{customerInvoicePaymentLabel(invoice.payment)}</Text>
+      ) : null}
+
+      {canPayCustomerInvoice(invoice) ? (
+        <View style={styles.payWrap}>
+          <PrimaryButton
+            fullWidth
+            icon="card-outline"
+            disabled={paying}
+            label={paying ? 'Opening secure checkout…' : `Pay ${formatMoney(invoice.payment.outstandingBalance, invoice.currency)}`}
+            onPress={() => void pay()}
+          />
+          <Text style={styles.payNote}>You’ll be taken to Stripe to pay securely. Chakusa never sees your card details.</Text>
         </View>
       ) : null}
 
@@ -117,6 +150,9 @@ export function CustomerInvoiceDetailScreen() {
 const styles = StyleSheet.create({
   noteCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
   note: { ...typography.caption, color: colors.textSecondary },
+  payStatus: { ...typography.bodyStrong, color: colors.text, textAlign: 'center', marginTop: spacing.sm },
+  payWrap: { marginTop: spacing.sm, gap: spacing.xs },
+  payNote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   lineRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: spacing.sm, gap: spacing.sm },
   lineMain: { flex: 1 },

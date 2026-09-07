@@ -960,12 +960,36 @@ export interface InvoiceRevisionDto {
   lineItems: InvoiceLineItemDto[];
 }
 export interface InvoiceRevisionHistoryEntryDto { id: string; revisionNumber: number; total: string; createdAt: string; }
+// PROGRAM 3 / Invoicing I8: payment position is DERIVED server-side from
+// settled Stripe Connect transactions minus refunds - never stored.
+export type InvoicePaymentState = 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | null;
+export interface InvoicePaymentSummaryDto {
+  currency: string;
+  invoiceTotal: string;
+  amountPaid: string;
+  amountRefunded: string;
+  outstandingBalance: string;
+  state: InvoicePaymentState;
+}
+export type InvoicePaymentTransactionStatus = 'pending' | 'paid' | 'failed' | 'partially_refunded' | 'refunded';
+export interface InvoicePaymentTransactionDto {
+  id: string;
+  status: InvoicePaymentTransactionStatus;
+  amount: string;
+  refundedAmount: string;
+  currency: string;
+  checkoutUrl: string | null;
+  paidAt: string | null;
+  refundedAt: string | null;
+  createdAt: string;
+}
 export interface InvoiceListItemDto {
   id: string;
   invoiceNumber: string;
   status: InvoiceStatus;
   currency: string;
   totals: QuoteTotalsDto;
+  payment: InvoicePaymentSummaryDto;
   customer: { id: string; name: string } | null;
   issueDate: string | null;
   dueDate: string | null;
@@ -985,10 +1009,12 @@ export interface InvoiceDetailDto {
   dueDate: string | null;
   currentRevision: InvoiceRevisionDto | null;
   revisionHistory: InvoiceRevisionHistoryEntryDto[];
+  payment: InvoicePaymentSummaryDto;
   createdAt: string;
   updatedAt: string;
 }
 export interface InvoiceMutationResult { invoice: InvoiceDetailDto; accessToken: string; accessUrl: string; }
+export interface InvoicePaymentLinkResult { id: string; status: InvoicePaymentTransactionStatus; amount: string; currency: string; checkoutUrl: string | null; }
 export interface CreateInvoiceBody {
   customerId?: string | null;
   customerProfileId?: string | null;
@@ -1012,6 +1038,14 @@ export interface CustomerInvoiceLineDto {
   taxable: boolean;
   lineTotal: string;
 }
+// Customer-visible slice of the derived payment position (no provider refs).
+export interface CustomerInvoicePaymentDto {
+  currency: string;
+  invoiceTotal: string;
+  amountPaid: string;
+  outstandingBalance: string;
+  state: InvoicePaymentState;
+}
 export interface CustomerInvoiceListItemDto {
   id: string;
   invoiceNumber: string;
@@ -1020,6 +1054,7 @@ export interface CustomerInvoiceListItemDto {
   issueDate: string | null;
   dueDate: string | null;
   total: string;
+  payment: CustomerInvoicePaymentDto;
   business: { name: string };
   createdAt: string;
 }
@@ -1033,6 +1068,7 @@ export interface CustomerInvoiceDetailDto {
   dueDate: string | null;
   createdAt: string;
   business: { name: string };
+  payment: CustomerInvoicePaymentDto;
   revision: {
     notes: string | null;
     terms: string | null;
@@ -1040,3 +1076,4 @@ export interface CustomerInvoiceDetailDto {
     lineItems: CustomerInvoiceLineDto[];
   } | null;
 }
+export interface CustomerInvoicePayResult { checkoutUrl: string; }

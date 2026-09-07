@@ -234,7 +234,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(marketplaceRoutes, { prefix: "/customer/marketplace" });
   await app.register(customerBookingRoutes, { prefix: "/customer/bookings" });
   await app.register(customerAIAssistantRoutes, { prefix: "/customer/ai/assistant" });
-  await app.register(customerInvoiceRoutes, { prefix: "/customer/invoices" });
+  await app.register(customerInvoiceRoutes, { prefix: "/customer/invoices", provider: options.stripePaymentProvider });
   await app.register(customerLoyaltyRoutes, { prefix: "/customer/loyalty" });
   await app.register(businessRoutes, { prefix: "/business" });
   await app.register(calendarRoutes, { prefix: "/calendar" });
@@ -280,7 +280,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Unauthenticated, rate-limited, revision-bound-bearer-token access to a
   // sent quote - same discipline as publicReviewRoutes above. Read-only.
   await app.register(publicQuoteRoutes, { prefix: "/public/quotes" });
-  await app.register(publicInvoiceRoutes, { prefix: "/public/invoices" });
+  await app.register(publicInvoiceRoutes, { prefix: "/public/invoices", provider: options.stripePaymentProvider });
   // GET is unauthenticated; POST /:token/accept applies fastify.authenticate
   // per-route — see publicTeamInviteRoutes's top-level doc comment.
   await app.register(publicTeamInviteRoutes, { prefix: "/public/team-invites" });

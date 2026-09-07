@@ -1,10 +1,21 @@
-// PROGRAM 3 / Invoicing I4-I5: pure view-state logic for the account-less
-// customer invoice page (GET /public/invoices/:token). No networking. The
-// bearer token lives only in the screen + service layer and is never
-// placed in analytics or logs. Read-only - an invoice is not "accepted",
-// and there is no Pay action until payment architecture exists.
+// PROGRAM 3 / Invoicing I4-I5 + I8: pure view-state logic for the
+// account-less customer invoice page (GET /public/invoices/:token). No
+// networking. The bearer token lives only in the screen + service layer
+// and is never placed in analytics or logs. Read-only - an invoice is not
+// "accepted". A Pay action exists only when the invoice is open and still
+// carries an outstanding balance.
 
 export type PublicInvoiceState = 'open' | 'expired' | 'void';
+
+export type PublicInvoicePaymentState = 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | null;
+
+export interface PublicInvoicePayment {
+  currency: string;
+  invoiceTotal: string;
+  amountPaid: string;
+  outstandingBalance: string;
+  state: PublicInvoicePaymentState;
+}
 
 export interface PublicInvoiceLineItem {
   description: string;
@@ -22,6 +33,7 @@ export interface PublicInvoiceDetails {
   issueDate: string | null;
   dueDate: string | null;
   business: { name: string };
+  payment: PublicInvoicePayment;
   revision: {
     notes: string | null;
     terms: string | null;
@@ -72,11 +84,24 @@ export function invoiceStateDetail(state: PublicInvoiceState, overdue: boolean):
   switch (state) {
     case 'open':
       return overdue
-        ? 'This invoice is past its due date. Please contact the business to arrange payment.'
-        : 'Contact the business with any questions about this invoice.';
+        ? 'This invoice is past its due date. You can pay it securely below.'
+        : 'You can pay this invoice securely below, or contact the business with any questions.';
     case 'expired':
       return 'Ask the business to send you a fresh link.';
     case 'void':
       return 'Contact the business if you have questions.';
   }
+}
+
+/** True when the customer should see a Pay action: open link, money still owed. */
+export function canPayPublicInvoice(details: Pick<PublicInvoiceDetails, 'state' | 'payment'>): boolean {
+  return details.state === 'open' && Number(details.payment.outstandingBalance) > 0;
+}
+
+export function invoicePaymentSummaryLabel(payment: PublicInvoicePayment): string | null {
+  const paid = Number(payment.amountPaid);
+  const outstanding = Number(payment.outstandingBalance);
+  if (payment.state === 'PAID') return 'Paid in full';
+  if (paid > 0 && outstanding > 0) return 'Partially paid';
+  return null;
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canPayPublicInvoice,
   canRetryInvoice,
   invoiceErrorViewState,
+  invoicePaymentSummaryLabel,
   invoiceStateDetail,
   invoiceStateHeadline,
   isInvoiceOverdue,
@@ -17,6 +19,7 @@ const response = (over: Partial<PublicInvoiceResponse> = {}): PublicInvoiceRespo
   issueDate: over.issueDate ?? '2026-01-01T00:00:00.000Z',
   dueDate: over.dueDate ?? null,
   business: { name: 'Jane’s Plumbing' },
+  payment: over.payment ?? { currency: 'USD', invoiceTotal: '100.00', amountPaid: '0.00', outstandingBalance: '100.00', state: null },
   revision: {
     notes: null,
     terms: null,
@@ -68,5 +71,20 @@ describe('publicInvoice copy', () => {
     for (const state of ['open', 'expired', 'void'] as PublicInvoiceState[]) {
       expect(invoiceStateDetail(state, false)).toBeTruthy();
     }
+  });
+});
+
+describe('canPayPublicInvoice / invoicePaymentSummaryLabel', () => {
+  it('allows paying only an open invoice that still owes money', () => {
+    expect(canPayPublicInvoice(response())).toBe(true);
+    expect(canPayPublicInvoice(response({ state: 'expired' }))).toBe(false);
+    expect(canPayPublicInvoice(response({ state: 'void' }))).toBe(false);
+    expect(canPayPublicInvoice(response({ payment: { currency: 'USD', invoiceTotal: '100.00', amountPaid: '100.00', outstandingBalance: '0.00', state: 'PAID' } }))).toBe(false);
+  });
+
+  it('summarises the payment position without a call to action', () => {
+    expect(invoicePaymentSummaryLabel({ currency: 'USD', invoiceTotal: '100.00', amountPaid: '0.00', outstandingBalance: '100.00', state: null })).toBeNull();
+    expect(invoicePaymentSummaryLabel({ currency: 'USD', invoiceTotal: '100.00', amountPaid: '40.00', outstandingBalance: '60.00', state: 'PARTIALLY_PAID' })).toBe('Partially paid');
+    expect(invoicePaymentSummaryLabel({ currency: 'USD', invoiceTotal: '100.00', amountPaid: '100.00', outstandingBalance: '0.00', state: 'PAID' })).toBe('Paid in full');
   });
 });

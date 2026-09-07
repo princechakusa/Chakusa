@@ -40,6 +40,7 @@ const TOKEN_ROW_SELECT = {
       invoice: {
         select: {
           id: true,
+          businessId: true,
           invoiceNumber: true,
           currency: true,
           status: true,

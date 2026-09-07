@@ -75,6 +75,21 @@ export async function listCustomerInvoices(customerProfileId: string) {
   };
 }
 
+/**
+ * Ownership gate for a customer action on an invoice (e.g. paying it).
+ * Returns the owning businessId, or 404 - identical whether the invoice
+ * is foreign, DRAFT, or nonexistent (no probing).
+ */
+export async function resolveCustomerInvoiceBusiness(customerProfileId: string, invoiceId: string): Promise<string> {
+  const linkedCustomerIds = await linkedBusinessCustomerIds(customerProfileId);
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, ...ownershipWhere(customerProfileId, linkedCustomerIds) },
+    select: { businessId: true },
+  });
+  if (!invoice) throw ApiError.notFound("Invoice not found");
+  return invoice.businessId;
+}
+
 export async function getCustomerInvoiceForProfile(customerProfileId: string, invoiceId: string) {
   const linkedCustomerIds = await linkedBusinessCustomerIds(customerProfileId);
   const invoice = await prisma.invoice.findFirst({

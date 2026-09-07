@@ -42,12 +42,21 @@ export async function requestGoogleIdToken(options: { fresh?: boolean } = {}): P
   } catch (error) {
     if (error instanceof GoogleAuthenticationError) throw error;
     if (isErrorWithCode(error)) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) return null;
       if (error.code === statusCodes.IN_PROGRESS) {
         throw new GoogleAuthenticationError('Google Sign-In is already in progress.');
       }
       if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         throw new GoogleAuthenticationError('Google Play Services is unavailable or needs an update.');
       }
+      // DEVELOPER_ERROR: this build's package name + signing certificate
+      // (SHA-1) is not attached to an Android OAuth client in the Google
+      // project, or the configured webClientId is not a Web client.
+      const detail = error instanceof Error && error.message ? ` — ${error.message}` : '';
+      if (String(error.code) === 'DEVELOPER_ERROR' || String(error.code) === '10') {
+        throw new GoogleAuthenticationError(`Google config rejected (DEVELOPER_ERROR)${detail}`);
+      }
+      throw new GoogleAuthenticationError(`Google Sign-In failed (${String(error.code)})${detail}`);
     }
     throw new GoogleAuthenticationError('Google Sign-In could not be completed. Please try again.');
   }

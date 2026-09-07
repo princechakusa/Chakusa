@@ -47,7 +47,8 @@
         }
       ],
       "./plugins/withCallDetection",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-splash-screen"
     ],
     "extra": {
       "eas": {

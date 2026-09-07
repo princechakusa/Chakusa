@@ -1,5 +1,5 @@
 export type ExternalDestination = { kind: 'url'; value: string } | { kind: 'email'; value: string } | null;
-export const APPROVED_PUBLIC_DESTINATIONS = { privacy: 'https://chakusa.com/privacy', terms: 'https://chakusa.com/terms', support: 'https://chakusa.com/support', deleteAccount: 'https://chakusa.com/delete-account', supportEmail: 'support@chakusa.com' } as const;
+export const APPROVED_PUBLIC_DESTINATIONS = { privacy: 'https://chakusarecovery.com/privacy', terms: 'https://chakusarecovery.com/terms', cookies: 'https://chakusarecovery.com/cookies', aiDisclosure: 'https://chakusarecovery.com/ai-disclosure', support: 'https://chakusarecovery.com/help', deleteAccount: 'https://chakusarecovery.com/delete-account', supportEmail: 'support@chakusarecovery.com' } as const;
 
 function validHttpsUrl(value?: string) {
   if (!value) return null;

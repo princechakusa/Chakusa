@@ -3,7 +3,7 @@ import { SubscriptionStatusDto, SubscriptionStatusValue } from '../apiTypes';
 export type BillingPlatform = 'ios' | 'android' | 'web' | 'unsupported';
 export type BillingPlan = 'PRO' | 'BUSINESS';
 export type BillingErrorKind = 'canceled' | 'pending' | 'already-owned' | 'product-unavailable' | 'store-unavailable' | 'network' | 'verification' | 'conflict' | 'unknown';
-export const BILLING_LEGAL_LINKS = ['https://chakusa.com/terms', 'https://chakusa.com/privacy'] as const;
+export const BILLING_LEGAL_LINKS = ['https://chakusarecovery.com/terms', 'https://chakusarecovery.com/privacy'] as const;
 
 export function isEntitledStatus(status: SubscriptionStatusValue | null) { return status === 'ACTIVE' || status === 'TRIALING' || status === 'GRACE_PERIOD'; }
 export function canSubscribe(plan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null) { return plan !== 'BUSINESS' && (plan === 'FREE' || status === 'EXPIRED' || status === 'CANCELED'); }

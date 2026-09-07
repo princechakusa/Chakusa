@@ -1,4 +1,8 @@
+import { useFonts } from 'expo-font';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
@@ -11,6 +15,10 @@ import { PublicBookingManagementScreen } from './src/screens/PublicBookingManage
 import { ExperienceRouter } from './src/experience/ExperienceRouter';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
+    PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
+  });
   // PROGRAM 2 LOOP 9: Chakusa is now ONE app with two experiences. The
   // ExperienceRouter picks, at runtime, exactly one shell to mount —
   // BusinessRoot (the original owner app, unchanged) or CustomerRoot. The
@@ -33,6 +41,8 @@ export default function App() {
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
+
+  if (!fontsLoaded) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
 
   return <ExperienceRouter />;
 }

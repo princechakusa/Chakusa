@@ -51,7 +51,6 @@ import { AutomationScreen } from '../screens/AutomationScreen';
 import { TeamScreen } from '../screens/TeamScreen';
 import { TeamInviteScreen } from '../screens/TeamInviteScreen';
 import { AuthScreen } from '../screens/AuthScreen';
-import { FirstEntryScreen } from '../screens/FirstEntryScreen';
 import { PublicDocumentScreen } from '../screens/PublicDocumentScreen';
 import { colors, spacing, typography } from '../theme';
 import { MainTabParamList, RootStackParamList } from '../types';
@@ -77,7 +76,7 @@ function OnboardingRoute({ navigation }: { navigation: NativeStackNavigationProp
 
   useEffect(() => {
     if (status === 'anonymous' && preferences.onboardingStep === 0) {
-      navigation.reset({ index: 0, routes: [{ name: 'FirstEntry' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     }
   }, [navigation, preferences.onboardingStep, status]);
 
@@ -104,7 +103,6 @@ export function AppNavigator({ navReady = false }: { navReady?: boolean }) {
   if (routes.restoreError) return <View style={styles.restoring}><ErrorState message={restoreError ?? 'Unable to restore your session.'} onRetry={() => void restore()} /></View>;
   return <Root.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, headerTitle: '', headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: colors.background } }}>
     {routes.anonymous ? <>
-      <Root.Screen name="FirstEntry" component={FirstEntryScreen} options={{ headerShown: false }} />
       <Root.Screen name="Login" component={AuthScreen} options={{ headerShown: false }} />
       {!preferences.onboardingComplete ? <Root.Screen name="Onboarding" options={{ headerShown: false }}>{({ navigation }) => <OnboardingRoute navigation={navigation} />}</Root.Screen> : null}
     </> : null}

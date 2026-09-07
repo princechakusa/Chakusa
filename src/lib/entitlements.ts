@@ -44,6 +44,7 @@ export type Feature =
   | "AI_RECEPTIONIST" // AI-answered/triaged calls (ai.receptionist)
   | "QUOTES_ESTIMATES" // customer-facing quotes/estimates (quotes.estimates)
   | "INVOICING" // invoices + payment collection (payments.invoicing)
+  | "FINANCIAL_MANAGEMENT" // expense/mileage tracking + money-in/out reporting (financial.management)
   | "MARKETPLACE_DISCOVERY" // paid marketplace visibility/discovery add-on (marketplace.discovery)
   | "ACCOUNTING_INTEGRATIONS"; // QuickBooks/Xero-style sync (integrations.accounting)
 
@@ -57,6 +58,7 @@ const FEATURE_LABELS: Record<Feature, string> = {
   AI_RECEPTIONIST: "AI receptionist",
   QUOTES_ESTIMATES: "Quotes and estimates",
   INVOICING: "Invoicing",
+  FINANCIAL_MANAGEMENT: "Financial management",
   MARKETPLACE_DISCOVERY: "Marketplace discovery",
   ACCOUNTING_INTEGRATIONS: "Accounting integrations",
 };
@@ -77,7 +79,7 @@ const PRO_FEATURES = new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVA
 // tier, as the reasonable default for capabilities beyond Pro's current
 // scope; trivially moved to another plan later since nothing depends on
 // it today.
-const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS"];
+const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "FINANCIAL_MANAGEMENT", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS"];
 
 const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   FREE: new Set(),

@@ -146,6 +146,14 @@ export async function resetDatabase() {
     // Deleting the Invoice cascades its revisions / line items / events.
     prisma.invoice.deleteMany(),
     prisma.invoiceCounter.deleteMany(),
+    // Financial Management F1: Expense.createdByMemberId /
+    // MileageTrip.createdByMemberId are onDelete: Restrict — same reasoning
+    // as the quote/invoice rows above; must be cleared BEFORE
+    // businessMember.deleteMany(). Deleting the Expense cascades its
+    // receipts.
+    prisma.expense.deleteMany(),
+    prisma.mileageTrip.deleteMany(),
+    prisma.expenseCategory.deleteMany(),
     prisma.businessMember.deleteMany(),
     prisma.deviceToken.deleteMany(),
     prisma.passwordResetToken.deleteMany(),

@@ -57,6 +57,7 @@ export interface SubscriptionStatusResponse {
     aiReceptionist: boolean;
     quotesEstimates: boolean;
     invoicing: boolean;
+    financialManagement: boolean;
     marketplaceDiscovery: boolean;
     accountingIntegrations: boolean;
   };
@@ -157,6 +158,7 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       aiReceptionist: hasFeature(plan, "AI_RECEPTIONIST"),
       quotesEstimates: hasFeature(plan, "QUOTES_ESTIMATES"),
       invoicing: hasFeature(plan, "INVOICING"),
+      financialManagement: hasFeature(plan, "FINANCIAL_MANAGEMENT"),
       marketplaceDiscovery: hasFeature(plan, "MARKETPLACE_DISCOVERY"),
       accountingIntegrations: hasFeature(plan, "ACCOUNTING_INTEGRATIONS"),
     },

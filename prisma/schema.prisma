@@ -996,6 +996,10 @@ model Business {
   commercialDocumentCounters     CommercialDocumentCounter[]
   invoices                       Invoice[]
   invoiceCounters                InvoiceCounter[]
+  expenseCategories              ExpenseCategory[]
+  expenses                       Expense[]
+  expenseReceipts                ExpenseReceipt[]
+  mileageTrips                   MileageTrip[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1109,6 +1113,8 @@ model BusinessMember {
   createdQuoteRevisions QuoteRevision[]        @relation("QuoteRevisionCreatedBy")
   createdInvoices        Invoice[]             @relation("InvoiceCreatedBy")
   createdInvoiceRevisions InvoiceRevision[]    @relation("InvoiceRevisionCreatedBy")
+  createdExpenses        Expense[]             @relation("ExpenseCreatedBy")
+  createdMileageTrips    MileageTrip[]         @relation("MileageTripCreatedBy")
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -1195,6 +1201,8 @@ model Customer {
   appointments   Appointment[]
   quoteDocuments QuoteDocument[]
   invoices       Invoice[]
+  expenses       Expense[]
+  mileageTrips   MileageTrip[]
 
   @@index([businessId])
   @@index([businessId, createdAt])
@@ -1247,6 +1255,8 @@ model Appointment {
   paymentTransactions  AppointmentPaymentTransaction[]
   quoteDocuments       QuoteDocument[]
   invoices             Invoice[]
+  expenses             Expense[]
+  mileageTrips         MileageTrip[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -4248,4 +4258,156 @@ model InvoicePaymentTransaction {
   @@index([invoiceId, createdAt])
   @@index([status, createdAt])
   @@map("invoice_payment_transactions")
+}
+
+// ===========================================================================
+// FINANCIAL MANAGEMENT - Roadmap stage 8 (master directive §18)
+//
+// Business-facing bookkeeping: money-OUT (expenses, mileage) captured
+// directly by the business, and a money-IN / money-OUT reporting view.
+// Money-IN (revenue) and outstanding balances are DERIVED at read time
+// from the authoritative provider payment ledgers
+// (AppointmentPaymentTransaction / InvoicePaymentTransaction) and the
+// invoice revision snapshots - never duplicated into a stored figure here.
+//
+// This domain deliberately holds NO tax, VAT, deductibility, or
+// accounting-treatment fields. `paymentMethod` and category names are
+// descriptive only. `MileageTrip.ratePerUnit` is an owner-set
+// reimbursement rate, not a government mileage rate.
+//
+// Expenses and mileage rows are the owner's own operational records and
+// use `deletedAt` soft-deletion so a mistyped entry can be withdrawn
+// while the row stays auditable; nothing in this domain is customer
+// visible.
+// ===========================================================================
+
+enum ExpensePaymentMethod {
+  cash
+  card
+  bank_transfer
+  mobile_money
+  cheque
+  other
+}
+
+// Mirrors the subset of the message-attachment lifecycle this domain
+// needs. `ready` = uploaded content passed the malware scan and is safe
+// to download; `quarantined` = scan rejected it and the stored object was
+// deleted.
+enum ExpenseReceiptStatus {
+  pending
+  uploaded
+  scanning
+  ready
+  quarantined
+  expired
+}
+
+enum MileageUnit {
+  mi
+  km
+}
+
+model ExpenseCategory {
+  id         String    @id @default(uuid())
+  businessId String    @map("business_id")
+  name       String
+  slug       String
+  isDefault  Boolean   @default(false) @map("is_default")
+  sortOrder  Int       @default(0) @map("sort_order")
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@unique([businessId, slug])
+  @@index([businessId, archivedAt, sortOrder])
+  @@map("expense_categories")
+}
+
+model Expense {
+  id                String                @id @default(uuid())
+  businessId        String                @map("business_id")
+  categoryId        String?               @map("category_id")
+  createdByMemberId String                @map("created_by_member_id")
+  amount            Decimal               @db.Decimal(12, 2)
+  currency          String
+  spentAt           DateTime              @map("spent_at")
+  vendor            String?
+  description       String?
+  reference         String?
+  paymentMethod     ExpensePaymentMethod? @map("payment_method")
+  appointmentId     String?               @map("appointment_id")
+  customerId        String?               @map("customer_id")
+  deletedAt         DateTime?             @map("deleted_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category        ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdByMember  BusinessMember   @relation("ExpenseCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  appointment     Appointment?     @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  receipts        ExpenseReceipt[]
+
+  @@index([businessId, deletedAt, spentAt])
+  @@index([businessId, categoryId, spentAt])
+  @@map("expenses")
+}
+
+model ExpenseReceipt {
+  id             String               @id @default(uuid())
+  businessId     String               @map("business_id")
+  expenseId      String               @map("expense_id")
+  storageKey     String               @map("storage_key")
+  fileName       String               @map("file_name")
+  declaredMime   String               @map("declared_mime")
+  detectedMime   String?              @map("detected_mime")
+  sizeBytes      Int                  @map("size_bytes")
+  checksumSha256 String               @map("checksum_sha256")
+  status         ExpenseReceiptStatus @default(pending)
+  scanDetail     String?              @map("scan_detail")
+  retryCount     Int                  @default(0) @map("retry_count")
+  uploadedAt     DateTime?            @map("uploaded_at")
+  deletedAt      DateTime?            @map("deleted_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  expense  Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, storageKey])
+  @@index([businessId, expenseId])
+  @@index([status, createdAt])
+  @@map("expense_receipts")
+}
+
+model MileageTrip {
+  id                String      @id @default(uuid())
+  businessId        String      @map("business_id")
+  createdByMemberId String      @map("created_by_member_id")
+  tripDate          DateTime    @map("trip_date")
+  distance          Decimal     @db.Decimal(10, 2)
+  unit              MileageUnit @default(mi)
+  ratePerUnit       Decimal?    @map("rate_per_unit") @db.Decimal(12, 4)
+  amount            Decimal?    @db.Decimal(12, 2)
+  currency          String?
+  purpose           String?
+  fromLabel         String?     @map("from_label")
+  toLabel           String?     @map("to_label")
+  appointmentId     String?     @map("appointment_id")
+  customerId        String?     @map("customer_id")
+  deletedAt         DateTime?   @map("deleted_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdByMember  BusinessMember @relation("MileageTripCreatedBy", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  appointment     Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  customer        Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, deletedAt, tripDate])
+  @@map("mileage_trips")
 }

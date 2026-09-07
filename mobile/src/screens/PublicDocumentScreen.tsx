@@ -7,6 +7,7 @@ import { PublicPage, publicPageTitle } from '../domain/publicRoutes';
 import { ApiError } from '../services/api';
 import { legalApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 
 const supportSections: DocumentSection[] = [{ title: 'Need help with Chakusa?', paragraphs: ['Contact support@chakusa.com.'], bullets: ['Account access.', 'Business setup.', 'Leads and customers.', 'Review requests.', 'Comeback reminders.', 'Notification issues.', 'Plan and usage questions.', 'Account deletion.', 'Technical problems.'] }, { title: 'Related information', paragraphs: ['Account deletion: https://chakusa.com/delete-account.', 'Privacy Policy: https://chakusa.com/privacy.', 'Terms of Use: https://chakusa.com/terms.'] }, { title: 'Important', paragraphs: ['When contacting support, do not send passwords, authentication tokens, payment credentials, or unnecessary customer personal information.'] }];
 const deletionSections: DocumentSection[] = [{ title: 'Delete your account in the app', paragraphs: ['The existing authenticated in-app flow is the primary self-service deletion method.'], bullets: ['Open Chakusa.', 'Open Settings.', 'Go to Danger Zone.', 'Select Delete Account.', 'Complete the required identity confirmation.', 'Confirm deletion.'] }, { title: 'If you cannot access the application', paragraphs: ['Request help at support@chakusa.com. Please contact us from the email address associated with your Chakusa account where possible.', 'For security, we may need to verify that you are the account owner before processing a deletion request. Never send your password or authentication token.'] }, { title: 'What deletion affects', paragraphs: ['Deleting your Chakusa account may permanently remove your account, business information, and associated business data from the active service.', 'Some information may be retained where reasonably necessary for security, fraud prevention, transaction records, backups, dispute resolution, or legal obligations.'] }, { title: 'Important for paid subscriptions', paragraphs: ['Deleting a Chakusa account is separate from canceling a subscription billed through Apple App Store or Google Play. If you have an active store subscription, cancel it through the applicable store to prevent future renewals.'] }];
@@ -72,4 +73,28 @@ function Link({ href, label, primary = false, onPressOverride }: { href: string;
   return <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={onPressOverride ?? (() => void Linking.openURL(href))} style={({ pressed }) => [styles.linkButton, primary && styles.primary, pressed && styles.pressed]}><Text style={[styles.linkText, primary && styles.primaryText]}>{label}</Text></Pressable>;
 }
 function Footer() { return <View style={styles.footer}><View style={styles.footerLinks}><Link href="https://chakusa.com/privacy" label="Privacy" /><Link href="https://chakusa.com/terms" label="Terms" /><Link href="https://chakusa.com/support" label="Support" /><Link href="https://chakusa.com/delete-account" label="Delete Account" /></View><Text style={styles.copyright}>© Chakusa</Text></View>; }
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: colors.background }, scroll: { padding: spacing.lg }, document: { width: '100%', maxWidth: 780, alignSelf: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.xxl }, centered: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }, brand: { ...typography.micro, color: colors.primary, letterSpacing: 2, marginBottom: spacing.md }, title: { ...typography.title, color: colors.text }, meta: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs }, rule: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.xl }, section: { gap: spacing.sm, marginBottom: spacing.xl }, heading: { ...typography.heading, color: colors.text }, body: { ...typography.body, color: colors.textSecondary }, list: { gap: spacing.sm }, listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, bullet: { ...typography.body, color: colors.primary }, listText: { ...typography.body, color: colors.textSecondary, flex: 1 }, linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.sm }, linkText: { ...typography.bodyStrong, color: colors.primary }, primary: { backgroundColor: colors.primary, alignItems: 'center', marginBottom: spacing.xl }, primaryText: { color: colors.surface }, pressed: { opacity: 0.7 }, footer: { borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.xl, gap: spacing.lg }, footerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, copyright: { ...typography.caption, color: colors.textSecondary } });
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: m3.surface },
+  scroll: { paddingHorizontal: m3Space.md, paddingTop: m3Space.md, paddingBottom: m3Space.xxl },
+  document: { width: "100%", maxWidth: 780, alignSelf: "center", gap: m3Space.xs },
+  centered: { alignItems: "center", gap: m3Space.md, paddingVertical: m3Space.xxl },
+  brand: { ...m3Type.labelSm, color: m3.primary, letterSpacing: 1.5, marginBottom: m3Space.xs },
+  title: { ...m3Type.headlineMd, color: m3.onSurface },
+  meta: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
+  rule: { height: 1, backgroundColor: m3.surfaceContainerHigh, marginVertical: m3Space.lg },
+  section: { gap: m3Space.xs, marginBottom: m3Space.lg },
+  heading: { ...m3Type.headlineSm, color: m3.onSurface },
+  body: { ...m3Type.bodyMd, color: m3.onSurfaceVariant, lineHeight: 24 },
+  list: { gap: 6, marginTop: 4 },
+  listRow: { flexDirection: "row", alignItems: "flex-start", gap: m3Space.xs },
+  bullet: { ...m3Type.bodyMd, color: m3.primary },
+  listText: { ...m3Type.bodyMd, color: m3.onSurfaceVariant, flex: 1, lineHeight: 24 },
+  linkButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: m3Space.sm, borderRadius: m3Radius.sm },
+  linkText: { ...m3Type.labelMd, color: m3.primary },
+  primary: { backgroundColor: m3.primary, alignItems: "center", borderRadius: m3Radius.md, marginBottom: m3Space.lg },
+  primaryText: { color: m3.onPrimary },
+  pressed: { opacity: 0.7 },
+  footer: { borderTopWidth: 1, borderTopColor: m3.surfaceContainerHigh, paddingTop: m3Space.lg, gap: m3Space.md },
+  footerLinks: { flexDirection: "row", flexWrap: "wrap", gap: m3Space.xs },
+  copyright: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+});

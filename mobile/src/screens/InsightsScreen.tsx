@@ -14,7 +14,7 @@ import { formatMoney, titleCase } from '../utils/format';
 type Props = NativeStackScreenProps<RootStackParamList, 'Insights'>;
 type Navigator = Pick<NativeStackNavigationProp<RootStackParamList>, 'navigate'>;
 
-/** Every actionLink the backend can return maps to a screen that already exists — see businessCoaching.ts's own closed CoachingActionLink type. Nothing here invents a destination. */
+/** Every actionLink the backend can return maps to a screen that already exists - see businessCoaching.ts's own closed CoachingActionLink type. Nothing here invents a destination. */
 function goToAction(navigation: Navigator, actionLink: CoachingActionLinkDto) {
   if (actionLink.kind === 'attentionCenter') navigation.navigate('AttentionCenter', { category: actionLink.category });
   else if (actionLink.kind === 'customerProfile') navigation.navigate('CustomerProfile', { customerId: actionLink.customerId });
@@ -24,7 +24,7 @@ function goToAction(navigation: Navigator, actionLink: CoachingActionLinkDto) {
     const destination = audienceCoachingDestination(actionLink.audienceKey);
     navigation.navigate(destination.screen, destination.params);
   }
-  // 'insights' needs no navigation — the insight is already on this screen.
+  // 'insights' needs no navigation - the insight is already on this screen.
 }
 function priorityTone(priority: CoachingPriority): string {
   return ({ critical: m3.error, high: m3.tertiary, medium: m3.primary, low: m3.onSurfaceVariant } as const)[priority];
@@ -34,10 +34,10 @@ function monthLabel(month: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(new Date(`${month}-01T00:00:00Z`));
 }
 function pct(value: number | null): string {
-  return value == null ? '—' : `${Math.round(value * 100)}%`;
+  return value == null ? ' - ' : `${Math.round(value * 100)}%`;
 }
 
-/** Display order/labels for the Customer Lifecycle Automation Engine's stages — zero-count stages are simply omitted, so a small business doesn't see a wall of empty chips. */
+/** Display order/labels for the Customer Lifecycle Automation Engine's stages - zero-count stages are simply omitted, so a small business doesn't see a wall of empty chips. */
 const LIFECYCLE_STAGE_LABELS: [CustomerLifecycleStage, string][] = [
   ['new_lead', 'New lead'],
   ['contacted', 'Contacted'],
@@ -83,7 +83,7 @@ export function InsightsScreen({ navigation }: Props) {
 
     {coaching && coaching.length > 0 ? <View>
       <SectionHeader title="Coaching" />
-      <Text style={styles.caption}>Generated entirely from your own numbers above — what it means, why it matters, and what to do about it.</Text>
+      <Text style={styles.caption}>Generated entirely from your own numbers above - what it means, why it matters, and what to do about it.</Text>
       {coaching.map(insight => <View key={insight.key} style={styles.coachingCard}>
         <View style={styles.coachingHeader}><Text style={styles.coachingTitle}>{insight.title}</Text><StatusBadge label={titleCase(insight.priority)} /></View>
         <Text style={styles.coachingContext}>{insight.context}</Text>
@@ -151,7 +151,7 @@ export function InsightsScreen({ navigation }: Props) {
         <MetricCard label="Conversion rate" value={pct(recoveryPerformance.recoveryConversionRate)} detail="Leads that became customers" />
         <MetricCard label="Review success rate" value={pct(recoveryPerformance.reviewRequestSuccessRate)} detail="Requests that became reviews" />
         <MetricCard label="Reminder completion" value={pct(recoveryPerformance.reminderCompletionRate)} detail="Comebacks that returned" />
-        <MetricCard label="Avg. recovery time" value={recoveryPerformance.averageRecoveryDays == null ? '—' : `${Math.round(recoveryPerformance.averageRecoveryDays)}d`} detail="Lead to won" />
+        <MetricCard label="Avg. recovery time" value={recoveryPerformance.averageRecoveryDays == null ? ' - ' : `${Math.round(recoveryPerformance.averageRecoveryDays)}d`} detail="Lead to won" />
       </View>
     </View>
   </M3Screen>;

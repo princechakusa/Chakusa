@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-// Chakusa shared theme — now the Material 3 "our UI" palette (rust primary,
+// Chakusa shared theme - now the Material 3 "our UI" palette (rust primary,
 // teal secondary, indigo-tinted neutrals) with Plus Jakarta Sans display /
 // Inter text. Token NAMES are unchanged so every screen and the shared
 // components/ui pick this up automatically; the businessKit primitives use

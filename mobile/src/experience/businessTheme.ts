@@ -74,7 +74,7 @@ const INTER_500 = 'Inter_500Medium';
 const INTER_600 = 'Inter_600SemiBold';
 const INTER_700 = 'Inter_700Bold';
 
-/** Text presets. `fontFamily` already encodes weight — never also set fontWeight. */
+/** Text presets. `fontFamily` already encodes weight - never also set fontWeight. */
 export const m3Type = {
   displayMobile: { fontFamily: JAKARTA_700, fontSize: 36, lineHeight: 43, letterSpacing: -0.9 },
   headlineLg: { fontFamily: JAKARTA_700, fontSize: 28, lineHeight: 34, letterSpacing: -0.7 },

@@ -294,7 +294,7 @@ export function DashboardScreen() {
                   <View style={styles.flex}>
                     <Text style={styles.attnName}>{newLeads[0].customer?.name ?? 'New lead'}</Text>
                     <Text numberOfLines={1} style={styles.attnBody}>
-                      {newLeads[0].serviceRequested ?? 'New enquiry — needs follow-up'}
+                      {newLeads[0].serviceRequested ?? 'New enquiry - needs follow-up'}
                     </Text>
                   </View>
                 </View>

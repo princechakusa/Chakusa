@@ -202,7 +202,7 @@ export function ReviewsScreen() {
           <View style={styles.summaryTop}>
             <View style={styles.flex}>
               <View style={styles.avgRow}>
-                <Text style={styles.avgValue}>{avg != null ? avg.toFixed(2) : '—'}</Text>
+                <Text style={styles.avgValue}>{avg != null ? avg.toFixed(2) : ' - '}</Text>
                 <View style={styles.starsRow}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Icon key={s} name={avg != null && s <= Math.round(avg) ? 'star' : 'star_border'} size={16} color={m3.primary} />

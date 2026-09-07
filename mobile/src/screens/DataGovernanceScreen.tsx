@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,10 +30,16 @@ export function DataGovernanceScreen() {
     setExporting(true);
     try {
       const data = await businessApi.exportData();
-      await Share.share({
-        title: `${businessName} data export`,
-        message: JSON.stringify(data, null, 2),
-      });
+      const json = JSON.stringify(data, null, 2);
+      try {
+        await Clipboard.setStringAsync(json);
+        Alert.alert(
+          'Data copied',
+          'A full JSON export of your business data was copied to the clipboard. Paste it into a note, document, or email to keep a copy.',
+        );
+      } catch {
+        await Share.share({ title: `${businessName} data export`, message: json });
+      }
     } catch (error) {
       Alert.alert('Could not export data', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -52,8 +59,8 @@ export function DataGovernanceScreen() {
       }
     >
       <View style={styles.titleBlock}>
-        <Text style={styles.eyebrow}>SYSTEM &amp; DATA GOVERNANCE</Text>
-        <Text style={styles.title}>Data &amp; Legal</Text>
+        <Text style={styles.eyebrow}>SYSTEM AND DATA GOVERNANCE</Text>
+        <Text style={styles.title}>Data and Legal</Text>
         <Text style={styles.subtitle}>Your ownership of {businessName}'s records, and the documents that govern this account.</Text>
       </View>
 
@@ -65,7 +72,7 @@ export function DataGovernanceScreen() {
           <Text style={styles.cardTitle}>You own your data</Text>
         </View>
         <Text style={styles.body}>
-          {businessName} keeps sole ownership of every record below. There is no lock-in — an export is a plain JSON
+          {businessName} keeps sole ownership of every record below. There is no lock-in - an export is a plain JSON
           file you can take anywhere, any time.
         </Text>
         <View style={styles.ownedList}>

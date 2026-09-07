@@ -36,7 +36,6 @@ export function AccountHubScreen() {
   const { switching, switchExperience } = useExperience();
   const { plan, status, features } = usePlanExperience();
   const [sessionAction, setSessionAction] = useState<'logout' | 'all' | null>(null);
-  const [exporting, setExporting] = useState(false);
   const owner = role === 'OWNER';
   const canManageBusiness = role === 'OWNER' || role === 'ADMIN';
   const businessName = business?.name || 'Your business';
@@ -65,18 +64,6 @@ export function AccountHubScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out everywhere', style: 'destructive', onPress: () => void runSessionAction('all') },
     ]);
-  const exportBusiness = async () => {
-    if (exporting) return;
-    setExporting(true);
-    try {
-      const data = await businessApi.exportData();
-      await Share.share({ title: `${businessName} data export`, message: JSON.stringify(data, null, 2) });
-    } catch (error) {
-      Alert.alert('Could not export data', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const header = (
     <M3Header
@@ -157,12 +144,7 @@ export function AccountHubScreen() {
       </MenuSection>
 
       <MenuSection title="Privacy and control">
-        {owner ? (
-          <MenuRow icon="download" tone="tertiary" title={exporting ? 'Preparing your export…' : 'Export business data'} detail="Download a copy of your Chakusa data" disabled={exporting} onPress={() => void exportBusiness()} />
-        ) : null}
-        <MenuRow icon="description" tone="neutral" title="Terms of use" detail="Read inside Chakusa" onPress={() => navigation.navigate('LegalDocument', { page: 'terms' })} />
-        <MenuRow icon="lock" tone="neutral" title="Privacy policy" detail="Read inside Chakusa" onPress={() => navigation.navigate('LegalDocument', { page: 'privacy' })} />
-        <MenuRow icon="tune" tone="neutral" title="Cookie preferences" detail="Analytics and marketing choices" onPress={() => navigation.navigate('CookiePreferences')} />
+        <MenuRow icon="shield" tone="tertiary" title="Data & legal" detail="Data ownership, export, terms, privacy and cookies" onPress={() => navigation.navigate('DataGovernance')} />
         <MenuRow icon="logout" tone="primary" title={sessionAction === 'all' ? 'Signing out everywhere…' : 'Sign out of all devices'} detail="Revoke every active Chakusa session" disabled={Boolean(sessionAction)} onPress={confirmLogoutAll} />
         <MenuRow icon="delete" tone="primary" title="Delete account" detail="Permanently remove your Chakusa account" destructive onPress={() => navigation.navigate('DeleteAccount')} last />
       </MenuSection>

@@ -1,8 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
+import { PrimaryButton, SecondaryButton } from '../components/ui';
+import { Chip, Icon, M3Header, M3Screen } from '../experience/businessKit';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { BILLING_ENABLED, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
 import { canPurchasePlan, isEntitledStatus, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
 import { capabilityStatusCopy, FUTURE_CAPABILITIES, isCapabilityUnlocked } from '../domain/futureCapabilities';
@@ -12,7 +13,6 @@ import { openExternalDestination } from '../services/externalDestinations';
 import { useBilling } from '../state/BillingContext';
 import { useAuth } from '../state/AuthContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
-import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { formatMoney } from '../utils/format';
 
@@ -34,11 +34,18 @@ export function ProScreen() {
   const selectedName = billing.selectedPlan === 'BUSINESS' ? 'Business' : 'Pro';
   const statusLabel = subscription ? subscriptionStatusLabel(subscription) : null; const period = subscription ? subscriptionPeriodCopy(subscription) : null;
   const trialProgress = subscription ? trialProgressCopy(subscription) : null;
-  return <Screen><AppHeader eyebrow="CHAKUSA PRO" title="Pay for outcomes, not a feature list." subtitle="See the recorded revenue, completed work, and customer follow-up Chakusa is creating for your business." right={entitled && statusLabel ? <StatusBadge label={statusLabel} /> : undefined} />
-    <View style={styles.card}>{benefits.map(item => <View key={item} style={styles.feature}><Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} /><Text style={styles.featureText}>{item}</Text></View>)}</View>
+  return <M3Screen header={<M3Header businessName="Subscription & Billing" onNotificationsPress={() => navigation.navigate('AttentionCenter')} onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })} hasNotifications={false} />}>
+    <View style={styles.titleBlock}>
+      <View style={styles.titleRow}>
+        <Text style={styles.pageTitle}>Subscription & Billing</Text>
+        {entitled && statusLabel ? <Chip label={statusLabel} tone="secondary" /> : null}
+      </View>
+      <Text style={styles.pageSubtitle}>The recorded revenue, completed work, and follow-up Chakusa is creating for your business.</Text>
+    </View>
+    <View style={styles.card}>{benefits.map(item => <View key={item} style={styles.feature}><Icon name="check_circle" size={20} color={m3.primary} /><Text style={styles.featureText}>{item}</Text></View>)}</View>
     {trialProgress ? <View style={styles.purchase}><Text style={styles.cardTitle}>{trialProgress.title}</Text><Text style={styles.body}>{trialProgress.message}</Text><Text style={styles.body}>Trial access and its end date come directly from your app store subscription.</Text></View> : null}
     {subscription?.value ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Value created this month</Text><Text style={styles.body}>Recorded outcomes from Chakusa activity—not projections.</Text><Text style={styles.featureText}>{formatMoney(subscription.value.recoveredRevenueThisMonth, business?.currency ?? 'USD')} recovered</Text><Text style={styles.featureText}>{subscription.value.completedAppointmentsThisMonth} appointments completed</Text><Text style={styles.featureText}>{subscription.value.customerMessagesSentThisMonth} customer messages sent</Text><Text style={styles.featureText}>{subscription.value.reviewsReceivedThisMonth} reviews received</Text><Text style={styles.featureText}>{formatMoney(subscription.value.scheduledAppointmentValue, business?.currency ?? 'USD')} upcoming booked value</Text></View> : null}
-    <View style={styles.card}><Text style={styles.cardTitle}>Chakusa Business</Text><Text style={styles.body}>Run Chakusa with your team.</Text>{['Everything in Pro','Up to 10 team members','Team invitations','Admin and Staff roles','Team access controls'].map(item => <View key={item} style={styles.feature}><Ionicons name="people-outline" size={20} color={colors.primary} /><Text style={styles.featureText}>{item}</Text></View>)}{role === 'OWNER' && canPurchasePlan(plan, status, 'BUSINESS') ? <PrimaryButton fullWidth disabled={billing.purchasing || billing.restoring} label={billing.selectedPlan === 'BUSINESS' ? 'Business selected' : 'Choose Business'} onPress={() => billing.selectPlan('BUSINESS')} /> : null}<SecondaryButton fullWidth label="View Team" onPress={() => navigation.navigate('Team')} /></View>
+    <View style={styles.card}><Text style={styles.cardTitle}>Chakusa Business</Text><Text style={styles.body}>Run Chakusa with your team.</Text>{['Everything in Pro','Up to 10 team members','Team invitations','Admin and Staff roles','Team access controls'].map(item => <View key={item} style={styles.feature}><Icon name="group" size={20} color={m3.primary} /><Text style={styles.featureText}>{item}</Text></View>)}{role === 'OWNER' && canPurchasePlan(plan, status, 'BUSINESS') ? <PrimaryButton fullWidth disabled={billing.purchasing || billing.restoring} label={billing.selectedPlan === 'BUSINESS' ? 'Business selected' : 'Choose Business'} onPress={() => billing.selectPlan('BUSINESS')} /> : null}<SecondaryButton fullWidth label="View Team" onPress={() => navigation.navigate('Team')} /></View>
     {subscription && plan === 'BUSINESS' ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Chakusa Business · {statusLabel}</Text>{period ? <Text style={styles.body}>{period}</Text> : null}{status === 'GRACE_PERIOD' ? <Text style={styles.body}>Your Business access remains active while the store resolves payment.</Text> : null}{role === 'OWNER' && subscription.provider ? <SecondaryButton fullWidth label="Manage Subscription" onPress={() => void billing.manage()} /> : null}</View> : null}
     {subscription && plan === 'PRO' ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Chakusa Pro · {statusLabel}</Text>{period ? <Text style={styles.body}>{period}</Text> : null}{status === 'GRACE_PERIOD' ? <Text style={styles.body}>Your Pro access is still active while the store attempts to resolve your payment.</Text> : null}{subscription.cancelAtPeriodEnd && status === 'ACTIVE' ? <Text style={styles.body}>Your subscription will not renew. Pro access remains active through the date above.</Text> : null}{subscription.provider ? <SecondaryButton fullWidth label="Manage Subscription" onPress={() => void billing.manage()} /> : null}</View> : null}
     {maySubscribe ? <View style={styles.purchase}><Text style={styles.cardTitle}>{plan === 'PRO' && entitled ? 'Upgrade to Chakusa Business' : `Subscribe to Chakusa ${selectedName}`}</Text>
@@ -56,7 +63,7 @@ export function ProScreen() {
       {FUTURE_CAPABILITIES.map((capability) => {
         const unlocked = isCapabilityUnlocked(subscription.features, capability.key);
         return <View key={capability.key} style={styles.feature}>
-          <Ionicons name={unlocked ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={unlocked ? colors.primary : colors.textSecondary} />
+          <Icon name={unlocked ? "check_circle" : "schedule"} size={20} color={unlocked ? m3.primary : m3.onSurfaceVariant} />
           <View style={styles.featureCopy}>
             <Text style={styles.featureText}>{capability.label}</Text>
             <Text style={styles.featureDetail}>{capability.description}</Text>
@@ -66,6 +73,32 @@ export function ProScreen() {
       })}
     </View> : null}
     <Text style={styles.footnote}>The localized price and introductory offer shown by your App Store or Google Play account are the purchase authority.</Text>
-  </Screen>;
+  </M3Screen>;
 }
-const styles = StyleSheet.create({ card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, gap: spacing.sm }, statusCard: { borderColor: colors.success }, purchase: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.lg, gap: spacing.md }, planChoices: { gap: spacing.sm }, cardTitle: { ...typography.subheading, color: colors.text }, feature: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }, featureText: { ...typography.body, color: colors.text, flex: 1 }, featureCopy: { flex: 1, gap: 2 }, featureDetail: { ...typography.caption, color: colors.textSecondary }, featureStatus: { ...typography.caption, color: colors.textSecondary, fontStyle: 'italic' }, body: { ...typography.body, color: colors.textSecondary }, price: { alignItems: 'center', paddingVertical: spacing.sm }, priceValue: { fontSize: 36, lineHeight: 44, fontWeight: '700', color: colors.text }, pricePeriod: { ...typography.body, color: colors.textSecondary }, offer: { ...typography.bodyStrong, color: colors.text }, dev: { ...typography.caption, color: colors.textSecondary }, legal: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg }, link: { ...typography.bodyStrong, color: colors.primary, minHeight: 44, textAlignVertical: 'center' }, message: { ...typography.body, color: colors.text }, error: { ...typography.body, color: colors.negative }, footnote: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' } });
+const styles = StyleSheet.create({
+  titleBlock: { gap: 2 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  pageTitle: { ...m3Type.headlineMd, color: m3.onSurface },
+  pageSubtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  card: { backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.lg, padding: m3Space.md, gap: m3Space.sm },
+  statusCard: { backgroundColor: "rgba(134,242,228,0.25)" },
+  purchase: { backgroundColor: m3.surfaceContainerLowest, borderWidth: 1, borderColor: m3.primary, borderRadius: m3Radius.lg, padding: m3Space.md, gap: m3Space.sm },
+  planChoices: { gap: m3Space.xs },
+  cardTitle: { ...m3Type.titleMd, color: m3.onSurface },
+  feature: { flexDirection: "row", alignItems: "flex-start", gap: m3Space.xs },
+  featureText: { ...m3Type.bodyMd, color: m3.onSurface, flex: 1 },
+  featureCopy: { flex: 1, gap: 2 },
+  featureDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  featureStatus: { ...m3Type.bodySm, color: m3.onSurfaceVariant, fontStyle: "italic" },
+  body: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  price: { alignItems: "center", paddingVertical: m3Space.sm },
+  priceValue: { ...m3Type.displayMobile, fontSize: 34, lineHeight: 40, color: m3.onSurface },
+  pricePeriod: { ...m3Type.bodyMd, color: m3.onSurfaceVariant },
+  offer: { ...m3Type.labelLg, color: m3.onSurface },
+  dev: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  legal: { flexDirection: "row", flexWrap: "wrap", gap: m3Space.md },
+  link: { ...m3Type.labelMd, color: m3.primary, minHeight: 44, textAlignVertical: "center" },
+  message: { ...m3Type.bodyMd, color: m3.onSurface },
+  error: { ...m3Type.bodyMd, color: m3.error },
+  footnote: { ...m3Type.bodySm, color: m3.onSurfaceVariant, textAlign: "center" },
+});

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AttentionCategory, BusinessInsightsDto, CoachingActionLinkDto, CoachingInsightDto, CoachingPriority, CustomerLifecycleStage, ServicePerformanceRowDto, ValueCenterDto } from '../apiTypes';
-import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, Screen, SectionHeader, StatusBadge } from '../components/ui';
+import { MetricCard, SectionHeader, StatusBadge } from '../components/ui';
+import { Icon, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { ApiError } from '../services/api';
 import { dashboardApi } from '../services/endpoints';
-import { colors, radius, spacing, typography } from '../theme';
 import { RootStackParamList } from '../types';
 import { audienceCoachingDestination } from '../domain/coachingNavigation';
 import { formatMoney, titleCase } from '../utils/format';
@@ -26,7 +27,7 @@ function goToAction(navigation: Navigator, actionLink: CoachingActionLinkDto) {
   // 'insights' needs no navigation — the insight is already on this screen.
 }
 function priorityTone(priority: CoachingPriority): string {
-  return ({ critical: colors.negative, high: colors.attention, medium: colors.primary, low: colors.textSecondary } as const)[priority];
+  return ({ critical: m3.error, high: m3.tertiary, medium: m3.primary, low: m3.onSurfaceVariant } as const)[priority];
 }
 
 function monthLabel(month: string): string {
@@ -67,16 +68,16 @@ export function InsightsScreen({ navigation }: Props) {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  if (loading && !insights) return <Screen><LoadingState label="Loading your business insights…" /></Screen>;
-  if (error && !insights) return <Screen><ErrorState message={error} onRetry={() => void load()} /></Screen>;
-  if (!insights) return <Screen><EmptyState title="No insights yet" message="Insights will appear as you build up business activity." /></Screen>;
+  if (loading && !insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Loading label="Loading your business insights…" /></M3Screen>;
+  if (error && !insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Error message={error} onRetry={() => void load()} /></M3Screen>;
+  if (!insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Empty icon="insights" title="No insights yet" message="Insights will appear as you build up business activity." /></M3Screen>;
 
   const { monthlyTrend, servicePerformance, customerValue, recoveryPerformance, customerLifecycle } = insights;
   const hasAnyServiceData = servicePerformance.mostRequested.length > 0;
   const goToCustomer = (customerId: string | null) => { if (customerId) navigation.navigate('CustomerProfile', { customerId }); };
 
-  return <Screen>
-    <AppHeader eyebrow="GROWTH" title="Business Insights" subtitle="How your business is performing, in your own numbers" />
+  return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />}>
+    <View style={styles.titleBlock}><Text style={styles.pageTitle}>Business Insights</Text><Text style={styles.pageSubtitle}>How your business is performing, in your own numbers.</Text></View>
 
     {value ? <ValueCreated value={value} currency={undefined} navigation={navigation} /> : null}
 
@@ -153,7 +154,7 @@ export function InsightsScreen({ navigation }: Props) {
         <MetricCard label="Avg. recovery time" value={recoveryPerformance.averageRecoveryDays == null ? '—' : `${Math.round(recoveryPerformance.averageRecoveryDays)}d`} detail="Lead to won" />
       </View>
     </View>
-  </Screen>;
+  </M3Screen>;
 }
 
 function ValueCreated({ value, currency, navigation }: { value: ValueCenterDto; currency?: string; navigation: Navigator }) {
@@ -204,36 +205,39 @@ function Row({ title, detail, onPress }: { title: string; detail: string; onPres
 }
 
 const styles = StyleSheet.create({
-  caption: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xs, marginBottom: spacing.sm },
-  muted: { ...typography.body, color: colors.textSecondary },
-  trendList: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  trendRow: { minHeight: 56, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.divider, paddingVertical: spacing.xs },
-  trendMonth: { ...typography.bodyStrong, color: colors.text },
-  trendDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  subsection: { marginTop: spacing.sm },
-  subsectionTitle: { ...typography.caption, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
-  rankRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, marginBottom: spacing.xs },
-  rankIndex: { ...typography.caption, color: colors.primary, fontWeight: '700', width: 16 },
-  rankLabel: { ...typography.body, color: colors.text, flex: 1 },
-  rankValue: { ...typography.bodyStrong, color: colors.text },
-  row: { minHeight: 52, justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, marginBottom: spacing.xs },
+  titleBlock: { gap: 2, marginBottom: m3Space.xs },
+  pageTitle: { ...m3Type.headlineMd, color: m3.onSurface },
+  pageSubtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  caption: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: -m3Space.xs, marginBottom: m3Space.sm },
+  muted: { ...m3Type.bodyMd, color: m3.onSurfaceVariant },
+  trendList: { backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.lg, paddingHorizontal: m3Space.md },
+  trendRow: { minHeight: 56, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: m3.surfaceContainerHigh, paddingVertical: m3Space.xs },
+  trendMonth: { ...m3Type.labelLg, color: m3.onSurface },
+  trendDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
+  subsection: { marginTop: m3Space.sm },
+  subsectionTitle: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0.5, marginBottom: m3Space.xs },
+  rankRow: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: m3Space.sm, backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.md, paddingHorizontal: m3Space.md, marginBottom: m3Space.xs },
+  rankIndex: { ...m3Type.labelSm, color: m3.primary, width: 16, letterSpacing: 0 },
+  rankLabel: { ...m3Type.bodyMd, color: m3.onSurface, flex: 1 },
+  rankValue: { ...m3Type.labelMd, color: m3.onSurface },
+  row: { minHeight: 52, justifyContent: "center", backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.md, paddingHorizontal: m3Space.md, marginBottom: m3Space.xs },
   rowPressed: { opacity: 0.72 },
   rowCopy: { gap: 2 },
-  rowTitle: { ...typography.bodyStrong, color: colors.text },
-  rowDetail: { ...typography.caption, color: colors.textSecondary },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  lifecycleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
-  lifecycleChip: { minHeight: 52, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, gap: 2 },
-  lifecycleCount: { ...typography.bodyStrong, color: colors.text },
-  lifecycleLabel: { ...typography.caption, color: colors.textSecondary },
-  coachingCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs, marginBottom: spacing.sm },
-  coachingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  coachingTitle: { ...typography.bodyStrong, color: colors.text, flex: 1 },
-  coachingContext: { ...typography.body, color: colors.text },
-  coachingBody: { ...typography.caption, color: colors.textSecondary },
+  rowTitle: { ...m3Type.labelLg, color: m3.onSurface },
+  rowDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: m3Space.sm, marginTop: m3Space.sm },
+  lifecycleGrid: { flexDirection: "row", flexWrap: "wrap", gap: m3Space.xs, marginTop: m3Space.sm },
+  lifecycleChip: { minHeight: 52, alignItems: "center", justifyContent: "center", backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.md, paddingHorizontal: m3Space.md, paddingVertical: m3Space.xs, gap: 2 },
+  lifecycleCount: { ...m3Type.labelLg, color: m3.onSurface },
+  lifecycleLabel: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  coachingCard: { backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.lg, padding: m3Space.md, gap: m3Space.xs, marginBottom: m3Space.sm },
+  coachingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: m3Space.sm },
+  coachingTitle: { ...m3Type.labelLg, color: m3.onSurface, flex: 1 },
+  coachingContext: { ...m3Type.bodyMd, color: m3.onSurface },
+  coachingBody: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
   evidenceList: { gap: 2 },
-  evidenceLine: { ...typography.caption, color: colors.textSecondary },
-  coachingOutcome: { ...typography.caption, color: colors.text, fontStyle: 'italic' },
-  coachingAction: { minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.round, borderWidth: 1, marginTop: spacing.xs },
-  coachingActionText: { ...typography.caption, fontWeight: '700' },
+  evidenceLine: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  coachingOutcome: { ...m3Type.bodySm, color: m3.onSurface, fontStyle: "italic" },
+  coachingAction: { minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: m3Radius.full, borderWidth: 1, marginTop: m3Space.xs, paddingHorizontal: m3Space.md },
+  coachingActionText: { ...m3Type.labelMd },
 });

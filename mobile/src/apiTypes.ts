@@ -1001,3 +1001,42 @@ export interface CreateInvoiceBody {
   taxRatePercent?: string | number;
 }
 export interface UpdateInvoiceBody extends CreateInvoiceBody { expectedCurrentRevisionId: string; }
+
+// PROGRAM 3 / Invoicing I7: authenticated customer invoice inbox (read-only).
+export type CustomerInvoiceStatus = 'SENT' | 'VOID';
+export interface CustomerInvoiceLineDto {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  discountAmount: string;
+  taxable: boolean;
+  lineTotal: string;
+}
+export interface CustomerInvoiceListItemDto {
+  id: string;
+  invoiceNumber: string;
+  status: CustomerInvoiceStatus;
+  currency: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  total: string;
+  business: { name: string };
+  createdAt: string;
+}
+export interface CustomerInvoiceListResponse { items: CustomerInvoiceListItemDto[]; }
+export interface CustomerInvoiceDetailDto {
+  id: string;
+  invoiceNumber: string;
+  status: CustomerInvoiceStatus;
+  currency: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  business: { name: string };
+  revision: {
+    notes: string | null;
+    terms: string | null;
+    totals: { subtotal: string; discountTotal: string; taxTotal: string; total: string };
+    lineItems: CustomerInvoiceLineDto[];
+  } | null;
+}

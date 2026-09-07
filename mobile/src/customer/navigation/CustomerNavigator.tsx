@@ -28,6 +28,8 @@ import { CustomerRedemptionDetailScreen } from '../screens/CustomerRedemptionDet
 import { CustomerMembershipsScreen } from '../screens/CustomerMembershipsScreen';
 import { CustomerMembershipPlansScreen } from '../screens/CustomerMembershipPlansScreen';
 import { CustomerReferralsScreen } from '../screens/CustomerReferralsScreen';
+import { CustomerInvoicesScreen } from '../screens/CustomerInvoicesScreen';
+import { CustomerInvoiceDetailScreen } from '../screens/CustomerInvoiceDetailScreen';
 import { EditCustomerProfileScreen } from '../screens/EditCustomerProfileScreen';
 import { usePendingIntentConsumer } from '../../experience/usePendingIntentConsumer';
 import { navigationRef } from './customerNavigationRef';
@@ -149,6 +151,8 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
           <Stack.Screen name="CustomerMemberships" component={CustomerMembershipsScreen} />
           <Stack.Screen name="CustomerMembershipPlans" component={CustomerMembershipPlansScreen} />
           <Stack.Screen name="CustomerReferrals" component={CustomerReferralsScreen} />
+          <Stack.Screen name="CustomerInvoices" component={CustomerInvoicesScreen} />
+          <Stack.Screen name="CustomerInvoiceDetail" component={CustomerInvoiceDetailScreen} />
           <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
           <Stack.Screen name="CustomerLegalDocument" component={CustomerLegalDocumentScreen} />
         </>

@@ -31,6 +31,10 @@ export type CustomerRootStackParamList = {
   CustomerMemberships: undefined;
   CustomerMembershipPlans: { slug: string; businessName?: string };
   CustomerReferrals: undefined;
+  // PROGRAM 3 / Invoicing I7: the customer invoice inbox, reached from
+  // Account. Read-only.
+  CustomerInvoices: undefined;
+  CustomerInvoiceDetail: { invoiceId: string };
   EditCustomerProfile: undefined;
   CustomerLegalDocument: { type: import('../../apiTypes').LegalDocumentType };
 };

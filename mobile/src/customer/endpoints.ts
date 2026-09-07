@@ -22,6 +22,7 @@ import type {
   WalletDto, LoyaltyAccountSummaryDto, LoyaltyRewardDto, LoyaltyTransactionDto,
   RewardRedemptionDto, CustomerMembershipDto, MembershipPlanDto,
   ReferralOverviewDto, ReferralCodeDto,
+  CustomerInvoiceListResponse, CustomerInvoiceDetailDto,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -167,4 +168,11 @@ export const loyaltyApi = {
     customerHttp.post<ReferralCodeDto>('/customer/loyalty/referrals/code', businessSlug ? { businessSlug } : {}),
   redeemReferral: (code: string) =>
     customerHttp.post<{ referralId: string; status: string }>('/customer/loyalty/referrals/redeem', { code }),
+};
+
+// PROGRAM 3 / Invoicing I7: authenticated customer invoice inbox. Read-only —
+// a customer never sends, edits or voids an invoice. `/customer/invoices/*`.
+export const customerInvoicesApi = {
+  list: () => customerHttp.get<CustomerInvoiceListResponse>('/customer/invoices'),
+  get: (id: string) => customerHttp.get<CustomerInvoiceDetailDto>(`/customer/invoices/${id}`),
 };

@@ -71,6 +71,11 @@ export function CustomerAccountScreen() {
         <MenuRow icon="notifications-outline" label="Notifications" onPress={() => navigation.navigate('CustomerNotifications')} />
       </View>
 
+      <SectionHeader title="Billing" />
+      <View style={styles.group}>
+        <MenuRow icon="receipt-outline" label="Invoices" detail="Invoices your businesses have sent you" onPress={() => navigation.navigate('CustomerInvoices')} />
+      </View>
+
       <SectionHeader title="Rewards" />
       <View style={styles.group}>
         <MenuRow icon="gift-outline" label="My Rewards" onPress={() => navigation.navigate('CustomerRewards')} />

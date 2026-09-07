@@ -3,6 +3,21 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../src/lib/prisma.js";
 import { authHeader, createTestApp, registerAccount, resetDatabase, setPlan, setSubscriptionStatus } from "./helpers.js";
 import { createSession } from "../src/modules/auth/auth.service.js";
+import { configureExpenseReceiptPlatform } from "../src/lib/financial/expenseReceiptPlatform.js";
+
+// A 1x1 PNG, base64.
+const TINY_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+async function createExpense(app: FastifyInstance, token: string) {
+  const res = await app.inject({
+    method: "POST",
+    url: "/financial/expenses",
+    headers: auth(token),
+    payload: { amount: "25.00", currency: "USD", spentAt: "2026-03-10T00:00:00.000Z" },
+  });
+  return res.json().id as string;
+}
 
 // PROGRAM 3 / Financial Management F2: expenses, categories, mileage,
 // money-in/out summary. BUSINESS-tier gated, tenant-scoped, exact money.
@@ -164,6 +179,123 @@ describe("expenses", () => {
     const id = created.json().id;
     const cross = await app.inject({ method: "GET", url: `/financial/expenses/${id}`, headers: auth(b.token) });
     expect(cross.statusCode).toBe(404);
+  });
+});
+
+describe("receipts", () => {
+  it("uploads, lists, and streams a receipt back byte-for-byte", async () => {
+    const { token } = await businessAccount(app);
+    const expenseId = await createExpense(app, token);
+
+    const upload = await app.inject({
+      method: "POST",
+      url: `/financial/expenses/${expenseId}/receipts`,
+      headers: auth(token),
+      payload: { fileName: "till.png", mimeType: "image/png", dataBase64: TINY_PNG },
+    });
+    expect(upload.statusCode).toBe(201);
+    expect(upload.json()).toMatchObject({ status: "ready", downloadable: true });
+    const receiptId = upload.json().id;
+
+    const list = await app.inject({
+      method: "GET",
+      url: `/financial/expenses/${expenseId}/receipts`,
+      headers: auth(token),
+    });
+    expect(list.json()).toHaveLength(1);
+
+    const grant = await app.inject({
+      method: "POST",
+      url: `/financial/receipts/${receiptId}/download`,
+      headers: auth(token),
+    });
+    expect(grant.statusCode).toBe(200);
+    const streamed = await app.inject({
+      method: "GET",
+      url: `/financial/receipts/download/${grant.json().token}`,
+      headers: auth(token),
+    });
+    expect(streamed.statusCode).toBe(200);
+    expect(streamed.rawPayload.equals(Buffer.from(TINY_PNG, "base64"))).toBe(true);
+  });
+
+  it("rejects a disallowed file type", async () => {
+    const { token } = await businessAccount(app);
+    const expenseId = await createExpense(app, token);
+    const res = await app.inject({
+      method: "POST",
+      url: `/financial/expenses/${expenseId}/receipts`,
+      headers: auth(token),
+      payload: { fileName: "note.txt", mimeType: "text/plain", dataBase64: Buffer.from("hi").toString("base64") },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("does not let another tenant see, download, or delete a receipt", async () => {
+    const a = await businessAccount(app);
+    const b = await businessAccount(app);
+    const expenseId = await createExpense(app, a.token);
+    const upload = await app.inject({
+      method: "POST",
+      url: `/financial/expenses/${expenseId}/receipts`,
+      headers: auth(a.token),
+      payload: { fileName: "till.png", mimeType: "image/png", dataBase64: TINY_PNG },
+    });
+    const receiptId = upload.json().id;
+
+    const list = await app.inject({
+      method: "GET",
+      url: `/financial/expenses/${expenseId}/receipts`,
+      headers: auth(b.token),
+    });
+    expect(list.statusCode).toBe(404);
+    const grant = await app.inject({
+      method: "POST",
+      url: `/financial/receipts/${receiptId}/download`,
+      headers: auth(b.token),
+    });
+    expect(grant.statusCode).toBe(404);
+    const del = await app.inject({ method: "DELETE", url: `/financial/receipts/${receiptId}`, headers: auth(b.token) });
+    expect(del.statusCode).toBe(404);
+  });
+
+  it("quarantines a receipt the scanner rejects and refuses to serve it", async () => {
+    configureExpenseReceiptPlatform({
+      storage: {
+        put: async () => undefined,
+        get: async () => Buffer.from(TINY_PNG, "base64"),
+        remove: async () => undefined,
+      },
+      scanner: { scan: async () => ({ clean: false, detail: "eicar" }) },
+    });
+    try {
+      const { token } = await businessAccount(app);
+      const expenseId = await createExpense(app, token);
+      const upload = await app.inject({
+        method: "POST",
+        url: `/financial/expenses/${expenseId}/receipts`,
+        headers: auth(token),
+        payload: { fileName: "bad.pdf", mimeType: "application/pdf", dataBase64: TINY_PNG },
+      });
+      expect(upload.statusCode).toBe(201);
+      expect(upload.json()).toMatchObject({ status: "quarantined", downloadable: false });
+      const grant = await app.inject({
+        method: "POST",
+        url: `/financial/receipts/${upload.json().id}/download`,
+        headers: auth(token),
+      });
+      expect(grant.statusCode).toBe(404);
+    } finally {
+      const objects = new Map<string, Buffer>();
+      configureExpenseReceiptPlatform({
+        storage: {
+          put: async (key, body) => void objects.set(key, Buffer.from(body)),
+          get: async (key) => objects.get(key) ?? null,
+          remove: async (key) => void objects.delete(key),
+        },
+        scanner: { scan: async (_b, m) => ({ clean: true, detectedMime: m }) },
+      });
+    }
   });
 });
 

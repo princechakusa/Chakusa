@@ -1,9 +1,18 @@
 import type { FastifyInstance } from "fastify";
 import type { BusinessRole } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { requireBusinessRole } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
+import {
+  createExpenseReceiptDownload,
+  deleteExpenseReceipt,
+  downloadExpenseReceipt,
+  expenseReceiptStorageHealth,
+  listExpenseReceipts,
+  uploadExpenseReceipt,
+} from "../../lib/financial/expenseReceiptPlatform.js";
 import {
   createExpenseCategorySchema,
   createExpenseSchema,
@@ -165,6 +174,67 @@ export default async function financialRoutes(fastify: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     await deleteMileageTrip(request.businessId!, id);
     reply.status(204).send();
+  });
+
+  // --- expense receipts (secure attachments) ---
+  fastify.get<{ Params: { id: string } }>("/expenses/:id/receipts", async (request, reply) => {
+    requireBusinessRole(request, FINANCIAL_ROLES);
+    assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+    const { id } = idParamSchema.parse(request.params);
+    reply.send(await listExpenseReceipts(request.businessId!, id));
+  });
+
+  fastify.post<{ Params: { id: string } }>(
+    "/expenses/:id/receipts",
+    { bodyLimit: 24 * 1024 * 1024 },
+    async (request, reply) => {
+      requireBusinessRole(request, FINANCIAL_ROLES);
+      assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+      const { id } = idParamSchema.parse(request.params);
+      const input = z
+        .object({
+          fileName: z.string().trim().min(1).max(255),
+          mimeType: z.string().trim().min(3).max(120),
+          dataBase64: z.string().min(1).max(24 * 1024 * 1024),
+        })
+        .parse(request.body);
+      reply.status(201).send(await uploadExpenseReceipt(request.businessId!, id, input));
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>("/receipts/:id/download", async (request, reply) => {
+    requireBusinessRole(request, FINANCIAL_ROLES);
+    assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+    const { id } = idParamSchema.parse(request.params);
+    reply.send(await createExpenseReceiptDownload(request.businessId!, id));
+  });
+
+  fastify.get<{ Params: { token: string } }>("/receipts/download/:token", async (request, reply) => {
+    requireBusinessRole(request, FINANCIAL_ROLES);
+    assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+    const { token } = z.object({ token: z.string().min(20) }).parse(request.params);
+    const result = await downloadExpenseReceipt(token);
+    reply
+      .header("content-type", result.receipt.detectedMime ?? result.receipt.declaredMime)
+      .header(
+        "content-disposition",
+        `attachment; filename="${result.receipt.fileName.replace(/["\r\n]/g, "_")}"`,
+      )
+      .send(result.body);
+  });
+
+  fastify.delete<{ Params: { id: string } }>("/receipts/:id", async (request, reply) => {
+    requireBusinessRole(request, FINANCIAL_ROLES);
+    assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+    const { id } = idParamSchema.parse(request.params);
+    await deleteExpenseReceipt(request.businessId!, id);
+    reply.status(204).send();
+  });
+
+  fastify.get("/receipts/storage-status", async (request, reply) => {
+    requireBusinessRole(request, FINANCIAL_ROLES);
+    assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
+    reply.send(await expenseReceiptStorageHealth());
   });
 
   // --- money-in / money-out summary ---

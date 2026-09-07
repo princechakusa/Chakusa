@@ -68,9 +68,9 @@ export function InsightsScreen({ navigation }: Props) {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  if (loading && !insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Loading label="Loading your business insights…" /></M3Screen>;
-  if (error && !insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Error message={error} onRetry={() => void load()} /></M3Screen>;
-  if (!insights) return <M3Screen header={<M3Header businessName="Business Insights" hasNotifications={false} />} scroll={false}><M3Empty icon="insights" title="No insights yet" message="Insights will appear as you build up business activity." /></M3Screen>;
+  if (loading && !insights) return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} hasNotifications={false} />} scroll={false}><M3Loading label="Loading your business insights…" /></M3Screen>;
+  if (error && !insights) return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} hasNotifications={false} />} scroll={false}><M3Error message={error} onRetry={() => void load()} /></M3Screen>;
+  if (!insights) return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} hasNotifications={false} />} scroll={false}><M3Empty icon="insights" title="No insights yet" message="Insights will appear as you build up business activity." /></M3Screen>;
 
   const { monthlyTrend, servicePerformance, customerValue, recoveryPerformance, customerLifecycle } = insights;
   const hasAnyServiceData = servicePerformance.mostRequested.length > 0;

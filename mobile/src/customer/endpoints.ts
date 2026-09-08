@@ -110,6 +110,11 @@ export const bookingApi = {
   reschedule: (id: string, startsAt: string, assignedMemberId?: string) =>
     customerHttp.patch<CustomerBookingDto>(`/customer/bookings/${id}/reschedule`, { startsAt, assignedMemberId }),
   cancel: (id: string) => customerHttp.post<CustomerBookingDto>(`/customer/bookings/${id}/cancel`),
+  providerLocation: (id: string) =>
+    customerHttp.get<
+      | { sharing: true; latitude: number; longitude: number; accuracyMeters: number | null; startedAt: string; updatedAt: string; expiresAt: string }
+      | { sharing: false; reason?: string }
+    >(`/customer/bookings/${id}/provider-location`),
 };
 
 export const customerAssistantApi = {

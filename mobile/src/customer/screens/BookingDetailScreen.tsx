@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, Divider, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton } from '../../components/ui';
 import type { BookingAvailabilityDto, CustomerBookingDto } from '../../apiTypes';
@@ -109,6 +109,8 @@ export function BookingDetailScreen({ route, navigation }: Props) {
         {booking.business.phone ? <><Divider /><InfoRow icon="call-outline" label="Business" value={booking.business.phone} /></> : null}
       </View>
 
+      <ProviderLocationCard bookingId={booking.id} active={booking.status === 'SCHEDULED' || booking.status === 'CONFIRMED'} />
+
       {booking.notes ? <Text style={styles.notes}>“{booking.notes}”</Text> : null}
 
       {rescheduling ? (
@@ -148,8 +150,51 @@ export function BookingDetailScreen({ route, navigation }: Props) {
   );
 }
 
+// Live Location #14 (customer side). Polls the appointment-scoped endpoint
+// while the booking is active; renders only when the provider is actively
+// sharing, and disappears the instant the server says sharing has ended.
+function ProviderLocationCard({ bookingId, active }: { bookingId: string; active: boolean }) {
+  const [share, setShare] = useState<{ latitude: number; longitude: number; updatedAt: string } | null>(null);
+
+  useEffect(() => {
+    if (!active) { setShare(null); return; }
+    let alive = true;
+    const poll = async () => {
+      try {
+        const res = await bookingApi.providerLocation(bookingId);
+        if (alive) setShare(res.sharing ? { latitude: res.latitude, longitude: res.longitude, updatedAt: res.updatedAt } : null);
+      } catch { if (alive) setShare(null); }
+    };
+    void poll();
+    const t = setInterval(() => void poll(), 15_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [bookingId, active]);
+
+  if (!share) return null;
+  const agoSec = Math.max(0, Math.round((Date.now() - new Date(share.updatedAt).getTime()) / 1000));
+  return (
+    <View style={styles.locCard}>
+      <View style={styles.locRow}>
+        <View style={styles.locDot} />
+        <Text style={styles.locTitle}>Your provider is on the way</Text>
+      </View>
+      <Text style={styles.dim}>Sharing their live location · updated {agoSec < 60 ? `${agoSec}s` : `${Math.round(agoSec / 60)}m`} ago</Text>
+      <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`https://www.google.com/maps?q=${share.latitude},${share.longitude}`)} style={styles.locBtn}>
+        <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+        <Text style={styles.locBtnText}>Open in Maps</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
+  locCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  locDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
+  locTitle: { ...typography.bodyStrong, color: colors.text },
+  locBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  locBtnText: { ...typography.caption, color: colors.primary },
   notes: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic' },
   actions: { gap: spacing.sm },
   closedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

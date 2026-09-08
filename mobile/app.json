@@ -48,7 +48,18 @@
       ],
       "./plugins/withCallDetection",
       "@sentry/react-native",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "locationWhenInUsePermission": "Chakusa uses your location only while you choose to share it with a customer for an appointment you are heading to, so they can see you approaching. It stops automatically when you arrive or end sharing.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -106,6 +106,7 @@ export const remindersApi = {
   bulkGenerateMessages: () => api.post<{ id: string; customerName: string | null; message: string }[]>('/reminders/bulk-generate-messages'),
   bulkSend: () => api.post<{ sentCount: number; failedCount: number; skippedCount: number; results: { id: string; customerName: string | null; outcome: 'sent' | 'failed' | 'skipped'; reason?: string }[] }>('/reminders/bulk-send'),
 };
+export interface LocationShareDto { sharing: true; latitude: number; longitude: number; accuracyMeters: number | null; startedAt: string; updatedAt: string; expiresAt: string; }
 export const appointmentsApi = {
   list: (from: string, to: string, customerId?: string) => api.get<import('../apiTypes').AppointmentDto[]>(`/appointments${query({ from, to, customerId })}`),
   get: (id: string) => api.get<import('../apiTypes').AppointmentDto>(`/appointments/${id}`),
@@ -115,6 +116,11 @@ export const appointmentsApi = {
   sendConfirmation: (id: string) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/send-confirmation`, {}),
   setArrival: (id: string, state: import('../apiTypes').AppointmentArrivalState, notifyCustomer = false) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/arrival`, { state, notifyCustomer }),
   clearArrival: (id: string) => api.delete<import('../apiTypes').AppointmentDto>(`/appointments/${id}/arrival`),
+  startLocationShare: (id: string, coords: { latitude: number; longitude: number; accuracyMeters?: number }) =>
+    api.post<LocationShareDto>(`/appointments/${id}/location-share`, coords),
+  updateLocationShare: (id: string, coords: { latitude: number; longitude: number; accuracyMeters?: number }) =>
+    api.put<LocationShareDto>(`/appointments/${id}/location-share`, coords),
+  stopLocationShare: (id: string) => api.delete<{ sharing: false }>(`/appointments/${id}/location-share`),
   updatePayment: (id: string, paidAmount: number) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}/payment`, { paidAmount }),
   bulkImport: (appointments: import('../domain/appointmentsImport').AppointmentImportRow[]) => api.post<{ created: { id: string }[]; skipped: { reason: string }[]; failed: { reason: string }[] }>('/appointments/bulk-import', { appointments }),
 };

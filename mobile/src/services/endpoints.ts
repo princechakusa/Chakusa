@@ -218,6 +218,15 @@ export const teamApi = {
   reactivateMember: (id: string) => api.post<TeamMemberDto>(`/team/members/${id}/reactivate`),
   transferOwnership: (memberId: string, businessName: string) => api.post<{ businessId: string; previousOwnerUserId: string; ownerUserId: string }>('/team/ownership-transfer', { memberId, businessName }),
 };
+export type CommissionBasis = 'PERCENT_OF_SERVICE_PRICE' | 'FIXED_PER_APPOINTMENT';
+export interface CommissionRuleDto { id: string; businessMemberId: string; memberName: string; serviceOfferingId: string | null; serviceName: string | null; basis: CommissionBasis; ratePercent: string | null; fixedAmount: string | null; fixedCurrency: string | null; active: boolean; updatedAt: string; }
+export interface CommissionReportDto { from: string; to: string; currency: string; members: { businessMemberId: string; name: string; currencies: { currency: string; appointmentCount: number; serviceRevenue: string; commission: string }[] }[]; appointmentsWithoutRule: number; currencyMismatches: number; disclaimer: string; }
+export const commissionsApi = {
+  rules: () => api.get<CommissionRuleDto[]>('/commissions/rules'),
+  upsertRule: (body: { businessMemberId: string; serviceOfferingId?: string | null; basis: CommissionBasis; ratePercent?: number; fixedAmount?: number; fixedCurrency?: string; active?: boolean }) => api.put<CommissionRuleDto>('/commissions/rules', body),
+  deleteRule: (id: string) => api.delete<void>(`/commissions/rules/${id}`),
+  report: (from: string, to: string) => api.get<CommissionReportDto>(`/commissions/report${query({ from, to })}`),
+};
 export const publicTeamInvitesApi = {
   get: (token: string) => api.get<PublicTeamInvitationDto>(`/public/team-invites/${encodeURIComponent(token)}`, 'none'),
   accept: (token: string) => api.post<{ state: 'accepted' | 'expired' | 'already-used' }>(`/public/team-invites/${encodeURIComponent(token)}/accept`),

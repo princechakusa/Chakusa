@@ -110,6 +110,9 @@ export function AccountHubScreen() {
           <MenuRow icon="storefront" tone="primary" title="Business profile" detail="Details, hours and public page" onPress={() => navigation.navigate('BusinessSettings')} />
         ) : null}
         <MenuRow icon="group" tone="secondary" title="Team members" detail={features?.teamManagement ? 'Manage your team and their access' : 'View team access and plans'} onPress={() => navigation.navigate('Team')} />
+        {canManageBusiness ? (
+          <MenuRow icon="percent" tone="tertiary" title="Commissions" detail="Rules and what the team earned on completed work" onPress={() => navigation.navigate('Commissions')} />
+        ) : null}
         <MenuRow icon="notifications" tone="tertiary" title="Notifications" detail="Choose what Chakusa highlights for you" onPress={() => navigation.navigate('NotificationPreferences')} />
         <MenuRow icon="forum" tone="secondary" title="Message templates" detail="Customize customer messages and responses" onPress={() => navigation.navigate('Templates')} />
         {canManageBusiness ? (

@@ -60,9 +60,12 @@ const messagingProvider: MessagingProvider = {
 
 async function setupBusiness(app: FastifyInstance, opts: { mode: "AUTONOMOUS" | "DRAFT"; withModel?: boolean } = { mode: "AUTONOMOUS" }) {
   const account = await registerAccount(app);
-  await setPlan(account.businessId, "PRO");
+  // #15: the AI Receptionist is a BUSINESS-plan entitlement and the business
+  // must opt in; the platform FeatureFlag is the separate ops master switch.
+  await setPlan(account.businessId, "BUSINESS");
   await prisma.subscription.update({ where: { businessId: account.businessId }, data: { status: "ACTIVE" } });
   await prisma.featureFlag.create({ data: { key: "ai.customer_agent", scope: "BUSINESS", businessId: account.businessId, enabled: true, status: "ENABLED" } });
+  await prisma.aiReceptionistSettings.create({ data: { businessId: account.businessId, enabled: true } });
 
   if (opts.withModel !== false) {
     await prisma.aIModelRegistry.create({ data: { provider: SCRIPTED_PROVIDER, model: "scripted-1", version: "1", capabilities: ["conversation"], approvedUseCases: ["conversation"], status: "ACTIVE", healthStatus: "HEALTHY" } });

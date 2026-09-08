@@ -1022,6 +1022,7 @@ model Business {
   inventoryItems                 InventoryItem[]
   inventoryMovements             InventoryMovement[]
   appointmentLocationShares      AppointmentLocationShare[]
+  aiReceptionistSettings         AiReceptionistSettings?
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1535,6 +1536,27 @@ model AppointmentLocationShare {
   @@index([businessId])
   @@index([expiresAt])
   @@map("appointment_location_shares")
+}
+
+// AI Receptionist #15 — the business-facing product control for the existing
+// AI Customer Agent engine (routeAI / Policy Engine / Tool Broker /
+// conversation runs). This row does NOT change how the agent reasons or what
+// it may do (the Policy Engine still owns autonomy, tool authorization and
+// escalation). It is the master on/off plus per-channel switch a business
+// owner controls, gated by the AI_RECEPTIONIST entitlement. Absent row =
+// disabled: the agent never answers a customer unless the business opts in.
+model AiReceptionistSettings {
+  businessId      String   @id @map("business_id")
+  enabled         Boolean  @default(false)
+  smsEnabled      Boolean  @default(true) @map("sms_enabled")
+  whatsappEnabled Boolean  @default(true) @map("whatsapp_enabled")
+  updatedByUserId String?  @map("updated_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("ai_receptionist_settings")
 }
 
 model BookingBlock {

@@ -10,6 +10,7 @@ import { ensureSession } from "../memory/memoryStore.js";
 import { recordConversationEvent, summarizeConversation } from "../memory/summarization.js";
 import { executeAITool } from "../aiRuntime.js";
 import { isAgentTool } from "./agentTools.js";
+import { receptionistGate } from "./receptionistSettings.js";
 
 const MAX_TOOL_ITERATIONS = 4;
 
@@ -232,6 +233,7 @@ export async function handleInboundAIMessage(input: {
   channel: "sms" | "whatsapp";
   body: string;
 }): Promise<InboundAIResult> {
+  // Platform master switch (admin/ops-controlled).
   if (!(await isCustomerAgentEnabled(input.businessId))) return { handled: false, reason: "agent_disabled" };
 
   const conversation = await prisma.conversation.findFirst({
@@ -241,13 +243,20 @@ export async function handleInboundAIMessage(input: {
   if (!conversation) return { handled: false, reason: "conversation_not_found" };
   if (conversation.automationMode !== "AUTOMATED") return { handled: false, reason: "human_owned" };
 
+  const subscription = await prisma.subscription.findUnique({ where: { businessId: input.businessId }, select: { plan: true, status: true } });
+  const plan: Plan = subscription?.plan ?? "FREE";
+  const status: SubscriptionStatus = subscription?.status ?? "ACTIVE";
+
+  // #15: business opt-in + per-channel toggle + AI_RECEPTIONIST entitlement.
+  // A blocked gate still lets the inbound message be recorded (done by the
+  // caller) — the AI simply does not answer.
+  const gate = await receptionistGate(input.businessId, input.channel, plan, status);
+  if (!gate.ok) return { handled: false, reason: gate.reason };
+
   const idempotencyKey = `ai-agent:${input.businessId}:${input.providerMessageId}`;
   const existing = await prisma.aIConversationRun.findUnique({ where: { idempotencyKey }, select: { id: true, status: true } });
   if (existing) return { handled: true, runId: existing.id, status: existing.status, replayed: true };
 
-  const subscription = await prisma.subscription.findUnique({ where: { businessId: input.businessId }, select: { plan: true, status: true } });
-  const plan: Plan = subscription?.plan ?? "FREE";
-  const status: SubscriptionStatus = subscription?.status ?? "ACTIVE";
   const activePolicy = await resolveActivePolicy(input.businessId);
 
   const run = await prisma.aIConversationRun.create({

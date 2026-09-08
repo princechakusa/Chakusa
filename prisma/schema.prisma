@@ -1550,6 +1550,12 @@ model AiReceptionistSettings {
   enabled         Boolean  @default(false)
   smsEnabled      Boolean  @default(true) @map("sms_enabled")
   whatsappEnabled Boolean  @default(true) @map("whatsapp_enabled")
+  // #16 After-hours AI — an operating mode of the receptionist, not a new
+  // agent. "ALWAYS" = today's behavior (answer whenever enabled).
+  // "AFTER_HOURS_ONLY" = only answer when the business is deterministically
+  // outside its configured working hours (server-resolved from
+  // Business.timezone + Business.workingHours + business-wide booking blocks).
+  mode            String   @default("ALWAYS")
   updatedByUserId String?  @map("updated_by_user_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -2797,6 +2803,10 @@ model AIConversationRun {
   state          Json     @default("{}")
   idempotencyKey String   @unique @map("idempotency_key")
   lastError      String?  @map("last_error")
+  // #16 audit: whether the business was deterministically outside its
+  // working hours when this run was created. Null for runs created before
+  // #16 or when hours could not be resolved. Set once, never updated.
+  afterHours     Boolean? @map("after_hours")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

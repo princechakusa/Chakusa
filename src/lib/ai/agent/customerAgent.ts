@@ -10,7 +10,7 @@ import { ensureSession } from "../memory/memoryStore.js";
 import { recordConversationEvent, summarizeConversation } from "../memory/summarization.js";
 import { executeAITool } from "../aiRuntime.js";
 import { isAgentTool } from "./agentTools.js";
-import { receptionistGate } from "./receptionistSettings.js";
+import { receptionistGate, resolveBusinessHoursForReceptionist } from "./receptionistSettings.js";
 
 const MAX_TOOL_ITERATIONS = 4;
 
@@ -44,6 +44,19 @@ export async function runCustomerAgentTurn(input: {
   runId: string;
   prompt: string;
   channel?: string;
+  /**
+   * #16: server-resolved business-hours facts (open/closed now, next opening).
+   * Passed into the model/tool context so the agent can naturally say the
+   * business is closed and when it reopens — WITHOUT the model computing any
+   * of it. Never authorizes anything.
+   */
+  businessHours?: {
+    open: boolean;
+    localTime: string;
+    timezone: string;
+    nextOpenLabel: string | null;
+    nextOpenIso: string | null;
+  };
 }): Promise<AgentTurnResult> {
   const run = await prisma.aIConversationRun.findFirst({ where: { id: input.runId, businessId: input.businessId } });
   if (!run) throw new Error("AI conversation run not found");
@@ -74,6 +87,7 @@ export async function runCustomerAgentTurn(input: {
     const context = {
       ...(await businessAIContext(input.businessId, run.customerId ?? undefined)),
       memoryDigest: formatMemoryForContext(memory.items),
+      ...(input.businessHours ? { businessHours: input.businessHours } : {}),
       toolResults,
     };
     const turnPrompt = toolResults.length
@@ -247,9 +261,10 @@ export async function handleInboundAIMessage(input: {
   const plan: Plan = subscription?.plan ?? "FREE";
   const status: SubscriptionStatus = subscription?.status ?? "ACTIVE";
 
-  // #15: business opt-in + per-channel toggle + AI_RECEPTIONIST entitlement.
-  // A blocked gate still lets the inbound message be recorded (done by the
-  // caller) — the AI simply does not answer.
+  // #15 + #16: business opt-in + per-channel toggle + AI_RECEPTIONIST
+  // entitlement + schedule mode (AFTER_HOURS_ONLY only answers outside the
+  // deterministically-resolved working hours). A blocked gate still lets the
+  // inbound message be recorded (done by the caller) — the AI does not answer.
   const gate = await receptionistGate(input.businessId, input.channel, plan, status);
   if (!gate.ok) return { handled: false, reason: gate.reason };
 
@@ -258,14 +273,27 @@ export async function handleInboundAIMessage(input: {
   if (existing) return { handled: true, runId: existing.id, status: existing.status, replayed: true };
 
   const activePolicy = await resolveActivePolicy(input.businessId);
+  // Resolve hours once for the run audit + model context. gate.hours is only
+  // populated in AFTER_HOURS_ONLY mode, so ALWAYS-mode runs still get an
+  // accurate after-hours audit stamp.
+  const hours = gate.hours ?? (await resolveBusinessHoursForReceptionist(input.businessId));
+  const afterHours = hours.resolved ? !hours.open : null;
 
   const run = await prisma.aIConversationRun.create({
-    data: { businessId: input.businessId, customerId: input.customerId, conversationId: input.conversationId, idempotencyKey, status: "RECEIVED", mode: activePolicy.mode },
+    data: { businessId: input.businessId, customerId: input.customerId, conversationId: input.conversationId, idempotencyKey, status: "RECEIVED", mode: activePolicy.mode, afterHours },
   });
 
   let turn: AgentTurnResult;
   try {
-    turn = await runCustomerAgentTurn({ businessId: input.businessId, runId: run.id, prompt: input.body, channel: input.channel });
+    turn = await runCustomerAgentTurn({
+      businessId: input.businessId,
+      runId: run.id,
+      prompt: input.body,
+      channel: input.channel,
+      businessHours: hours.resolved
+        ? { open: hours.open, localTime: hours.localTime, timezone: hours.timezone, nextOpenLabel: hours.nextOpen?.label ?? null, nextOpenIso: hours.nextOpen?.atIso ?? null }
+        : undefined,
+    });
   } catch (error) {
     captureUnexpectedError(error);
     await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "FAILED", lastError: (error as Error).message?.slice(0, 500) ?? "agent error" } });

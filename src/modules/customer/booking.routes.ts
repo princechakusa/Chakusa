@@ -10,6 +10,7 @@ import {
   listCustomerBookings,
   rescheduleCustomerBooking,
 } from "../../lib/booking/customerBooking.js";
+import { getProviderLocationForCustomer } from "../locationShare/locationShare.service.js";
 
 // PROGRAM 2 LOOP 3: authenticated customer booking + calendar. Delegates
 // every scheduling decision to the existing appointment/availability
@@ -70,5 +71,14 @@ export default async function customerBookingRoutes(fastify: FastifyInstance) {
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
     const ics = await customerBookingIcs(request.customer!.profileId, id);
     reply.header("content-type", "text/calendar; charset=utf-8").header("content-disposition", 'attachment; filename="appointment.ics"').send(ics);
+  });
+
+  // Live Location #14 — the customer of THIS appointment polls their assigned
+  // provider's latest position while the provider is sharing. Authorization
+  // is derived from the profile's owned appointments; returns { sharing:false }
+  // the instant the share expires or the appointment stops being eligible.
+  fastify.get("/:id/provider-location", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    return getProviderLocationForCustomer(request.customer!.profileId, id);
   });
 }

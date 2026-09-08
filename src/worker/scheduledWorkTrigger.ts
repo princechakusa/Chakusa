@@ -3,6 +3,7 @@ import { config } from '../lib/config.js';
 import { processDueAutomationRuns } from '../lib/automation/executor.js';
 import { sweepLifecycleAutomations } from '../lib/automation/scheduler.js';
 import { sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from '../modules/appointments/appointmentReminders.js';
+import { expireStaleLocationShares } from '../modules/locationShare/locationShare.service.js';
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
 import { generateDueWeeklyOwnerReports } from '../modules/weeklyReports/weeklyReports.service.js';
 import { publishOutboxBatch, recoverExpiredOutboxClaims } from './outboxPublisher.js';
@@ -46,6 +47,7 @@ export function runTriggeredScheduledWork() {
     const customerMessagesSent = await sendDueCustomerAppointmentMessages(undefined, 50);
     const paymentRemindersSent = await sendDueAppointmentPaymentReminders(undefined, 50);
     const quotesExpired = (await sweepExpiredQuotes(new Date(), 250)).expired;
+    await expireStaleLocationShares(new Date()); // #14: no share outlives its window even if every client vanishes
     await generateDueWeeklyOwnerReports(new Date(), 50);
     await recordWorkerHeartbeat(triggerStartedAt);
     return { ...automation, outboxPublished: outbox.published, deliveriesAcknowledged: deliveries.delivered, workflowsProcessed, remindersSent, customerMessagesSent, paymentRemindersSent, quotesExpired };

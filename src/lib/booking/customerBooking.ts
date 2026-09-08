@@ -202,7 +202,7 @@ export async function createCustomerBooking(customerProfileId: string, input: { 
 }
 
 /** Appointments this profile can see: ones it booked, plus any on its linked business-customer rows. */
-async function ownedAppointmentWhere(customerProfileId: string) {
+export async function ownedAppointmentWhere(customerProfileId: string) {
   const links = await prisma.customerBusinessLink.findMany({
     where: { customerProfileId, businessCustomerId: { not: null } },
     select: { businessCustomerId: true },

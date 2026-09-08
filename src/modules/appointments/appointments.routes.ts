@@ -5,6 +5,8 @@ import { bulkImportAppointments, clearAppointmentArrivalState, createAppointment
 import { sendAppointmentArrivalMessage, sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "./appointmentReminders.js";
 import { accrueForCompletedBooking } from "../../lib/loyalty/accrual.js";
 import { requireCapability } from "../../lib/authorization.js";
+import { startLocationShareSchema, updateLocationShareSchema } from "../locationShare/locationShare.schemas.js";
+import { startLocationShare, stopLocationShare, updateLocationShare } from "../locationShare/locationShare.service.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 const idParams = z.object({ id: z.string().uuid() });
@@ -65,6 +67,23 @@ export default async function appointmentRoutes(fastify: FastifyInstance) {
   fastify.delete("/:id/arrival", async (request, reply) => {
     requireCapability(request, "appointments.operate");
     reply.send(await clearAppointmentArrivalState(request.businessId!, request.user.userId, idParams.parse(request.params).id));
+  });
+  // Live Location #14 — appointment-arrival location sharing. Only the
+  // appointment's assigned provider (enforced in the service) may share, only
+  // while On My Way / Running Late, with a server-side expiry.
+  fastify.post("/:id/location-share", async (request, reply) => {
+    requireCapability(request, "appointments.operate");
+    const id = idParams.parse(request.params).id;
+    reply.status(201).send(await startLocationShare(request.businessId!, request.user.userId, id, startLocationShareSchema.parse(request.body)));
+  });
+  fastify.put("/:id/location-share", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
+    requireCapability(request, "appointments.operate");
+    const id = idParams.parse(request.params).id;
+    reply.send(await updateLocationShare(request.businessId!, request.user.userId, id, updateLocationShareSchema.parse(request.body)));
+  });
+  fastify.delete("/:id/location-share", async (request, reply) => {
+    requireCapability(request, "appointments.operate");
+    reply.send(await stopLocationShare(request.businessId!, idParams.parse(request.params).id));
   });
   fastify.post("/:id/send-confirmation", async (request, reply) => {
     requireCapability(request, "appointments.operate");

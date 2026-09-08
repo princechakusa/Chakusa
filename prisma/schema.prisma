@@ -1021,6 +1021,7 @@ model Business {
   memberCommissionRules          MemberCommissionRule[]
   inventoryItems                 InventoryItem[]
   inventoryMovements             InventoryMovement[]
+  appointmentLocationShares      AppointmentLocationShare[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1286,6 +1287,7 @@ model Appointment {
   expenses             Expense[]
   mileageTrips         MileageTrip[]
   inventoryMovements   InventoryMovement[]
+  locationShare        AppointmentLocationShare?
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -1503,6 +1505,36 @@ model InventoryMovement {
   @@index([businessId, itemId, createdAt])
   @@index([appointmentId])
   @@map("inventory_movements")
+}
+
+// Live Location #14 — appointment-arrival location sharing.
+//
+// STRICTLY scoped: it exists only so the customer of ONE active appointment
+// can see their assigned provider approaching. Not employee tracking, not a
+// route history. There is at most one row per appointment (the id IS the
+// appointment id) and it holds only the LATEST fix — updates overwrite in
+// place, nothing accumulates. The row is deleted the moment sharing ends
+// (provider stops, marks Arrived, appointment completed/canceled) and a
+// server-side `expiresAt` guarantees it cannot outlive its window even if
+// every client disappears. Coordinates are stored deliberately coarse
+// (~1 m) — only enough to show "provider is near".
+model AppointmentLocationShare {
+  appointmentId   String   @id @map("appointment_id")
+  businessId      String   @map("business_id")
+  sharingMemberId String   @map("sharing_member_id")
+  latitude        Decimal  @db.Decimal(8, 5)
+  longitude       Decimal  @db.Decimal(8, 5)
+  accuracyMeters  Int?     @map("accuracy_meters")
+  startedAt       DateTime @default(now()) @map("started_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  expiresAt       DateTime @map("expires_at")
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([expiresAt])
+  @@map("appointment_location_shares")
 }
 
 model BookingBlock {

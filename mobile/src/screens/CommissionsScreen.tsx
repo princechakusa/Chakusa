@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../state/AuthContext';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { CommissionBasis, CommissionReportDto, CommissionRuleDto, commissionsApi, servicesApi, teamApi } from '../services/endpoints';
@@ -26,6 +27,8 @@ function ruleSummary(rule: CommissionRuleDto) {
 
 export function CommissionsScreen() {
   const navigation = useNavigation<Nav>();
+  const { role } = useAuth();
+  const canManageRules = role === 'OWNER'; // ADMIN sees the report only; backend enforces this too
   const [anchor, setAnchor] = useState(() => new Date());
   const [report, setReport] = useState<CommissionReportDto | null>(null);
   const [rules, setRules] = useState<CommissionRuleDto[]>([]);
@@ -116,11 +119,16 @@ export function CommissionsScreen() {
 
           <View style={styles.rulesHead}>
             <Text style={styles.sectionLabel}>RULES</Text>
-            <Pressable accessibilityRole="button" onPress={() => setEditorOpen(true)} style={styles.addBtn}>
-              <Icon name="add" size={16} color={m3.onPrimary} />
-              <Text style={styles.addBtnText}>Add rule</Text>
-            </Pressable>
+            {canManageRules ? (
+              <Pressable accessibilityRole="button" onPress={() => setEditorOpen(true)} style={styles.addBtn}>
+                <Icon name="add" size={16} color={m3.onPrimary} />
+                <Text style={styles.addBtnText}>Add rule</Text>
+              </Pressable>
+            ) : null}
           </View>
+          {!canManageRules ? (
+            <Text style={styles.note}>Commission rules are managed by the business owner.</Text>
+          ) : null}
           {rules.length === 0 ? (
             <Text style={styles.note}>No commission rules yet.</Text>
           ) : rules.map(rule => (
@@ -129,9 +137,11 @@ export function CommissionsScreen() {
                 <Text style={styles.ruleMember}>{rule.memberName}</Text>
                 <Text style={styles.currencyMeta}>{ruleSummary(rule)}</Text>
               </View>
-              <Pressable accessibilityLabel="Delete rule" onPress={() => void removeRule(rule.id)} style={styles.deleteBtn}>
-                <Icon name="delete" size={18} color={m3.error} />
-              </Pressable>
+              {canManageRules ? (
+                <Pressable accessibilityLabel="Delete rule" onPress={() => void removeRule(rule.id)} style={styles.deleteBtn}>
+                  <Icon name="delete" size={18} color={m3.error} />
+                </Pressable>
+              ) : null}
             </M3Card>
           ))}
         </View>

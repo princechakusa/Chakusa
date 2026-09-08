@@ -227,6 +227,19 @@ export const commissionsApi = {
   deleteRule: (id: string) => api.delete<void>(`/commissions/rules/${id}`),
   report: (from: string, to: string) => api.get<CommissionReportDto>(`/commissions/report${query({ from, to })}`),
 };
+export type InventoryMovementKind = 'OPENING' | 'RECEIVE' | 'RESTOCK' | 'CONSUME' | 'SERVICE_USE' | 'WASTE' | 'ADJUST' | 'CORRECTION';
+export interface InventoryItemDto { id: string; name: string; sku: string | null; unit: string | null; lowStockThreshold: string | null; allowNegative: boolean; active: boolean; currentStock: string; lowStock: boolean; createdAt: string; updatedAt: string; }
+export interface InventoryMovementDto { id: string; kind: InventoryMovementKind; quantityDelta: string; balanceAfter: string; reason: string | null; reference: string | null; appointmentId: string | null; createdByUserId: string; createdAt: string; }
+export interface InventoryItemDetailDto extends InventoryItemDto { movements: InventoryMovementDto[]; }
+export const inventoryApi = {
+  items: (includeInactive = false) => api.get<InventoryItemDto[]>(`/inventory/items${query({ includeInactive: includeInactive ? 'true' : undefined })}`),
+  item: (id: string) => api.get<InventoryItemDetailDto>(`/inventory/items/${id}`),
+  createItem: (body: { name: string; sku?: string; unit?: string; lowStockThreshold?: number; allowNegative?: boolean; openingQuantity?: number }) => api.post<InventoryItemDto>('/inventory/items', body),
+  updateItem: (id: string, body: { name?: string; sku?: string | null; unit?: string | null; lowStockThreshold?: number | null; allowNegative?: boolean; active?: boolean }) => api.patch<InventoryItemDto>(`/inventory/items/${id}`, body),
+  movements: (id: string, limit = 50) => api.get<InventoryMovementDto[]>(`/inventory/items/${id}/movements${query({ limit })}`),
+  recordMovement: (id: string, body: { kind: Exclude<InventoryMovementKind, 'OPENING'>; quantity: number; direction?: 'increase' | 'decrease'; appointmentId?: string; reason?: string; reference?: string }) =>
+    api.post<{ movement: InventoryMovementDto; currentStock: string; lowStock: boolean }>(`/inventory/items/${id}/movements`, body),
+};
 export const publicTeamInvitesApi = {
   get: (token: string) => api.get<PublicTeamInvitationDto>(`/public/team-invites/${encodeURIComponent(token)}`, 'none'),
   accept: (token: string) => api.post<{ state: 'accepted' | 'expired' | 'already-used' }>(`/public/team-invites/${encodeURIComponent(token)}/accept`),

@@ -237,6 +237,9 @@ enum MessageType {
   appointment_canceled
   appointment_follow_up
   payment_reminder
+  // Operations: a business tells a customer the provider is on the way,
+  // running late, or has arrived (src/modules/appointments/appointmentReminders.ts).
+  appointment_on_the_way
 }
 
 enum MessageChannel {
@@ -320,6 +323,15 @@ enum AppointmentStatus {
   COMPLETED
   CANCELED
   NO_SHOW
+}
+
+// Operations #10: a lightweight "On My Way / Arrival" signal a provider sets
+// from the appointment. Deliberately GPS-free — it is a manual status the
+// team taps, never derived from device location.
+enum AppointmentArrivalState {
+  ON_MY_WAY
+  RUNNING_LATE
+  ARRIVED
 }
 
 enum MessageTone {
@@ -1242,6 +1254,12 @@ model Appointment {
   cancellationConfirmationSentAt DateTime?         @map("cancellation_confirmation_sent_at")
   followUpSentAt                 DateTime?         @map("follow_up_sent_at")
   paymentReminderSentAt          DateTime?         @map("payment_reminder_sent_at")
+  // Operations #10 — On My Way / Arrival. `arrivalStateByMemberId` is plain
+  // provenance (no relation), mirroring `createdByUserId`.
+  arrivalState                   AppointmentArrivalState? @map("arrival_state")
+  arrivalStateAt                 DateTime?         @map("arrival_state_at")
+  arrivalStateByMemberId         String?           @map("arrival_state_by_member_id")
+  arrivalCustomerNotifiedAt      DateTime?         @map("arrival_customer_notified_at")
   createdByUserId                String            @map("created_by_user_id")
   // PROGRAM 2 LOOP 3: provenance for a booking made by an authenticated
   // customer from the customer app. `createdByUserId` stays the business

@@ -1,4 +1,4 @@
-import type { AppointmentStatus, Plan, Prisma } from "@prisma/client";
+import type { AppointmentArrivalState, AppointmentStatus, Plan, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { recordActivity } from "../../lib/activity.js";
@@ -30,6 +30,33 @@ export async function updateAppointmentPayment(businessId: string, actorId: stri
     const paymentStatus = paidAmount <= 0 ? "unpaid" : total != null && paidAmount >= total ? "paid" : "partially_paid";
     const appointment = await tx.appointment.update({ where: { id }, data: { paidAmount, paymentStatus }, include });
     await recordActivity({ businessId, actorId, eventType: "APPOINTMENT_UPDATED", entityType: "appointment", entityId: id, metadata: { paymentStatus, paidAmount } }, tx);
+    return appointment;
+  });
+}
+
+const terminalStatuses: AppointmentStatus[] = ["COMPLETED", "CANCELED", "NO_SHOW"];
+
+// Operations #10 — On My Way / Arrival. A manual, GPS-free status the assigned
+// provider (or any team member) sets from the appointment. Never derived from
+// device location.
+export async function setAppointmentArrivalState(businessId: string, actorId: string, id: string, state: AppointmentArrivalState) {
+  return prisma.$transaction(async tx => {
+    const current = await tx.appointment.findFirst({ where: { id, businessId } });
+    if (!current) throw ApiError.notFound("Appointment not found");
+    if (terminalStatuses.includes(current.status)) throw ApiError.conflict("This appointment is closed and its arrival status cannot be changed");
+    const member = await tx.businessMember.findFirst({ where: { businessId, userId: actorId }, select: { id: true } });
+    const appointment = await tx.appointment.update({ where: { id }, data: { arrivalState: state, arrivalStateAt: new Date(), arrivalStateByMemberId: member?.id ?? null }, include });
+    await recordActivity({ businessId, actorId, eventType: "APPOINTMENT_UPDATED", entityType: "appointment", entityId: id, metadata: { arrivalState: state } }, tx);
+    return appointment;
+  });
+}
+
+export async function clearAppointmentArrivalState(businessId: string, actorId: string, id: string) {
+  return prisma.$transaction(async tx => {
+    const current = await tx.appointment.findFirst({ where: { id, businessId } });
+    if (!current) throw ApiError.notFound("Appointment not found");
+    const appointment = await tx.appointment.update({ where: { id }, data: { arrivalState: null, arrivalStateAt: null, arrivalStateByMemberId: null, arrivalCustomerNotifiedAt: null }, include });
+    await recordActivity({ businessId, actorId, eventType: "APPOINTMENT_UPDATED", entityType: "appointment", entityId: id, metadata: { arrivalState: null } }, tx);
     return appointment;
   });
 }

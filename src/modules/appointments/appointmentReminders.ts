@@ -38,6 +38,36 @@ export async function sendCustomerAppointmentMessage(appointmentId: string, kind
 
 export const sendAppointmentConfirmation = (appointmentId: string, provider?: MessagingProvider) => sendCustomerAppointmentMessage(appointmentId, "confirmation", provider);
 
+type AppointmentArrivalState = "ON_MY_WAY" | "RUNNING_LATE" | "ARRIVED";
+
+/**
+ * Operations #10 — tells the customer the provider is on the way, running late,
+ * or has arrived. Separate from sendCustomerAppointmentMessage because the body
+ * varies per state and a business may legitimately send more than one of these
+ * for a single appointment (on-my-way, then arrived). Same delivery guard rails:
+ * live business, outbound-messaging entitlement, budget, opt-out. Idempotent per
+ * (appointment, state) at the provider layer. Returns false — never throws — when
+ * anything is missing, so callers can fire-and-forget.
+ */
+export async function sendAppointmentArrivalMessage(appointmentId: string, state: AppointmentArrivalState, provider?: MessagingProvider) {
+  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } } } });
+  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
+  if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
+  const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });
+  if (optedOut) return false;
+  const name = appointment.business.name;
+  const service = appointment.serviceName;
+  const body = state === "ON_MY_WAY" ? `${name}: your ${service} provider is on the way.` : state === "RUNNING_LATE" ? `${name}: your ${service} provider is running late and will be with you as soon as possible.` : `${name}: your ${service} provider has arrived.`;
+  try {
+    const result = await sendOutboundMessage({ to: appointment.customer.phoneE164, channel: "sms", body, countryCode: parsePhoneNumber(appointment.customer.phoneE164).country ?? "ZZ", idempotencyKey: `appointment:arrival:${state}:${appointment.id}` }, provider);
+    await prisma.message.create({ data: { businessId: appointment.businessId, customerId: appointment.customer.id, messageType: "appointment_on_the_way", channel: "sms", body, status: result.accepted ? "sent" : "failed", sentAt: result.accepted ? new Date() : null, provider: provider?.id ?? "twilio", providerMessageId: result.providerMessageId } });
+    if (result.accepted) await prisma.appointment.update({ where: { id: appointment.id }, data: { arrivalCustomerNotifiedAt: new Date() } });
+    return result.accepted;
+  } catch {
+    return false;
+  }
+}
+
 function localDate(value: Date, timeZone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 export async function sendDueCustomerAppointmentMessages(provider?: MessagingProvider, batchSize = 50, now = new Date()) {
   const appointments = await prisma.appointment.findMany({

@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { appointmentListSchema, appointmentPaymentSchema, bulkImportAppointmentsSchema, createAppointmentSchema, transitionAppointmentSchema, updateAppointmentSchema } from "./appointments.schemas.js";
-import { bulkImportAppointments, createAppointment, getAppointment, listAppointments, transitionAppointment, updateAppointment, updateAppointmentPayment } from "./appointments.service.js";
-import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "./appointmentReminders.js";
+import { appointmentListSchema, appointmentPaymentSchema, bulkImportAppointmentsSchema, createAppointmentSchema, setAppointmentArrivalSchema, transitionAppointmentSchema, updateAppointmentSchema } from "./appointments.schemas.js";
+import { bulkImportAppointments, clearAppointmentArrivalState, createAppointment, getAppointment, listAppointments, setAppointmentArrivalState, transitionAppointment, updateAppointment, updateAppointmentPayment } from "./appointments.service.js";
+import { sendAppointmentArrivalMessage, sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "./appointmentReminders.js";
 import { accrueForCompletedBooking } from "../../lib/loyalty/accrual.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
@@ -40,6 +40,15 @@ export default async function appointmentRoutes(fastify: FastifyInstance) {
     reply.send(appointment);
   });
   fastify.patch("/:id/payment", async (request, reply) => reply.send(await updateAppointmentPayment(request.businessId!, request.user.userId, idParams.parse(request.params).id, appointmentPaymentSchema.parse(request.body).paidAmount)));
+  // Operations #10 — On My Way / Arrival. GPS-free: the team taps a status.
+  fastify.post("/:id/arrival", async (request, reply) => {
+    const id = idParams.parse(request.params).id;
+    const input = setAppointmentArrivalSchema.parse(request.body);
+    await setAppointmentArrivalState(request.businessId!, request.user.userId, id, input.state);
+    if (input.notifyCustomer) await sendAppointmentArrivalMessage(id, input.state).catch(error => request.log.error(error, "appointment arrival notification failed"));
+    reply.send(await getAppointment(request.businessId!, id));
+  });
+  fastify.delete("/:id/arrival", async (request, reply) => reply.send(await clearAppointmentArrivalState(request.businessId!, request.user.userId, idParams.parse(request.params).id)));
   fastify.post("/:id/send-confirmation", async (request, reply) => {
     const id = idParams.parse(request.params).id;
     await getAppointment(request.businessId!, id);

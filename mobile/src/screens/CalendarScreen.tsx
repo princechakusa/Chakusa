@@ -20,6 +20,11 @@ const STATUS_EDGE: Record<AppointmentStatus, string> = {
   CANCELED: m3.error,
   NO_SHOW: m3.tertiary,
 };
+const ARRIVAL_LABEL: Record<'ON_MY_WAY' | 'RUNNING_LATE' | 'ARRIVED', string> = {
+  ON_MY_WAY: 'On my way',
+  RUNNING_LATE: 'Running late',
+  ARRIVED: 'Arrived',
+};
 const STATUS_CHIP: Record<AppointmentStatus, { label: string; tone: 'secondary' | 'neutral' | 'error' | 'primaryFixed' }> = {
   SCHEDULED: { label: 'Confirmed', tone: 'neutral' },
   CONFIRMED: { label: 'Confirmed', tone: 'secondary' },
@@ -167,6 +172,12 @@ export function CalendarScreen() {
               <View style={styles.apptMetaItem}>
                 <Icon name="local_atm" size={15} color={m3.primary} />
                 <Text style={styles.apptPrice}>{formatMoney(a.price)}</Text>
+              </View>
+            ) : null}
+            {a.arrivalState ? (
+              <View style={styles.apptMetaItem}>
+                <Icon name="near_me" size={15} color={m3.secondary} />
+                <Text style={styles.apptMeta}>{ARRIVAL_LABEL[a.arrivalState]}</Text>
               </View>
             ) : null}
           </View>

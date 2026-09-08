@@ -113,6 +113,8 @@ export const appointmentsApi = {
   patch: (id: string, body: Partial<Pick<import('../apiTypes').AppointmentDto, 'customerId' | 'assignedMemberId' | 'serviceOfferingId' | 'serviceName' | 'startsAt' | 'endsAt' | 'price' | 'notes' | 'reminderMinutes'>>) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}`, body),
   transition: (id: string, status: import('../apiTypes').AppointmentStatus) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/status`, { status }),
   sendConfirmation: (id: string) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/send-confirmation`, {}),
+  setArrival: (id: string, state: import('../apiTypes').AppointmentArrivalState, notifyCustomer = false) => api.post<import('../apiTypes').AppointmentDto>(`/appointments/${id}/arrival`, { state, notifyCustomer }),
+  clearArrival: (id: string) => api.delete<import('../apiTypes').AppointmentDto>(`/appointments/${id}/arrival`),
   updatePayment: (id: string, paidAmount: number) => api.patch<import('../apiTypes').AppointmentDto>(`/appointments/${id}/payment`, { paidAmount }),
   bulkImport: (appointments: import('../domain/appointmentsImport').AppointmentImportRow[]) => api.post<{ created: { id: string }[]; skipped: { reason: string }[]; failed: { reason: string }[] }>('/appointments/bulk-import', { appointments }),
 };

@@ -128,6 +128,9 @@ export function AccountHubScreen() {
         <MenuRow icon="alt_route" tone="primary" title="Dispatch" detail="Assign the day's work across your team" onPress={() => navigation.navigate('Dispatch')} />
         <MenuRow icon="inventory_2" tone="tertiary" title="Inventory" detail="Stock levels and an auditable movement ledger" onPress={() => navigation.navigate('Inventory')} />
         {canManageBusiness ? (
+          <MenuRow icon="support_agent" tone="secondary" title="AI receptionist" detail="Answer inbound customer texts automatically" onPress={() => navigation.navigate('AiReceptionist')} />
+        ) : null}
+        {canManageBusiness ? (
           <MenuRow icon="cloud_upload" tone="tertiary" title="Import appointments" detail="Preview and import a calendar CSV" onPress={() => navigation.navigate('AppointmentsImport')} />
         ) : null}
         {owner ? (

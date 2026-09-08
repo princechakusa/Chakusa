@@ -265,6 +265,16 @@ export const aiApi = {
   evaluationRun: (id: string) => api.get<AiEvaluationRunDto & { results: Array<Record<string, unknown>> }>(`/ai/ops/evaluations/runs/${id}`),
 };
 
+export interface AiReceptionistSettingsDto { enabled: boolean; smsEnabled: boolean; whatsappEnabled: boolean; updatedAt: string | null; }
+export interface AiReceptionistViewDto {
+  settings: AiReceptionistSettingsDto;
+  status: { entitled: boolean; platformEnabled: boolean; policyMode: string; effective: boolean };
+}
+export const aiReceptionistApi = {
+  get: () => api.get<AiReceptionistViewDto>('/ai/receptionist'),
+  patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled'>>) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),
+};
+
 import type {
   CustomerSessionResponse, CustomerSelfProfileDto, CustomerDashboardDto,
   CustomerNotificationDto, CustomerBusinessLinkDto,

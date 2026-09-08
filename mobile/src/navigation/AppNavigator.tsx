@@ -24,6 +24,7 @@ import { AccountHubScreen as SettingsScreen } from '../screens/AccountHubScreen'
 import { TemplatesScreen } from '../screens/TemplatesScreen';
 import { MessagesInboxScreen } from '../screens/MessagesInboxScreen';
 import { DataGovernanceScreen } from '../screens/DataGovernanceScreen';
+import { DispatchScreen } from '../screens/DispatchScreen';
 import { MessageThreadScreen } from '../screens/MessageThreadScreen';
 import { QuotesScreen } from '../screens/QuotesScreen';
 import { QuoteDetailScreen } from '../screens/QuoteDetailScreen';
@@ -152,6 +153,7 @@ export function AppNavigator({ navReady = false }: { navReady?: boolean }) {
     {routes.main ? <Root.Screen name="CookiePreferences" component={CookiePreferencesScreen} options={{ headerShown: false }} /> : null}
     <Root.Screen name="TeamInvite" component={TeamInviteScreen} options={{ headerShown: false }} />
     {routes.main ? <Root.Screen name="Team" component={TeamScreen} options={{ headerShown: false }} /> : null}
+    {routes.main ? <Root.Screen name="Dispatch" component={DispatchScreen} options={{ headerShown: false }} /> : null}
     <Root.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />
     <Root.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset password' }} />
     <Root.Screen name="LegalDocument" options={({ route }) => ({ title: route.params.page === 'privacy' ? 'Privacy Policy' : 'Terms of Use' })}>{({ route }) => <PublicDocumentScreen page={route.params.page} />}</Root.Screen>

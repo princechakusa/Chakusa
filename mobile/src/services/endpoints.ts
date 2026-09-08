@@ -133,6 +133,15 @@ export const availabilityApi = {
   createBlock: (body: { assignedMemberId?: string | null; startsAt: string; endsAt: string; reason?: string | null }) => api.post<BookingBlockDto>('/availability/blocks', body),
   deleteBlock: (id: string) => api.delete<void>(`/availability/blocks/${id}`),
 };
+export interface DispatchApptDto { id: string; serviceName: string; customerName: string | null; startsAt: string; endsAt: string; status: import('../apiTypes').AppointmentStatus; arrivalState: import('../apiTypes').AppointmentArrivalState | null; durationMinutes: number; }
+export interface DispatchMemberDto { id: string; name: string; onDuty: boolean; workingHours: { enabled: boolean; opensAt: string; closesAt: string } | null; appointments: DispatchApptDto[]; bookedMinutes: number; blocks: { id: string; reason: string | null; startsAt: string; endsAt: string; businessWide: boolean }[]; }
+export interface DispatchBoardDto { date: string; timezone: string; members: DispatchMemberDto[]; unassigned: DispatchApptDto[]; }
+export interface DispatchCandidateDto { id: string; name: string; available: boolean; withinHours: boolean; hasConflict: boolean; isCurrent: boolean; }
+export const dispatchApi = {
+  board: (date: string) => api.get<DispatchBoardDto>(`/dispatch${query({ date })}`),
+  candidates: (appointmentId: string) => api.get<DispatchCandidateDto[]>(`/dispatch/candidates${query({ appointmentId })}`),
+  assign: (appointmentId: string, memberId: string) => api.post<import('../apiTypes').AppointmentDto>('/dispatch/assign', { appointmentId, memberId }),
+};
 export const templatesApi = { list: () => api.get<MessageTemplateDto[]>('/message-templates'), create: (body: { templateType: MessageTemplateDto['templateType']; name: string; body: string; tone?: MessageTemplateDto['tone']; isDefault?: boolean }) => api.post<MessageTemplateDto>('/message-templates', body), patch: (id: string, body: Partial<Pick<MessageTemplateDto, 'templateType' | 'name' | 'body' | 'tone' | 'isDefault'>>) => api.patch<MessageTemplateDto>(`/message-templates/${id}`, body) };
 export interface ConversationSummaryDto {
   id: string;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
@@ -80,6 +80,24 @@ export function AiReceptionistScreen() {
 
       {settings.enabled ? (
         <M3Card style={styles.card}>
+          <Text style={styles.sectionLabel}>WHEN IT ANSWERS</Text>
+          <ModeRow label="Any time" active={settings.mode === 'ALWAYS'} disabled={disabled} onPress={() => void patch({ mode: 'ALWAYS' })} />
+          <ModeRow label="Only outside my opening hours" active={settings.mode === 'AFTER_HOURS_ONLY'} disabled={disabled} onPress={() => void patch({ mode: 'AFTER_HOURS_ONLY' })} />
+          <Text style={styles.note}>
+            Opening hours come from your business timezone ({view.hours.timezone}) and working hours. {view.hours.resolved
+              ? view.hours.open
+                ? `You're open now (${view.hours.localTime}).`
+                : `You're closed now${view.hours.nextOpen ? ` — next open ${view.hours.nextOpen.label}` : ''}.`
+              : 'Set your timezone and working hours in Business profile so this can work.'}
+          </Text>
+          {settings.mode === 'AFTER_HOURS_ONLY' ? (
+            <Text style={styles.note}>{status.currentlyEligible ? 'Answering right now (after hours).' : 'Not answering right now (within opening hours).'}</Text>
+          ) : null}
+        </M3Card>
+      ) : null}
+
+      {settings.enabled ? (
+        <M3Card style={styles.card}>
           <Text style={styles.sectionLabel}>CHANNELS</Text>
           <View style={styles.row}>
             <Text style={styles.rowTitle}>SMS</Text>
@@ -102,8 +120,21 @@ export function AiReceptionistScreen() {
   );
 }
 
+function ModeRow({ label, active, disabled, onPress }: { label: string; active: boolean; disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} disabled={disabled} onPress={onPress} style={styles.modeRow}>
+      <View style={[styles.radio, active && styles.radioOn]}>{active ? <View style={styles.radioDot} /> : null}</View>
+      <Text style={styles.rowTitle}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  modeRow: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, paddingVertical: m3Space.xs },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: m3.outlineVariant, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { borderColor: m3.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: m3.primary },
   intro: { gap: m3Space.xxs, marginBottom: m3Space.md },
   eyebrow: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0.8 },
   title: { ...m3Type.headlineSm, color: m3.onSurface },

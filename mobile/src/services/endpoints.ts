@@ -265,14 +265,16 @@ export const aiApi = {
   evaluationRun: (id: string) => api.get<AiEvaluationRunDto & { results: Array<Record<string, unknown>> }>(`/ai/ops/evaluations/runs/${id}`),
 };
 
-export interface AiReceptionistSettingsDto { enabled: boolean; smsEnabled: boolean; whatsappEnabled: boolean; updatedAt: string | null; }
+export type ReceptionistMode = 'ALWAYS' | 'AFTER_HOURS_ONLY';
+export interface AiReceptionistSettingsDto { enabled: boolean; smsEnabled: boolean; whatsappEnabled: boolean; mode: ReceptionistMode; updatedAt: string | null; }
 export interface AiReceptionistViewDto {
   settings: AiReceptionistSettingsDto;
-  status: { entitled: boolean; platformEnabled: boolean; policyMode: string; effective: boolean };
+  hours: { resolved: boolean; open: boolean; reason: string; timezone: string; localTime: string; nextOpen: { label: string; atIso: string } | null };
+  status: { entitled: boolean; platformEnabled: boolean; policyMode: string; effective: boolean; currentlyEligible: boolean; ineligibleReason: string | null };
 }
 export const aiReceptionistApi = {
   get: () => api.get<AiReceptionistViewDto>('/ai/receptionist'),
-  patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled'>>) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),
+  patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled' | 'mode'>>) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),
 };
 
 import type {

@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { PropsWithChildren, ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleProp,
@@ -81,6 +82,7 @@ export function M3Header({
   businessName,
   location,
   verified,
+  logoUri,
   onBack,
   onLocationPress,
   onNotificationsPress,
@@ -90,6 +92,8 @@ export function M3Header({
   businessName: string;
   location?: string | null;
   verified?: boolean;
+  /** Optional business photo (data URI or URL) shown in place of the brand mark. */
+  logoUri?: string | null;
   /** When set, the header is a secondary-screen bar: back chevron + title, no brand logo. */
   onBack?: () => void;
   onLocationPress?: () => void;
@@ -125,7 +129,11 @@ export function M3Header({
     <View style={styles.header}>
       <View style={styles.headerBrand}>
         <View style={styles.headerLogo}>
-          <Icon name="content_cut" size={22} color={m3.primary} />
+          {logoUri ? (
+            <Image source={{ uri: logoUri }} style={styles.headerLogoImage} resizeMode="cover" />
+          ) : (
+            <Icon name="content_cut" size={22} color={m3.primary} />
+          )}
         </View>
         <View style={styles.headerText}>
           <View style={styles.headerTitleRow}>
@@ -344,7 +352,9 @@ const styles = StyleSheet.create({
     backgroundColor: m3.surfaceContainerHigh,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  headerLogoImage: { width: '100%', height: '100%' },
   headerText: { flex: 1, minWidth: 0 },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   headerTitle: { ...m3Type.headlineSm, fontSize: 17, lineHeight: 22, color: m3.onSurface, flexShrink: 1 },

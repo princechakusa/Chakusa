@@ -93,6 +93,7 @@ export function DashboardScreen() {
   const header = (
     <M3Header
       businessName={business?.name ?? 'Chakusa'}
+      logoUri={business?.logoDataUrl ?? undefined}
       location={business?.publicSlug ? 'Primary location' : undefined}
       verified={Boolean(business?.publicSlug)}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}

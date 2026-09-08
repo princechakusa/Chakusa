@@ -928,6 +928,10 @@ model Business {
   // writes in their own words. Never required; the public page renders
   // fine without it.
   description                       String?
+  // Optional business logo as a small base64 data URI (png/jpeg/webp/gif),
+  // capped in the route so it stays well inside a text column. Shown in the
+  // app header and on the public profile; the app renders fine without it.
+  logoDataUrl                       String?                @map("logo_data_url")
   workingHours                      Json?                  @map("working_hours")
   defaultServices                   Json?                  @map("default_services")
   reminderDays                      Int                    @default(42) @map("reminder_days")

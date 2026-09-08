@@ -43,6 +43,15 @@ export const updateBusinessSchema = z.object({
   // customer reads before deciding to reach out. Capped well short of a
   // full "about us" essay; this is a page summary, not a blog post.
   description: z.string().trim().max(500, "Description must be 500 characters or fewer").optional(),
+  // Small business logo as a base64 image data URI. Capped at ~400KB of
+  // encoded text so it stays comfortably inside a text column; `null`
+  // clears it. Anything larger, or a non-image data URI, is rejected.
+  logoDataUrl: z
+    .string()
+    .regex(/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\r\n]+$/, "Must be a PNG, JPEG, WebP or GIF image")
+    .max(400_000, "Image is too large. Choose one under about 250 KB")
+    .nullable()
+    .optional(),
   workingHours: z.union([structuredWorkingHoursSchema, legacyWorkingHoursSchema]).optional(),
   defaultServices: z.array(z.string()).optional(),
   reminderDays: z.number().int().positive().optional(),

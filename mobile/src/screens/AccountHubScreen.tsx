@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ReactNode, useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import appConfig from '../../app.json';
 import { formatAppVersion } from '../domain/trustSettings';
 import { businessApi } from '../services/endpoints';
@@ -78,7 +78,7 @@ export function AccountHubScreen() {
     <M3Screen header={header}>
       <M3Card raised onPress={owner ? () => navigation.navigate('BusinessSettings') : undefined} style={styles.bizCard}>
         <View style={styles.bizAvatar}>
-          <Text style={styles.bizInitials}>{initials || 'C'}</Text>
+          {business?.logoDataUrl ? <Image source={{ uri: business.logoDataUrl }} style={styles.bizAvatarImage} resizeMode="cover" /> : <Text style={styles.bizInitials}>{initials || 'C'}</Text>}
         </View>
         <View style={styles.flex}>
           <View style={styles.bizNameRow}>
@@ -225,7 +225,8 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
 
   bizCard: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm },
-  bizAvatar: { width: 56, height: 56, borderRadius: m3Radius.md, backgroundColor: m3.primary, alignItems: 'center', justifyContent: 'center' },
+  bizAvatar: { width: 56, height: 56, borderRadius: m3Radius.md, backgroundColor: m3.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  bizAvatarImage: { width: '100%', height: '100%' },
   bizInitials: { ...m3Type.headlineSm, color: m3.onPrimary },
   bizNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   bizName: { ...m3Type.headlineSm, fontSize: 18, color: m3.onSurface, flexShrink: 1 },

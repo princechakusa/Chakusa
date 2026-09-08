@@ -60,6 +60,11 @@ export const CAPABILITIES = [
   "commissions.report.view",
   "commissions.rules.manage",
   "integrations.manage",
+  // Inventory #13.
+  "inventory.view",
+  "inventory.record", // stock in/out movements (receive, consume, waste, service use, restock)
+  "inventory.adjust", // stock-take reconciliation and correction of a prior movement
+  "inventory.manage", // create/edit items, thresholds, negative-stock rule, deactivation
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -94,6 +99,10 @@ const ADMIN: ReadonlySet<Capability> = new Set<Capability>([
   "financial.report.view",
   "commissions.report.view",
   "integrations.manage",
+  "inventory.view",
+  "inventory.record",
+  "inventory.adjust",
+  "inventory.manage",
 ]);
 
 // STAFF: operational worker. Everything here preserves an access that
@@ -111,6 +120,8 @@ const STAFF: ReadonlySet<Capability> = new Set<Capability>([
   "quotes.manage",
   "invoices.manage",
   "financial.operate",
+  "inventory.view",
+  "inventory.record",
 ]);
 
 const ROLE_CAPABILITIES: Record<BusinessRole, ReadonlySet<Capability>> = { OWNER, ADMIN, STAFF };

@@ -1019,6 +1019,8 @@ model Business {
   accountingConnections          AccountingConnection[]
   accountingSyncLogs             AccountingSyncLog[]
   memberCommissionRules          MemberCommissionRule[]
+  inventoryItems                 InventoryItem[]
+  inventoryMovements             InventoryMovement[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1283,6 +1285,7 @@ model Appointment {
   invoices             Invoice[]
   expenses             Expense[]
   mileageTrips         MileageTrip[]
+  inventoryMovements   InventoryMovement[]
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -1434,6 +1437,72 @@ model MemberCommissionRule {
   @@index([businessId])
   @@index([businessMemberId])
   @@map("member_commission_rules")
+}
+
+// Inventory #13 — auditable movement ledger.
+//
+// The ledger is the source of truth: an item carries NO stored quantity.
+// Current stock is the sum of every InventoryMovement.quantityDelta for the
+// item; balanceAfter is a per-row snapshot written in the same serialized
+// transaction so the two can never disagree. Movements are append-only — a
+// data-entry mistake is fixed by posting a CORRECTION (or ADJUST) row, never
+// by editing or deleting history. Quantities are exact Decimal(12,3).
+enum InventoryMovementKind {
+  OPENING // starting count recorded when the item begins being tracked
+  RECEIVE // stock received (delivery / purchase)
+  RESTOCK // returned to stock (customer return, unused pull)
+  CONSUME // used up in the course of business (not tied to one appointment)
+  SERVICE_USE // consumed by a specific appointment / service
+  WASTE // spoilage, damage or loss
+  ADJUST // stock-take reconciliation to physical reality (signed)
+  CORRECTION // fixes a prior mis-keyed movement (signed)
+}
+
+model InventoryItem {
+  id                String   @id @default(uuid())
+  businessId        String   @map("business_id")
+  name              String
+  sku               String?
+  unit              String?
+  lowStockThreshold Decimal? @map("low_stock_threshold") @db.Decimal(12, 3)
+  // Negative stock is rejected unless the owner explicitly opts this item in
+  // (e.g. a made-to-order consumable back-ordered against future delivery).
+  allowNegative     Boolean  @default(false) @map("allow_negative")
+  active            Boolean  @default(true)
+  createdByUserId   String   @map("created_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+
+  @@unique([businessId, name])
+  @@index([businessId, active])
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id              String                @id @default(uuid())
+  businessId      String                @map("business_id")
+  itemId          String                @map("item_id")
+  kind            InventoryMovementKind
+  quantityDelta   Decimal               @map("quantity_delta") @db.Decimal(12, 3)
+  balanceAfter    Decimal               @map("balance_after") @db.Decimal(12, 3)
+  reason          String?
+  reference       String?
+  // Set only for SERVICE_USE. Tenant-checked at write time; SetNull so the
+  // ledger row (and its audit value) survives the appointment being deleted.
+  appointmentId   String?               @map("appointment_id")
+  createdByUserId String                @map("created_by_user_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  item        InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  appointment Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, itemId, createdAt])
+  @@index([appointmentId])
+  @@map("inventory_movements")
 }
 
 model BookingBlock {

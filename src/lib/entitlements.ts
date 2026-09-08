@@ -46,7 +46,8 @@ export type Feature =
   | "INVOICING" // invoices + payment collection (payments.invoicing)
   | "FINANCIAL_MANAGEMENT" // expense/mileage tracking + money-in/out reporting (financial.management)
   | "MARKETPLACE_DISCOVERY" // paid marketplace visibility/discovery add-on (marketplace.discovery)
-  | "ACCOUNTING_INTEGRATIONS"; // QuickBooks/Xero-style sync (integrations.accounting)
+  | "ACCOUNTING_INTEGRATIONS" // QuickBooks/Xero-style sync (integrations.accounting)
+  | "INVENTORY"; // stock items with an auditable movement ledger (operations.inventory)
 
 const FEATURE_LABELS: Record<Feature, string> = {
   AUTOMATION: "Automation",
@@ -61,6 +62,7 @@ const FEATURE_LABELS: Record<Feature, string> = {
   FINANCIAL_MANAGEMENT: "Financial management",
   MARKETPLACE_DISCOVERY: "Marketplace discovery",
   ACCOUNTING_INTEGRATIONS: "Accounting integrations",
+  INVENTORY: "Inventory",
 };
 
 /**
@@ -79,7 +81,7 @@ const PRO_FEATURES = new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVA
 // tier, as the reasonable default for capabilities beyond Pro's current
 // scope; trivially moved to another plan later since nothing depends on
 // it today.
-const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "FINANCIAL_MANAGEMENT", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS"];
+const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "FINANCIAL_MANAGEMENT", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS", "INVENTORY"];
 
 const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   FREE: new Set(),

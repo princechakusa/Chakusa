@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { getLoyaltyProgram, upsertLoyaltyProgram } from "../../lib/loyalty/program.js";
 import { listRewards, createReward, updateReward, deleteReward, markRedemptionRedeemed, revokeRedemption } from "../../lib/loyalty/rewards.js";
 import { listMembershipPlans, createMembershipPlan, updateMembershipPlan, deleteMembershipPlan } from "../../lib/loyalty/memberships.js";
@@ -15,7 +15,7 @@ import { loyaltyBusinessAnalytics } from "./loyaltyAnalytics.js";
 // fully own their program, rewards, membership plans and campaigns.
 
 const idParam = z.object({ id: z.string().uuid() });
-const manage = (request: Parameters<typeof requireBusinessRole>[0]) => requireBusinessRole(request, ["OWNER", "ADMIN"]);
+const manage = (request: Parameters<typeof requireCapability>[0]) => requireCapability(request, "loyalty.manage");
 
 export default async function loyaltyBusinessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);

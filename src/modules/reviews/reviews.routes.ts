@@ -15,10 +15,16 @@ import {
   markReviewRequestReviewed,
   markReviewRequestFeedbackReceived,
 } from "./reviews.service.js";
+import { requireCapability } from "../../lib/authorization.js";
 
 export default async function reviewRequestRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
+  // Advanced Team #12: any member may read; every mutation needs
+  // "reviews.manage" (OWNER/ADMIN/STAFF per the capability matrix).
+  fastify.addHook("preHandler", async request => {
+    if (request.method !== "GET") requireCapability(request, "reviews.manage");
+  });
 
   fastify.get("/", async (request, reply) => {
     reply.send(await listReviewRequests(request.businessId!));

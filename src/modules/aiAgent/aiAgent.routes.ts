@@ -6,6 +6,7 @@ import { enqueueMessage } from "../../lib/messaging/messagingPlatform.js";
 import { deliverAIReply } from "../../lib/ai/agent/customerAgent.js";
 import { recordConversationEvent } from "../../lib/ai/memory/summarization.js";
 import { approveSchema, rejectSchema, replySchema, takeoverSchema, transferSchema } from "./aiAgent.schemas.js";
+import { requireCapability } from "../../lib/authorization.js";
 
 const idParams = z.object({ id: z.string().uuid() });
 
@@ -31,6 +32,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.requireBusiness);
 
   fastify.post("/conversations/:id/takeover", async (request) => {
+    requireCapability(request, "messaging.operate");
     const { id } = idParams.parse(request.params);
     takeoverSchema.parse(request.body ?? {});
     await ownedConversation(request.businessId!, id);
@@ -41,6 +43,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/conversations/:id/resume", async (request) => {
+    requireCapability(request, "messaging.operate");
     const { id } = idParams.parse(request.params);
     await ownedConversation(request.businessId!, id);
     await prisma.conversation.update({ where: { id }, data: { automationMode: "AUTOMATED" } });
@@ -49,6 +52,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/conversations/:id/transfer", async (request) => {
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const input = transferSchema.parse(request.body);
     await ownedConversation(request.businessId!, id);
@@ -60,6 +64,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/conversations/:id/reply", async (request, reply) => {
+    requireCapability(request, "messaging.operate");
     const { id } = idParams.parse(request.params);
     const input = replySchema.parse(request.body);
     const conversation = await ownedConversation(request.businessId!, id);
@@ -75,6 +80,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/runs/:id/approve", async (request) => {
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const input = approveSchema.parse(request.body ?? {});
     const run = await prisma.aIConversationRun.findFirst({ where: { id, businessId: request.businessId! } });
@@ -92,6 +98,7 @@ export default async function aiAgentRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/runs/:id/reject", async (request) => {
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const input = rejectSchema.parse(request.body ?? {});
     const run = await prisma.aIConversationRun.findFirst({ where: { id, businessId: request.businessId! } });

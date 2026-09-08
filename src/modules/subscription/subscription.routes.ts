@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getSubscriptionStatus, verifySubscriptionWithApple, verifySubscriptionWithGoogle } from "./subscription.service.js";
 import { verifyAppleSubscriptionSchema, verifyGoogleSubscriptionSchema } from "./subscription.schemas.js";
-import { requireOwner } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import type { AppleStoreClient } from "../../lib/billing/appleAppStoreClient.js";
 import type { GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
 
@@ -47,7 +47,7 @@ export default async function subscriptionRoutes(fastify: FastifyInstance, optio
     "/apple/verify",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request, reply) => {
-      requireOwner(request);
+      requireCapability(request, "business.subscription.manage");
       const input = verifyAppleSubscriptionSchema.parse(request.body);
       await verifySubscriptionWithApple(request.businessId!, input.transactionId, options.appleStoreClient);
       reply.send(await getSubscriptionStatus(request.businessId!));
@@ -58,7 +58,7 @@ export default async function subscriptionRoutes(fastify: FastifyInstance, optio
     "/google/verify",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request, reply) => {
-      requireOwner(request);
+      requireCapability(request, "business.subscription.manage");
       const input = verifyGoogleSubscriptionSchema.parse(request.body);
       await verifySubscriptionWithGoogle(request.businessId!, input.purchaseToken, options.googlePlayClient);
       reply.send(await getSubscriptionStatus(request.businessId!));

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import {
   activatePolicy,
   getPolicyOverview,
@@ -11,7 +11,6 @@ import {
 import { evaluatePolicy } from "../../lib/ai/policyEngine.js";
 import { activateSchema, decisionsQuerySchema, evaluateSchema, rulesSchema, saveDraftSchema } from "./aiPolicies.schemas.js";
 
-const MANAGE_ROLES = ["OWNER", "ADMIN"] as const;
 
 export default async function aiPolicyRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -27,19 +26,19 @@ export default async function aiPolicyRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put("/draft", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const input = saveDraftSchema.parse(request.body);
     return savePolicyDraft({ businessId: request.businessId!, mode: input.mode, document: input.document, actorUserId: request.user!.userId });
   });
 
   fastify.put("/draft/rules", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const input = rulesSchema.parse(request.body);
     return replacePolicyRules({ businessId: request.businessId!, rules: input.rules, actorUserId: request.user!.userId });
   });
 
   fastify.post("/activate", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const input = activateSchema.parse(request.body ?? {});
     return activatePolicy({ businessId: request.businessId!, version: input.version, actorUserId: request.user!.userId });
   });

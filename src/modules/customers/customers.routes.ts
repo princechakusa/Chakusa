@@ -18,7 +18,10 @@ import {
 import { customerCsvPreviewSchema } from "./customers.schemas.js";
 import { parseCustomerCsv, validateCustomerCsvRows } from "./customerCsv.js";
 import { createCustomerTag, getAudienceCenter, setCustomerTags } from "./audiences.service.js";
+import { requireCapability } from "../../lib/authorization.js";
 
+// Advanced Team #12: reads open to any member; writes need "customers.manage"
+// (OWNER/ADMIN/STAFF per the capability matrix, src/lib/capabilities.ts).
 export default async function customerRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
@@ -30,12 +33,14 @@ export default async function customerRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/", async (request, reply) => {
+    requireCapability(request, "customers.manage");
     const input = createCustomerSchema.parse(request.body);
     const customer = await createCustomer(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(customer);
   });
 
   fastify.post("/bulk-import", async (request, reply) => {
+    requireCapability(request, "customers.manage");
     const input = bulkImportCustomersSchema.parse(request.body);
     const result = await bulkImportCustomers(request.businessId!, request.user.userId, input, request.plan!);
     reply.status(201).send(result);
@@ -52,8 +57,8 @@ export default async function customerRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/audiences", async (request, reply) => reply.send(await getAudienceCenter(request.businessId!)));
-  fastify.post("/tags", async (request, reply) => reply.status(201).send(await createCustomerTag(request.businessId!, customerTagSchema.parse(request.body).name)));
-  fastify.patch<{ Params: { id: string } }>("/:id/tags", async (request, reply) => reply.send(await setCustomerTags(request.businessId!, request.params.id, customerTagAssignmentsSchema.parse(request.body).tagIds)));
+  fastify.post("/tags", async (request, reply) => { requireCapability(request, "customers.manage"); reply.status(201).send(await createCustomerTag(request.businessId!, customerTagSchema.parse(request.body).name)); });
+  fastify.patch<{ Params: { id: string } }>("/:id/tags", async (request, reply) => { requireCapability(request, "customers.manage"); reply.send(await setCustomerTags(request.businessId!, request.params.id, customerTagAssignmentsSchema.parse(request.body).tagIds)); });
 
   fastify.get<{ Params: { id: string } }>("/:id", async (request, reply) => {
     const profile = await getCustomerProfile(request.businessId!, request.params.id);
@@ -61,6 +66,7 @@ export default async function customerRoutes(fastify: FastifyInstance) {
   });
 
   fastify.patch<{ Params: { id: string } }>("/:id", async (request, reply) => {
+    requireCapability(request, "customers.manage");
     const input = updateCustomerSchema.parse(request.body);
     const customer = await updateCustomer(
       request.businessId!,

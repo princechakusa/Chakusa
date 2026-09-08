@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireOwner } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import {
   createAppointmentPaymentLink,
   createConnectLink,
@@ -25,7 +25,7 @@ export default async function paymentRoutes(
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
   fastify.post("/connect/link", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "payments.manage");
     reply.send(await createConnectLink(request.businessId!, provider));
   });
   fastify.get("/connect/status", async (request, reply) =>
@@ -52,7 +52,7 @@ export default async function paymentRoutes(
     ),
   );
   fastify.post("/:id/refund", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "payments.manage");
     reply.send(
       await refundPayment(
         request.businessId!,

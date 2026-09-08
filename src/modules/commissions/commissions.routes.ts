@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
-import { requireBusinessRole, requireOwner } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { commissionReportQuerySchema, upsertCommissionRuleSchema } from "./commissions.schemas.js";
 import { deleteCommissionRule, getCommissionReport, listCommissionRules, upsertCommissionRule } from "./commissions.service.js";
 
@@ -17,27 +17,27 @@ export default async function commissionRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.requireBusiness);
 
   fastify.get("/rules", async (request, reply) => {
-    requireBusinessRole(request, ["OWNER", "ADMIN"]);
+    requireCapability(request, "commissions.report.view");
     assertFeatureAvailable(request.plan!, request.status!, "TEAM_MANAGEMENT");
     reply.send(await listCommissionRules(request.businessId!));
   });
 
   fastify.put("/rules", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "commissions.rules.manage");
     assertFeatureAvailable(request.plan!, request.status!, "TEAM_MANAGEMENT");
     const input = upsertCommissionRuleSchema.parse(request.body);
     reply.send(await upsertCommissionRule(request.businessId!, request.user.userId, input));
   });
 
   fastify.delete("/rules/:id", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "commissions.rules.manage");
     assertFeatureAvailable(request.plan!, request.status!, "TEAM_MANAGEMENT");
     await deleteCommissionRule(request.businessId!, idParams.parse(request.params).id);
     reply.status(204).send();
   });
 
   fastify.get("/report", async (request, reply) => {
-    requireBusinessRole(request, ["OWNER", "ADMIN"]);
+    requireCapability(request, "commissions.report.view");
     assertFeatureAvailable(request.plan!, request.status!, "TEAM_MANAGEMENT");
     reply.send(await getCommissionReport(request.businessId!, commissionReportQuerySchema.parse(request.query)));
   });

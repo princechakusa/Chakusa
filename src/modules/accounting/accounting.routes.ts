@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import type { BusinessRole } from "@prisma/client";
 import { z } from "zod";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import {
   beginAccountingConnection,
@@ -11,10 +10,10 @@ import {
 } from "./accountingConnections.service.js";
 
 // PROGRAM 3 / Accounting Integrations A1. Connecting an external books
-// system moves money data off-platform - OWNER/ADMIN only, and gated on
-// the ACCOUNTING_INTEGRATIONS entitlement. Handlers do only auth -> role
+// system moves money data off-platform - "integrations.manage" capability
+// (OWNER/ADMIN, Advanced Team #12 matrix), and gated on the
+// ACCOUNTING_INTEGRATIONS entitlement. Handlers do only auth -> capability
 // -> entitlement -> validation -> service.
-const ACCOUNTING_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN"];
 
 const providerParamSchema = z.object({ provider: z.enum(["quickbooks", "xero"]) });
 const authorizeBodySchema = z.object({ redirectUri: z.string().url() });
@@ -29,13 +28,13 @@ export default async function accountingRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.requireBusiness);
 
   fastify.get("/connections", async (request, reply) => {
-    requireBusinessRole(request, ACCOUNTING_ROLES);
+    requireCapability(request, "integrations.manage");
     assertFeatureAvailable(request.plan!, "ACCOUNTING_INTEGRATIONS");
     reply.send(await listAccountingConnections(request.businessId!));
   });
 
   fastify.post<{ Params: { provider: string } }>("/connections/:provider/authorize", async (request, reply) => {
-    requireBusinessRole(request, ACCOUNTING_ROLES);
+    requireCapability(request, "integrations.manage");
     assertFeatureAvailable(request.plan!, "ACCOUNTING_INTEGRATIONS");
     const { provider } = providerParamSchema.parse(request.params);
     const { redirectUri } = authorizeBodySchema.parse(request.body);
@@ -43,7 +42,7 @@ export default async function accountingRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post<{ Params: { provider: string } }>("/connections/:provider/callback", async (request, reply) => {
-    requireBusinessRole(request, ACCOUNTING_ROLES);
+    requireCapability(request, "integrations.manage");
     assertFeatureAvailable(request.plan!, "ACCOUNTING_INTEGRATIONS");
     const { provider } = providerParamSchema.parse(request.params);
     const body = callbackBodySchema.parse(request.body);
@@ -51,7 +50,7 @@ export default async function accountingRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post<{ Params: { provider: string } }>("/connections/:provider/disconnect", async (request, reply) => {
-    requireBusinessRole(request, ACCOUNTING_ROLES);
+    requireCapability(request, "integrations.manage");
     assertFeatureAvailable(request.plan!, "ACCOUNTING_INTEGRATIONS");
     const { provider } = providerParamSchema.parse(request.params);
     reply.send(await disconnectAccountingConnection(request.businessId!, provider));

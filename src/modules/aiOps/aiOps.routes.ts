@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 import { getAIMonitoring } from "../../lib/ai/ops/aiMonitoring.js";
@@ -28,7 +28,6 @@ import {
 } from "./aiOps.schemas.js";
 
 const idParams = z.object({ id: z.string().uuid() });
-const MANAGE_ROLES = ["OWNER", "ADMIN"] as const;
 
 async function ownedSuite(businessId: string, suiteId: string) {
   const suite = await prisma.aIEvaluationSuite.findUnique({ where: { id: suiteId } });
@@ -65,20 +64,20 @@ export default async function aiOpsRoutes(fastify: FastifyInstance) {
   fastify.get("/analytics", async (request) => getAIValueCenter(request.businessId!));
 
   fastify.post("/analytics/verify", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     return verifyAIOutcomes(request.businessId!);
   });
 
   // --- Evaluation harness ---
 
   fastify.post("/evaluations/suites", async (request, reply) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const input = createSuiteSchema.parse(request.body);
     reply.status(201).send(await createEvaluationSuite({ businessId: request.businessId!, createdByUserId: request.user!.userId, ...input }));
   });
 
   fastify.post("/evaluations/suites/:id/cases", async (request, reply) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     await ownedSuite(request.businessId!, id);
     const input = addCaseSchema.parse(request.body);
@@ -98,7 +97,7 @@ export default async function aiOpsRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/evaluations/suites/:id/run", async (request, reply) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     await ownedSuite(request.businessId!, id);
     const input = runSuiteSchema.parse(request.body ?? {});
@@ -153,7 +152,7 @@ export default async function aiOpsRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/runs/:id/approve", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const run = await ownedRun(request.businessId!, id);
     if (run.status !== "HUMAN_APPROVAL") throw ApiError.badRequest("Only a run awaiting approval can be approved");
@@ -183,7 +182,7 @@ export default async function aiOpsRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/runs/:id/escalate", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const run = await ownedRun(request.businessId!, id);
     const updated = await prisma.aIConversationRun.update({ where: { id: run.id }, data: { status: "ESCALATED" } });

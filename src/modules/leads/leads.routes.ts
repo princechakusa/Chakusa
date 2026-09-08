@@ -10,10 +10,17 @@ import {
   generateLeadMessage,
   transitionLead,
 } from "./leads.service.js";
+import { requireCapability } from "../../lib/authorization.js";
 
 export default async function leadRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
+  // Advanced Team #12: any member may read leads; every mutation needs
+  // "leads.manage" (OWNER/ADMIN/STAFF per the capability matrix). One gate
+  // for the whole router rather than a check per handler.
+  fastify.addHook("preHandler", async request => {
+    if (request.method !== "GET") requireCapability(request, "leads.manage");
+  });
 
   fastify.get("/", async (request, reply) => {
     const query = listLeadsQuerySchema.parse(request.query);

@@ -1,9 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { BusinessRole } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import {
   createExpenseReceiptDownload,
@@ -51,11 +50,10 @@ import { getFinancialSummary } from "./financialSummary.service.js";
 // response. All money, tenant scoping, mileage derivation and
 // soft-delete rules live in the service layer.
 //
-// Reading and recording spend (expenses, mileage) and reading the
-// money-in/out summary is OWNER/ADMIN/STAFF. Changing the category
-// structure is OWNER/ADMIN only - it reshapes every report.
-const FINANCIAL_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN", "STAFF"];
-const FINANCIAL_STRUCTURE_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN"];
+// Authorization (Advanced Team #12 capability matrix, src/lib/capabilities.ts):
+//   financial.operate        record/list spend (expenses, mileage, receipts) - OWNER/ADMIN/STAFF
+//   financial.config.manage  category structure - OWNER/ADMIN (it reshapes every report)
+//   financial.report.view    the money-in/out summary - OWNER/ADMIN only
 
 async function resolveMemberId(businessId: string, userId: string): Promise<string> {
   const member = await prisma.businessMember.findFirst({ where: { businessId, userId }, select: { id: true } });
@@ -69,21 +67,21 @@ export default async function financialRoutes(fastify: FastifyInstance) {
 
   // --- categories ---
   fastify.get("/categories", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const query = listExpenseCategoriesQuerySchema.parse(request.query);
     reply.send(await listExpenseCategories(request.businessId!, query));
   });
 
   fastify.post("/categories", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_STRUCTURE_ROLES);
+    requireCapability(request, "financial.config.manage");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const input = createExpenseCategorySchema.parse(request.body);
     reply.status(201).send(await createExpenseCategory(request.businessId!, input));
   });
 
   fastify.patch<{ Params: { id: string } }>("/categories/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_STRUCTURE_ROLES);
+    requireCapability(request, "financial.config.manage");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     const input = updateExpenseCategorySchema.parse(request.body);
@@ -91,7 +89,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete<{ Params: { id: string } }>("/categories/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_STRUCTURE_ROLES);
+    requireCapability(request, "financial.config.manage");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     await archiveExpenseCategory(request.businessId!, id);
@@ -100,14 +98,14 @@ export default async function financialRoutes(fastify: FastifyInstance) {
 
   // --- expenses ---
   fastify.get("/expenses", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const query = listExpensesQuerySchema.parse(request.query);
     reply.send(await listExpenses(request.businessId!, query));
   });
 
   fastify.post("/expenses", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const input = createExpenseSchema.parse(request.body);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
@@ -115,14 +113,14 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get<{ Params: { id: string } }>("/expenses/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     reply.send(await getExpense(request.businessId!, id));
   });
 
   fastify.patch<{ Params: { id: string } }>("/expenses/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     const input = updateExpenseSchema.parse(request.body);
@@ -130,7 +128,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete<{ Params: { id: string } }>("/expenses/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     await deleteExpense(request.businessId!, id);
@@ -139,14 +137,14 @@ export default async function financialRoutes(fastify: FastifyInstance) {
 
   // --- mileage ---
   fastify.get("/mileage", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const query = listMileageTripsQuerySchema.parse(request.query);
     reply.send(await listMileageTrips(request.businessId!, query));
   });
 
   fastify.post("/mileage", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const input = createMileageTripSchema.parse(request.body);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
@@ -154,14 +152,14 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get<{ Params: { id: string } }>("/mileage/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     reply.send(await getMileageTrip(request.businessId!, id));
   });
 
   fastify.patch<{ Params: { id: string } }>("/mileage/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     const input = updateMileageTripSchema.parse(request.body);
@@ -169,7 +167,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete<{ Params: { id: string } }>("/mileage/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     await deleteMileageTrip(request.businessId!, id);
@@ -178,7 +176,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
 
   // --- expense receipts (secure attachments) ---
   fastify.get<{ Params: { id: string } }>("/expenses/:id/receipts", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     reply.send(await listExpenseReceipts(request.businessId!, id));
@@ -188,7 +186,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
     "/expenses/:id/receipts",
     { bodyLimit: 24 * 1024 * 1024 },
     async (request, reply) => {
-      requireBusinessRole(request, FINANCIAL_ROLES);
+      requireCapability(request, "financial.operate");
       assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
       const { id } = idParamSchema.parse(request.params);
       const input = z
@@ -203,14 +201,14 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   );
 
   fastify.post<{ Params: { id: string } }>("/receipts/:id/download", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     reply.send(await createExpenseReceiptDownload(request.businessId!, id));
   });
 
   fastify.get<{ Params: { token: string } }>("/receipts/download/:token", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { token } = z.object({ token: z.string().min(20) }).parse(request.params);
     const result = await downloadExpenseReceipt(token);
@@ -224,7 +222,7 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete<{ Params: { id: string } }>("/receipts/:id", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const { id } = idParamSchema.parse(request.params);
     await deleteExpenseReceipt(request.businessId!, id);
@@ -232,14 +230,16 @@ export default async function financialRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/receipts/storage-status", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.operate");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     reply.send(await expenseReceiptStorageHealth());
   });
 
   // --- money-in / money-out summary ---
+  // A business-wide financial report: OWNER/ADMIN only (Advanced Team #12
+  // matrix — STAFF may record spend but not see the rolled-up picture).
   fastify.get("/summary", async (request, reply) => {
-    requireBusinessRole(request, FINANCIAL_ROLES);
+    requireCapability(request, "financial.report.view");
     assertFeatureAvailable(request.plan!, "FINANCIAL_MANAGEMENT");
     const query = financialSummaryQuerySchema.parse(request.query);
     reply.send(await getFinancialSummary(request.businessId!, query));

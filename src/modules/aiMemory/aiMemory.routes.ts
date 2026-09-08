@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { deleteMemory, listMemory, pruneExpiredMemory, updateMemory, writeMemory, getSession } from "../../lib/ai/memory/memoryStore.js";
 import { deriveBusinessKnowledge, deriveConversationKnowledge, deriveCustomerKnowledge, deriveLongTermKnowledge } from "../../lib/ai/memory/knowledgeSources.js";
 import { retrieveMemory } from "../../lib/ai/memory/retrievalEngine.js";
@@ -8,7 +8,6 @@ import { retrievalMonitoring } from "./aiMemory.service.js";
 import { createRecordSchema, monitoringQuerySchema, retrieveSchema, updateRecordSchema } from "./aiMemory.schemas.js";
 
 const idParams = z.object({ id: z.string().uuid() });
-const MANAGE_ROLES = ["OWNER", "ADMIN"] as const;
 
 export default async function aiMemoryRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -52,7 +51,7 @@ export default async function aiMemoryRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/records", async (request, reply) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const input = createRecordSchema.parse(request.body);
     const record = await writeMemory({
       businessId: request.businessId!,
@@ -77,7 +76,7 @@ export default async function aiMemoryRoutes(fastify: FastifyInstance) {
   });
 
   fastify.patch("/records/:id", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     const input = updateRecordSchema.parse(request.body);
     return updateMemory(request.businessId!, id, {
@@ -92,7 +91,7 @@ export default async function aiMemoryRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete("/records/:id", async (request, reply) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     const { id } = idParams.parse(request.params);
     await deleteMemory(request.businessId!, id);
     reply.status(204).send();
@@ -110,7 +109,7 @@ export default async function aiMemoryRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/prune", async (request) => {
-    requireBusinessRole(request, MANAGE_ROLES);
+    requireCapability(request, "automation.manage");
     return pruneExpiredMemory(request.businessId!);
   });
 }

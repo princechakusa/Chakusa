@@ -8,7 +8,7 @@ import { generatePublicSlug } from "../../lib/publicSlug.js";
 import { updateBusinessSchema, createBusinessSchema } from "./business.schemas.js";
 import { completeBusinessOnboarding } from "./business.service.js";
 import { exportBusinessData } from './businessExport.service.js';
-import { requireOwner } from '../../lib/authorization.js';
+import { requireCapability } from '../../lib/authorization.js';
 import { syncServiceOfferingsFromLegacyNames } from '../services/services.service.js';
 import { getOwnAcceptanceHistory, getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 import { z } from "zod";
@@ -88,6 +88,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
   });
 
   fastify.patch("/", { preHandler: fastify.requireBusiness }, async (request, reply) => {
+    requireCapability(request, "business.settings.manage");
     const input = updateBusinessSchema.parse(request.body);
 
     // Best-effort E.164 derivation, never blocking the write — if `phone`
@@ -137,12 +138,12 @@ export default async function businessRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/onboarding/complete", { preHandler: fastify.requireBusiness }, async (request, reply) => {
-    if (request.role !== "OWNER") throw ApiError.forbidden("Only the business owner can complete business setup");
+    requireCapability(request, "business.settings.manage");
     reply.send(await completeBusinessOnboarding(request.businessId!));
   });
 
   fastify.get('/export', { preHandler: fastify.requireBusiness }, async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "business.data.export");
     reply.header('content-disposition', `attachment; filename="chakusa-business-${request.businessId}.json"`);
     reply.send(await exportBusinessData(request.businessId!));
   });

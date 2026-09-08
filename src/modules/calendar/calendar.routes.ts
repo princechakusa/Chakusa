@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { requireOwner } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { ApiError } from "../../lib/errors.js";
 import { createCalendarSubscriptionSchema } from "./calendar.schemas.js";
 import { createCalendarSubscription, listCalendarSubscriptions, revokeCalendarSubscription, resolveCalendarFeed } from "./calendar.service.js";
@@ -11,11 +11,11 @@ export default async function calendarRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
   fastify.get("/subscriptions", async request => {
-    requireOwner(request);
+    requireCapability(request, "business.calendarFeed.manage");
     return listCalendarSubscriptions(request.businessId!);
   });
   fastify.post("/subscriptions", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "business.calendarFeed.manage");
     const created = await createCalendarSubscription(request.businessId!, createCalendarSubscriptionSchema.parse(request.body ?? {}));
     const host = request.headers.host;
     const forwardedHeader = request.headers["x-forwarded-proto"];
@@ -24,7 +24,7 @@ export default async function calendarRoutes(fastify: FastifyInstance) {
     reply.status(201).send({ ...created, feedUrl: `${protocol}://${host}/public/calendar/${created.token}.ics` });
   });
   fastify.post("/subscriptions/:id/revoke", async request => {
-    requireOwner(request);
+    requireCapability(request, "business.calendarFeed.manage");
     return revokeCalendarSubscription(request.businessId!, idParams.parse(request.params).id);
   });
 }

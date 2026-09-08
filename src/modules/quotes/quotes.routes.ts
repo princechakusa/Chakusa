@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { BusinessRole } from "@prisma/client";
+
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
-import { requireBusinessRole } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
 import { createQuoteSchema, updateQuoteSchema, listQuotesQuerySchema, quoteIdParamSchema, sendQuoteSchema } from "./quotes.schemas.js";
 import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQuoteDetail, sendQuote, cancelQuote, reviseQuote, resendQuote } from "./quotes.service.js";
@@ -13,17 +13,9 @@ import { createQuoteDraft, updateQuoteDraft, deleteQuoteDraft, listQuotes, getQu
 // logic (numbering, revisioning, money, tenant scoping) lives in
 // quotes.service.ts / the Loop 3A domain layer.
 //
-// Locked v1 permission policy: OWNER, ADMIN and STAFF may all view,
-// create, edit and delete DRAFT documents — there is no narrower gate.
-// This explicit allow-list still exists so that a future BusinessRole
-// added to the enum is NOT silently granted access.
-const QUOTE_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN", "STAFF"];
-
-// PROGRAM 3 LOOP 3F: canceling a SENT quote is a higher-impact action
-// than draft editing - locked policy is OWNER/ADMIN only (STAFF may
-// create/edit/send drafts but not retract a document already in front of
-// a customer).
-const QUOTE_CANCEL_ROLES: readonly BusinessRole[] = ["OWNER", "ADMIN"];
+// Authorization (Advanced Team #12 capability matrix, src/lib/capabilities.ts):
+// "quotes.manage" (OWNER/ADMIN/STAFF) for draft view/create/edit/delete/send;
+// "quotes.cancel" (OWNER/ADMIN) for retracting a SENT quote.
 
 async function resolveMemberId(businessId: string, userId: string): Promise<string> {
   const member = await prisma.businessMember.findFirst({ where: { businessId, userId }, select: { id: true } });
@@ -38,14 +30,14 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.requireBusiness);
 
   fastify.get("/", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const query = listQuotesQuerySchema.parse(request.query);
     reply.send(await listQuotes(request.businessId!, query));
   });
 
   fastify.post("/", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const input = createQuoteSchema.parse(request.body);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
@@ -53,14 +45,14 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get<{ Params: { id: string } }>("/:id", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     reply.send(await getQuoteDetail(request.businessId!, id));
   });
 
   fastify.patch<{ Params: { id: string } }>("/:id", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     const input = updateQuoteSchema.parse(request.body);
@@ -69,7 +61,7 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   });
 
   fastify.delete<{ Params: { id: string } }>("/:id", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     await deleteQuoteDraft(request.businessId!, id);
@@ -81,7 +73,7 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   // (for a future delivery/customer-access stage); it is never persisted
   // or logged and never appears in any GET response.
   fastify.post<{ Params: { id: string } }>("/:id/send", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     const input = sendQuoteSchema.parse(request.body ?? {});
@@ -92,7 +84,7 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   // PROGRAM 3 LOOP 3F: SENT -> CANCELED. OWNER/ADMIN only. Revokes every
   // live acceptance token so the customer link can no longer accept.
   fastify.post<{ Params: { id: string } }>("/:id/cancel", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_CANCEL_ROLES);
+    requireCapability(request, "quotes.cancel");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);
@@ -104,7 +96,7 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   // Revokes the old revision's token and returns a fresh one for the new
   // revision, exactly once, for re-delivery.
   fastify.post<{ Params: { id: string } }>("/:id/revise", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_CANCEL_ROLES);
+    requireCapability(request, "quotes.cancel");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     const input = updateQuoteSchema.parse(request.body);
@@ -116,7 +108,7 @@ export default async function quoteRoutes(fastify: FastifyInstance) {
   // current revision, no lifecycle change). OWNER/ADMIN/STAFF - same as
   // send. Response carries the fresh raw token + assembled acceptanceUrl.
   fastify.post<{ Params: { id: string } }>("/:id/resend", async (request, reply) => {
-    requireBusinessRole(request, QUOTE_ROLES);
+    requireCapability(request, "quotes.manage");
     assertFeatureAvailable(request.plan!, "QUOTES_ESTIMATES");
     const { id } = quoteIdParamSchema.parse(request.params);
     const memberId = await resolveMemberId(request.businessId!, request.user.userId);

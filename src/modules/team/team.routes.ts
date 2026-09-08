@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma.js";
 import { assertFeatureAvailable } from "../../lib/entitlements.js";
-import { requireOwner } from "../../lib/authorization.js";
+import { requireCapability } from "../../lib/authorization.js";
 import { createInvitationSchema, changeMemberRoleSchema, transferOwnershipSchema } from "./team.schemas.js";
 import { createInvitation, listInvitations, revokeInvitation } from "./teamInvitations.service.js";
 import { listMembers, changeMemberRole, removeMember, reactivateMember, getSeatSummary, transferOwnership } from "./teamMembers.service.js";
@@ -14,12 +14,13 @@ export interface TeamRoutesOptions {
 
 /**
  * Authenticated, business-scoped team management. Every mutation
- * (invite/revoke/role-change/remove/reactivate) is owner-only in v1 — see
- * src/lib/authorization.ts's requireOwner and the Business Phase 1 report's
- * "role model" section for why ADMIN doesn't get any of this in v1. Member
- * *listing* (and seat summary — see GET /summary below) is available to any
- * active member (OWNER/ADMIN/STAFF) — "team visibility" is a stated v1
- * feature for the whole team, not just the owner. Neither read is gated by
+ * (invite/revoke/role-change/remove/reactivate) requires the OWNER-only
+ * "team.members.manage" / "team.roles.manage" / "team.ownership.transfer"
+ * capabilities — see src/lib/capabilities.ts (Advanced Team #12 matrix) and
+ * the Business Phase 1 report's "role model" section for why ADMIN does not
+ * get any of this. Member *listing* (and seat summary — see GET /summary
+ * below) is available to any active member (OWNER/ADMIN/STAFF) — "team
+ * visibility" is a stated feature for the whole team. Neither read is gated by
  * assertFeatureAvailable, deliberately: a downgraded former-Business
  * owner's team history (and seat numbers) must remain readable even though
  * TEAM_MANAGEMENT (invite/remove/etc.) is no longer available to them — see
@@ -33,6 +34,7 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
   fastify.addHook("preHandler", fastify.requireBusiness);
 
   fastify.get("/members", async (request, reply) => {
+    requireCapability(request, "team.view");
     reply.send(await listMembers(request.businessId!));
   });
 
@@ -45,34 +47,35 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
    * businessId parameter anywhere in this route.
    */
   fastify.get("/summary", async (request, reply) => {
+    requireCapability(request, "team.view");
     const seats = await getSeatSummary(request.businessId!, request.plan!);
     reply.send({ seats });
   });
 
   fastify.patch<{ Params: { id: string } }>("/members/:id", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.roles.manage");
     const input = changeMemberRoleSchema.parse(request.body);
     reply.send(await changeMemberRole(request.businessId!, request.user.userId, request.params.id, input));
   });
 
   fastify.delete<{ Params: { id: string } }>("/members/:id", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.members.manage");
     reply.send(await removeMember(request.businessId!, request.user.userId, request.params.id));
   });
 
   fastify.post<{ Params: { id: string } }>("/members/:id/reactivate", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.members.manage");
     reply.send(await reactivateMember(request.businessId!, request.plan!, request.user.userId, request.params.id));
   });
 
   fastify.post("/ownership-transfer", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.ownership.transfer");
     const input = transferOwnershipSchema.parse(request.body);
     reply.send(await transferOwnership(request.businessId!, request.user.userId, input));
   });
 
   fastify.get("/invitations", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.members.manage");
     reply.send(await listInvitations(request.businessId!));
   });
 
@@ -80,7 +83,7 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
     "/invitations",
     { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (request, reply) => {
-      requireOwner(request);
+      requireCapability(request, "team.members.manage");
       assertFeatureAvailable(request.plan!, request.status!, "TEAM_MANAGEMENT");
       const input = createInvitationSchema.parse(request.body);
 
@@ -117,7 +120,7 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
   );
 
   fastify.delete<{ Params: { id: string } }>("/invitations/:id", async (request, reply) => {
-    requireOwner(request);
+    requireCapability(request, "team.members.manage");
     reply.send(await revokeInvitation(request.businessId!, request.params.id));
   });
 }

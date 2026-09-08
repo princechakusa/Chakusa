@@ -33,6 +33,7 @@ import appointmentRoutes from "./modules/appointments/appointments.routes.js";
 import serviceOfferingRoutes from "./modules/services/services.routes.js";
 import availabilityRoutes from "./modules/availability/availability.routes.js";
 import dispatchRoutes from "./modules/dispatch/dispatch.routes.js";
+import commissionRoutes from "./modules/commissions/commissions.routes.js";
 import { readWorkerHeartbeat, workerHeartbeatHealthy } from './worker/workerHeartbeat.js';
 import { runTriggeredScheduledWork, validWorkerTriggerAuthorization } from './worker/scheduledWorkTrigger.js';
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
@@ -255,6 +256,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(serviceOfferingRoutes, { prefix: "/services" });
   await app.register(availabilityRoutes, { prefix: "/availability" });
   await app.register(dispatchRoutes, { prefix: "/dispatch" });
+  await app.register(commissionRoutes, { prefix: "/commissions" });
   await app.register(loyaltyBusinessRoutes, { prefix: "/loyalty" });
   await app.register(dashboardRoutes, { prefix: "/dashboard" });
   await app.register(deviceRoutes, { prefix: "/devices" });

@@ -1018,6 +1018,7 @@ model Business {
   mileageTrips                   MileageTrip[]
   accountingConnections          AccountingConnection[]
   accountingSyncLogs             AccountingSyncLog[]
+  memberCommissionRules          MemberCommissionRule[]
 
   @@index([ownerId])
   @@index([createdAt])
@@ -1133,6 +1134,7 @@ model BusinessMember {
   createdInvoiceRevisions InvoiceRevision[]    @relation("InvoiceRevisionCreatedBy")
   createdExpenses        Expense[]             @relation("ExpenseCreatedBy")
   createdMileageTrips    MileageTrip[]         @relation("MileageTripCreatedBy")
+  commissionRules        MemberCommissionRule[]
 
   @@unique([businessId, userId])
   @@index([userId])
@@ -1379,6 +1381,7 @@ model ServiceOffering {
   appointments  Appointment[]
   quoteLineItems QuoteLineItem[]
   invoiceLineItems InvoiceLineItem[]
+  commissionRules MemberCommissionRule[]
 
   @@unique([businessId, name])
   @@index([businessId, active, publiclyBookable, sortOrder])
@@ -1396,6 +1399,41 @@ model ServiceMemberAssignment {
   @@id([serviceOfferingId, businessMemberId])
   @@index([businessMemberId])
   @@map("service_member_assignments")
+}
+
+// Advanced Team #12 — operational commissions. This is an internal
+// coordination figure the business tracks for its own planning; it is NOT
+// payroll, NOT a payout instruction, and carries no tax or withholding
+// meaning. Commission earned is derived at read time from completed
+// appointments and never stored as a balance.
+enum CommissionBasis {
+  PERCENT_OF_SERVICE_PRICE
+  FIXED_PER_APPOINTMENT
+}
+
+model MemberCommissionRule {
+  id                String          @id @default(uuid())
+  businessId        String          @map("business_id")
+  businessMemberId  String          @map("business_member_id")
+  // null = the member's base rate, applied to any completed appointment
+  // with no service-specific rule.
+  serviceOfferingId String?         @map("service_offering_id")
+  basis             CommissionBasis
+  ratePercent       Decimal?        @map("rate_percent") @db.Decimal(6, 3)
+  fixedAmount       Decimal?        @map("fixed_amount") @db.Decimal(10, 2)
+  fixedCurrency     String?         @map("fixed_currency")
+  active            Boolean         @default(true)
+  createdByUserId   String          @map("created_by_user_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessMember  BusinessMember   @relation(fields: [businessMemberId], references: [id], onDelete: Cascade)
+  serviceOffering ServiceOffering? @relation(fields: [serviceOfferingId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessMemberId])
+  @@map("member_commission_rules")
 }
 
 model BookingBlock {

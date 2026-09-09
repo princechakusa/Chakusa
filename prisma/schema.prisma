@@ -2024,6 +2024,10 @@ model Conversation {
   automationMode   String                       @default("AUTOMATED") @map("automation_mode")
   lastInboundAt    DateTime?                    @map("last_inbound_at")
   lastOutboundAt   DateTime?                    @map("last_outbound_at")
+  // #18 Omnichannel inbox — when a business member last opened this
+  // conversation. "unread" is derived: lastInboundAt is set AND
+  // (lastReadAt is null OR lastInboundAt > lastReadAt).
+  lastReadAt       DateTime?                    @map("last_read_at")
   waitingSince     DateTime?                    @map("waiting_since")
   archivedAt       DateTime?                    @map("archived_at")
   deletedAt        DateTime?                    @map("deleted_at")

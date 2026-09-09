@@ -127,7 +127,12 @@ describe("no-show automation (#17)", () => {
     await mark(b.token, appt.id);
     const { provider, calls } = fakeProvider();
     await sendDueCustomerAppointmentMessages(provider, 50, new Date());
-    expect(calls.filter(c => c.to === "+15005550031")).toHaveLength(0);
+    // #18: the sweep now durably dispatches the opt-in no-show follow-up, but
+    // still no reminder / same-day reminder for a no-show appointment — the
+    // only message to the customer is the "we missed you" follow-up.
+    const toCustomer = calls.filter(c => c.to === "+15005550031");
+    expect(toCustomer).toHaveLength(1);
+    expect(toCustomer[0]!.body.toLowerCase()).toContain("we missed you");
   });
 
   it("11. follow-up disabled -> no message", async () => {
@@ -155,7 +160,7 @@ describe("no-show automation (#17)", () => {
   it("14. a messaging-provider failure does not undo the authoritative NO_SHOW state", async () => {
     const b = await biz("ns-provfail@ex.com");
     const appt = await pastAppt(b.businessId, b.customer.id);
-    await mark(b.token, appt.id); // route fires the follow-up best-effort; default provider is inert in tests
+    await mark(b.token, appt.id); // #18: the follow-up is dispatched by the worker sweep, not this route
     const { provider } = fakeProvider(false); // simulate soft failure directly
     await sendCustomerAppointmentMessage(appt.id, "no_show", provider).catch(() => undefined);
     expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).status).toBe("NO_SHOW");

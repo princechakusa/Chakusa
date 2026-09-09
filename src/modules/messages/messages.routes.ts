@@ -11,6 +11,10 @@ import { attachmentStorageHealth, createAttachmentDownload, downloadAttachment, 
 import { requireCapability } from "../../lib/authorization.js";
 import { getProviderCredentialVerifier } from "../../lib/messaging/providerRegistry.js";
 
+/** #18: a conversation is unread when its newest inbound message post-dates the last time a member opened it. */
+const isConversationUnread = (c: { lastInboundAt: Date | null; lastReadAt: Date | null }): boolean =>
+  c.lastInboundAt != null && (c.lastReadAt == null || c.lastInboundAt.getTime() > c.lastReadAt.getTime());
+
 export default async function messageRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
@@ -27,15 +31,27 @@ export default async function messageRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/conversations", async (request) => {
-    const query = z.object({ status: z.string().optional(), cursor: z.string().uuid().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }).parse(request.query);
-    return prisma.conversation.findMany({ where: { businessId: request.businessId!, deletedAt: null, status: query.status }, include: { messages: { orderBy: { createdAt: "desc" }, take: 1 }, slas: { where: { status: "ACTIVE" } } }, orderBy: [{ priority: "desc" }, { updatedAt: "desc" }], take: query.limit, ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}) });
+    const query = z.object({ status: z.string().optional(), unread: z.coerce.boolean().optional(), cursor: z.string().uuid().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) }).parse(request.query);
+    const rows = await prisma.conversation.findMany({ where: { businessId: request.businessId!, deletedAt: null, status: query.status }, include: { messages: { orderBy: { createdAt: "desc" }, take: 1 }, slas: { where: { status: "ACTIVE" } } }, orderBy: [{ priority: "desc" }, { updatedAt: "desc" }], take: query.limit, ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}) });
+    const withUnread = rows.map(c => ({ ...c, unread: isConversationUnread(c) }));
+    return query.unread ? withUnread.filter(c => c.unread) : withUnread;
   });
 
   fastify.get("/conversations/:id", async (request) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
     const conversation = await prisma.conversation.findFirst({ where: { id, businessId: request.businessId!, deletedAt: null }, include: { participants: true, assignments: { orderBy: { startedAt: "desc" } }, lifecycleEvents: { orderBy: { createdAt: "asc" } }, notes: { orderBy: { createdAt: "asc" } }, messages: { where: { deletedAt: null }, include: { contents: true, attachments: true, dispatches: { include: { attemptsHistory: true } }, receipts: true }, orderBy: { createdAt: "asc" } } } });
     if (!conversation) throw ApiError.notFound("Conversation not found");
-    return conversation;
+    // #18: opening a conversation marks it read for the whole business.
+    await prisma.conversation.update({ where: { id }, data: { lastReadAt: new Date() } });
+    return { ...conversation, unread: false };
+  });
+
+  // #18: explicit mark-read (e.g. swipe-to-read in the inbox without opening).
+  fastify.post("/conversations/:id/read", async (request, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const updated = await prisma.conversation.updateMany({ where: { id, businessId: request.businessId!, deletedAt: null }, data: { lastReadAt: new Date() } });
+    if (!updated.count) throw ApiError.notFound("Conversation not found");
+    reply.send({ read: true });
   });
 
   fastify.patch("/conversations/:id", async (request) => {

@@ -88,15 +88,17 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     const phone = event.from.replace(/^whatsapp:/, "");
     const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { id: true, businessId: true } });
     const providerMessageId = typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : createHash("sha256").update(`${phone}:${event.receivedAt.toISOString()}:${event.body}`).digest("hex");
-    // LOOP 4: after the inbound message is durably recorded, the AI Customer
-    // Agent gets a turn for any business that has opted in. It is awaited so
-    // an autonomous reply is enqueued before this webhook acks (the run is
-    // idempotent on the inbound message id, so a Twilio retry replays
-    // safely), but a failure never blocks the ack.
+    // LOOP 4 + #18: the inbound message is durably recorded (idempotent on the
+    // provider message id — a Twilio retry returns the existing row, no
+    // duplicate, no conversation re-bump). On a fresh delivery only, the AI
+    // Customer Agent gets a turn for any business that has opted in. A retry
+    // skips the AI trigger entirely (it is also idempotent, but there is no
+    // reason to re-run the gates). A failure never blocks the ack.
     for (const customer of customers) {
       const inbound = await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
+      if (inbound.replayed || !inbound.conversationId) continue;
       try {
-        await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId!, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
+        await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
       } catch (error) {
         captureUnexpectedError(error);
       }

@@ -74,16 +74,26 @@ export async function sendAppointmentArrivalMessage(appointmentId: string, state
 
 function localDate(value: Date, timeZone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 export async function sendDueCustomerAppointmentMessages(provider?: MessagingProvider, batchSize = 50, now = new Date()) {
+  const recentCutoff = new Date(now.getTime() - 7 * 86_400_000);
   const appointments = await prisma.appointment.findMany({
     where: { business: { platformStatus: "ACTIVE" }, OR: [
       { status: { in: ["SCHEDULED", "CONFIRMED"] }, startsAt: { gt: now, lte: new Date(now.getTime() + 7 * 86_400_000) }, OR: [{ customerReminderSentAt: null }, { sameDayReminderSentAt: null }] },
-      { status: "COMPLETED", endsAt: { lte: new Date(now.getTime() - 2 * 60 * 60_000), gte: new Date(now.getTime() - 7 * 86_400_000) }, followUpSentAt: null },
+      { status: "COMPLETED", endsAt: { lte: new Date(now.getTime() - 2 * 60 * 60_000), gte: recentCutoff }, followUpSentAt: null },
+      // #18: durable dispatch for the terminal-outcome messages. The route
+      // handlers fire these best-effort for immediacy; this worker sweep is
+      // the durability backstop — a transient provider failure or a process
+      // crash is recovered here, and the atomic claim on the *SentAt column
+      // inside sendCustomerAppointmentMessage guarantees no double-send.
+      { status: "NO_SHOW", startsAt: { gte: recentCutoff }, noShowFollowUpSentAt: null, business: { noShowFollowUpEnabled: true } },
+      { status: "CANCELED", updatedAt: { gte: recentCutoff }, cancellationConfirmationSentAt: null },
     ] },
     include: { business: { select: { timezone: true } } }, orderBy: { startsAt: "asc" }, take: batchSize,
   });
   let sent = 0;
   for (const appointment of appointments) {
     if (appointment.status === "COMPLETED") { if (await sendCustomerAppointmentMessage(appointment.id, "follow_up", provider)) sent += 1; continue; }
+    if (appointment.status === "NO_SHOW") { if (await sendCustomerAppointmentMessage(appointment.id, "no_show", provider)) sent += 1; continue; }
+    if (appointment.status === "CANCELED") { if (await sendCustomerAppointmentMessage(appointment.id, "canceled", provider)) sent += 1; continue; }
     const reminderAt = new Date(appointment.startsAt.getTime() - (appointment.reminderMinutes ?? 1440) * 60_000);
     if (!appointment.customerReminderSentAt && reminderAt <= now && await sendCustomerAppointmentMessage(appointment.id, "reminder", provider)) sent += 1;
     if (!appointment.sameDayReminderSentAt && localDate(appointment.startsAt, appointment.business.timezone || "UTC") === localDate(now, appointment.business.timezone || "UTC") && await sendCustomerAppointmentMessage(appointment.id, "same_day", provider)) sent += 1;

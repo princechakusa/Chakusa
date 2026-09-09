@@ -130,9 +130,25 @@ export async function recordDeliveryReceipt(input: { provider: string; providerE
   });
 }
 
-export async function recordInboundMessage(input: { businessId: string; customerId?: string; from: string; channel: PlatformChannel; body: string; provider: string; providerMessageId: string }) {
+export interface RecordInboundResult {
+  message: Awaited<ReturnType<typeof prisma.message.create>>;
+  conversationId: string;
+  /** true when this provider message id had already been recorded — a webhook retry. */
+  replayed: boolean;
+}
+
+export async function recordInboundMessage(input: { businessId: string; customerId?: string; from: string; channel: PlatformChannel; body: string; provider: string; providerMessageId: string }): Promise<RecordInboundResult> {
   const normalized = input.body.trim().toLowerCase();
   return prisma.$transaction(async (tx) => {
+    // #18: serialize concurrent deliveries of the same provider message id so
+    // a Twilio webhook retry can never create a duplicate inbound row or
+    // re-bump the conversation. The lock is released on transaction end.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`inbound:${input.provider}:${input.providerMessageId}`}))`;
+    const already = await tx.message.findFirst({
+      where: { businessId: input.businessId, provider: input.provider, providerMessageId: input.providerMessageId, direction: "INBOUND" },
+    });
+    if (already) return { message: already, conversationId: already.conversationId ?? "", replayed: true };
+
     let conversation = await tx.conversation.findFirst({ where: { businessId: input.businessId, OR: [{ customerId: input.customerId }, { participants: { some: { externalAddress: input.from } } }], status: { in: ["OPEN", "PENDING"] }, deletedAt: null }, orderBy: { updatedAt: "desc" } });
     if (!conversation) conversation = await tx.conversation.create({ data: { businessId: input.businessId, customerId: input.customerId, status: "OPEN", participants: { create: { businessId: input.businessId, customerId: input.customerId, externalAddress: input.from, role: "CUSTOMER" } }, lifecycleEvents: { create: { businessId: input.businessId, type: "OPENED" } } } });
     const message = await tx.message.create({ data: { businessId: input.businessId, customerId: input.customerId, conversationId: conversation.id, messageType: "custom", channel: input.channel, body: input.body, status: "sent", direction: "INBOUND", actorType: "CUSTOMER", provider: input.provider, providerMessageId: input.providerMessageId, contents: { create: { businessId: input.businessId, contentType: "TEXT", body: input.body } } } });
@@ -142,7 +158,7 @@ export async function recordInboundMessage(input: { businessId: string; customer
     } else if (START_WORDS.has(normalized)) {
       await tx.suppression.updateMany({ where: { businessId: input.businessId, channel: input.channel.toUpperCase(), address: input.from }, data: { active: false, liftedAt: new Date() } });
     }
-    return message;
+    return { message, conversationId: conversation.id, replayed: false };
   });
 }
 

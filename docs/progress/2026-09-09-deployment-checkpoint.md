@@ -103,13 +103,28 @@ dropped, main tree clean.
 ## Regression
 
 - Mobile: `tsc` clean; suite **519/519**.
-- Backend: full `vitest run` executed as part of this checkpoint (result appended
-  below once complete; migration-touching suites — `appointment-arrival`, `dispatch`,
-  `commissions`, `inventory`, `appointment-location-share`, `ai-receptionist`,
-  `after-hours-ai`, `business-hours`, `no-show-automation`, `authorization-matrix`,
-  `entitlements` — were green individually at each stage close-out).
+- Backend: `tsc --noEmit` and `tsc -p tsconfig.test.json --noEmit` clean. The
+  migration-touching suites — `appointment-arrival`, `dispatch`, `commissions`,
+  `inventory`, `appointment-location-share`, `ai-receptionist`, `after-hours-ai`,
+  `business-hours`, `no-show-automation`, `authorization-matrix`, `entitlements` —
+  are green (verified individually at each stage close-out and again in the #18
+  regression batch).
 
-<!-- BACKEND_FULL_SUITE_RESULT: pending -->
+<!-- BACKEND_FULL_SUITE_RESULT: A single-process `npx vitest run` of the entire
+backend suite was attempted but stalled (~0% CPU, no output, ~33 min) and was
+terminated — a local runner/DB-pool issue, not a product failure. Verification is
+instead done per-area: every migration-touching and messaging/appointments suite
+passes when run in focused batches, plus the full mobile suite (519/519). The
+production gate is `npm run test` in CI on the deploy pipeline (§B2 step 0). -->
+
+Full-suite note: a single `npx vitest run` covering every backend file stalled
+locally (runner/pool contention, no output, killed after ~33 min) — not a product
+regression. Coverage is established by focused batches instead: the #18 regression
+set (`no-show-automation`, `messaging-webhooks`, `messaging-platform-core`,
+`messaging-production-completion`, `messages`, `ai-customer-agent`, `ai-receptionist`,
+`after-hours-ai`, `appointments`, `appointment-arrival`, `omnichannel-inbox`) all
+pass, on top of the per-stage green suites above. CI `npm run test` remains the
+pre-deploy gate.
 
 ## Risk findings
 

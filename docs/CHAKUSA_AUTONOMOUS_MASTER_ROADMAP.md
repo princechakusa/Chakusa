@@ -3,7 +3,7 @@
 **Status:** Governing implementation roadmap  
 **Repository:** Chakusa  
 **Execution mode:** Autonomous, stage-gated, production-first  
-**Last roadmap position:** #17 No-show Automation complete; controlled deployment checkpoint is next; #18+ follow.
+**Last roadmap position:** #18 Omnichannel Communications complete (audit + gap closure: inbound idempotency, durable terminal-outcome dispatch, server-side unread). Deployment checkpoint done locally; production migration owner-blocked (OA-1). #19 Marketplace & Discovery Completion is next.
 
 ---
 

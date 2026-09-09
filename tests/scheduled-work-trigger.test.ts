@@ -4,6 +4,13 @@ import { config } from '../src/lib/config.js';
 import { prisma } from '../src/lib/prisma.js';
 import { createTestApp, resetDatabase } from './helpers.js';
 
+// #23 — one sweep is forced to throw so we can prove the cycle isolates it.
+vi.mock('../src/modules/reviews/reviewAutomation.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/modules/reviews/reviewAutomation.js')>();
+  return { ...actual, sendDueReviewRequests: vi.fn().mockRejectedValue(new Error('injected review-request failure')) };
+});
+const { runTriggeredScheduledWork } = await import('../src/worker/scheduledWorkTrigger.js');
+
 describe('secure scheduled-work HTTP trigger', () => {
   let app: FastifyInstance;
   const originalSecret = config.WORKER_TRIGGER_SECRET;
@@ -30,5 +37,15 @@ describe('secure scheduled-work HTTP trigger', () => {
     expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({ status: 'accepted' });
     await vi.waitFor(async () => expect(await prisma.workerHeartbeat.findUnique({ where: { id: 'automation-worker' } })).not.toBeNull());
+  });
+
+  it('#23: isolates a failing step — the cycle finishes and still heartbeats', async () => {
+    const result = await runTriggeredScheduledWork();
+    // the injected sendDueReviewRequests throw was caught, counted, not fatal
+    expect(result.failedSteps).toBeGreaterThanOrEqual(1);
+    expect(result.skipped).toBe(false);
+    // every later step still ran and the heartbeat was still written
+    const heartbeat = await prisma.workerHeartbeat.findUnique({ where: { id: 'automation-worker' } });
+    expect(heartbeat?.lastSuccessAt).not.toBeNull();
   });
 });

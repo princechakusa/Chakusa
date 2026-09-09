@@ -79,6 +79,28 @@ export async function enqueueMessage(request: MessagingRequest, plan: Plan, stat
   });
 }
 
+/**
+ * #23 — reclaim message dispatches stranded in PROCESSING by a worker that
+ * crashed mid-send (the claim query only picks up PENDING/RETRY, so a
+ * PROCESSING row with an expired lease would otherwise sit forever). Mirrors
+ * recoverExpiredOutboxClaims: over-attempt rows go DEAD, the rest go back to
+ * RETRY for immediate re-pickup. The provider-level idempotencyKey makes a
+ * re-send of an already-accepted message safe.
+ */
+export async function recoverStuckMessageDispatches(now = new Date()) {
+  const [dead, retry] = await prisma.$transaction([
+    prisma.messageDispatch.updateMany({
+      where: { status: "PROCESSING", leaseExpiresAt: { lt: now }, attempts: { gte: prisma.messageDispatch.fields.maxAttempts } },
+      data: { status: "DEAD", leaseOwner: null, leaseExpiresAt: null, completedAt: now, lastError: "worker_lease_expired_final" },
+    }),
+    prisma.messageDispatch.updateMany({
+      where: { status: "PROCESSING", leaseExpiresAt: { lt: now }, attempts: { lt: prisma.messageDispatch.fields.maxAttempts } },
+      data: { status: "RETRY", leaseOwner: null, leaseExpiresAt: null, nextAttemptAt: now, lastError: "worker_lease_expired" },
+    }),
+  ]);
+  return { recovered: dead.count + retry.count };
+}
+
 export async function processMessageDispatches(provider?: MessagingProvider, limit = 20, owner = randomUUID()) {
   const claimed = await prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<Array<{ id: string }>>`

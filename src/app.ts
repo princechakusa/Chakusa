@@ -125,6 +125,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     // tokens in this codebase go in the Authorization header and never hit
     // this limit.
     routerOptions: { maxParamLength: 200 },
+    // #23 hardening — bound how long a client may take to send a full
+    // request (slow-loris defence). Handler-execution time is bounded
+    // separately by the database statement timeout (see DATABASE_URL in
+    // docs/PRODUCTION_HARDENING.md). Large upload routes raise bodyLimit
+    // per-route; the global default (1 MiB) covers everything else.
+    requestTimeout: 60_000,
+    bodyLimit: 1_048_576,
   });
 
   app.removeContentTypeParser("application/json");

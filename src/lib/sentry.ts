@@ -158,9 +158,22 @@ export function attachFastifySentry(app: FastifyInstance): void {
   app.addHook("onError", async (request, _reply, error) => reportFastifyError(request, error));
 }
 
-/** For process-level capture (uncaughtException/unhandledRejection, startup failures) — see src/server.ts. No-ops when Sentry isn't enabled. */
-export function captureUnexpectedError(error: unknown): void {
+/**
+ * For process-level capture (uncaughtException/unhandledRejection, startup
+ * failures) and for isolated background steps that catch their own errors —
+ * see src/server.ts and src/worker/scheduledWorkTrigger.ts. No-ops when Sentry
+ * isn't enabled. The optional `context.tags` are attached to the event so
+ * background-step failures are filterable in triage.
+ */
+export function captureUnexpectedError(error: unknown, context?: { tags?: Record<string, string> }): void {
   if (!sentryActuallyEnabled()) return;
+  if (context?.tags) {
+    Sentry.withScope((scope) => {
+      for (const [key, value] of Object.entries(context.tags!)) scope.setTag(key, value);
+      Sentry.captureException(error);
+    });
+    return;
+  }
   Sentry.captureException(error);
 }
 

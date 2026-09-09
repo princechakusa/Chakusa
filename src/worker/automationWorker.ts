@@ -12,7 +12,7 @@ import { registerDefaultActions, type IdempotentActionGateway } from "../lib/aut
 import { unavailableWorkflowGateways } from "../lib/automation/workflowProviderGateways.js";
 import { processWorkflowExecutions } from "./workflowWorker.js";
 import { getAutomationFoundationStatus } from "../modules/automation/automationFoundation.js";
-import { processMessageDispatches } from "../lib/messaging/messagingPlatform.js";
+import { processMessageDispatches, recoverStuckMessageDispatches } from "../lib/messaging/messagingPlatform.js";
 import { WorkflowMessagingGateway } from "../lib/messaging/workflowMessagingGateway.js";
 import { expireAttachments, processAttachmentScans, recoverAttachmentProcessing } from "../lib/messaging/attachmentPlatform.js";
 import { sweepExpiredQuotes } from "../lib/quotes/quoteExpiry.js";
@@ -68,7 +68,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
   let activeTick: Promise<void> | null = null;
   let activeLifecycleTick: Promise<void> | null = null;
   const startedAt = new Date();
-  const initialized = (async () => { const fallback = unavailableWorkflowGateways(); registerDefaultActions({ messaging: options.workflowGateways?.messaging ?? new WorkflowMessagingGateway(), ai: options.workflowGateways?.ai ?? fallback.ai }); await registerWorkflowTriggerSubscribers(); await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries(), initializeWorkflowSchedules()]); })();
+  const initialized = (async () => { const fallback = unavailableWorkflowGateways(); registerDefaultActions({ messaging: options.workflowGateways?.messaging ?? new WorkflowMessagingGateway(), ai: options.workflowGateways?.ai ?? fallback.ai }); await registerWorkflowTriggerSubscribers(); await Promise.all([recoverExpiredOutboxClaims(), recoverExpiredDeliveries(), recoverStuckMessageDispatches(), initializeWorkflowSchedules()]); })();
 
   const tick = async () => {
     if (stopped) return;
@@ -83,6 +83,7 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
       () => publishOutboxBatch(batchSize),
       () => dispatchDeliveryBatch(batchSize),
       () => processWorkflowExecutions(batchSize),
+      () => recoverStuckMessageDispatches(),
       () => processMessageDispatches(options.provider, batchSize),
       () => processConversationSLAs(),
       () => expireAttachments(),

@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { MessagingProvider, OutboundMessage } from "../src/lib/messaging/messagingProvider.js";
-import { enqueueMessage, processMessageDispatches, recordDeliveryReceipt, recordInboundMessage } from "../src/lib/messaging/messagingPlatform.js";
+import { enqueueMessage, processMessageDispatches, recordDeliveryReceipt, recordInboundMessage, recoverStuckMessageDispatches } from "../src/lib/messaging/messagingPlatform.js";
 import { prisma } from "../src/lib/prisma.js";
 import { createTestApp, registerAccount, resetDatabase, setPlan } from "./helpers.js";
 
@@ -43,6 +43,26 @@ describe("messaging platform core", () => {
     expect(await processMessageDispatches(fake)).toBe(1);
     expect((await prisma.messageDispatch.findUniqueOrThrow({ where: { id: dispatch.id } })).status).toBe("ACCEPTED");
     expect(await prisma.messageDispatchAttempt.count({ where: { dispatchId: dispatch.id } })).toBe(2);
+  });
+
+  it("#23: reclaims a dispatch stranded in PROCESSING by a crashed worker", async () => {
+    const account = await setup();
+    await enqueueMessage({ businessId: account.businessId, customerId: account.customer.id, body: "Hello", messageType: "custom", idempotencyKey: "stranded-123456" }, "PRO", "ACTIVE");
+    const dispatch = await prisma.messageDispatch.findFirstOrThrow({ where: { businessId: account.businessId } });
+    // simulate: worker claimed it (PROCESSING + lease) then died before resolving
+    await prisma.messageDispatch.update({ where: { id: dispatch.id }, data: { status: "PROCESSING", leaseOwner: "dead-worker", leaseExpiresAt: new Date(Date.now() - 5_000) } });
+
+    // the normal claim query never picks up a PROCESSING row...
+    expect(await processMessageDispatches(provider(async () => ({ accepted: true, providerMessageId: "x", permanentFailure: false })))).toBe(0);
+
+    // ...but recovery flips it back to RETRY so the next cycle sends it
+    expect((await recoverStuckMessageDispatches()).recovered).toBe(1);
+    const recovered = await prisma.messageDispatch.findUniqueOrThrow({ where: { id: dispatch.id } });
+    expect(recovered.status).toBe("RETRY");
+    expect(recovered.leaseOwner).toBeNull();
+
+    expect(await processMessageDispatches(provider(async () => ({ accepted: true, providerMessageId: "sent-after-recovery", permanentFailure: false })))).toBe(1);
+    expect((await prisma.messageDispatch.findUniqueOrThrow({ where: { id: dispatch.id } })).status).toBe("ACCEPTED");
   });
 
   it("records delivery webhooks idempotently and advances delivery state", async () => {

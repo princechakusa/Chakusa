@@ -1,4 +1,132 @@
 ---
-import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
 ---
-<DashboardLayout title="Messages | Chakusa" description="View protected customer conversations." realm="business"><DashboardNav slot="sidebar" realm="business" active="messages"/><DashboardCollection realm="business" eyebrow="Conversations" title="Messages" intro="Keep customer conversations visible to your authorised team." endpoint="/v1/business/messages?limit=100" kind="messages"/></DashboardLayout>
+<DashboardLayout title="Messages | Chakusa" description="Read customer conversations and reply securely." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="messages" />
+  <section class="dashboard-loading" data-loading><span></span><p>Opening your conversations…</p></section>
+  <section class="dashboard-auth-required" data-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
+  <div class="dashboard-content" data-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Conversations</p><h1>Messages</h1><p>Every reply is sent through your protected Chakusa workspace and the same consent checks as the app.</p></div></header>
+    <div class="msg-shell">
+      <aside class="dashboard-panel msg-list" aria-label="Conversation list">
+        <div class="dashboard-section-heading"><div><h2>Inbox</h2><p data-list-count>Loading…</p></div><button type="button" data-list-refresh>Refresh</button></div>
+        <div data-list></div>
+      </aside>
+      <section class="dashboard-panel msg-thread" aria-label="Conversation" data-thread hidden>
+        <div class="dashboard-section-heading"><div><h2 data-thread-title>Conversation</h2><p data-thread-sub></p></div><button type="button" data-thread-close>Close</button></div>
+        <div class="msg-messages" data-messages></div>
+        <form class="dashboard-form msg-reply" data-reply-form hidden>
+          <label>Reply<textarea name="body" maxlength="1600" required placeholder="Type a reply…"></textarea></label>
+          <div class="dashboard-form__actions"><button type="submit">Send reply</button></div>
+          <p class="setup-message" data-reply-message role="status"></p>
+        </form>
+        <p class="dashboard-empty" data-reply-readonly hidden>You do not have permission to reply from the web dashboard.</p>
+      </section>
+    </div>
+  </div>
+</DashboardLayout>
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  const gateway = "https://auth.chakusarecovery.com";
+  const $ = <T extends HTMLElement>(s: string) => document.querySelector<T>(s);
+  const listEl = $("[data-list]"), messagesEl = $("[data-messages]"), threadEl = $("[data-thread]");
+  const when = (v: unknown) => { const d = new Date(String(v)); return Number.isNaN(d.valueOf()) ? "" : d.toLocaleString(); };
+  let canReply = false;
+  let active: { id: string; customerId: string | null } | null = null;
+
+  const openThread = async (id: string) => {
+    const response = await fetch(`${gateway}/v1/business/messages/${id}`, { credentials: "include" });
+    if (!response.ok) return;
+    const convo = await response.json();
+    active = { id, customerId: convo.customerId ?? convo.participants?.find((p: any) => p.role === "CUSTOMER")?.customerId ?? null };
+    $("[data-thread-title]")!.textContent = convo.participants?.find((p: any) => p.role === "CUSTOMER")?.displayName || "Conversation";
+    $("[data-thread-sub]")!.textContent = `${String(convo.status || "open").toLowerCase()} · ${(convo.messages || []).length} messages`;
+    messagesEl!.replaceChildren(...(convo.messages || []).map((m: any) => {
+      const row = document.createElement("div");
+      row.className = `msg-bubble msg-bubble--${String(m.direction || "").toLowerCase() === "inbound" ? "in" : "out"}`;
+      const body = document.createElement("p"); body.textContent = m.body || m.contents?.[0]?.body || "";
+      const meta = document.createElement("small"); meta.textContent = `${String(m.direction || "").toLowerCase()} · ${when(m.createdAt)}`;
+      row.append(body, meta);
+      return row;
+    }));
+    $("[data-reply-form]")!.hidden = !canReply || !active.customerId;
+    $("[data-reply-readonly]")!.hidden = canReply;
+    threadEl!.hidden = false;
+    threadEl!.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  const renderList = (items: any[]) => {
+    $("[data-list-count]")!.textContent = `${items.length} conversation${items.length === 1 ? "" : "s"}`;
+    listEl!.replaceChildren(...(items.length ? items.map((c: any) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "msg-list__item" + (c.unread ? " is-unread" : "");
+      const name = document.createElement("strong");
+      name.textContent = c.participants?.find((p: any) => p.role === "CUSTOMER")?.displayName || c.messages?.[0]?.customerId || "Conversation";
+      const preview = document.createElement("span");
+      preview.textContent = c.messages?.[0]?.body || "No messages yet";
+      button.append(name, preview);
+      button.addEventListener("click", () => void openThread(c.id));
+      return button;
+    }) : [Object.assign(document.createElement("div"), { className: "dashboard-empty", textContent: "No conversations yet." })]));
+  };
+
+  const load = async () => {
+    const [listRes, identity] = await Promise.all([
+      fetch(`${gateway}/v1/business/messages?limit=100`, { credentials: "include" }),
+      fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    $("[data-loading]")!.hidden = true;
+    if (listRes.status === 401) { $("[data-auth]")!.hidden = false; return; }
+    canReply = can(identity?.account?.role ?? null, "messaging.operate");
+    const payload = await listRes.json().catch(() => []);
+    if (!listRes.ok) { $("[data-auth]")!.hidden = false; return; }
+    renderList(Array.isArray(payload) ? payload : []);
+    $("[data-content]")!.hidden = false;
+  };
+  $("[data-list-refresh]")?.addEventListener("click", () => void load());
+  $("[data-thread-close]")?.addEventListener("click", () => { threadEl!.hidden = true; active = null; });
+  void load();
+
+  $("[data-reply-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!active?.customerId) return;
+    const form = event.target as HTMLFormElement;
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]");
+    const message = $("[data-reply-message]");
+    const body = String(new FormData(form).get("body") || "").trim();
+    if (!body) return;
+    if (submit) submit.disabled = true;
+    if (message) message.textContent = "Sending securely…";
+    try {
+      const response = await fetch(`${gateway}/v1/business/messages/send`, {
+        method: "POST", credentials: "include", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerId: active.customerId, body, idempotencyKey: `web-${active.id}-${Date.now()}` }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "The reply could not be sent.");
+      form.reset();
+      if (message) message.textContent = "Reply queued for delivery.";
+      await openThread(active.id);
+    } catch (error) {
+      if (message) message.textContent = error instanceof Error ? error.message : "The reply could not be sent.";
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
+</script>
+<style>
+  .msg-shell{display:grid;grid-template-columns:minmax(0,20rem) minmax(0,1fr);gap:1rem}
+  .msg-list__item{display:grid;gap:.2rem;width:100%;text-align:left;padding:.7rem;border:1px solid #e8ecf1;border-radius:.6rem;background:#fafbfd;cursor:pointer;margin-bottom:.5rem}
+  .msg-list__item.is-unread{border-color:var(--dash-coral)}
+  .msg-list__item strong{font-size:.82rem}
+  .msg-list__item span{color:#536074;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .msg-messages{display:grid;gap:.5rem;max-height:26rem;overflow:auto;margin:.5rem 0 1rem}
+  .msg-bubble{padding:.6rem .8rem;border-radius:.7rem;max-width:80%}
+  .msg-bubble p{margin:0;font-size:.82rem}
+  .msg-bubble small{color:#8791a0;font-size:.66rem}
+  .msg-bubble--in{background:#eef1f4;justify-self:start}
+  .msg-bubble--out{background:#e3f5f1;justify-self:end;text-align:right}
+  @media(max-width:800px){.msg-shell{grid-template-columns:1fr}}
+</style>

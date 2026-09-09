@@ -62,6 +62,11 @@ test("#22 new business routes map to the right upstreams and honour method", () 
   assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/leads/${uuid}`), "PATCH").path, `/leads/${uuid}`);
   assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/appointments/${uuid}/status`), "POST").path, `/appointments/${uuid}/status`);
   assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/reviews/metrics"), "GET").path, "/review-requests/metrics");
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/messages/${uuid}`), "GET").path, `/messages/conversations/${uuid}`);
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/messages/send"), "POST").path, "/messages/send");
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/messages/${uuid}/read`), "POST").path, `/messages/conversations/${uuid}/read`);
+  // "send" is not a conversation id and must not hit the parameterised GET
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/messages/send"), "GET"), null);
 });
 
 test("#22 new routes reject bad shapes and wrong realm", () => {

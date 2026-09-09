@@ -45,6 +45,10 @@ export const publicAvailabilitySchema = z.object({
   to: z.string().datetime({ offset: true }),
 }).refine(value => new Date(value.to) > new Date(value.from), { message: "to must be after from", path: ["to"] });
 
+// #21 — privacy-safe distribution attribution: a fixed, non-identifying set of
+// surface labels only. No free text, no referrer/UA/IP is captured here.
+export const BOOKING_SOURCES = ["link", "qr", "profile", "social", "widget", "other"] as const;
+
 export const createPublicBookingSchema = z.object({
   serviceOfferingId: z.string().uuid(),
   assignedMemberId: z.string().uuid(),
@@ -53,6 +57,7 @@ export const createPublicBookingSchema = z.object({
   phone: z.string().trim().min(1).max(50),
   email: z.string().trim().email().max(320).optional(),
   notes: z.string().trim().max(1000).optional(),
+  source: z.enum(BOOKING_SOURCES).optional(),
 });
 export type CreatePublicBookingInput = z.infer<typeof createPublicBookingSchema>;
 

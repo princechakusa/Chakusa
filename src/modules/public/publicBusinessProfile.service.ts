@@ -67,6 +67,11 @@ export async function createPublicBooking(slug: string, input: CreatePublicBooki
   const customer = await findOrCreateCustomerByPhone(business.id, business.ownerId, input.phone, "FREE");
   await updateCustomer(business.id, business.ownerId, customer.id, { name: input.name, ...(input.email ? { email: input.email } : {}) });
   const appointment = await createAppointment(business.id, business.ownerId, { customerId: customer.id, assignedMemberId: input.assignedMemberId, serviceOfferingId: offering.id, serviceName: offering.name, startsAt: input.startsAt, endsAt, notes: input.notes, reminderMinutes: business.defaultAppointmentReminderMinutes });
+  // #21 — attribution: which distribution surface the booking came through.
+  // A fixed label only (see BOOKING_SOURCES); nothing identifying is stored.
+  const bookingChannel = `public_${input.source ?? "link"}`;
+  await prisma.appointment.update({ where: { id: appointment.id }, data: { bookingChannel } });
+  appointment.bookingChannel = bookingChannel;
   const token = generateOpaqueToken();
   await prisma.publicBookingAccess.create({ data: { id: token.id, businessId: business.id, appointmentId: appointment.id, tokenHash: token.hash, expiresAt: new Date(appointment.endsAt.getTime() + 365 * 86_400_000) } });
   await sendAppointmentConfirmation(appointment.id).catch(error => console.error("[appointments] automatic booking confirmation failed", error));

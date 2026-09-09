@@ -93,6 +93,16 @@ export const envSchema = z.object({
   // already production-required). Set only if the invoice page is served
   // from a different host. Must be https:// when set.
   PUBLIC_INVOICE_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  // #21 Booking Distribution — Universal / App Links readiness. When set, the
+  // API serves /.well-known/apple-app-site-association and
+  // /.well-known/assetlinks.json so a tapped booking link opens the native
+  // app. All optional: unset => the well-known routes 404 and links stay
+  // plain web URLs. IOS_UNIVERSAL_LINK_APP_ID is "<TeamID>.<bundleId>";
+  // ANDROID_APP_LINK_SHA256 is a comma-separated list of the app signing
+  // cert SHA-256 fingerprints (colon-separated hex). The Android package
+  // reuses GOOGLE_PLAY_PACKAGE_NAME.
+  IOS_UNIVERSAL_LINK_APP_ID: z.preprocess((value) => (value === "" ? undefined : value), z.string().regex(/^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$/).optional()),
+  ANDROID_APP_LINK_SHA256: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
   // Production Infrastructure Phase 2.2: email delivery (password reset,
   // team invitations) is a real product feature but — unlike
   // PUBLIC_REVIEW_BASE_URL above — is deliberately NOT unconditionally

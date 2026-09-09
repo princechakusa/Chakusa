@@ -5,6 +5,7 @@ import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { toE164OrNull } from "../../lib/phone.js";
 import { generatePublicSlug } from "../../lib/publicSlug.js";
+import { buildPublicBookingUrl, publicBookingBaseConfigured } from "../../lib/publicBookingLinks.js";
 import { updateBusinessSchema, createBusinessSchema } from "./business.schemas.js";
 import { completeBusinessOnboarding } from "./business.service.js";
 import { exportBusinessData } from './businessExport.service.js';
@@ -28,6 +29,29 @@ export default async function businessRoutes(fastify: FastifyInstance) {
     const business = await prisma.business.findUnique({ where: { id: request.businessId } });
     if (!business) throw ApiError.notFound("Business not found");
     reply.send(business);
+  });
+
+  // #21 Booking Distribution — the shareable customer-facing booking links for
+  // this business and each publicly bookable service. The client renders QR /
+  // share sheets from these URLs and appends ?src= per surface (see
+  // BOOKING_SOURCES); the public booking endpoint records that label.
+  fastify.get("/booking-links", { preHandler: fastify.requireBusiness }, async (request, reply) => {
+    const business = await prisma.business.findUnique({
+      where: { id: request.businessId },
+      select: { name: true, publicSlug: true, serviceOfferings: { where: { active: true, publiclyBookable: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true } } },
+    });
+    if (!business) throw ApiError.notFound("Business not found");
+    if (!business.publicSlug) throw ApiError.conflict("This business has no public page yet");
+    reply.send({
+      slug: business.publicSlug,
+      configured: publicBookingBaseConfigured(),
+      business: { name: business.name, url: buildPublicBookingUrl(business.publicSlug) },
+      services: business.serviceOfferings.map((service) => ({
+        id: service.id,
+        name: service.name,
+        url: buildPublicBookingUrl(business.publicSlug!, { serviceOfferingId: service.id }),
+      })),
+    });
   });
 
   // --- Legal acceptance (Program 2 Loop 4) ---

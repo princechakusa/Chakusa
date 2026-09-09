@@ -45,6 +45,7 @@ import subscriptionRoutes from "./modules/subscription/subscription.routes.js";
 import publicReviewRoutes from "./modules/public/public.routes.js";
 import legalRoutes from "./modules/legal/legal.routes.js";
 import publicBusinessProfileRoutes from "./modules/public/publicBusinessProfile.routes.js";
+import wellKnownRoutes from "./modules/wellKnown/wellKnown.routes.js";
 import publicQuoteRoutes from "./modules/public/publicQuotes.routes.js";
 import publicInvoiceRoutes from "./modules/public/publicInvoices.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
@@ -284,6 +285,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // No fastify.authenticate/requireBusiness hooks here — see
   // public.routes.ts's top-level doc comment.
   await app.register(publicReviewRoutes, { prefix: "/public/reviews" });
+  // #21 — Universal / App Links well-known docs at the API root (no prefix).
+  await app.register(wellKnownRoutes);
   await app.register(legalRoutes, { prefix: "/legal" });
   // Same unauthenticated, rate-limited discipline — see
   // publicBusinessProfile.routes.ts's top-level doc comment.

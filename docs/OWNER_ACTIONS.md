@@ -130,3 +130,32 @@ configuration. Adapters are already in the codebase.
 ## OA-4 — `docs/CHAKUSA_ENGINEERING_SPEC.md` referenced by CLAUDE.md
 
 **Status:** N/A — present in repo (`docs/CHAKUSA_ENGINEERING_SPEC.md`). No owner action.
+
+---
+
+## OA-5 — Universal / App Link identifiers for booking-link deep linking (#21)
+
+**Status:** OPEN (not blocking; deep links stay plain web URLs until set)
+**Blocks:** nothing in development. A tapped `/book/<slug>` (or `/r/<token>`) link
+opening the **native app** instead of the browser requires these env values, after
+which the API automatically serves the well-known documents (routes already built,
+they 404 until configured):
+
+1. **`IOS_UNIVERSAL_LINK_APP_ID`** = `<AppleTeamID>.<bundleId>` (e.g.
+   `ABCDE12345.app.chakusa`). Also add the `applinks:<customer-web-host>` Associated
+   Domain to the iOS app entitlements at build time.
+2. **`GOOGLE_PLAY_PACKAGE_NAME`** — the Android package (already an env for billing;
+   reused here).
+3. **`ANDROID_APP_LINK_SHA256`** — comma-separated SHA-256 fingerprints of the app
+   signing cert(s) (Play Console → App integrity → App signing). Add the
+   `autoVerify` intent filter for the customer-web host to the Android manifest at
+   build time.
+
+`PUBLIC_REVIEW_BASE_URL` (already production-required) is reused as the booking-link
+origin — no new base-URL env. The well-known docs must be served from that exact
+host, so if the customer web app is on a different origin than the API, that origin
+must proxy `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json`
+to the API (or serve equivalents).
+
+No store console action is required to *set these* — they are read from
+Play Console / Apple Developer and placed in the deployment environment.

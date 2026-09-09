@@ -3,7 +3,7 @@
 **Status:** Governing implementation roadmap  
 **Repository:** Chakusa  
 **Execution mode:** Autonomous, stage-gated, production-first  
-**Last roadmap position:** #19 Marketplace & Discovery Completion complete (audit + gap closure: `acceptsOnlineBooking` signal + `?bookableOnly` filter, verified-then-recency default ranking, discovery→booking E2E + public-data-boundary + N+1 performance tests). #18 Omnichannel done. Deployment checkpoint done locally; production migration owner-blocked (OA-1). #20 Reputation & Review Growth is next.
+**Last roadmap position:** #20 Reputation & Review Growth complete (automatic post-completion review request — eligibility/consent/window/idempotency, never sentiment-gated; business reply workflow on feedback; reputation metrics endpoint). #18 Omnichannel + #19 Marketplace done. Deployment checkpoint done locally; production migration backlog is 10, owner-blocked (OA-1). #21 Booking Distribution is next.
 
 ---
 

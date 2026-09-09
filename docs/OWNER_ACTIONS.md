@@ -11,10 +11,14 @@ Status legend: **OPEN** (blocking) · **DONE** · **N/A**
 ## OA-1 — Production migration deployment (migration backlog, checkpoint before #18)
 
 **Status:** OPEN
-**Blocks:** deploying the pending additive migrations `20260907204745` …
-`20260909140000` to the Render production database. As of #18 the backlog is **9**
-(the 8 audited in the checkpoint plus `20260909140000_conversation_last_read`, an
-additive nullable `conversations.last_read_at` column — same safety class). Does
+**Blocks:** deploying the pending additive migrations `20260907204745` … `20260909160000`
+to the Render production database. As of #20 the backlog is **10**
+(the 8 audited in the checkpoint, plus `20260909140000_conversation_last_read` — an
+additive nullable `conversations.last_read_at` column — plus
+`20260909160000_review_growth` — additive columns on `businesses` / `appointments` /
+`review_requests` / `feedback`, one unique index on an all-NULL new column, one FK,
+and two `ALTER TYPE "ActivityEventType" ADD VALUE` — same safety class as the
+existing `MessageType` enum migrations, transaction-safe on PG12+). Does
 **not** block continued feature development (#18+ is independent code + additive
 migrations that stack on this chain locally).
 **Classification from the checkpoint audit:** `B — SAFE WITH SPECIFIC PRECONDITIONS`.
@@ -55,7 +59,8 @@ deploy" only because these external checks cannot be performed from the dev envi
    `prisma migrate deploy` **before** swapping the running service to the new code
    (expand-first). There is no `render.yaml` in the repo, so this is dashboard config.
    If it does not, run migrations manually first per step 4. "New code + old schema"
-   fails hard (new backend reads the 6 new tables / 8 new columns / 2 new enum values).
+   fails hard (the new backend reads the new tables / columns / enum values these
+   10 migrations add).
 
 4. **Authorization + window.** Nominate who runs the deploy and a low-traffic window.
 
@@ -66,7 +71,7 @@ npm run build && npm run typecheck && npm run lint && npx prisma validate && npm
 # 1. backup + rollback point   (step 2 above)
 # 2. migrate production FIRST (UNPOOLED url):
 DATABASE_URL="$DIRECT_URL" npx prisma migrate deploy
-DATABASE_URL="$DIRECT_URL" npx prisma migrate status         # "up to date", +9 rows
+DATABASE_URL="$DIRECT_URL" npx prisma migrate status         # "up to date", +10 rows
 # 3. deploy API (new build + full env)
 # 4. deploy worker; wait for GET /health/worker => ok
 # 5. run the post-deploy checklist in docs/progress/2026-09-09-deployment-checkpoint.md

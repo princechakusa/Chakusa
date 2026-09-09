@@ -12,3 +12,9 @@ export const updateFeedbackStatusSchema = z.object({
   status: z.enum(["new", "acknowledged", "resolved"]),
 });
 export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;
+
+export const respondToFeedbackSchema = z.object({
+  // Empty string clears a previous reply.
+  response: z.string().trim().max(2000),
+});
+export type RespondToFeedbackInput = z.infer<typeof respondToFeedbackSchema>;

@@ -64,6 +64,9 @@ export const updateBusinessSchema = z.object({
   messagingConsentConfirmed: z.boolean().optional(),
   paymentRemindersEnabled: z.boolean().optional(),
   noShowFollowUpEnabled: z.boolean().optional(),
+  reviewRequestAutoEnabled: z.boolean().optional(),
+  reviewRequestDelayHours: z.number().int().min(1).max(336).optional(),
+  reviewRequestMinIntervalDays: z.number().int().min(1).max(365).optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

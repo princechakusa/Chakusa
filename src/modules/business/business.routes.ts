@@ -130,6 +130,9 @@ export default async function businessRoutes(fastify: FastifyInstance) {
         messagingConsentConfirmedAt: input.messagingConsentConfirmed === undefined ? undefined : input.messagingConsentConfirmed ? new Date() : null,
         paymentRemindersEnabled: input.paymentRemindersEnabled,
         noShowFollowUpEnabled: input.noShowFollowUpEnabled,
+        reviewRequestAutoEnabled: input.reviewRequestAutoEnabled,
+        reviewRequestDelayHours: input.reviewRequestDelayHours,
+        reviewRequestMinIntervalDays: input.reviewRequestMinIntervalDays,
       },
     });
 

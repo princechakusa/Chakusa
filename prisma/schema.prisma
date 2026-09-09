@@ -408,6 +408,8 @@ enum ActivityEventType {
   REVIEW_RECEIVED
   FEEDBACK_RECEIVED
   FEEDBACK_STATUS_UPDATED
+  FEEDBACK_RESPONDED
+  FEEDBACK_RESPONSE_CLEARED
   REMINDER_CREATED
   REMINDER_SENT
   REMINDER_COMPLETED
@@ -975,6 +977,13 @@ model Business {
   // #17 — when true, a single polite follow-up SMS is sent after an
   // appointment is marked NO_SHOW. Off by default; no financial consequence.
   noShowFollowUpEnabled             Boolean                @default(false) @map("no_show_follow_up_enabled")
+  // #20 — automatic review request after an eligible completed appointment.
+  // Off by default; when on, one request per completed appointment, no more
+  // than one per customer per `reviewRequestMinIntervalDays`. Never sentiment-
+  // gated. `reviewRequestDelayHours` is measured from the appointment end.
+  reviewRequestAutoEnabled          Boolean                @default(false) @map("review_request_auto_enabled")
+  reviewRequestDelayHours           Int                    @default(24) @map("review_request_delay_hours")
+  reviewRequestMinIntervalDays      Int                    @default(45) @map("review_request_min_interval_days")
   createdAt                         DateTime               @default(now()) @map("created_at")
   updatedAt                         DateTime               @updatedAt @map("updated_at")
 
@@ -1269,6 +1278,10 @@ model Appointment {
   // #17 — set once when the no-show follow-up is claimed for sending; the
   // atomic claim on this column is the idempotency boundary.
   noShowFollowUpSentAt           DateTime?         @map("no_show_follow_up_sent_at")
+  // #20 — set once when the automatic post-completion review request is
+  // claimed for sending; the atomic claim on this column, plus the unique
+  // ReviewRequest.appointmentId, is the idempotency boundary.
+  reviewRequestSentAt            DateTime?         @map("review_request_sent_at")
   // Operations #10 — On My Way / Arrival. `arrivalStateByMemberId` is plain
   // provenance (no relation), mirroring `createdByUserId`.
   arrivalState                   AppointmentArrivalState? @map("arrival_state")
@@ -1298,6 +1311,7 @@ model Appointment {
   mileageTrips         MileageTrip[]
   inventoryMovements   InventoryMovement[]
   locationShare        AppointmentLocationShare?
+  reviewRequest        ReviewRequest?
 
   @@index([businessId, startsAt])
   @@index([businessId, status, startsAt])
@@ -1758,6 +1772,9 @@ model ReviewRequest {
   id                 String              @id @default(uuid())
   businessId         String              @map("business_id")
   customerId         String?             @map("customer_id")
+  // #20 — set when this request was raised automatically by the
+  // post-completion sweep. Unique: at most one auto request per appointment.
+  appointmentId      String?             @unique @map("appointment_id")
   serviceName        String?             @map("service_name")
   message            String?
   status             ReviewRequestStatus @default(pending)
@@ -1795,6 +1812,7 @@ model ReviewRequest {
 
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment    Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   feedback       Feedback[]
   automationRuns AutomationRun[]
 
@@ -1814,6 +1832,11 @@ model Feedback {
   comment         String?
   sentiment       FeedbackSentiment?
   status          FeedbackStatus     @default(new)
+  // #20 — the business's public-facing reply to this review. Shown on the
+  // marketplace profile alongside the review. Never sentiment-gated.
+  response          String?          @map("response")
+  respondedAt       DateTime?        @map("responded_at")
+  respondedByUserId String?          @map("responded_by_user_id")
   createdAt       DateTime           @default(now()) @map("created_at")
 
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)

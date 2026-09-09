@@ -4,7 +4,7 @@ import { recordActivity } from "../../lib/activity.js";
 import { notifyFeedbackReceived } from "../../lib/notifications/notificationTriggers.js";
 import { markReviewRequestFeedbackReceived } from "../reviews/reviews.service.js";
 import { accrueForReview } from "../../lib/loyalty/accrual.js";
-import type { CreateFeedbackInput, UpdateFeedbackStatusInput } from "./feedback.schemas.js";
+import type { CreateFeedbackInput, RespondToFeedbackInput, UpdateFeedbackStatusInput } from "./feedback.schemas.js";
 import type { FeedbackSentiment, Prisma } from "@prisma/client";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 
@@ -105,6 +105,43 @@ export async function createFeedback(
   // PROGRAM 2 LOOP 5: a submitted review can earn loyalty points. Best-effort
   // and idempotent per feedback row.
   await accrueForReview(feedback.id).catch(() => undefined);
+
+  return feedback;
+}
+
+/**
+ * #20 — the business's public-facing reply to a review. Not sentiment-gated:
+ * any feedback can be responded to. An empty string clears a prior reply.
+ * The response is surfaced on the marketplace profile alongside the review.
+ */
+export async function respondToFeedback(
+  businessId: string,
+  actorId: string,
+  feedbackId: string,
+  input: RespondToFeedbackInput,
+) {
+  const existing = await prisma.feedback.findFirst({ where: { id: feedbackId, businessId } });
+  if (!existing) {
+    throw ApiError.notFound("Feedback not found");
+  }
+
+  const cleared = input.response.length === 0;
+  const feedback = await prisma.feedback.update({
+    where: { id: feedbackId },
+    data: {
+      response: cleared ? null : input.response,
+      respondedAt: cleared ? null : new Date(),
+      respondedByUserId: cleared ? null : actorId,
+    },
+  });
+
+  await recordActivity({
+    businessId,
+    actorId,
+    eventType: cleared ? "FEEDBACK_RESPONSE_CLEARED" : "FEEDBACK_RESPONDED",
+    entityType: "feedback",
+    entityId: feedback.id,
+  });
 
   return feedback;
 }

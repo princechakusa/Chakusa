@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { createFeedbackSchema, updateFeedbackStatusSchema } from "./feedback.schemas.js";
-import { listFeedback, createFeedback, updateFeedbackStatus } from "./feedback.service.js";
+import { createFeedbackSchema, respondToFeedbackSchema, updateFeedbackStatusSchema } from "./feedback.schemas.js";
+import { listFeedback, createFeedback, respondToFeedback, updateFeedbackStatus } from "./feedback.service.js";
+import { requireCapability } from "../../lib/authorization.js";
 
 export default async function feedbackRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -24,6 +25,14 @@ export default async function feedbackRoutes(fastify: FastifyInstance) {
       request.params.id,
       input,
     );
+    reply.send(feedback);
+  });
+
+  // #20 — the business's public reply to a review. Not sentiment-gated.
+  fastify.post<{ Params: { id: string } }>("/:id/respond", async (request, reply) => {
+    requireCapability(request, "reviews.manage");
+    const input = respondToFeedbackSchema.parse(request.body);
+    const feedback = await respondToFeedback(request.businessId!, request.user.userId, request.params.id, input);
     reply.send(feedback);
   });
 }

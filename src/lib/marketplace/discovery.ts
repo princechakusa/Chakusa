@@ -233,7 +233,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
 
   const [ratingRow, recentReviews] = await Promise.all([
     prisma.feedback.aggregate({ where: { businessId: business.id }, _avg: { rating: true }, _count: { _all: true } }),
-    prisma.feedback.findMany({ where: { businessId: business.id, comment: { not: null } }, orderBy: { createdAt: "desc" }, take: 5, select: { rating: true, comment: true, createdAt: true, sentiment: true } }),
+    prisma.feedback.findMany({ where: { businessId: business.id, comment: { not: null } }, orderBy: { createdAt: "desc" }, take: 5, select: { rating: true, comment: true, createdAt: true, sentiment: true, response: true, respondedAt: true } }),
   ]);
 
   let favourite = false;
@@ -297,7 +297,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     reviewsSummary: {
       averageRating: ratingRow._avg.rating ? Number(ratingRow._avg.rating.toFixed(2)) : null,
       totalReviews: ratingRow._count._all,
-      recent: recentReviews.map((review) => ({ rating: review.rating, comment: review.comment, sentiment: review.sentiment, createdAt: review.createdAt })),
+      recent: recentReviews.map((review) => ({ rating: review.rating, comment: review.comment, sentiment: review.sentiment, createdAt: review.createdAt, response: review.response, respondedAt: review.respondedAt })),
     },
     viewer: { favourite, following },
     loyalty,

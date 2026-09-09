@@ -15,6 +15,7 @@ import {
   markReviewRequestReviewed,
   markReviewRequestFeedbackReceived,
 } from "./reviews.service.js";
+import { reviewMetrics } from "./reviewAutomation.js";
 import { requireCapability } from "../../lib/authorization.js";
 
 export default async function reviewRequestRoutes(fastify: FastifyInstance) {
@@ -28,6 +29,11 @@ export default async function reviewRequestRoutes(fastify: FastifyInstance) {
 
   fastify.get("/", async (request, reply) => {
     reply.send(await listReviewRequests(request.businessId!));
+  });
+
+  // #20 — reputation funnel: request→sent→open→convert, rating average, reply rate.
+  fastify.get("/metrics", async (request, reply) => {
+    reply.send(await reviewMetrics(request.businessId!));
   });
 
   fastify.post("/", async (request, reply) => {

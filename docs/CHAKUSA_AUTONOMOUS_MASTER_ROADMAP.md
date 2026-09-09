@@ -3,7 +3,7 @@
 **Status:** Governing implementation roadmap  
 **Repository:** Chakusa  
 **Execution mode:** Autonomous, stage-gated, production-first  
-**Last roadmap position:** #18 Omnichannel Communications complete (audit + gap closure: inbound idempotency, durable terminal-outcome dispatch, server-side unread). Deployment checkpoint done locally; production migration owner-blocked (OA-1). #19 Marketplace & Discovery Completion is next.
+**Last roadmap position:** #19 Marketplace & Discovery Completion complete (audit + gap closure: `acceptsOnlineBooking` signal + `?bookableOnly` filter, verified-then-recency default ranking, discovery→booking E2E + public-data-boundary + N+1 performance tests). #18 Omnichannel done. Deployment checkpoint done locally; production migration owner-blocked (OA-1). #20 Reputation & Review Growth is next.
 
 ---
 
@@ -504,7 +504,8 @@ Handle opportunistically when touching the relevant subsystem; do not derail maj
 - Quote VIEWED event only if race-safe/idempotent first-view semantics are implemented.
 - Refactor oversized quote/invoice services if complexity warrants it.
 - Distinguish corrupt business-hours configuration from never-configured/default state rather than silently inventing availability.
-- No-show outbound follow-up should be reviewed for durable outbox/event dispatch instead of only post-request best-effort execution.
+- No-show outbound follow-up should be reviewed for durable outbox/event dispatch instead of only post-request best-effort execution. — DONE (#18): moved to the `sendDueCustomerAppointmentMessages` worker sweep with an atomic claim; the route no longer fires it.
+- Marketplace category browse resolves the industry→category mapping partly in memory (not SQL-expressible), so a page for a very sparse category can come back short even though more matches exist beyond the fetch window. #19 widened the over-fetch to mitigate; a faithful fix needs either denormalising the resolved category onto the listing row or a paginate-until-full loop.
 - Commissions remain operational estimates, not payroll/tax/payout.
 - Inventory movement history remains immutable.
 - Live Location remains ephemeral and appointment-scoped.

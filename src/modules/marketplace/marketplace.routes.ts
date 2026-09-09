@@ -23,6 +23,7 @@ const discoverQuery = z.object({
   q: z.string().trim().max(200).optional(),
   city: z.string().trim().max(120).optional(),
   verifiedOnly: z.coerce.boolean().optional(),
+  bookableOnly: z.coerce.boolean().optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   radiusKm: z.coerce.number().min(1).max(200).optional(),
@@ -36,12 +37,12 @@ export default async function marketplaceRoutes(fastify: FastifyInstance) {
   // --- Discovery ---
   fastify.get("/", async (request) => {
     const query = discoverQuery.parse(request.query);
-    return discoverBusinesses({ mode: query.mode ?? "browse", categorySlug: query.category, query: query.q, city: query.city, verifiedOnly: query.verifiedOnly, limit: query.limit, cursor: query.cursor });
+    return discoverBusinesses({ mode: query.mode ?? "browse", categorySlug: query.category, query: query.q, city: query.city, verifiedOnly: query.verifiedOnly, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
   });
 
   fastify.get("/nearby", async (request) => {
     const query = discoverQuery.parse(request.query);
-    return discoverBusinesses({ mode: "nearby", lat: query.lat, lng: query.lng, radiusKm: query.radiusKm, categorySlug: query.category, query: query.q, limit: query.limit, cursor: query.cursor });
+    return discoverBusinesses({ mode: "nearby", lat: query.lat, lng: query.lng, radiusKm: query.radiusKm, categorySlug: query.category, query: query.q, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
   });
 
   fastify.get("/featured", async (request) => discoverBusinesses({ mode: "featured", limit: discoverQuery.parse(request.query).limit }));
@@ -54,13 +55,13 @@ export default async function marketplaceRoutes(fastify: FastifyInstance) {
   fastify.get("/categories/:slug", async (request) => {
     const { slug } = z.object({ slug: z.string().trim().min(1).max(80) }).parse(request.params);
     const query = discoverQuery.parse(request.query);
-    return discoverBusinesses({ mode: query.mode ?? "browse", categorySlug: slug, query: query.q, limit: query.limit, cursor: query.cursor });
+    return discoverBusinesses({ mode: query.mode ?? "browse", categorySlug: slug, query: query.q, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
   });
 
   // --- Search ---
   fastify.get("/search", async (request) => {
     const query = discoverQuery.parse(request.query);
-    const result = await discoverBusinesses({ mode: query.mode ?? "browse", query: query.q, categorySlug: query.category, city: query.city, verifiedOnly: query.verifiedOnly, limit: query.limit, cursor: query.cursor });
+    const result = await discoverBusinesses({ mode: query.mode ?? "browse", query: query.q, categorySlug: query.category, city: query.city, verifiedOnly: query.verifiedOnly, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
     if (query.q) await recordSearch(request.customer!.profileId, query.q, result.items.length).catch(() => undefined);
     return result;
   });

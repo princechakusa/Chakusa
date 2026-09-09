@@ -28,10 +28,20 @@ async function ratingSummaries(businessIds: string[]) {
   return new Map(rows.map((row) => [row.businessId, { average: row._avg.rating ? Number(row._avg.rating.toFixed(2)) : null, count: row._count._all }]));
 }
 
+/** Businesses (from the given set) that have at least one active, publicly bookable service. */
+async function bookableBusinessIds(businessIds: string[]) {
+  if (!businessIds.length) return new Set<string>();
+  const rows = await prisma.serviceOffering.groupBy({
+    by: ["businessId"],
+    where: { businessId: { in: businessIds }, active: true, publiclyBookable: true },
+  });
+  return new Set(rows.map((row) => row.businessId));
+}
+
 function serializeCard(
   business: BusinessWithListing,
   rating: { average: number | null; count: number } | undefined,
-  badges?: { loyalty: boolean; membership: boolean },
+  badges?: { loyalty: boolean; membership: boolean; onlineBooking?: boolean },
 ) {
   const listing = business.marketplaceListing;
   return {
@@ -48,6 +58,10 @@ function serializeCard(
     featured: Boolean(listing?.featured && (!listing.featuredUntil || listing.featuredUntil > new Date())),
     loyaltyBadge: badges?.loyalty ?? false,
     membershipBadge: badges?.membership ?? false,
+    // #19: real signal, backed by an actual count of active publiclyBookable
+    // services — a discovery card only advertises an online-booking CTA when
+    // the business can genuinely be booked.
+    acceptsOnlineBooking: badges?.onlineBooking ?? false,
     rating: rating?.average ?? null,
     reviewCount: rating?.count ?? 0,
     viewCount: listing?.viewCount ?? 0,
@@ -62,6 +76,7 @@ interface DiscoverInput {
   query?: string;
   city?: string;
   verifiedOnly?: boolean;
+  bookableOnly?: boolean;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -76,6 +91,7 @@ function baseWhere(input: DiscoverInput): Prisma.BusinessWhereInput {
     OR: [{ marketplaceListing: null }, { marketplaceListing: { listed: true, discoverable: true } }],
   };
   if (input.verifiedOnly || input.mode === "verified") where.verifiedAt = { not: null };
+  if (input.bookableOnly) where.serviceOfferings = { some: { active: true, publiclyBookable: true } };
   if (input.query) {
     where.AND = [
       {
@@ -125,7 +141,16 @@ function orderFor(mode: DiscoveryMode | undefined): Prisma.BusinessOrderByWithRe
     case "verified":
       return [{ verifiedAt: "desc" }];
     default:
-      return [{ name: "asc" }];
+      // #19: default browse ranking — verified (trusted) businesses first, then
+      // most recently onboarded, with name as the stable tiebreaker for cursor
+      // pagination. Real indexed columns only; no pay-to-rank signal.
+      // Engagement-weighted ordering is the dedicated `popular` mode (which
+      // requires a listing row, so its counters are never NULL).
+      return [
+        { verifiedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+        { name: "asc" },
+      ];
   }
 }
 
@@ -144,11 +169,16 @@ export async function discoverBusinesses(input: DiscoverInput) {
     delete where.OR;
   }
 
+  // A category filter is partly resolved in memory (the industry→category
+  // mapping is not expressible in SQL), so over-fetch to reduce the chance a
+  // page comes back short. The residual under-fetch on very sparse categories
+  // is tracked in the roadmap's deferred-cleanup register.
+  const fetchWindow = input.categorySlug ? (limit + 1) * 4 : limit + 1;
   const rows = await prisma.business.findMany({
     where,
     include: CARD_INCLUDE,
     orderBy: orderFor(input.mode),
-    take: limit + 1,
+    take: fetchWindow,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
   });
 
@@ -158,15 +188,16 @@ export async function discoverBusinesses(input: DiscoverInput) {
   }
   const page = filtered.slice(0, limit);
   const pageIds = page.map((business) => business.id);
-  const [ratings, loyaltyPrograms, membershipPlans] = await Promise.all([
+  const [ratings, loyaltyPrograms, membershipPlans, bookableSet] = await Promise.all([
     ratingSummaries(pageIds),
     pageIds.length ? prisma.loyaltyProgram.findMany({ where: { businessId: { in: pageIds }, active: true }, select: { businessId: true } }) : [],
     pageIds.length ? prisma.membershipPlan.findMany({ where: { businessId: { in: pageIds }, active: true }, select: { businessId: true }, distinct: ["businessId"] }) : [],
+    bookableBusinessIds(pageIds),
   ]);
   const loyaltySet = new Set(loyaltyPrograms.map((row) => row.businessId));
   const membershipSet = new Set(membershipPlans.map((row) => row.businessId));
   return {
-    items: page.map((business) => serializeCard(business, ratings.get(business.id), { loyalty: loyaltySet.has(business.id), membership: membershipSet.has(business.id) })),
+    items: page.map((business) => serializeCard(business, ratings.get(business.id), { loyalty: loyaltySet.has(business.id), membership: membershipSet.has(business.id), onlineBooking: bookableSet.has(business.id) })),
     nextCursor: filtered.length > limit ? page[page.length - 1]?.id ?? null : null,
   };
 }
@@ -250,6 +281,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     openingHours: (business.workingHours as unknown) ?? null,
     photos: (listing?.photos as string[] | null) ?? [],
     socialLinks: (listing?.socialLinks as Record<string, string> | null) ?? {},
+    acceptsOnlineBooking: business.serviceOfferings.some((service) => service.publiclyBookable),
     services: business.serviceOfferings.map((service) => ({
       id: service.id,
       name: service.name,
@@ -258,7 +290,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
       durationMinutes: service.durationMinutes,
       price: service.price ? Number(service.price) : null,
       depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
-      bookable: service.publiclyBookable, // informational only — booking is a later loop
+      bookable: service.publiclyBookable, // drives the per-service online-booking CTA
     })),
     team: business.members.map((member) => ({ name: member.user.fullName, role: member.role })),
     promotions: business.marketplacePromotions.map((promotion) => ({ id: promotion.id, title: promotion.title, description: promotion.description, badge: promotion.badge, endsAt: promotion.endsAt })),

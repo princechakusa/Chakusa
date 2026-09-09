@@ -111,6 +111,43 @@ describe("Marketplace & Business Discovery (Program 2, Loop 2)", () => {
       expect(slugs).toContain(near.slug);
       expect(slugs).not.toContain(far.slug);
     });
+
+    it("#19: acceptsOnlineBooking reflects real bookable services and ?bookableOnly filters", async () => {
+      const bookable = await registerBusiness(app, "Booking Barber", "barber");
+      const notBookable = await registerBusiness(app, "Walk-in Barber", "barber");
+      const inactiveOnly = await registerBusiness(app, "Dormant Barber", "barber");
+      await prisma.serviceOffering.create({ data: { businessId: bookable.id, name: "Fade", durationMinutes: 30, active: true, publiclyBookable: true } });
+      await prisma.serviceOffering.create({ data: { businessId: notBookable.id, name: "Private Fade", durationMinutes: 30, active: true, publiclyBookable: false } });
+      await prisma.serviceOffering.create({ data: { businessId: inactiveOnly.id, name: "Old Fade", durationMinutes: 30, active: false, publiclyBookable: true } });
+      const customer = await registerCustomer(app);
+
+      const all = await app.inject({ method: "GET", url: "/customer/marketplace", headers: auth(customer.token) }).then((r) => r.json());
+      const card = (slug: string) => all.items.find((i: { slug: string }) => i.slug === slug);
+      expect(card(bookable.slug).acceptsOnlineBooking).toBe(true);
+      expect(card(notBookable.slug).acceptsOnlineBooking).toBe(false);
+      expect(card(inactiveOnly.slug).acceptsOnlineBooking).toBe(false);
+
+      const onlyBookable = await app.inject({ method: "GET", url: "/customer/marketplace?bookableOnly=true", headers: auth(customer.token) }).then((r) => r.json());
+      const bookableSlugs = onlyBookable.items.map((i: { slug: string }) => i.slug);
+      expect(bookableSlugs).toContain(bookable.slug);
+      expect(bookableSlugs).not.toContain(notBookable.slug);
+      expect(bookableSlugs).not.toContain(inactiveOnly.slug);
+    });
+
+    it("#19: default browse ranking puts verified businesses first, then newest", async () => {
+      const older = await registerBusiness(app, "Zzz Older Salon", "hair salon"); // alphabetically last, registered first
+      const newer = await registerBusiness(app, "Aaa Newer Salon", "hair salon"); // alphabetically first, registered second
+      const verified = await registerBusiness(app, "Mmm Trusted Salon", "hair salon");
+      await prisma.business.update({ where: { id: verified.id }, data: { verifiedAt: new Date() } });
+      const customer = await registerCustomer(app);
+
+      const res = await app.inject({ method: "GET", url: "/customer/marketplace", headers: auth(customer.token) }).then((r) => r.json());
+      const order = res.items.map((i: { slug: string }) => i.slug);
+      // verified first despite being alphabetically middle and registered last
+      expect(order[0]).toBe(verified.slug);
+      // then the more recently onboarded business, not the alphabetical order
+      expect(order.indexOf(newer.slug)).toBeLessThan(order.indexOf(older.slug));
+    });
   });
 
   describe("categories", () => {
@@ -196,6 +233,21 @@ describe("Marketplace & Business Discovery (Program 2, Loop 2)", () => {
       expect(profile).not.toHaveProperty("slots");
       // a view was recorded
       expect(await prisma.customerBusinessView.count({ where: { customerProfileId: customer.profileId } })).toBe(1);
+    });
+
+    it("#19: profile exposes acceptsOnlineBooking backed by a real bookable service", async () => {
+      const withBooking = await registerBusiness(app, "Bookable Palace", "spa");
+      const withoutBooking = await registerBusiness(app, "Enquiry Palace", "spa");
+      await prisma.serviceOffering.create({ data: { businessId: withBooking.id, name: "Facial", durationMinutes: 45, active: true, publiclyBookable: true } });
+      await prisma.serviceOffering.create({ data: { businessId: withoutBooking.id, name: "Consultation", durationMinutes: 45, active: true, publiclyBookable: false } });
+      const customer = await registerCustomer(app);
+
+      const a = await app.inject({ method: "GET", url: `/customer/marketplace/businesses/${withBooking.slug}`, headers: auth(customer.token) }).then((r) => r.json());
+      const b = await app.inject({ method: "GET", url: `/customer/marketplace/businesses/${withoutBooking.slug}`, headers: auth(customer.token) }).then((r) => r.json());
+      expect(a.acceptsOnlineBooking).toBe(true);
+      expect(a.services[0].bookable).toBe(true);
+      expect(b.acceptsOnlineBooking).toBe(false);
+      expect(b.services[0].bookable).toBe(false);
     });
 
     it("404s for a non-discoverable business", async () => {

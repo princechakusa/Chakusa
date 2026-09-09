@@ -1,4 +1,118 @@
 ---
-import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
 ---
-<DashboardLayout title="Reviews | Chakusa" description="Manage review requests securely." realm="business"><DashboardNav slot="sidebar" realm="business" active="reviews"/><DashboardCollection realm="business" eyebrow="Reputation" title="Reviews" intro="Prepare honest review requests and keep private feedback visible." endpoint="/v1/business/reviews" kind="reviews" createLabel="Create request" manageCapability="reviews.manage" fields={[{name:"serviceName",label:"Service"},{name:"message",label:"Message",type:"textarea",placeholder:"Thank your customer and ask for an honest review."}]}/></DashboardLayout>
+<DashboardLayout title="Reviews | Chakusa" description="Manage review requests and reply to feedback." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="reviews" />
+  <DashboardCollection
+    realm="business"
+    eyebrow="Reputation"
+    title="Reviews"
+    intro="Prepare honest review requests and keep private feedback visible."
+    endpoint="/v1/business/reviews"
+    kind="reviews"
+    createLabel="Create request"
+    manageCapability="reviews.manage"
+    fields={[
+      { name: "serviceName", label: "Service" },
+      { name: "message", label: "Message", type: "textarea", placeholder: "Thank your customer and ask for an honest review." },
+    ]}
+  />
+  <section class="dashboard-panel" data-feedback-panel hidden>
+    <div class="dashboard-section-heading">
+      <div><h2>Customer feedback</h2><p data-feedback-count>Loading…</p></div>
+      <button type="button" data-feedback-refresh>Refresh</button>
+    </div>
+    <div class="dashboard-records" data-feedback-records></div>
+  </section>
+</DashboardLayout>
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  const gateway = "https://auth.chakusarecovery.com";
+  const panel = document.querySelector<HTMLElement>("[data-feedback-panel]");
+  const records = document.querySelector<HTMLElement>("[data-feedback-records]");
+  const count = document.querySelector<HTMLElement>("[data-feedback-count]");
+  let canRespond = false;
+
+  const stars = (n: unknown) => "★".repeat(Math.max(0, Math.min(5, Number(n) || 0))).padEnd(5, "☆");
+
+  const respond = async (id: string, value: string, button: HTMLButtonElement, input: HTMLInputElement) => {
+    button.disabled = true;
+    const original = button.textContent;
+    button.textContent = "Saving…";
+    try {
+      const response = await fetch(`${gateway}/v1/business/feedback/${id}/respond`, {
+        method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ response: value }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "The reply could not be saved.");
+      button.textContent = value ? "Saved" : "Cleared";
+      input.value = payload.response ?? "";
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = original;
+      button.title = error instanceof Error ? error.message : "Failed";
+    }
+  };
+
+  const render = (items: any[]) => {
+    if (!records) return;
+    records.replaceChildren();
+    if (count) count.textContent = `${items.length} entr${items.length === 1 ? "y" : "ies"}`;
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "dashboard-empty";
+      empty.textContent = "No customer feedback yet.";
+      records.append(empty);
+      return;
+    }
+    for (const item of items) {
+      const article = document.createElement("article");
+      article.className = "dashboard-record";
+      const mark = document.createElement("span");
+      mark.className = "dashboard-record__mark";
+      mark.textContent = String(item.rating ?? "?");
+      const copy = document.createElement("div");
+      const strong = document.createElement("strong");
+      strong.textContent = `${stars(item.rating)}  ${item.customer?.name ?? "Customer"}`;
+      const meta = document.createElement("span");
+      meta.textContent = item.comment ?? "No comment left";
+      const small = document.createElement("small");
+      small.textContent = item.respondedAt ? `Replied ${new Date(item.respondedAt).toLocaleDateString()}` : "No reply yet";
+      copy.append(strong, meta, small);
+      article.append(mark, copy);
+      if (canRespond) {
+        const bar = document.createElement("div");
+        bar.className = "dashboard-record__actions";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 2000;
+        input.placeholder = "Write a public reply (leave blank to clear)";
+        input.value = item.response ?? "";
+        input.style.flex = "1 1 14rem";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = item.response ? "Update reply" : "Reply";
+        button.addEventListener("click", () => void respond(item.id, input.value.trim(), button, input));
+        bar.append(input, button);
+        article.append(bar);
+      }
+      records.append(article);
+    }
+  };
+
+  const load = async () => {
+    const [feedbackRes, identity] = await Promise.all([
+      fetch(`${gateway}/v1/business/feedback`, { credentials: "include" }),
+      fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    if (!feedbackRes.ok) return; // stay hidden; the review-requests collection above still renders
+    canRespond = can(identity?.account?.role ?? null, "reviews.manage");
+    const payload = await feedbackRes.json().catch(() => []);
+    render(Array.isArray(payload) ? payload : []);
+    if (panel) panel.hidden = false;
+  };
+  document.querySelector<HTMLElement>("[data-feedback-refresh]")?.addEventListener("click", () => void load());
+  void load();
+</script>

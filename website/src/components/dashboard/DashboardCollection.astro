@@ -37,7 +37,34 @@ const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], 
     if(kind==="reports")return [item.title||item.periodLabel||"Weekly report",item.status||"Business summary",item.createdAt?date(item.createdAt):""];
     return [item.name||item.title||item.email||"Workspace record",item.role||item.status||"Active",item.createdAt?date(item.createdAt):""];
   };
-  const render=(payload:any)=>{if(!records||!moduleRoot)return;records.replaceChildren();const kind=moduleRoot.dataset.kind||"records";const items=itemsFrom(payload);if(count)count.textContent=`${items.length} record${items.length===1?"":"s"}`;if(!items.length){const empty=document.createElement("div");empty.className="dashboard-empty";empty.textContent=`No ${kind} yet. New activity will appear here.`;records.append(empty);return;}for(const item of items){const values=details(item,kind);const article=document.createElement("article");article.className="dashboard-record";const mark=document.createElement("span");mark.className="dashboard-record__mark";mark.textContent=values[0].slice(0,1).toUpperCase();const copy=document.createElement("div");const strong=document.createElement("strong");strong.textContent=values[0];const meta=document.createElement("span");meta.textContent=values[1];const small=document.createElement("small");small.textContent=values[2];copy.append(strong,meta,small);article.append(mark,copy);records.append(article);}};
+  // #22 — per-row state transitions. Each still passes through the gateway
+  // allowlist + backend capability/validation; the `cap` here only decides
+  // whether to render the button.
+  type RowAction={label:string;path:(id:string)=>string;body?:Record<string,unknown>;cap:string};
+  const ROW_ACTIONS:Record<string,RowAction[]>={
+    leads:[
+      {label:"Contacted",path:id=>`/v1/business/leads/${id}/mark-contacted`,cap:"leads.manage"},
+      {label:"Booked",path:id=>`/v1/business/leads/${id}/mark-booked`,cap:"leads.manage"},
+      {label:"Won",path:id=>`/v1/business/leads/${id}/mark-won`,cap:"leads.manage"},
+      {label:"Lost",path:id=>`/v1/business/leads/${id}/mark-lost`,cap:"leads.manage"},
+    ],
+    bookings:[
+      {label:"Confirm",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"CONFIRMED"},cap:"appointments.manage"},
+      {label:"Complete",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"COMPLETED"},cap:"appointments.manage"},
+      {label:"No-show",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"NO_SHOW"},cap:"appointments.manage"},
+      {label:"Cancel",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"CANCELED"},cap:"appointments.manage"},
+    ],
+  };
+  let currentRole:string|null=null;
+  const runAction=async(action:RowAction,id:string,button:HTMLButtonElement)=>{
+    button.disabled=true;const original=button.textContent;button.textContent="Saving…";
+    try{
+      const response=await fetch(`${gateway}${action.path(id)}`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(action.body??{})});
+      if(!response.ok){const payload=await response.json().catch(()=>({}));throw new Error(typeof payload.error==="string"?payload.error:"That action could not be completed.");}
+      await load();
+    }catch(error){button.disabled=false;button.textContent=original;button.title=error instanceof Error?error.message:"Failed";}
+  };
+  const render=(payload:any)=>{if(!records||!moduleRoot)return;records.replaceChildren();const kind=moduleRoot.dataset.kind||"records";const items=itemsFrom(payload);if(count)count.textContent=`${items.length} record${items.length===1?"":"s"}`;if(!items.length){const empty=document.createElement("div");empty.className="dashboard-empty";empty.textContent=`No ${kind} yet. New activity will appear here.`;records.append(empty);return;}const actions=ROW_ACTIONS[kind]?.filter(a=>can(currentRole,a.cap))??[];for(const item of items){const values=details(item,kind);const article=document.createElement("article");article.className="dashboard-record";const mark=document.createElement("span");mark.className="dashboard-record__mark";mark.textContent=values[0].slice(0,1).toUpperCase();const copy=document.createElement("div");const strong=document.createElement("strong");strong.textContent=values[0];const meta=document.createElement("span");meta.textContent=values[1];const small=document.createElement("small");small.textContent=values[2];copy.append(strong,meta,small);article.append(mark,copy);if(actions.length&&typeof item.id==="string"){const bar=document.createElement("div");bar.className="dashboard-record__actions";for(const action of actions){const button=document.createElement("button");button.type="button";button.textContent=action.label;button.addEventListener("click",()=>void runAction(action,item.id,button));bar.append(button);}article.append(bar);}records.append(article);}};
   // #22 — hide the create control unless the signed-in member's role holds the
   // required capability. Backend/gateway authorization stays authoritative;
   // this is a usability hint only.
@@ -51,7 +78,8 @@ const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], 
       fetch(`${gateway}${moduleRoot.dataset.endpoint}`,{credentials:"include"}),
       fetch(`${gateway}/v1/dashboard`,{credentials:"include"}).then(r=>r.ok?r.json():null).catch(()=>null),
     ]);
-    applyCapability(identity?.account?.role);
+    currentRole=typeof identity?.account?.role==="string"?identity.account.role:null;
+    applyCapability(currentRole);
     if(response.status===401)throw new Error("auth");const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(typeof payload.error==="string"?payload.error:"Unable to load this workspace.");render(payload);loading!.hidden=true;moduleRoot.hidden=false;}catch(error){loading!.hidden=true;if(error instanceof Error&&error.message==="auth")auth!.hidden=false;else{auth!.hidden=false;const copy=auth!.querySelector("p");if(copy)copy.textContent=error instanceof Error?error.message:"Unable to load this workspace.";}}};
   document.querySelectorAll<HTMLElement>("[data-create-close]").forEach(button=>button.addEventListener("click",()=>{const panel=document.querySelector<HTMLElement>("[data-create-panel]");if(panel)panel.hidden=true;}));
   document.querySelector<HTMLElement>("[data-create-toggle]")?.addEventListener("click",()=>{const panel=document.querySelector<HTMLElement>("[data-create-panel]");if(panel){panel.hidden=false;panel.scrollIntoView({behavior:"smooth",block:"start"});}});

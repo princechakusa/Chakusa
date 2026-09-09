@@ -1,0 +1,111 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+---
+<DashboardLayout title="Inventory | Chakusa" description="Track stock levels and the audited movement ledger." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="inventory" />
+  <DashboardCollection
+    realm="business"
+    eyebrow="Stock"
+    title="Inventory"
+    intro="Keep item counts and the audited in/out ledger in one place. Requires the Business plan."
+    endpoint="/v1/business/inventory?includeInactive=false"
+    kind="inventory"
+    createLabel="Add item"
+    manageCapability="inventory.manage"
+    fields={[
+      { name: "name", label: "Item name", required: true },
+      { name: "sku", label: "SKU" },
+      { name: "unit", label: "Unit", placeholder: "ml, each, box" },
+      { name: "lowStockThreshold", label: "Reorder at", type: "number" },
+      { name: "openingQuantity", label: "Opening quantity", type: "number" },
+    ]}
+  />
+  <section class="dashboard-panel" data-movement-panel hidden>
+    <div class="dashboard-section-heading">
+      <div><h2>Record a stock movement</h2><p>Every movement is written to the immutable ledger. Adjustments need the reconcile permission.</p></div>
+    </div>
+    <form class="dashboard-form" data-movement-form>
+      <label>Item
+        <select name="itemId" required data-movement-items><option value="">Loading items…</option></select>
+      </label>
+      <label>Movement
+        <select name="kind" required>
+          <option value="RECEIVE">Receive</option>
+          <option value="RESTOCK">Restock</option>
+          <option value="CONSUME">Consume</option>
+          <option value="SERVICE_USE">Service use</option>
+          <option value="WASTE">Waste</option>
+          <option value="ADJUST">Adjust (reconcile)</option>
+          <option value="CORRECTION">Correction (reconcile)</option>
+        </select>
+      </label>
+      <label>Quantity<input name="quantity" type="number" min="0.001" step="0.001" required /></label>
+      <label data-direction-wrap hidden>Direction
+        <select name="direction"><option value="increase">Increase</option><option value="decrease">Decrease</option></select>
+      </label>
+      <label>Reason<input name="reason" maxlength="300" placeholder="Optional note for the ledger" /></label>
+      <div class="dashboard-form__actions"><button type="submit">Record movement</button></div>
+      <p class="setup-message" data-movement-message role="status"></p>
+    </form>
+  </section>
+</DashboardLayout>
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  const gateway = "https://auth.chakusarecovery.com";
+  const panel = document.querySelector<HTMLElement>("[data-movement-panel]");
+  const form = document.querySelector<HTMLFormElement>("[data-movement-form]");
+  const itemsSelect = document.querySelector<HTMLSelectElement>("[data-movement-items]");
+  const message = document.querySelector<HTMLElement>("[data-movement-message]");
+  const directionWrap = document.querySelector<HTMLElement>("[data-direction-wrap]");
+  const RECONCILE = new Set(["ADJUST", "CORRECTION"]);
+
+  form?.querySelector<HTMLSelectElement>("[name=kind]")?.addEventListener("change", (event) => {
+    if (directionWrap) directionWrap.hidden = !RECONCILE.has((event.target as HTMLSelectElement).value);
+  });
+
+  const init = async () => {
+    const [items, identity] = await Promise.all([
+      fetch(`${gateway}/v1/business/inventory?includeInactive=false`, { credentials: "include" }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    const role = identity?.account?.role ?? null;
+    if (!can(role, "inventory.record") && !can(role, "inventory.adjust")) return; // panel stays hidden for read-only roles
+    if (!Array.isArray(items) || !items.length || !itemsSelect) return;
+    itemsSelect.replaceChildren(...items.map((item: { id: string; name: string }) => {
+      const option = document.createElement("option");
+      option.value = item.id; option.textContent = item.name;
+      return option;
+    }));
+    if (panel) panel.hidden = false;
+  };
+  void init();
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]");
+    const data = new FormData(form);
+    const itemId = String(data.get("itemId") || "");
+    if (!itemId) return;
+    const body: Record<string, unknown> = { kind: data.get("kind"), quantity: Number(data.get("quantity")) };
+    if (RECONCILE.has(String(data.get("kind")))) body.direction = data.get("direction");
+    if (data.get("reason")) body.reason = String(data.get("reason"));
+    if (submit) submit.disabled = true;
+    if (message) message.textContent = "Recording securely…";
+    try {
+      const response = await fetch(`${gateway}/v1/business/inventory/${itemId}/movements`, {
+        method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "The movement could not be recorded.");
+      if (message) message.textContent = `Recorded. Stock now ${payload.currentStock ?? ""}${payload.lowStock ? " (low)" : ""}.`;
+      form.reset();
+      location.reload();
+    } catch (error) {
+      if (message) message.textContent = error instanceof Error ? error.message : "The movement could not be recorded.";
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
+</script>

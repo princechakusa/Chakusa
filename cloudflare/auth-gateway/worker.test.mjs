@@ -50,3 +50,36 @@ test("an allowed protected route still rejects a missing session", async () => {
   const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/customers", { headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site" } }), {});
   assert.equal(response.status, 401);
 });
+
+test("#22 new business routes map to the right upstreams and honour method", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/ai-receptionist"), "GET").path, "/ai/receptionist");
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/ai-receptionist"), "PATCH").path, "/ai/receptionist");
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/inventory?includeInactive=true&evil=1"), "GET").path, "/inventory/items?includeInactive=true");
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/inventory"), "POST").path, "/inventory/items");
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/inventory/${uuid}/movements`), "POST").path, `/inventory/items/${uuid}/movements`);
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/feedback/${uuid}/respond`), "POST").path, `/feedback/${uuid}/respond`);
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/leads/${uuid}`), "PATCH").path, `/leads/${uuid}`);
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/appointments/${uuid}/status`), "POST").path, `/appointments/${uuid}/status`);
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/reviews/metrics"), "GET").path, "/review-requests/metrics");
+});
+
+test("#22 new routes reject bad shapes and wrong realm", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  // non-uuid id must not match a parameterised route
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/inventory/not-a-uuid/movements"), "POST"), null);
+  // wrong method on a real path
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/ai-receptionist"), "DELETE"), null);
+  // a business route can never be reached in the client realm
+  const route = internals.matchProtectedRoute(new URL("https://a/v1/business/inventory"), "GET");
+  assert.equal(route.realm, "business");
+  // no generic passthrough — an un-listed inventory sub-path is not routed
+  assert.equal(internals.matchProtectedRoute(new URL(`https://a/v1/business/inventory/${uuid}/audit`), "GET"), null);
+});
+
+test("#22 new protected routes still reject a missing session", async () => {
+  for (const [path, method] of [["/v1/business/inventory", "GET"], ["/v1/business/ai-receptionist", "GET"], ["/v1/business/reviews/metrics", "GET"]]) {
+    const response = await worker.fetch(new Request(`https://auth.chakusarecovery.com${path}`, { method, headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site" } }), {});
+    assert.equal(response.status, 401);
+  }
+});

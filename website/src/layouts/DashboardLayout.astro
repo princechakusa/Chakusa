@@ -15,6 +15,18 @@ const { title, description, realm } = Astro.props;
   <header class="dashboard-topbar"><a class="dashboard-brand" href="/" aria-label="Chakusa home"><img src={chakusaAppIcon.src} alt="" width="34" height="34"/><strong>CHAKUSA</strong></a><div class="dashboard-security"><span></span> Secure session</div><button class="dashboard-signout" type="button" data-signout>Sign out</button></header>
   <div class="dashboard-frame"><aside class="dashboard-sidebar"><slot name="sidebar"/><div class="dashboard-sidebar__foot"><small>Signed in through</small><strong>Cloudflare protected access</strong></div></aside><main id="dashboard-main" class="dashboard-main"><slot/></main></div>
   <script>
+    import { can } from "../scripts/capabilities.js";
     document.querySelector<HTMLButtonElement>("[data-signout]")?.addEventListener("click",async()=>{const button=document.querySelector<HTMLButtonElement>("[data-signout]");if(button)button.disabled=true;try{await fetch("https://auth.chakusarecovery.com/v1/logout",{method:"POST",credentials:"include"});}finally{location.replace("/login");}});
+    // #22 — usability nav gating. Hides sidebar links whose capability the
+    // signed-in member's role does not hold. The gateway + API still enforce
+    // access on every request regardless of what the nav shows.
+    if(document.body.dataset.dashboardRealm==="business"){
+      fetch("https://auth.chakusarecovery.com/v1/dashboard",{credentials:"include"})
+        .then(r=>r.ok?r.json():null).catch(()=>null)
+        .then(data=>{const role=data?.account?.role??null;if(!role)return;
+          for(const link of document.querySelectorAll<HTMLElement>("[data-nav-cap]")){
+            const cap=link.dataset.navCap;if(cap&&!can(role,cap))link.hidden=true;
+          }});
+    }
   </script>
 </body></html>

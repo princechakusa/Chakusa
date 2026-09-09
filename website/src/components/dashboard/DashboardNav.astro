@@ -1,23 +1,28 @@
 ---
 interface Props { realm: "business" | "client"; active: string }
 const { realm, active } = Astro.props;
-const business = [
+// [key, href, label, requiredCapability?] — a capability, when present, is
+// checked client-side against the signed-in member's role (see DashboardLayout).
+// Backend/gateway authorization remains authoritative regardless of the nav.
+const business: [string, string, string, string?][] = [
   ["overview", "/dashboard/business", "Overview"],
-  ["customers", "/dashboard/business/customers", "Customers"],
-  ["leads", "/dashboard/business/leads", "Leads"],
-  ["bookings", "/dashboard/business/bookings", "Bookings"],
-  ["reviews", "/dashboard/business/reviews", "Reviews"],
-  ["quotes", "/dashboard/business/quotes", "Quotes"],
-  ["invoices", "/dashboard/business/invoices", "Invoices"],
-  ["messages", "/dashboard/business/messages", "Messages"],
+  ["customers", "/dashboard/business/customers", "Customers", "customers.manage"],
+  ["leads", "/dashboard/business/leads", "Leads", "leads.manage"],
+  ["bookings", "/dashboard/business/bookings", "Bookings", "appointments.manage"],
+  ["messages", "/dashboard/business/messages", "Messages", "messaging.operate"],
+  ["reviews", "/dashboard/business/reviews", "Reviews", "reviews.manage"],
+  ["quotes", "/dashboard/business/quotes", "Quotes", "quotes.manage"],
+  ["invoices", "/dashboard/business/invoices", "Invoices", "invoices.manage"],
+  ["inventory", "/dashboard/business/inventory", "Inventory", "inventory.view"],
   ["reminders", "/dashboard/business/reminders", "Reminders"],
-  ["automation", "/dashboard/business/automation", "Automation"],
-  ["reports", "/dashboard/business/reports", "Reports"],
-  ["payments", "/dashboard/business/payments", "Payments"],
-  ["team", "/dashboard/business/team", "Team"],
-  ["setup", "/dashboard/business/setup", "Settings"],
+  ["automation", "/dashboard/business/automation", "Automation", "automation.manage"],
+  ["ai-receptionist", "/dashboard/business/ai-receptionist", "AI Receptionist", "automation.manage"],
+  ["reports", "/dashboard/business/reports", "Reports", "financial.report.view"],
+  ["payments", "/dashboard/business/payments", "Payments", "payments.view"],
+  ["team", "/dashboard/business/team", "Team", "team.view"],
+  ["setup", "/dashboard/business/setup", "Settings", "business.settings.manage"],
 ];
-const client = [
+const client: [string, string, string, string?][] = [
   ["overview", "/dashboard/client", "Home"],
   ["bookings", "/dashboard/client/bookings", "Bookings"],
   ["businesses", "/dashboard/client/businesses", "My businesses"],
@@ -28,6 +33,10 @@ const client = [
 const items = realm === "business" ? business : client;
 ---
 <nav slot="sidebar" aria-label={`${realm === "business" ? "Business" : "Client"} dashboard`}>
-  {items.map(([key, href, label]) => <a href={href} aria-current={active === key ? "page" : undefined}><span aria-hidden="true">{label.slice(0,1)}</span>{label}</a>)}
+  {items.map(([key, href, label, cap]) => (
+    <a href={href} aria-current={active === key ? "page" : undefined} data-nav-cap={cap}>
+      <span aria-hidden="true">{label.slice(0, 1)}</span>{label}
+    </a>
+  ))}
   <a href="/contact"><span aria-hidden="true">?</span>Support</a>
 </nav>

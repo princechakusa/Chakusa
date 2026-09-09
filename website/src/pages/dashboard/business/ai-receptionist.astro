@@ -1,0 +1,106 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+---
+<DashboardLayout title="AI Receptionist | Chakusa" description="Control the AI Receptionist and after-hours mode." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="ai-receptionist" />
+  <section class="dashboard-loading" data-loading><span></span><p>Loading your AI Receptionist settings…</p></section>
+  <section class="dashboard-auth-required" data-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
+  <section class="dashboard-content" data-denied hidden><header class="dashboard-welcome"><div><p class="dashboard-eyebrow">AI Receptionist</p><h1>Permission needed</h1><p>Only an owner or admin can change AI automation settings.</p></div></header></section>
+  <div class="dashboard-content" data-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">AI Receptionist</p><h1>AI Receptionist</h1><p>Let the AI answer customer messages. The after-hours decision is made by Chakusa's schedule, never the model.</p></div></header>
+
+    <section class="dashboard-panel" data-status-panel>
+      <div class="dashboard-section-heading"><div><h2>Right now</h2><p data-status-line>Checking…</p></div></div>
+      <div class="payment-readiness">
+        <article><span>Plan</span><strong data-entitled>—</strong><p>AI Receptionist needs the Business plan.</p></article>
+        <article><span>Business hours</span><strong data-hours>—</strong><p data-hours-reason></p></article>
+        <article><span>Answering now</span><strong data-eligible>—</strong><p data-eligible-reason></p></article>
+      </div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Settings</h2><p>Changes save immediately to your protected workspace.</p></div></div>
+      <form class="dashboard-form" data-settings-form>
+        <label class="dashboard-toggle"><input type="checkbox" name="enabled" /> AI Receptionist is on</label>
+        <label class="dashboard-toggle"><input type="checkbox" name="smsEnabled" /> Answer SMS</label>
+        <label class="dashboard-toggle"><input type="checkbox" name="whatsappEnabled" /> Answer WhatsApp</label>
+        <label>When it answers
+          <select name="mode">
+            <option value="ALWAYS">Always (whenever it is on)</option>
+            <option value="AFTER_HOURS_ONLY">After hours only</option>
+          </select>
+        </label>
+        <div class="dashboard-form__actions"><button type="submit">Save settings</button></div>
+        <p class="setup-message" data-message role="status"></p>
+      </form>
+    </section>
+  </div>
+</DashboardLayout>
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  const gateway = "https://auth.chakusarecovery.com";
+  const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel);
+  const text = (sel: string, value: string) => { const node = $(sel); if (node) node.textContent = value; };
+
+  const fill = (data: any) => {
+    const settings = data.settings ?? {};
+    const status = data.status ?? {};
+    const hours = data.hours ?? {};
+    (($("[name=enabled]") as HTMLInputElement) || {}).checked = Boolean(settings.enabled);
+    (($("[name=smsEnabled]") as HTMLInputElement) || {}).checked = Boolean(settings.smsEnabled);
+    (($("[name=whatsappEnabled]") as HTMLInputElement) || {}).checked = Boolean(settings.whatsappEnabled);
+    const mode = $("[name=mode]") as HTMLSelectElement | null;
+    if (mode) mode.value = settings.mode === "AFTER_HOURS_ONLY" ? "AFTER_HOURS_ONLY" : "ALWAYS";
+    text("[data-entitled]", status.entitled ? "Included" : "Not on this plan");
+    text("[data-hours]", hours.open ? "Open" : "Closed");
+    text("[data-hours-reason]", hours.reason ? String(hours.reason).replaceAll("_", " ") : "");
+    text("[data-eligible]", status.currentlyEligible ? "Yes" : "No");
+    text("[data-eligible-reason]", status.ineligibleReason ? String(status.ineligibleReason).replaceAll("_", " ") : status.effective ? "Ready to answer eligible messages." : "");
+    text("[data-status-line]", status.effective ? "The AI Receptionist is active for this business." : "The AI Receptionist is off or unavailable on this plan.");
+  };
+
+  const load = async () => {
+    const [settingsRes, identity] = await Promise.all([
+      fetch(`${gateway}/v1/business/ai-receptionist`, { credentials: "include" }),
+      fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    const role = identity?.account?.role ?? null;
+    $("[data-loading]")!.hidden = true;
+    if (settingsRes.status === 401) { $("[data-auth]")!.hidden = false; return; }
+    if (settingsRes.status === 403 || !can(role, "automation.manage")) { $("[data-denied]")!.hidden = false; return; }
+    const data = await settingsRes.json().catch(() => ({}));
+    if (!settingsRes.ok) { $("[data-auth]")!.hidden = false; const p = $("[data-auth] p"); if (p) p.textContent = data.error || "This page is temporarily unavailable."; return; }
+    fill(data);
+    $("[data-content]")!.hidden = false;
+  };
+  void load();
+
+  $("[data-settings-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]");
+    const message = $("[data-message]");
+    const body = {
+      enabled: (form.elements.namedItem("enabled") as HTMLInputElement).checked,
+      smsEnabled: (form.elements.namedItem("smsEnabled") as HTMLInputElement).checked,
+      whatsappEnabled: (form.elements.namedItem("whatsappEnabled") as HTMLInputElement).checked,
+      mode: (form.elements.namedItem("mode") as HTMLSelectElement).value,
+    };
+    if (submit) submit.disabled = true;
+    if (message) message.textContent = "Saving securely…";
+    try {
+      const response = await fetch(`${gateway}/v1/business/ai-receptionist`, {
+        method: "PATCH", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "We could not save those settings.");
+      if (message) message.textContent = "Saved.";
+      void load();
+    } catch (error) {
+      if (message) message.textContent = error instanceof Error ? error.message : "We could not save those settings.";
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  });
+</script>

@@ -46,6 +46,10 @@ export default async function appointmentRoutes(fastify: FastifyInstance) {
     const status = transitionAppointmentSchema.parse(request.body).status;
     const appointment = await transitionAppointment(request.businessId!, request.user.userId, id, status);
     if (status === "CANCELED") await sendCustomerAppointmentMessage(id, "canceled").catch(error => request.log.error(error, "automatic cancellation confirmation failed"));
+    // #17: one polite, non-accusatory follow-up when the business opts in.
+    // Best-effort and idempotent (atomic claim on noShowFollowUpSentAt) — a
+    // provider failure never undoes the authoritative NO_SHOW state.
+    if (status === "NO_SHOW") await sendCustomerAppointmentMessage(id, "no_show").catch(error => request.log.error(error, "automatic no-show follow-up failed"));
     // PROGRAM 2 LOOP 5: a completed booking earns loyalty points. Best-effort
     // and idempotent — never blocks or fails the transition.
     if (status === "COMPLETED") await accrueForCompletedBooking(id).catch(error => request.log.error(error, "loyalty accrual failed"));

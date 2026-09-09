@@ -129,6 +129,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
         defaultAppointmentReminderMinutes: input.defaultAppointmentReminderMinutes,
         messagingConsentConfirmedAt: input.messagingConsentConfirmed === undefined ? undefined : input.messagingConsentConfirmed ? new Date() : null,
         paymentRemindersEnabled: input.paymentRemindersEnabled,
+        noShowFollowUpEnabled: input.noShowFollowUpEnabled,
       },
     });
 

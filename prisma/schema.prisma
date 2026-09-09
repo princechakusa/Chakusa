@@ -240,6 +240,9 @@ enum MessageType {
   // Operations: a business tells a customer the provider is on the way,
   // running late, or has arrived (src/modules/appointments/appointmentReminders.ts).
   appointment_on_the_way
+  // #17: polite, non-accusatory follow-up sent once after an authorized
+  // member marks an appointment NO_SHOW, only when the business opts in.
+  appointment_no_show
 }
 
 enum MessageChannel {
@@ -969,6 +972,9 @@ model Business {
   stripeAccountId                   String?                @unique @map("stripe_account_id")
   messagingConsentConfirmedAt       DateTime?              @map("messaging_consent_confirmed_at")
   paymentRemindersEnabled           Boolean                @default(false) @map("payment_reminders_enabled")
+  // #17 — when true, a single polite follow-up SMS is sent after an
+  // appointment is marked NO_SHOW. Off by default; no financial consequence.
+  noShowFollowUpEnabled             Boolean                @default(false) @map("no_show_follow_up_enabled")
   createdAt                         DateTime               @default(now()) @map("created_at")
   updatedAt                         DateTime               @updatedAt @map("updated_at")
 
@@ -1260,6 +1266,9 @@ model Appointment {
   cancellationConfirmationSentAt DateTime?         @map("cancellation_confirmation_sent_at")
   followUpSentAt                 DateTime?         @map("follow_up_sent_at")
   paymentReminderSentAt          DateTime?         @map("payment_reminder_sent_at")
+  // #17 — set once when the no-show follow-up is claimed for sending; the
+  // atomic claim on this column is the idempotency boundary.
+  noShowFollowUpSentAt           DateTime?         @map("no_show_follow_up_sent_at")
   // Operations #10 — On My Way / Arrival. `arrivalStateByMemberId` is plain
   // provenance (no relation), mirroring `createdByUserId`.
   arrivalState                   AppointmentArrivalState? @map("arrival_state")

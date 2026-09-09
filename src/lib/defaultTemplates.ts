@@ -26,6 +26,8 @@ export const DEFAULT_TEMPLATE_BODIES: Record<MessageType, string> = {
     "Hi {{customer_name}}, your remaining balance for {{service_name}} at {{business_name}} is ready. Please use your secure payment link to pay.",
   appointment_on_the_way:
     "Hi {{customer_name}}, your {{service_name}} provider from {{business_name}} is on the way.",
+  appointment_no_show:
+    "Hi {{customer_name}}, we missed you at your {{service_name}} appointment at {{business_name}}. If you would like to reschedule, we are happy to help.",
   public_profile_inquiry:
     "Hi {{customer_name}}, thanks for reaching out to {{business_name}} about your {{service_name}}! We'll get back to you shortly — feel free to call us at {{phone_number}} in the meantime.",
   lead_follow_up:

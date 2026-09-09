@@ -63,6 +63,7 @@ export const updateBusinessSchema = z.object({
   defaultAppointmentReminderMinutes: z.number().int().min(0).max(10_080).optional(),
   messagingConsentConfirmed: z.boolean().optional(),
   paymentRemindersEnabled: z.boolean().optional(),
+  noShowFollowUpEnabled: z.boolean().optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

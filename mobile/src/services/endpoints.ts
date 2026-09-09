@@ -29,7 +29,7 @@ export const authApi = {
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),
   get: () => api.get<BusinessDto>('/business'),
-  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'logoDataUrl' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes' | 'paymentRemindersEnabled'>> & { messagingConsentConfirmed?: boolean }) => api.patch<BusinessDto>('/business', body),
+  patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'logoDataUrl' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes' | 'paymentRemindersEnabled' | 'noShowFollowUpEnabled'>> & { messagingConsentConfirmed?: boolean }) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
 };

@@ -3,7 +3,7 @@
 **Status:** Governing implementation roadmap  
 **Repository:** Chakusa  
 **Execution mode:** Autonomous, stage-gated, production-first  
-**Last roadmap position:** #18–#21 complete and committed. #22 Desktop/Web is **blocked on an owner decision** (OA-6): the inspection found a partially-scaffolded Astro business dashboard in `website/` behind a 3-route Cloudflare auth gateway — the approach, gateway-expansion, V1 scope, and UI test strategy are the owner's to set before build. Deployment checkpoint done locally; production migration backlog is 10, owner-blocked (OA-1); app-link identifiers owner-blocked (OA-5, non-blocking). #23 Production Hardening is backend-only and independent of #22 — the next agent-executable stage.
+**Last roadmap position:** #18–#21 complete. OA-6 resolved (`docs/OWNER_DECISION_OA6_STAGE22_WEB.md`) — #22 built on `website/` Astro + `cloudflare/auth-gateway`. #22 V1 delivered: 9/13 high-value workflows usable end-to-end from the web (dashboard, calendar ops, leads, customers, inbox+reply, inventory, reviews+reply, AI receptionist, settings), 4 view-only with named deferrals (quote/invoice creation, team admin, report detail); capability-aware UI + gateway allowlist expansion + drift tests. #23 Production Hardening in progress — worker HTTP-tick parity + step isolation + stranded-dispatch recovery landed; audit doc + runbook + remaining areas next. Production migration backlog is 10, owner-blocked (OA-1); app-link identifiers owner-blocked (OA-5, non-blocking).
 
 ---
 

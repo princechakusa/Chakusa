@@ -3,7 +3,7 @@
 **Status:** Governing implementation roadmap  
 **Repository:** Chakusa  
 **Execution mode:** Autonomous, stage-gated, production-first  
-**Last roadmap position:** #21 Booking Distribution complete (owner-facing shareable booking links + per-service deep links, privacy-safe surface attribution on public bookings, config-driven Universal/App Links well-known docs). #18–#20 done. Deployment checkpoint done locally; production migration backlog is 10, owner-blocked (OA-1); app-link identifiers owner-blocked (OA-5, non-blocking). #22 Desktop/Web is next.
+**Last roadmap position:** #18–#21 complete and committed. #22 Desktop/Web is **blocked on an owner decision** (OA-6): the inspection found a partially-scaffolded Astro business dashboard in `website/` behind a 3-route Cloudflare auth gateway — the approach, gateway-expansion, V1 scope, and UI test strategy are the owner's to set before build. Deployment checkpoint done locally; production migration backlog is 10, owner-blocked (OA-1); app-link identifiers owner-blocked (OA-5, non-blocking). #23 Production Hardening is backend-only and independent of #22 — the next agent-executable stage.
 
 ---
 

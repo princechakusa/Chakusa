@@ -159,3 +159,57 @@ to the API (or serve equivalents).
 
 No store console action is required to *set these* — they are read from
 Play Console / Apple Developer and placed in the deployment environment.
+
+---
+
+## OA-6 — #22 Desktop/Web business experience: scope + approach decision
+
+**Status:** OPEN — **blocks starting #22.** #18–#21 are complete and committed.
+
+The #22 stage begins with "Inspect existing admin/website/web app architecture
+first." That inspection is done; the result needs an owner decision before build:
+
+**What exists**
+- `admin/` — the **platform-admin** React/Vite SPA (Businesses, Users,
+  Subscriptions, Security, Audit …). Talks to `/admin/*`. The roadmap explicitly
+  forbids exposing platform-admin surfaces to normal businesses, so this is **not**
+  the place for the operator web app.
+- `website/` — an **Astro** marketing site that also contains a **partially
+  scaffolded business dashboard**: `dashboard/business.astro` plus 13 stub pages
+  (`automation, bookings, customers, invoices, leads, messages, payments, quotes,
+  reminders, reports, reviews, setup, team`). Only the top-level dashboard page is
+  wired; the sub-pages are shells.
+- `cloudflare/auth-gateway/worker.mjs` — the edge auth gateway the website uses
+  (`auth.chakusarecovery.com/v1/*`): realm-separated HttpOnly-cookie sessions,
+  Turnstile, Google sign-in. It currently proxies only **`/v1/login`,
+  `/v1/register`, `/v1/google`, `/v1/forgot-password`, `/v1/reset-password`,
+  `/v1/logout`, `/v1/dashboard` (GET bundle), `/v1/business` (PATCH),
+  `/v1/business/onboarding/complete`**. It does **not** expose leads, customers,
+  inbox, quotes/invoices/payments, team, inventory, calendar, AI settings, or
+  reports — so the 13 stub pages cannot function yet.
+
+**Decisions needed**
+1. **Approach**: keep building the operator UI as Astro pages + islands against an
+   **expanded auth-gateway**, or introduce a React island app inside `website/`
+   (or a new `webapp/` package) for the interactive CRUD screens? The mobile app
+   uses a custom M3 kit; `admin/` has its own components — which design system does
+   web reuse?
+2. **Gateway expansion**: confirm the pattern for adding proxied `/v1/*` routes
+   (the gateway does a cookie→bearer exchange + CSRF + realm check per route). Each
+   new operator area needs a gateway route; this is the bulk of the backend-adjacent
+   work and should be reviewed as a unit.
+3. **V1 scope**: which of dashboard / calendar / leads / customers / inbox /
+   quotes-invoices-payments / team / inventory / AI settings / reports are in the
+   first web-parity cut vs. deferred? "Core operational parity for high-value
+   workflows" (the completion bar) needs the owner to name the high-value set.
+4. **Verification**: `website/` has no UI test harness and `cloudflare/auth-gateway`
+   has `worker.test.mjs` only. The roadmap's "regression coverage" for #22 needs a
+   decision on the test approach (Playwright against a preview deploy? gateway
+   unit tests + component tests?). UI correctness here cannot be self-verified by
+   the agent at the scale of ~13 screens.
+
+Until (1)–(3) are set, #22 build cannot proceed without risking a
+materially-different, hard-to-reverse product/architecture choice. #23 Production
+Hardening (backend worker/outbox/webhook/rate-limit/index reliability) is
+independent of this and is the next agent-executable stage if the owner wants
+work to continue while #22 is decided.

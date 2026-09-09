@@ -156,6 +156,9 @@ export interface ConversationSummaryDto {
   automationMode: string;
   assignedMemberId: string | null;
   updatedAt: string;
+  lastInboundAt?: string | null;
+  lastReadAt?: string | null;
+  unread?: boolean;
   messages: Array<{ id: string; body: string; direction: string; channel?: string; status?: string; customerId?: string | null; createdAt?: string }>;
   slas: Array<{ type: string; status: string; dueAt: string }>;
 }
@@ -184,6 +187,7 @@ export const messagingApi = {
   retry: (id: string) => api.post<{queued:boolean}>(`/messages/failures/${id}/retry`),
   templates: () => api.get<Array<{id:string;name:string;versions:Array<{id:string;status:string;locale:string;body:string}>}>>('/messages/templates'),
   updateConversation: (id:string, body:{status?:string;assignedMemberId?:string|null;automationMode?:string}) => api.patch(`/messages/conversations/${id}`,body),
+  markConversationRead: (id:string) => api.post<{read:boolean}>(`/messages/conversations/${id}/read`, {}),
   completeAnalytics: () => api.get<Record<string,unknown>>('/messages/analytics/complete'),
   uploadAttachment: (body: { fileName: string; mimeType: string; dataBase64: string }) => api.post<{ id: string; uploadStatus: string; malwareScanStatus: string }>('/messages/attachments/mobile', body),
 };

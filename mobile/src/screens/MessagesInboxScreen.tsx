@@ -32,7 +32,10 @@ function relative(iso?: string) {
 function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
 }
-const isUnread = (c: ConversationSummaryDto) => c.status === 'OPEN' || c.priority === 'HIGH' || c.priority === 'URGENT';
+// #18: prefer the server-derived unread flag; fall back to the old proxy only
+// if an older backend omits it.
+const isUnread = (c: ConversationSummaryDto) =>
+  c.unread ?? (c.status === 'OPEN' || c.priority === 'HIGH' || c.priority === 'URGENT');
 const isClosed = (c: ConversationSummaryDto) => c.status === 'RESOLVED' || c.status === 'ARCHIVED';
 
 export function MessagesInboxScreen() {

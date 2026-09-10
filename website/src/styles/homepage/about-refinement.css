@@ -1,0 +1,220 @@
+/* About page visual refinement.
+   Keeps the existing Stitch-derived structure while tightening the editorial
+   compositions so illustration supports the copy instead of overpowering it. */
+
+.st-about .st-about__hero-grid {
+  grid-template-columns: minmax(0, 7.4fr) minmax(18rem, 4.6fr);
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+.st-about .st-about__character-stage {
+  min-height: 27rem;
+  max-width: 29rem;
+  width: 100%;
+  justify-self: end;
+  border-radius: 1.35rem;
+  box-shadow: 0 20px 48px rgb(40 48 68 / 14%);
+}
+
+.st-about .st-about__halo {
+  width: 10.75rem;
+  height: 10.75rem;
+  top: 2.5rem;
+}
+
+.st-about .st-about__woman,
+.st-about .st-about__man {
+  width: 12.75rem !important;
+  bottom: -3rem;
+  animation-duration: 5.2s;
+}
+
+.st-about .st-about__man {
+  width: 13.5rem !important;
+  bottom: -2.7rem;
+}
+
+.st-about .st-about__mini-card {
+  top: 1rem;
+  right: .85rem;
+  max-width: 12rem;
+  padding: .58rem .68rem;
+}
+
+.st-about .st-about__booking-card {
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  padding: .78rem .85rem;
+}
+
+.st-about .st-about__booking-card > i {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
+}
+
+.st-about .st-about__perspectives {
+  gap: 4.25rem;
+}
+
+.st-about .st-about__perspective {
+  grid-template-columns: minmax(17rem, 4.25fr) minmax(0, 7.75fr);
+  gap: clamp(2rem, 4vw, 3.4rem);
+}
+
+.st-about .st-about__perspective--reverse {
+  grid-template-columns: minmax(0, 7.75fr) minmax(17rem, 4.25fr);
+}
+
+.st-about .st-about__portrait {
+  min-height: 22.5rem;
+  max-width: 27rem;
+  width: 100%;
+  justify-self: start;
+  border-width: .4rem;
+  border-radius: 1.15rem;
+  box-shadow: 0 16px 34px rgb(40 48 68 / 15%);
+}
+
+.st-about .st-about__portrait .st-about__woman {
+  width: 13rem !important;
+  bottom: -3.5rem;
+}
+
+.st-about .st-about__portrait > span {
+  top: .8rem;
+  right: .8rem;
+  padding: .4rem .58rem;
+}
+
+.st-about .st-about__character-stage--man {
+  min-height: 24rem;
+  max-width: 27rem;
+}
+
+.st-about .st-about__trade-card {
+  right: .85rem;
+  bottom: .85rem;
+  left: .85rem;
+  padding: .82rem .9rem;
+}
+
+/* Keep product motion quiet. The floating status cards move slightly more than
+   the characters, which makes the interface feel active without making the
+   people look like decorative cartoons. */
+@keyframes st-about-character-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes st-about-ui-drift {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.008); }
+}
+
+.st-about .st-about__woman,
+.st-about .st-about__man {
+  animation-name: st-about-character-drift;
+}
+
+.st-about .st-about__mini-card,
+.st-about .st-about__booking-card,
+.st-about .st-about__trade-card {
+  animation-name: st-about-ui-drift;
+  animation-duration: 4.6s;
+}
+
+.st-about .st-about__booking-card,
+.st-about .st-about__trade-card {
+  animation-delay: -1.6s;
+}
+
+/* Give the information sections a little more visual depth without turning
+   them into oversized illustration panels. */
+.st-about .st-about__comparison,
+.st-about .st-about__lifecycle li,
+.st-about .st-about__principles article,
+.st-about .st-about__feature-grid > div {
+  border: 1px solid rgb(218 226 253 / 78%);
+}
+
+.st-about .st-about__lifecycle li {
+  min-height: 15.5rem;
+}
+
+.st-about .st-about__principles article {
+  min-height: 15rem;
+}
+
+@media (max-width: 64rem) {
+  .st-about .st-about__character-stage,
+  .st-about .st-about__portrait,
+  .st-about .st-about__character-stage--man {
+    justify-self: center;
+    margin-inline: auto;
+  }
+
+  .st-about .st-about__character-stage {
+    max-width: 27rem;
+  }
+
+  .st-about .st-about__perspective,
+  .st-about .st-about__perspective--reverse {
+    gap: 2.25rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .st-about .st-about__character-stage {
+    min-height: 22.5rem;
+    max-width: 22rem;
+  }
+
+  .st-about .st-about__woman,
+  .st-about .st-about__man {
+    width: 10.75rem !important;
+    bottom: -2.4rem;
+  }
+
+  .st-about .st-about__portrait {
+    min-height: 19.5rem;
+    max-width: 22rem;
+  }
+
+  .st-about .st-about__portrait .st-about__woman {
+    width: 11rem !important;
+    bottom: -2.8rem;
+  }
+
+  .st-about .st-about__character-stage--man {
+    min-height: 21rem;
+  }
+
+  .st-about .st-about__booking-card {
+    left: .7rem;
+    right: .7rem;
+    bottom: .7rem;
+  }
+
+  .st-about .st-about__trade-card {
+    left: .7rem;
+    right: .7rem;
+    bottom: .7rem;
+  }
+
+  .st-about .st-about__lifecycle li,
+  .st-about .st-about__principles article {
+    min-height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-about .st-about__woman,
+  .st-about .st-about__man,
+  .st-about .st-about__mini-card,
+  .st-about .st-about__booking-card,
+  .st-about .st-about__trade-card {
+    animation: none !important;
+  }
+}

@@ -1,3 +1,5 @@
+import { PUBLIC_WEB_ORIGIN } from './trustSettings';
+
 export interface PublicBusinessProfileDetails {
   name: string;
   industry: string | null;
@@ -32,7 +34,7 @@ export function workingHoursSummary(workingHours: Record<string, unknown> | null
 }
 
 export function publicBusinessProfileUrl(slug: string, referredByCustomerId?: string): string {
-  const base = `https://chakusa.com/b/${encodeURIComponent(slug)}`;
+  const base = `${PUBLIC_WEB_ORIGIN}/b/${encodeURIComponent(slug)}`;
   return referredByCustomerId ? `${base}?ref=${encodeURIComponent(referredByCustomerId)}` : base;
 }
 

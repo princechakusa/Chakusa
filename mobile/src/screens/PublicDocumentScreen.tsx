@@ -8,9 +8,18 @@ import { ApiError } from '../services/api';
 import { legalApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
+import { APPROVED_PUBLIC_DESTINATIONS } from '../domain/trustSettings';
 
-const supportSections: DocumentSection[] = [{ title: 'Need help with Chakusa?', paragraphs: ['Contact support@chakusa.com.'], bullets: ['Account access.', 'Business setup.', 'Leads and customers.', 'Review requests.', 'Comeback reminders.', 'Notification issues.', 'Plan and usage questions.', 'Account deletion.', 'Technical problems.'] }, { title: 'Related information', paragraphs: ['Account deletion: https://chakusa.com/delete-account.', 'Privacy Policy: https://chakusa.com/privacy.', 'Terms of Use: https://chakusa.com/terms.'] }, { title: 'Important', paragraphs: ['When contacting support, do not send passwords, authentication tokens, payment credentials, or unnecessary customer personal information.'] }];
-const deletionSections: DocumentSection[] = [{ title: 'Delete your account in the app', paragraphs: ['The existing authenticated in-app flow is the primary self-service deletion method.'], bullets: ['Open Chakusa.', 'Open Settings.', 'Go to Danger Zone.', 'Select Delete Account.', 'Complete the required identity confirmation.', 'Confirm deletion.'] }, { title: 'If you cannot access the application', paragraphs: ['Request help at support@chakusa.com. Please contact us from the email address associated with your Chakusa account where possible.', 'For security, we may need to verify that you are the account owner before processing a deletion request. Never send your password or authentication token.'] }, { title: 'What deletion affects', paragraphs: ['Deleting your Chakusa account may permanently remove your account, business information, and associated business data from the active service.', 'Some information may be retained where reasonably necessary for security, fraud prevention, transaction records, backups, dispute resolution, or legal obligations.'] }, { title: 'Important for paid subscriptions', paragraphs: ['Deleting a Chakusa account is separate from canceling a subscription billed through Apple App Store or Google Play. If you have an active store subscription, cancel it through the applicable store to prevent future renewals.'] }];
+// #26 — the account-deletion URL and support email a store reviewer follows
+// must be the real production domain. Sourced from the single trust-settings
+// allowlist so they can never drift from the rest of the app again.
+const SUPPORT_EMAIL = APPROVED_PUBLIC_DESTINATIONS.supportEmail;
+const DELETE_URL = APPROVED_PUBLIC_DESTINATIONS.deleteAccount;
+const PRIVACY_URL = APPROVED_PUBLIC_DESTINATIONS.privacy;
+const TERMS_URL = APPROVED_PUBLIC_DESTINATIONS.terms;
+
+const supportSections: DocumentSection[] = [{ title: 'Need help with Chakusa?', paragraphs: [`Contact ${SUPPORT_EMAIL}.`], bullets: ['Account access.', 'Business setup.', 'Leads and customers.', 'Review requests.', 'Comeback reminders.', 'Notification issues.', 'Plan and usage questions.', 'Account deletion.', 'Technical problems.'] }, { title: 'Related information', paragraphs: [`Account deletion: ${DELETE_URL}.`, `Privacy Policy: ${PRIVACY_URL}.`, `Terms of Use: ${TERMS_URL}.`] }, { title: 'Important', paragraphs: ['When contacting support, do not send passwords, authentication tokens, payment credentials, or unnecessary customer personal information.'] }];
+const deletionSections: DocumentSection[] = [{ title: 'Delete your account in the app', paragraphs: ['The existing authenticated in-app flow is the primary self-service deletion method.'], bullets: ['Open Chakusa.', 'Open Settings.', 'Go to Danger Zone.', 'Select Delete Account.', 'Complete the required identity confirmation.', 'Confirm deletion.'] }, { title: 'If you cannot access the application', paragraphs: [`Request help at ${SUPPORT_EMAIL}. Please contact us from the email address associated with your Chakusa account where possible.`, 'For security, we may need to verify that you are the account owner before processing a deletion request. Never send your password or authentication token.'] }, { title: 'What deletion affects', paragraphs: ['Deleting your Chakusa account may permanently remove your account, business information, and associated business data from the active service.', 'Some information may be retained where reasonably necessary for security, fraud prevention, transaction records, backups, dispute resolution, or legal obligations.'] }, { title: 'Important for paid subscriptions', paragraphs: ['Deleting a Chakusa account is separate from canceling a subscription billed through Apple App Store or Google Play. If you have an active store subscription, cancel it through the applicable store to prevent future renewals.'] }];
 
 const staticConfigs: Partial<Record<PublicPage, { heading: string; meta: string; sections: DocumentSection[] }>> = {
   support: { heading: 'CHAKUSA SUPPORT', meta: 'Public support information', sections: supportSections },
@@ -63,7 +72,7 @@ export function PublicDocumentScreen({ page }: { page: PublicPage }) {
         {section.paragraphs?.map((paragraph, i) => <Text key={i} style={styles.body}>{paragraph}</Text>)}
         {section.bullets ? <View style={styles.list}>{section.bullets.map((item, i) => <View key={i} style={styles.listRow}><Text style={styles.bullet}>•</Text><Text style={styles.listText}>{item}</Text></View>)}</View> : null}
       </View>)}
-      {page === 'support' || page === 'delete-account' ? <Link href="mailto:support@chakusa.com" label="Email support@chakusa.com" primary /> : null}
+      {page === 'support' || page === 'delete-account' ? <Link href={`mailto:${SUPPORT_EMAIL}`} label={`Email ${SUPPORT_EMAIL}`} primary /> : null}
     </> : null}
     <Footer />
   </View></ScrollView></SafeAreaView>;
@@ -72,7 +81,7 @@ export function PublicDocumentScreen({ page }: { page: PublicPage }) {
 function Link({ href, label, primary = false, onPressOverride }: { href: string; label: string; primary?: boolean; onPressOverride?: () => void }) {
   return <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={onPressOverride ?? (() => void Linking.openURL(href))} style={({ pressed }) => [styles.linkButton, primary && styles.primary, pressed && styles.pressed]}><Text style={[styles.linkText, primary && styles.primaryText]}>{label}</Text></Pressable>;
 }
-function Footer() { return <View style={styles.footer}><View style={styles.footerLinks}><Link href="https://chakusa.com/privacy" label="Privacy" /><Link href="https://chakusa.com/terms" label="Terms" /><Link href="https://chakusa.com/support" label="Support" /><Link href="https://chakusa.com/delete-account" label="Delete Account" /></View><Text style={styles.copyright}>© Chakusa</Text></View>; }
+function Footer() { return <View style={styles.footer}><View style={styles.footerLinks}><Link href={PRIVACY_URL} label="Privacy" /><Link href={TERMS_URL} label="Terms" /><Link href={APPROVED_PUBLIC_DESTINATIONS.support} label="Support" /><Link href={DELETE_URL} label="Delete Account" /></View><Text style={styles.copyright}>© Chakusa</Text></View>; }
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: m3.surface },
   scroll: { paddingHorizontal: m3Space.md, paddingTop: m3Space.md, paddingBottom: m3Space.xxl },

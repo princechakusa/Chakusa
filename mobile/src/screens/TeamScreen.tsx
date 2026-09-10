@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
+import { PUBLIC_WEB_ORIGIN } from '../domain/trustSettings';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import {
   canMutateTeam,
@@ -124,7 +125,7 @@ export function TeamScreen({ navigation }: Props) {
       setInviteResult({
         email: created.email,
         emailSent: created.emailSent,
-        link: `https://chakusa.com/team-invite/${encodeURIComponent(created.token)}`,
+        link: `${PUBLIC_WEB_ORIGIN}/team-invite/${encodeURIComponent(created.token)}`,
       });
       setEmail('');
       setInviteOpen(false);

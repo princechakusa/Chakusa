@@ -1,5 +1,10 @@
 export type ExternalDestination = { kind: 'url'; value: string } | { kind: 'email'; value: string } | null;
-export const APPROVED_PUBLIC_DESTINATIONS = { privacy: 'https://chakusarecovery.com/privacy', terms: 'https://chakusarecovery.com/terms', cookies: 'https://chakusarecovery.com/cookies', aiDisclosure: 'https://chakusarecovery.com/ai-disclosure', support: 'https://chakusarecovery.com/help', deleteAccount: 'https://chakusarecovery.com/delete-account', supportEmail: 'support@chakusarecovery.com' } as const;
+// #26 — the one canonical customer web origin for every link the mobile app
+// shows or shares. Must match the server's PUBLIC_REVIEW_BASE_URL and the
+// website deploy domain (chakusarecovery.com), or a store reviewer / user
+// follows a dead link.
+export const PUBLIC_WEB_ORIGIN = 'https://chakusarecovery.com';
+export const APPROVED_PUBLIC_DESTINATIONS = { privacy: `${PUBLIC_WEB_ORIGIN}/privacy`, terms: `${PUBLIC_WEB_ORIGIN}/terms`, cookies: `${PUBLIC_WEB_ORIGIN}/cookies`, aiDisclosure: `${PUBLIC_WEB_ORIGIN}/ai-disclosure`, support: `${PUBLIC_WEB_ORIGIN}/help`, deleteAccount: `${PUBLIC_WEB_ORIGIN}/delete-account`, supportEmail: 'support@chakusarecovery.com' } as const;
 
 function validHttpsUrl(value?: string) {
   if (!value) return null;

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
@@ -132,6 +133,18 @@ export async function buildApp(options: BuildAppOptions = {}) {
     // per-route; the global default (1 MiB) covers everything else.
     requestTimeout: 60_000,
     bodyLimit: 1_048_576,
+    // #23 — correlation id. Trust an inbound X-Request-Id only from a
+    // confirmed reverse proxy (same gate as trustProxy); otherwise mint one.
+    // It is logged with every line by pino and echoed on the response so a
+    // client/proxy can stitch logs, Sentry events and support tickets together.
+    genReqId: (req) => {
+      const inbound = config.TRUST_PROXY ? req.headers["x-request-id"] : undefined;
+      return typeof inbound === "string" && inbound.length > 0 && inbound.length <= 200 ? inbound : randomUUID();
+    },
+  });
+
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", request.id);
   });
 
   app.removeContentTypeParser("application/json");

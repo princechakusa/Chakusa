@@ -143,12 +143,15 @@ export function shouldCaptureError(error: unknown): boolean {
  * internal identifiers useful for tracing which business an incident
  * affected.
  */
-export function reportFastifyError(request: Pick<FastifyRequest, "user" | "businessId" | "role">, error: unknown): void {
+export function reportFastifyError(request: Pick<FastifyRequest, "user" | "businessId" | "role" | "id">, error: unknown): void {
   if (!shouldCaptureError(error)) return;
   Sentry.withScope((scope) => {
     scope.setUser(request.user?.userId ? { id: request.user.userId } : null);
     if (request.businessId) scope.setTag("businessId", request.businessId);
     if (request.role) scope.setTag("role", request.role);
+    // #23 — the same id echoed in the X-Request-Id response header and logged
+    // on every pino line for this request, so an incident links end to end.
+    if (request.id) scope.setTag("requestId", String(request.id));
     Sentry.captureException(error);
   });
 }

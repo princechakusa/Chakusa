@@ -40,4 +40,17 @@ describe('worker production health', () => {
     expect(killed.statusCode).toBe(200);
     expect(killed.json().aiKillSwitchEngaged).toBe(true);
   });
+
+  it('#23: stamps a correlation id on every response, minting one when none is trusted', async () => {
+    const first = await app.inject({ method: 'GET', url: '/health' });
+    const id = first.headers['x-request-id'];
+    expect(typeof id).toBe('string');
+    expect((id as string).length).toBeGreaterThan(10);
+
+    // TRUST_PROXY is off in tests, so an inbound X-Request-Id is NOT trusted —
+    // a fresh id is minted instead of echoing an attacker-controlled value.
+    const second = await app.inject({ method: 'GET', url: '/health', headers: { 'x-request-id': 'client-supplied-value' } });
+    expect(second.headers['x-request-id']).not.toBe('client-supplied-value');
+    expect(second.headers['x-request-id']).not.toBe(id);
+  });
 });

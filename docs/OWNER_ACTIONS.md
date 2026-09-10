@@ -243,3 +243,49 @@ Apply to the Render Postgres **pooled** `DATABASE_URL` (see
 - Leave `DIRECT_URL` (used only for `prisma migrate deploy`) plain.
 
 No code change; applied on the Render dashboard / service env at the next deploy.
+
+---
+
+## OA-8 — #26 Release Readiness owner gates
+
+**Status:** OPEN (release-blocking; engineering is complete up to this boundary —
+see `docs/RELEASE_READINESS_CHECKLIST.md`)
+
+1. **Deploy the migration chain** (OA-1) and set the DB pool params (OA-7).
+2. **Enable `TRUST_PROXY`** in the production API env once the reverse proxy is
+   confirmed to set `X-Forwarded-For` correctly.
+3. **Android release build** — local Windows/PowerShell tooling only (never EAS,
+   per project rules). Sign; set `android.versionCode` (currently 1; iOS
+   `buildNumber` is 5 — reconcile the release numbers).
+4. **iOS build** — EAS → TestFlight → App Store submission.
+5. **`expo prebuild` manifest check** — grep the merged `AndroidManifest.xml` for
+   `com.google.android.gms.permission.AD_ID`; remove it with `tools:node="remove"`
+   if unwanted, or declare advertising-ID use in Data Safety.
+6. **Store declarations (extends OA-2):**
+   - Play Data Safety + Apple App Privacy per the inventory in
+     `RELEASE_READINESS_CHECKLIST.md` §8–9.
+   - **Android call screening:** the `withCallDetection` plugin declares
+     `READ_PHONE_STATE` **and `READ_CONTACTS`**. Play requires a Permissions
+     Declaration for a `CallScreeningService` and scrutinises `READ_CONTACTS`.
+     Justify precisely (contacts are *never read* — Telecom only checks the
+     permission's presence before exempting a contacts-matched call from
+     screening), or ship the missed-call feature without `READ_CONTACTS`.
+   - Live Location: precise (5-dp), foreground-only, appointment functionality,
+     **not tracking**, ephemeral/no history.
+7. **Privacy policy text** at `chakusarecovery.com/privacy` — name Twilio (message
+   delivery), Stripe/Apple/Google (payments), Sentry (diagnostics) as processors;
+   describe Live Location's ephemeral appointment-scoped nature; describe the
+   call-screening `READ_CONTACTS` use.
+8. **Store consoles:** enter the public account-deletion URL
+   (`https://chakusarecovery.com/delete-account`); provide reviewer credentials
+   (seed a staging DB with `npm run seed:qa` and share the printed logins + a
+   feature-navigation note from `RELEASE_QA_MATRIX.md`); upload accurate
+   screenshots/metadata.
+9. **Physical-device QA** — execute `docs/RELEASE_QA_MATRIX.md`. Gate: all P0 on
+   all platforms, all P1 on ≥1 iOS + ≥1 Android, no open P0/P1.
+10. **Marketing/store copy** — do not claim: automatic AI message answering until
+    OA-3 is applied on the release env; "tap a link to open the app" until OA-5;
+    full browser parity (web quote/invoice creation, team admin, report detail are
+    deferred — see `docs/progress/2026-09-10-stage-22-desktop-web.md`).
+
+No engineering P0/P1 is open. Once 1–9 are done and QA passes, V1 can ship.

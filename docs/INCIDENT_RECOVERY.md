@@ -1,7 +1,9 @@
 # Chakusa incident recovery guide
 
 Runbook for the most likely production incidents. Every mitigation here is
-reversible and needs no code change unless stated.
+reversible and needs no code change unless stated. See `docs/PRODUCTION_HARDENING.md`
+for the #23 subsystem audit, the required `DATABASE_URL` parameters, and extra
+runbook entries (worker 503, poison-pill row, stuck message dispatches).
 
 ## Severity ladder
 

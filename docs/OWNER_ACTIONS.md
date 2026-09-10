@@ -213,3 +213,33 @@ materially-different, hard-to-reverse product/architecture choice. #23 Productio
 Hardening (backend worker/outbox/webhook/rate-limit/index reliability) is
 independent of this and is the next agent-executable stage if the owner wants
 work to continue while #22 is decided.
+
+---
+
+## OA-6 — #22 web console approach — RESOLVED
+
+**Status:** DONE — `docs/OWNER_DECISION_OA6_STAGE22_WEB.md` (owner) approved the
+`website/` Astro + `cloudflare/auth-gateway` approach and the V1 scope. #22 V1 is
+built and reported (`docs/progress/2026-09-10-stage-22-desktop-web.md`).
+
+---
+
+## OA-7 — DATABASE_URL pool / timeout parameters (#23)
+
+**Status:** OPEN (non-blocking; a deploy-time config change, not code)
+
+Apply to the Render Postgres **pooled** `DATABASE_URL` (see
+`docs/PRODUCTION_HARDENING.md` §7 for the reasoning):
+
+```
+?connection_limit=<N>&pool_timeout=10&connect_timeout=5&options=-c%20statement_timeout%3D30000
+```
+
+- `connection_limit` sized so `api_replicas × connection_limit ≤` the pgbouncer /
+  Postgres connection ceiling (Prisma's default overshoots on a small pool and is
+  the cause of the "internal server error" contention under heavy parallel load).
+- `statement_timeout=30000` is the handler-execution bound that Fastify's
+  `requestTimeout` (slow-loris only) does not provide.
+- Leave `DIRECT_URL` (used only for `prisma migrate deploy`) plain.
+
+No code change; applied on the Render dashboard / service env at the next deploy.

@@ -72,7 +72,7 @@ export function CalendarScreen() {
 
   const load = useCallback(
     async (soft = false) => {
-      soft ? setRefreshing(true) : setLoading(true);
+      if (soft) setRefreshing(true); else setLoading(true);
       setError(null);
       try {
         setItems(await appointmentsApi.list(range.from.toISOString(), range.to.toISOString()));

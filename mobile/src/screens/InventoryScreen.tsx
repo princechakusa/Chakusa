@@ -39,7 +39,7 @@ export function InventoryScreen() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const load = useCallback(async (soft = false) => {
-    soft ? setRefreshing(true) : setLoading(true);
+    if (soft) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       setItems(await inventoryApi.items());

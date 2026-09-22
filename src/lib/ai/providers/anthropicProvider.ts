@@ -83,11 +83,17 @@ export function createAnthropicProvider(options: AnthropicOptions): AIProvider {
   };
 }
 
-/** Registered by registerBuiltInAIProviders() when ANTHROPIC_API_KEY is set. */
-export function anthropicProviderFromConfig(): AIProvider | null {
-  if (!config.ANTHROPIC_API_KEY) return null;
+/**
+ * Registered by registerBuiltInAIProviders() when an Anthropic API key is
+ * available — either ANTHROPIC_API_KEY or an admin-set platform provider
+ * secret of the same name (see src/lib/platformProviderSecrets.ts), which
+ * takes precedence so a key rotated from the admin console is used.
+ */
+export function anthropicProviderFromConfig(apiKeyOverride?: string): AIProvider | null {
+  const apiKey = apiKeyOverride ?? config.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
   return createAnthropicProvider({
-    apiKey: config.ANTHROPIC_API_KEY,
+    apiKey,
     baseUrl: config.ANTHROPIC_BASE_URL,
     defaultModel: config.ANTHROPIC_DEFAULT_MODEL,
   });

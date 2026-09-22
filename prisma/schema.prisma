@@ -611,6 +611,22 @@ model PlatformSetting {
   @@map("platform_settings")
 }
 
+/// Platform-level provider API credentials (OpenAI/Anthropic/Twilio), set by
+/// a platform admin via the admin console instead of a Render env var, so
+/// they can be added/rotated without a new mobile build or backend deploy.
+/// `encryptedValue` is AES-256-GCM ciphertext (see src/lib/providerCredentials.ts)
+/// — the plaintext value is never stored and never returned by any read API.
+model PlatformProviderSecret {
+  id               String   @id @default(uuid())
+  key              String   @unique
+  encryptedValue   String   @map("encrypted_value")
+  updatedByAdminId String?  @map("updated_by_admin_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_provider_secrets")
+}
+
 /// Durable event ledger. Rows are written in the caller's transaction only;
 /// publication/queue consumption is intentionally deferred to a later stage.
 model OutboxEvent {

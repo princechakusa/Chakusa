@@ -35,6 +35,14 @@ import {
 } from "./adminRead.service.js";
 import { getAdminFinanceOperations } from "./financeAdmin.service.js";
 import { recordAdminAudit } from "./adminAudit.service.js";
+import { adminListFeatureFlags, adminUpsertFeatureFlag, adminDeleteFeatureFlag } from "./featureFlagsAdmin.service.js";
+import {
+  PLATFORM_PROVIDER_SECRET_KEYS,
+  isPlatformProviderSecretKey,
+  listPlatformProviderSecrets,
+  setPlatformProviderSecret,
+  clearPlatformProviderSecret,
+} from "../../lib/platformProviderSecrets.js";
 import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
 import { getOutboxStatus } from "./outboxRead.service.js";
 import { getPlatformWorkflow, listPlatformWorkflowExecutions, listPlatformWorkflows, retryPlatformWorkflowExecution } from "./workflowAdmin.service.js";
@@ -491,6 +499,65 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     await fastify.requireAdminCsrf(request);
     const input = adminSettingUpdateSchema.parse(request.body);
     reply.send(await updateAdminPlatformSetting(request.admin!, input.key, input.enabled, auditContext(request)));
+  });
+
+  // Feature flags (e.g. "ai.customer_agent") — platform/business/user scoped
+  // rollout switches. Same read/manage split as /settings above.
+  fastify.get("/feature-flags", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.read");
+    reply.send({ items: await adminListFeatureFlags() });
+  });
+  fastify.post("/feature-flags", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z
+      .object({
+        key: z.string().trim().min(1).max(120),
+        scope: z.enum(["PLATFORM", "BUSINESS", "USER"]),
+        businessId: z.string().uuid().optional(),
+        userId: z.string().uuid().optional(),
+        enabled: z.boolean(),
+        rolloutPercent: z.number().int().min(0).max(100).optional(),
+      })
+      .parse(request.body);
+    const saved = await adminUpsertFeatureFlag(input);
+    await recordAdminAudit({ actor: request.admin!, action: "FEATURE_FLAG_UPSERTED", targetType: "feature_flag", targetId: saved.id, newValue: { key: saved.key, scope: saved.scope, enabled: saved.enabled }, context: auditContext(request) });
+    reply.code(201).send(saved);
+  });
+  fastify.delete<{ Params: { id: string } }>("/feature-flags/:id", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.manage");
+    await fastify.requireAdminCsrf(request);
+    const removed = await adminDeleteFeatureFlag(request.params.id);
+    await recordAdminAudit({ actor: request.admin!, action: "FEATURE_FLAG_DELETED", targetType: "feature_flag", targetId: removed.id, oldValue: { key: removed.key, scope: removed.scope }, context: auditContext(request) });
+    reply.code(204).send();
+  });
+
+  // Platform provider secrets (OpenAI/Anthropic/Twilio API credentials) —
+  // write-only: values are encrypted at rest and never returned by any read
+  // route, only metadata (key, configured, updatedAt, updatedByAdminId).
+  // Restricted to provider_secrets.manage (SUPER_ADMIN/PLATFORM_ADMIN only
+  // by default — see admin.permissions.ts). A saved change is picked up on
+  // the next API restart, not live — see src/app.ts boot sequence.
+  fastify.get("/provider-secrets", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "provider_secrets.manage");
+    reply.send({ items: await listPlatformProviderSecrets(), keys: PLATFORM_PROVIDER_SECRET_KEYS });
+  });
+  fastify.put<{ Params: { key: string } }>("/provider-secrets/:key", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "provider_secrets.manage");
+    await fastify.requireAdminCsrf(request);
+    if (!isPlatformProviderSecretKey(request.params.key)) throw ApiError.badRequest("Unsupported provider secret key");
+    const input = z.object({ value: z.string().trim().min(1).max(4000) }).parse(request.body);
+    await setPlatformProviderSecret(request.params.key, input.value, request.admin!.userId);
+    await recordAdminAudit({ actor: request.admin!, action: "PROVIDER_SECRET_SET", targetType: "provider_secret", targetId: request.params.key, context: auditContext(request) });
+    reply.code(204).send();
+  });
+  fastify.delete<{ Params: { key: string } }>("/provider-secrets/:key", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "provider_secrets.manage");
+    await fastify.requireAdminCsrf(request);
+    if (!isPlatformProviderSecretKey(request.params.key)) throw ApiError.badRequest("Unsupported provider secret key");
+    await clearPlatformProviderSecret(request.params.key);
+    await recordAdminAudit({ actor: request.admin!, action: "PROVIDER_SECRET_CLEARED", targetType: "provider_secret", targetId: request.params.key, context: auditContext(request) });
+    reply.code(204).send();
   });
 
   // LOOP 3B-4: AI administration. Read views require `platform.read`; the

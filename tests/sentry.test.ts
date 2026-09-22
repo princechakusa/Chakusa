@@ -167,7 +167,7 @@ describe("reportFastifyError: capture decision and safe context", () => {
 
   it("8. calls Sentry with safe user/business context for an unexpected error", () => {
     reportFastifyError(
-      { user: { userId: "user-123", sessionId: "session-123", type: "access" }, businessId: "business-456", role: "OWNER" },
+      { id: "request-123", user: { userId: "user-123", sessionId: "session-123", type: "access" }, businessId: "business-456", role: "OWNER" },
       new Error("unexpected failure"),
     );
     expect(withScopeMock).toHaveBeenCalledTimes(1);

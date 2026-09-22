@@ -86,18 +86,47 @@ function classifyTwilioError(error: unknown): { errorCode?: string; permanentFai
  */
 export class TwilioMessagingProvider implements MessagingProvider {
   readonly id = "twilio";
-  private readonly client: TwilioRestClient;
-  private readonly sender: TwilioSenderConfig;
+  private client: TwilioRestClient;
+  private sender: TwilioSenderConfig;
+  private authToken: string | undefined;
 
-  constructor(client?: TwilioRestClient, sender?: TwilioSenderConfig) {
-    this.client = client ?? twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
+  constructor(client?: TwilioRestClient, sender?: TwilioSenderConfig, authToken?: string) {
+    this.authToken = authToken ?? config.TWILIO_AUTH_TOKEN;
+    this.client = client ?? twilio(config.TWILIO_ACCOUNT_SID, this.authToken);
     this.sender = sender ?? { fromNumber: config.TWILIO_FROM_NUMBER, whatsappFrom: config.TWILIO_WHATSAPP_FROM, messagingServiceSid: config.TWILIO_MESSAGING_SERVICE_SID };
   }
 
+  /**
+   * Rebuilds this provider's credentials in place from admin-set platform
+   * provider secrets (src/lib/platformProviderSecrets.ts), each falling
+   * back to its env var when not set in the database. Called once at boot,
+   * after the secrets store has loaded — never mid-request. Reassigns the
+   * instance's own fields rather than creating a new object, so the single
+   * `defaultTwilioProvider` export (and anything already holding a
+   * reference to it) keeps working unchanged.
+   */
+  applyOverrides(overrides: {
+    accountSid?: string;
+    authToken?: string;
+    fromNumber?: string;
+    whatsappFrom?: string;
+    messagingServiceSid?: string;
+  }): void {
+    const accountSid = overrides.accountSid ?? config.TWILIO_ACCOUNT_SID;
+    this.authToken = overrides.authToken ?? config.TWILIO_AUTH_TOKEN;
+    this.client = twilio(accountSid, this.authToken);
+    this.sender = {
+      fromNumber: overrides.fromNumber ?? config.TWILIO_FROM_NUMBER,
+      whatsappFrom: overrides.whatsappFrom ?? config.TWILIO_WHATSAPP_FROM,
+      messagingServiceSid: overrides.messagingServiceSid ?? config.TWILIO_MESSAGING_SERVICE_SID,
+    };
+  }
+
   supportsChannel(channel: MessagingChannel): boolean {
-    // WhatsApp via Twilio is a materially different integration (different
-    // sender address format, template-based pricing, separate opt-in
-    // rules) — deliberately out of scope for this phase.
+    // WhatsApp is fully implemented (see send()/parseInboundWebhook() below)
+    // — it's only "unsupported" at runtime until a WhatsApp sender number is
+    // configured (TWILIO_WHATSAPP_FROM, or the equivalent admin-set
+    // platform provider secret).
     return channel === "sms" ? Boolean(this.sender.fromNumber || this.sender.messagingServiceSid) : Boolean(this.sender.whatsappFrom);
   }
 
@@ -150,11 +179,11 @@ export class TwilioMessagingProvider implements MessagingProvider {
   }
 
   verifyWebhookSignature(payload: unknown, headers: Headers, url?: string): boolean {
-    if (!url || !payload || typeof payload !== "object" || !config.TWILIO_AUTH_TOKEN) return false;
+    if (!url || !payload || typeof payload !== "object" || !this.authToken) return false;
     const signature = headers.get("x-twilio-signature");
     if (!signature) return false;
     const params = Object.fromEntries(Object.entries(payload as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
-    return twilio.validateRequest(config.TWILIO_AUTH_TOKEN, signature, url, params);
+    return twilio.validateRequest(this.authToken, signature, url, params);
   }
 }
 

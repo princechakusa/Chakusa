@@ -27,7 +27,7 @@ export function AiReceptionistScreen() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (soft = false) => {
-    soft ? setRefreshing(true) : setLoading(true);
+    if (soft) setRefreshing(true); else setLoading(true);
     setError(null);
     try { setView(await aiReceptionistApi.get()); }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to load the AI receptionist.'); }

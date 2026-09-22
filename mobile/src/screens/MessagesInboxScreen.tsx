@@ -49,7 +49,7 @@ export function MessagesInboxScreen() {
   const [search, setSearch] = useState('');
 
   const load = useCallback(async (soft = false) => {
-    soft ? setRefreshing(true) : setLoading(true);
+    if (soft) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       setItems(await messagingApi.conversations());

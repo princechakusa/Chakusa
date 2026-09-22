@@ -8,9 +8,27 @@ Status legend: **OPEN** (blocking) · **DONE** · **N/A**
 
 ---
 
-## OA-1 — Production migration deployment (migration backlog, checkpoint before #18)
+## OA-1 — Production migration deployment (migration backlog, checkpoint before #18) — RESOLVED
 
-**Status:** OPEN
+**Status:** DONE — verified 2026-09-22 via read-only inspection against production
+`DIRECT_URL`. All 10 migrations listed below (`20260907204745` … `20260909160000_review_growth`)
+have `finished_at` set and `rolled_back_at IS NULL`; `prisma migrate status` reports
+"Database schema is up to date"; the unfinished/rolled-back check returned zero rows.
+They applied 2026-09-10T03:45:27Z, matching Render deploy `dep-dah2fd8ae00c73afljt0`
+(live 2026-09-10T03:44:53–03:46:18Z). Server is PostgreSQL 17.6, **Supabase-hosted**
+(`aws-0-eu-central-1.pooler.supabase.com`), not Render Postgres — the original
+"Render database page / Recovery tab" instruction below is stale; backup/PITR must be
+
+**New follow-up — OA-1b (backup gap, still OPEN):** confirmed 2026-09-22 the Supabase
+project is on the **Free tier**: no automated daily backups, no PITR. Owner decision
+(2026-09-22): deferred — continue other release work now, revisit the Supabase Pro
+upgrade (or a manual `pg_dump` safety net) later, before further schema-changing
+migrations are deployed against this database. Do not treat future migrations as
+low-risk until this is resolved.
+confirmed in the Supabase dashboard instead, not Render's.
+
+**Original text below, retained for history:**
+
 **Blocks:** deploying the pending additive migrations `20260907204745` … `20260909160000`
 to the Render production database. As of #20 the backlog is **10**
 (the 8 audited in the checkpoint, plus `20260909140000_conversation_last_read` — an
@@ -224,12 +242,19 @@ built and reported (`docs/progress/2026-09-10-stage-22-desktop-web.md`).
 
 ---
 
-## OA-7 — DATABASE_URL pool / timeout parameters (#23)
+## OA-7 — DATABASE_URL pool / timeout parameters (#23) — RESOLVED
 
-**Status:** OPEN (non-blocking; a deploy-time config change, not code)
+**Status:** DONE — applied and verified 2026-09-22. Owner added
+`&connection_limit=5&pool_timeout=10&connect_timeout=5&options=-c%20statement_timeout%3D30000`
+to the pooled `DATABASE_URL` on the `chakusa-api` Render service (manual deploy from
+the dashboard). `connection_limit=5` was sized for the current single free-tier
+instance (1 API replica, no separate worker service on Render). Verified live:
+`prisma`-style URL parsing confirms all four params present on the deployed value;
+the resulting deploy (`dep-dap6o6mgekts738077d0`) went `live`; `/health` and
+`/health/ready` both return 200 afterward.
 
-Apply to the Render Postgres **pooled** `DATABASE_URL` (see
-`docs/PRODUCTION_HARDENING.md` §7 for the reasoning):
+Original text retained for history — apply to the Render Postgres **pooled**
+`DATABASE_URL` (see `docs/PRODUCTION_HARDENING.md` §7 for the reasoning):
 
 ```
 ?connection_limit=<N>&pool_timeout=10&connect_timeout=5&options=-c%20statement_timeout%3D30000
@@ -243,6 +268,8 @@ Apply to the Render Postgres **pooled** `DATABASE_URL` (see
 - Leave `DIRECT_URL` (used only for `prisma migrate deploy`) plain.
 
 No code change; applied on the Render dashboard / service env at the next deploy.
+If instance count grows later, revisit `connection_limit` sizing against the new
+`api_replicas` count.
 
 ---
 

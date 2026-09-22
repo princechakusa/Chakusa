@@ -42,7 +42,7 @@ export function CommissionsScreen() {
   const range = useMemo(() => monthRange(anchor), [anchor]);
 
   const load = useCallback(async (soft = false) => {
-    soft ? setRefreshing(true) : setLoading(true);
+    if (soft) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       const [reportData, rulesData, memberData, serviceData] = await Promise.all([

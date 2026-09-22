@@ -91,11 +91,17 @@ export function createOpenAIProvider(options: OpenAIOptions): AIProvider {
   };
 }
 
-/** Registered by registerBuiltInAIProviders() when OPENAI_API_KEY is set. */
-export function openAIProviderFromConfig(): AIProvider | null {
-  if (!config.OPENAI_API_KEY) return null;
+/**
+ * Registered by registerBuiltInAIProviders() when an OpenAI API key is
+ * available — either OPENAI_API_KEY or an admin-set platform provider
+ * secret of the same name (see src/lib/platformProviderSecrets.ts), which
+ * takes precedence so a key rotated from the admin console is used.
+ */
+export function openAIProviderFromConfig(apiKeyOverride?: string): AIProvider | null {
+  const apiKey = apiKeyOverride ?? config.OPENAI_API_KEY;
+  if (!apiKey) return null;
   return createOpenAIProvider({
-    apiKey: config.OPENAI_API_KEY,
+    apiKey,
     baseUrl: config.OPENAI_BASE_URL,
     defaultModel: config.OPENAI_DEFAULT_MODEL,
   });

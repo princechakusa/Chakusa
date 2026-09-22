@@ -36,6 +36,7 @@ export const ADMIN_PERMISSIONS = [
   "conversation.assign",
   "conversation.takeover",
   "provider.manage",
+  "provider_secrets.manage",
   "ai.manage",
   "automation.analytics",
   "communication.read",

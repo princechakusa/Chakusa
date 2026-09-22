@@ -68,6 +68,8 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
 import { readAutomationHealth } from "./lib/automation/automationHealth.js";
 import { registerBuiltInAIProviders } from "./lib/ai/registerProviders.js";
+import { loadPlatformProviderSecretOverrides } from "./lib/platformProviderSecrets.js";
+import { defaultTwilioProvider } from "./lib/messaging/twilioProvider.js";
 import { circuitBreakerSnapshot } from "./lib/ai/ops/circuitBreaker.js";
 import aiPromptRoutes from "./modules/aiPrompts/aiPrompts.routes.js";
 import aiPolicyRoutes from "./modules/aiPolicies/aiPolicies.routes.js";
@@ -178,9 +180,32 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(customerAuthPlugin);
   await app.register(tenantPlugin);
 
-  // Make the deterministic fake AI provider available for dev/test/seed —
-  // real adapters slot in here later (see registerProviders.ts).
-  registerBuiltInAIProviders();
+  // Make the deterministic fake AI provider available for dev/test/seed,
+  // and register the real OpenAI/Anthropic/Twilio adapters. Admin-set
+  // platform provider secrets (src/lib/platformProviderSecrets.ts) are
+  // loaded first and take precedence over the matching env var, so a key
+  // set/rotated from the admin console is picked up on the next restart
+  // with no code change, new build, or Render env var edit required.
+  const platformSecretOverrides = await loadPlatformProviderSecretOverrides();
+  registerBuiltInAIProviders({
+    OPENAI_API_KEY: platformSecretOverrides.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: platformSecretOverrides.ANTHROPIC_API_KEY,
+  });
+  if (
+    platformSecretOverrides.TWILIO_ACCOUNT_SID ||
+    platformSecretOverrides.TWILIO_AUTH_TOKEN ||
+    platformSecretOverrides.TWILIO_FROM_NUMBER ||
+    platformSecretOverrides.TWILIO_WHATSAPP_FROM ||
+    platformSecretOverrides.TWILIO_MESSAGING_SERVICE_SID
+  ) {
+    defaultTwilioProvider.applyOverrides({
+      accountSid: platformSecretOverrides.TWILIO_ACCOUNT_SID,
+      authToken: platformSecretOverrides.TWILIO_AUTH_TOKEN,
+      fromNumber: platformSecretOverrides.TWILIO_FROM_NUMBER,
+      whatsappFrom: platformSecretOverrides.TWILIO_WHATSAPP_FROM,
+      messagingServiceSid: platformSecretOverrides.TWILIO_MESSAGING_SERVICE_SID,
+    });
+  }
 
   // Cheap, DB-free liveness — "the process is up and answering HTTP," not
   // "the app is fully functional." Deployment platforms (Render, etc.)

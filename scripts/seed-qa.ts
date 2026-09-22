@@ -83,19 +83,19 @@ async function main() {
     ),
   );
   for (const [i, status] of ["new", "contacted", "booked", "won", "lost"].entries()) {
-    await prisma.lead.create({ data: { businessId, customerId: customers[i].id, serviceRequested: services[i % 2].name, source: ["phone", "website", "referral", "walk_in", "social"][i], status: status as never, urgency: (["low", "medium", "high"] as const)[i % 3], estimatedValue: 50 + i * 25 } });
+    await prisma.lead.create({ data: { businessId, customerId: customers[i]!.id, serviceRequested: services[i % 2]!.name, source: ["phone", "website", "referral", "walk_in", "social"][i], status: status as never, urgency: (["low", "medium", "high"] as const)[i % 3], estimatedValue: 50 + i * 25 } });
   }
 
   // --- appointments across states -------------------------------------
   const now = Date.now();
   const appt = (customerId: string, startOffsetMin: number, status: string, extra: Record<string, unknown> = {}) =>
     prisma.appointment.create({ data: { businessId, customerId, assignedMemberId: ownerMember.id, serviceOfferingId: services[0].id, serviceName: services[0].name, startsAt: new Date(now + startOffsetMin * 60_000), endsAt: new Date(now + (startOffsetMin + 45) * 60_000), status: status as never, createdByUserId: owner.user.id, ...extra } });
-  await appt(customers[0].id, 120, "CONFIRMED");
-  await appt(customers[1].id, 24 * 60, "SCHEDULED");
-  await appt(customers[2].id, -180, "COMPLETED");
-  await appt(customers[3].id, -90, "NO_SHOW", { startsAt: new Date(now - 90 * 60_000), endsAt: new Date(now - 45 * 60_000) });
-  await appt(customers[4].id, -24 * 60, "CANCELED");
-  const arriving = await appt(customers[0].id, 60, "CONFIRMED", { arrivalState: "ON_MY_WAY", arrivalStateAt: new Date(), arrivalStateByMemberId: ownerMember.id });
+  await appt(customers[0]!.id, 120, "CONFIRMED");
+  await appt(customers[1]!.id, 24 * 60, "SCHEDULED");
+  await appt(customers[2]!.id, -180, "COMPLETED");
+  await appt(customers[3]!.id, -90, "NO_SHOW", { startsAt: new Date(now - 90 * 60_000), endsAt: new Date(now - 45 * 60_000) });
+  await appt(customers[4]!.id, -24 * 60, "CANCELED");
+  const arriving = await appt(customers[0]!.id, 60, "CONFIRMED", { arrivalState: "ON_MY_WAY", arrivalStateAt: new Date(), arrivalStateByMemberId: ownerMember.id });
   await prisma.appointmentLocationShare.create({ data: { appointmentId: arriving.id, businessId, sharingMemberId: ownerMember.id, latitude: 51.5074, longitude: -0.1278, expiresAt: new Date(now + 30 * 60_000) } });
 
   // --- inventory -----------------------------------------------------
@@ -104,14 +104,14 @@ async function main() {
   await prisma.inventoryMovement.create({ data: { businessId, itemId: item.id, kind: "CONSUME", quantityDelta: -600, balanceAfter: 400, createdByUserId: owner.user.id, reason: "QA demo consumption" } });
 
   // --- reviews + feedback -----------------------------------------
-  const rr = await prisma.reviewRequest.create({ data: { businessId, customerId: customers[2].id, serviceName: services[0].name, status: "sent", sentAt: new Date() } });
-  await prisma.feedback.create({ data: { businessId, customerId: customers[2].id, reviewRequestId: rr.id, rating: 5, comment: "Fantastic, thank you!", sentiment: "positive" } });
-  await prisma.feedback.create({ data: { businessId, customerId: customers[3].id, rating: 2, comment: "Waited too long.", sentiment: "negative", response: "Sorry about the wait — we've added Saturday staff.", respondedAt: new Date(), respondedByUserId: owner.user.id } });
+  const rr = await prisma.reviewRequest.create({ data: { businessId, customerId: customers[2]!.id, serviceName: services[0].name, status: "sent", sentAt: new Date() } });
+  await prisma.feedback.create({ data: { businessId, customerId: customers[2]!.id, reviewRequestId: rr.id, rating: 5, comment: "Fantastic, thank you!", sentiment: "positive" } });
+  await prisma.feedback.create({ data: { businessId, customerId: customers[3]!.id, rating: 2, comment: "Waited too long.", sentiment: "negative", response: "Sorry about the wait — we've added Saturday staff.", respondedAt: new Date(), respondedByUserId: owner.user.id } });
 
   // --- conversation + messages ----------------------------------
-  const conversation = await prisma.conversation.create({ data: { businessId, customerId: customers[0].id, status: "OPEN", lastInboundAt: new Date(), participants: { create: { businessId, customerId: customers[0].id, externalAddress: customers[0].phoneE164, role: "CUSTOMER" } } } });
-  await prisma.message.create({ data: { businessId, customerId: customers[0].id, conversationId: conversation.id, messageType: "custom", channel: "sms", body: "Hi, can I move my appointment to Friday?", status: "sent", direction: "INBOUND", actorType: "CUSTOMER", provider: "twilio", providerMessageId: `qa-in-${stamp}` } });
-  await prisma.message.create({ data: { businessId, customerId: customers[0].id, conversationId: conversation.id, messageType: "custom", channel: "sms", body: "Of course — Friday 2pm works.", status: "sent", direction: "OUTBOUND", actorType: "HUMAN", provider: "twilio", providerMessageId: `qa-out-${stamp}` } });
+  const conversation = await prisma.conversation.create({ data: { businessId, customerId: customers[0]!.id, status: "OPEN", lastInboundAt: new Date(), participants: { create: { businessId, customerId: customers[0]!.id, externalAddress: customers[0]!.phoneE164, role: "CUSTOMER" } } } });
+  await prisma.message.create({ data: { businessId, customerId: customers[0]!.id, conversationId: conversation.id, messageType: "custom", channel: "sms", body: "Hi, can I move my appointment to Friday?", status: "sent", direction: "INBOUND", actorType: "CUSTOMER", provider: "twilio", providerMessageId: `qa-in-${stamp}` } });
+  await prisma.message.create({ data: { businessId, customerId: customers[0]!.id, conversationId: conversation.id, messageType: "custom", channel: "sms", body: "Of course — Friday 2pm works.", status: "sent", direction: "OUTBOUND", actorType: "HUMAN", provider: "twilio", providerMessageId: `qa-out-${stamp}` } });
 
   // --- AI receptionist (off by default; row present for the settings screen) ---
   await prisma.aiReceptionistSettings.create({ data: { businessId, enabled: false, mode: "AFTER_HOURS_ONLY" } });

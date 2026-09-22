@@ -4,6 +4,11 @@ import { createFakeAIProvider, FAKE_AI_PROVIDER_ID } from "./fakeAIProvider.js";
 import { openAIProviderFromConfig } from "./providers/openaiProvider.js";
 import { anthropicProviderFromConfig } from "./providers/anthropicProvider.js";
 
+export interface AIProviderKeyOverrides {
+  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+}
+
 /**
  * Registers the built-in AI provider adapters at boot.
  *
@@ -14,13 +19,17 @@ import { anthropicProviderFromConfig } from "./providers/anthropicProvider.js";
  *   shape as the Twilio/Stripe adapters). Additional providers slot in the
  *   same way with no runtime change — routeAI() only ever sees the
  *   AIProvider interface.
+ * - `overrides` comes from the admin-set platform provider secrets store
+ *   (src/lib/platformProviderSecrets.ts) and takes precedence over the
+ *   matching env var when present, so a key set/rotated from the admin
+ *   console is used without touching Render's env vars.
  */
-export function registerBuiltInAIProviders() {
+export function registerBuiltInAIProviders(overrides: AIProviderKeyOverrides = {}) {
   if (config.NODE_ENV !== "production" && !listAIProviderIds().includes(FAKE_AI_PROVIDER_ID)) {
     registerAIProvider(createFakeAIProvider());
   }
-  const openai = openAIProviderFromConfig();
+  const openai = openAIProviderFromConfig(overrides.OPENAI_API_KEY);
   if (openai && !listAIProviderIds().includes(openai.id)) registerAIProvider(openai);
-  const anthropic = anthropicProviderFromConfig();
+  const anthropic = anthropicProviderFromConfig(overrides.ANTHROPIC_API_KEY);
   if (anthropic && !listAIProviderIds().includes(anthropic.id)) registerAIProvider(anthropic);
 }

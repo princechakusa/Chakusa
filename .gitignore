@@ -21,3 +21,6 @@ service-account*.json
 *.log
 coverage/
 .DS_Store
+
+# Personal Claude Code settings (permission overrides, etc.) — machine-local only.
+.claude/settings.local.json

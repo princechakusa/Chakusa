@@ -41,7 +41,7 @@ export function DispatchScreen() {
   const dateKey = localDateKey(day);
 
   const load = useCallback(async (soft = false) => {
-    soft ? setRefreshing(true) : setLoading(true);
+    if (soft) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       setBoard(await dispatchApi.board(dateKey));

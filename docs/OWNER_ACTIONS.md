@@ -316,3 +316,54 @@ see `docs/RELEASE_READINESS_CHECKLIST.md`)
     deferred — see `docs/progress/2026-09-10-stage-22-desktop-web.md`).
 
 No engineering P0/P1 is open. Once 1–9 are done and QA passes, V1 can ship.
+
+---
+
+## OA-9 — Google Play rejection: "Financial features" org-account requirement — owner fix, no code change
+
+**Status:** OPEN (release-blocking for Google Play; does not block iOS or continued
+development)
+
+**What happened:** Play Console's **App content → Financial features** declaration
+form (a superset of the box actually gated by policy) was submitted with only
+**"Rewards, points, frequent flier miles, and other incentives"** checked (under
+*Purchase agreements*). Play auto-rejected the release: *"Some types of apps can
+only be distributed by organizations… you have selected an app category or
+declared certain features that require an organization account."* Google's own
+listed org-only categories are: banking/loans/trading/investment funds/crypto
+wallets & exchanges, health apps, `VpnService` apps, government apps. Loyalty/
+rewards points is not one of them — Play's declaration form just bundles that
+checkbox into the same "Financial features" page as the regulated categories,
+and ticking anything on that page appears to trip the same org-account gate.
+
+**Engineering verification of what Chakusa's loyalty feature actually is**
+(`src/lib/loyalty/{pointsEngine,rewards,wallet,program}.ts`): a closed-loop,
+per-business points program — no stored monetary value (`wallet.ts` comment:
+*"Foundation only: no stored-value cash"*), points cannot be bought with real
+money, cannot be transferred between customers or cashed out, and can only be
+redeemed for that same business's own catalog (free service / percent or fixed
+discount / promo — `rewards.ts`). This is a standard SMB "stamp card" loyalty
+program, not a financial product/instrument, and does not match the intent of
+Google's org-only list.
+
+**Recommended fix (owner, in Play Console — no code change needed):**
+1. App content → Financial features → uncheck **"Rewards, points, frequent
+   flier miles, and other incentives."** It does not accurately describe a
+   non-monetary, non-transferable, single-business discount/loyalty program,
+   and leaving every other box on that page unchecked (already the case) is
+   consistent with what's actually shipped.
+2. Save the declaration, then **Publishing overview → Send changes for review**
+   (or start a new release) so Play re-reviews with the corrected declaration.
+3. If Play still rejects after the correction, use **Submit an appeal** on the
+   rejection notice and reference the above (non-monetary, closed-loop, no
+   cash value/transfer/exchange) rather than pursuing an organization account.
+
+**Do not** register a Google Play organization account to keep the box checked —
+that is a separate legal/business-registration commitment (D-U-N-S number,
+verified legal entity) and is unnecessary here since the underlying declaration
+was the actual error. Only revisit an organization account if the owner later
+adds a feature that genuinely matches Google's regulated list (real banking,
+lending, trading, or crypto wallet/exchange functionality).
+
+**Not applicable to Apple:** App Store Connect has no equivalent "organization
+account" gate tied to a loyalty/rewards declaration.

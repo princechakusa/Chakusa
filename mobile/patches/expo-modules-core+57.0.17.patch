@@ -1,0 +1,24 @@
+diff --git a/node_modules/expo-modules-core/android/build.gradle b/node_modules/expo-modules-core/android/build.gradle
+index a59c9b9..f310534 100644
+--- a/node_modules/expo-modules-core/android/build.gradle
++++ b/node_modules/expo-modules-core/android/build.gradle
+@@ -22,6 +22,19 @@ buildscript {
+ apply plugin: 'com.android.library'
+ apply plugin: 'expo-module-gradle-plugin'
+ 
++// CHAKUSA PATCH (via patch-package, patches/expo-modules-core+*.patch):
++// Windows-specific NDK linking regression — this module's native shared
++// library ends up missing libc++ runtime symbols at link time even though
++// ANDROID_STL=c++_shared is set. Same fix as android/plugins/withCppStlLinkerFix.js
++// (see that file for the full explanation), applied here via
++// androidComponents.finalizeDsl for consistency with that fix (confirmed
++// to actually reach the CMake invocation, unlike a plain DSL call).
++androidComponents {
++    finalizeDsl { extension ->
++        extension.defaultConfig.externalNativeBuild.cmake.arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--no-as-needed -lc++_shared")
++    }
++}
++
+ if (shouldIncludeCompose) {
+   apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+ }

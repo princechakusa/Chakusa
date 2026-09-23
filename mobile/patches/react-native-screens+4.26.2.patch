@@ -1,0 +1,24 @@
+diff --git a/node_modules/react-native-screens/android/build.gradle b/node_modules/react-native-screens/android/build.gradle
+index 3f3b0d5..d62b20f 100644
+--- a/node_modules/react-native-screens/android/build.gradle
++++ b/node_modules/react-native-screens/android/build.gradle
+@@ -88,6 +88,19 @@ if (isRunningInContextOfScreensRepo()) {
+ apply plugin: 'com.android.library'
+ apply plugin: 'kotlin-android'
+ 
++// CHAKUSA PATCH (via patch-package, patches/react-native-screens+*.patch):
++// Windows-specific NDK linking regression — this module's native shared
++// library ends up missing libc++ runtime symbols at link time even though
++// ANDROID_STL=c++_shared is set. Same fix as android/plugins/withCppStlLinkerFix.js
++// (see that file for the full explanation), applied here via
++// androidComponents.finalizeDsl for consistency with that fix (confirmed
++// to actually reach the CMake invocation, unlike a plain DSL call).
++androidComponents {
++    finalizeDsl { extension ->
++        extension.defaultConfig.externalNativeBuild.cmake.arguments.add("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--no-as-needed -lc++_shared")
++    }
++}
++
+ def reactNativeArchitectures() {
+     def value = project.getProperties().get("reactNativeArchitectures")
+     return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]

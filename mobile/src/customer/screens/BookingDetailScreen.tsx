@@ -3,6 +3,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { LeafletMap } from '../../components/map/LeafletMap';
+import { directionsUrl } from '../../domain/places';
 import { AppHeader, Divider, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton } from '../../components/ui';
 import type { BookingAvailabilityDto, CustomerBookingDto } from '../../apiTypes';
 import { bookingActions, bookingStatusLabel, formatSlotTime, groupSlotsByDay, reminderStatusLabel } from '../../domain/booking';
@@ -179,9 +181,10 @@ function ProviderLocationCard({ bookingId, active }: { bookingId: string; active
         <Text style={styles.locTitle}>Your provider is on the way</Text>
       </View>
       <Text style={styles.dim}>Sharing their live location · updated {agoSec < 60 ? `${agoSec}s` : `${Math.round(agoSec / 60)}m`} ago</Text>
-      <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`https://www.google.com/maps?q=${share.latitude},${share.longitude}`)} style={styles.locBtn}>
+      <LeafletMap height={180} center={share} zoom={15} markers={[{ ...share, kind: 'you', label: 'Your provider' }]} accessibilityLabel="Where your provider is now" />
+      <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(directionsUrl(share.latitude, share.longitude))} style={styles.locBtn}>
         <Ionicons name="navigate-outline" size={16} color={colors.primary} />
-        <Text style={styles.locBtnText}>Open in Maps</Text>
+        <Text style={styles.locBtnText}>Open in OpenStreetMap</Text>
       </Pressable>
     </View>
   );

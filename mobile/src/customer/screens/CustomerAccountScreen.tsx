@@ -3,7 +3,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, Avatar, Divider, Screen, SectionHeader } from '../../components/ui';
+import { AppHeader, Divider, Screen, SectionHeader } from '../../components/ui';
+import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { useExperience } from '../../experience/experienceContext';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
@@ -57,7 +58,7 @@ export function CustomerAccountScreen() {
       <AppHeader eyebrow="ACCOUNT" title="You" />
 
       <View style={styles.identity}>
-        <Avatar name={profile?.displayName ?? user?.fullName ?? user?.email ?? 'You'} />
+        <ProfilePhoto testID="account-photo" uri={profile?.avatarUrl} name={profile?.displayName ?? user?.fullName ?? user?.email ?? 'You'} size={56} />
         <View style={styles.identityCopy}>
           <Text style={styles.name}>{profile?.displayName ?? user?.fullName ?? 'Your account'}</Text>
           <Text style={styles.email}>{user?.email}</Text>

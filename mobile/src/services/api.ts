@@ -91,7 +91,9 @@ export class ApiClient {
         ...requestInit,
         headers: {
           Accept: 'application/json',
-          'Content-Type': 'application/json',
+          // Only when there is a body: the API rejects an empty JSON body, which
+          // broke every bodyless DELETE (e.g. stop sharing location, remove blocked time).
+          ...(requestInit.body != null ? { 'Content-Type': 'application/json' } : {}),
           ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}),
           ...requestInit.headers,
         },

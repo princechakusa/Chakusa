@@ -1,4 +1,5 @@
 import { useFonts } from 'expo-font';
+import { useEffect, useState } from 'react';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
 import { StatusBar } from 'expo-status-bar';
@@ -14,11 +15,21 @@ import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfile
 import { PublicBookingManagementScreen } from './src/screens/PublicBookingManagementScreen';
 import { ExperienceRouter } from './src/experience/ExperienceRouter';
 
+const FONT_WAIT_MS = 4000;
+
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
     PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
   });
+  // Never hold the app on a blank screen waiting for brand fonts: open with
+  // system fonts if loading fails or is slow (bad network, blocked asset);
+  // text switches to the brand fonts if they arrive later.
+  const [fontWaitOver, setFontWaitOver] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setFontWaitOver(true), FONT_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
   // PROGRAM 2 LOOP 9: Chakusa is now ONE app with two experiences. The
   // ExperienceRouter picks, at runtime, exactly one shell to mount —
   // BusinessRoot (the original owner app, unchanged) or CustomerRoot. The
@@ -42,7 +53,7 @@ export default function App() {
   if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
 
-  if (!fontsLoaded) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
+  if (!fontsLoaded && !fontError && !fontWaitOver) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
 
   return <ExperienceRouter />;
 }

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CustomerBookingDto, MarketplaceCardDto } from '../../apiTypes';
 import { bookingStatusLabel } from '../../domain/booking';
 import { distanceLabel } from '../../domain/places';
+import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
@@ -23,7 +24,7 @@ export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPr
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.cardTop}>
-        <View style={styles.logo}><Text style={styles.logoText}>{card.name.slice(0, 1).toUpperCase()}</Text></View>
+        <ProfilePhoto uri={card.photoUrl} name={card.name} size={40} />
         <View style={styles.cardCopy}>
           <Text style={styles.cardName} numberOfLines={1}>{card.name}</Text>
           <Text style={styles.cardMeta} numberOfLines={1}>{card.category}{location ? ` · ${location}` : ''}</Text>

@@ -373,6 +373,8 @@ export interface MarketplaceCardDto {
   reviewCount: number;
   viewCount: number;
   favouriteCount: number;
+  /** Versioned API path to the business photo, or null. */
+  photoUrl?: string | null;
   /** The business's pinned position, when it has set one. */
   latitude?: number | null;
   longitude?: number | null;
@@ -418,6 +420,8 @@ export interface MarketplaceBusinessProfileDto {
   category: string;
   industry: string | null;
   tagline: string | null;
+  /** Versioned API path to the business photo, or null. */
+  photoUrl?: string | null;
   verified: boolean;
   contact: { phone: string | null };
   address: { line: string | null; city: string | null; region: string | null; country: string | null; latitude: number | null; longitude: number | null };

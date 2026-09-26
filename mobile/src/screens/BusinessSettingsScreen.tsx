@@ -1,6 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import { pickProfileImage, ProfileImageError } from '../services/pickProfileImage';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { MessageTone } from '../apiTypes';
@@ -31,17 +30,10 @@ export function BusinessSettingsScreen() {
     if (logoBusy) return;
     setLogoBusy(true); setLogoError(null);
     try {
-      const picked = await DocumentPicker.getDocumentAsync({ type: ['image/png', 'image/jpeg', 'image/webp'], copyToCacheDirectory: true });
-      if (picked.canceled) return;
-      const asset = picked.assets[0];
-      if (!asset) return;
-      const mime = asset.mimeType && /^image\/(png|jpe?g|webp)$/.test(asset.mimeType) ? asset.mimeType : 'image/jpeg';
-      const base64 = await new File(asset.uri).base64();
-      const dataUrl = `data:${mime};base64,${base64}`;
-      if (dataUrl.length > 400_000) { setLogoError('That image is too large. Choose one under about 250 KB, or crop it first.'); return; }
-      setLogo(dataUrl);
-    } catch {
-      setLogoError('Could not read that image. Try another one.');
+      const dataUrl = await pickProfileImage();
+      if (dataUrl) setLogo(dataUrl);
+    } catch (caught) {
+      setLogoError(caught instanceof ProfileImageError ? caught.message : 'Could not read that image. Try another one.');
     } finally {
       setLogoBusy(false);
     }
@@ -61,7 +53,7 @@ export function BusinessSettingsScreen() {
       </View>
       <View style={logoStyles.copy}>
         <Text style={logoStyles.title}>Business photo</Text>
-        <Text style={logoStyles.detail}>Shown in the app header and on your public page. PNG, JPEG or WebP, about 250 KB.</Text>
+        <Text style={logoStyles.detail}>Shown to customers on Explore, your business page and in the app header. Pick any photo - we crop and shrink it for you.</Text>
         <View style={logoStyles.actions}>
           <Pressable accessibilityRole="button" disabled={logoBusy} onPress={() => void pickLogo()} style={logoStyles.btn}>
             <Text style={logoStyles.btnText}>{logoBusy ? 'Opening…' : logo ? 'Change photo' : 'Add photo'}</Text>

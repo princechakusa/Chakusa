@@ -61,7 +61,15 @@
           "isAndroidForegroundServiceEnabled": false
         }
       ],
-      "./plugins/withCppStlLinkerFix"
+      "./plugins/withCppStlLinkerFix",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Chakusa lets you choose a photo from your library for your profile picture or your business photo. Only the photo you pick is used.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

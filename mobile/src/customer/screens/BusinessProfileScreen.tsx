@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LeafletMap } from '../../components/map/LeafletMap';
+import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { directionsUrl } from '../../domain/places';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
@@ -74,6 +75,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 
   return (
     <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
+      {profile.photoUrl ? <ProfilePhoto testID="business-photo" uri={profile.photoUrl} name={profile.name} size={72} /> : null}
       <AppHeader
         eyebrow={profile.category.toUpperCase()}
         title={profile.name}

@@ -316,3 +316,44 @@ see `docs/RELEASE_READINESS_CHECKLIST.md`)
     deferred — see `docs/progress/2026-09-10-stage-22-desktop-web.md`).
 
 No engineering P0/P1 is open. Once 1–9 are done and QA passes, V1 can ship.
+
+## OA-9 — Google / Apple sign-in console checks, and map-service scale (2026-09-26)
+
+Engineering root cause of the broken Google login on Android is **fixed in
+code**. The local release AAB was built with none of the `eas.json`
+`EXPO_PUBLIC_*` values (no API URL, no Google client ID); see
+`docs/ANDROID_KEYSTORE_HANDOFF.md`. Rebuild with `npm run android:bundle-release`.
+Production API probe (2026-09-26): `/auth/google` verifies tokens (401 on a
+fake token, not 503) and `/auth/apple/challenge` returns 200, so both
+providers are enabled server-side. The remaining steps are console settings
+only the owner can make:
+
+1. **Google Cloud → Credentials (same project as the web client ID):** make
+   sure there are **Android** OAuth clients for `com.chakusa.mobile` with the
+   **upload key SHA-1** *and* the **Play App Signing SHA-1** (commands in the
+   Android handoff doc). Missing either means `DEVELOPER_ERROR` on Android.
+2. **Render → API env:** `GOOGLE_OAUTH_CLIENT_IDS` must include the **web**
+   client ID the app is built with. Google issues the ID token for that
+   audience, even on iOS and Android.
+3. **Apple:** `APPLE_CLIENT_ID` on the API must be the bundle ID
+   `com.chakusa.mobile`, because native Sign in with Apple tokens are issued
+   to the bundle ID. The App ID needs the *Sign in with Apple* capability,
+   which EAS applies from `usesAppleSignIn`. iOS builds stay on EAS.
+4. **Rotate the Render API key and Supabase access token** that were pasted
+   into a chat session on 2026-09-26. They were not stored anywhere, but
+   treat them as exposed.
+5. **Maps at scale (no action needed now):** the map uses OpenStreetMap's
+   free tile servers and Nominatim. Both are free and keyless, and the app
+   follows their usage policies: attribution, at most one geocoder request
+   per second per device, caching, and a valid Referer or User-Agent. Both
+   services are volunteer-run and meant for light use. If daily active users
+   grow into the thousands, move tiles and geocoding to a paid or self-hosted
+   provider. That is a vendor decision and has no cost today.
+6. **Store privacy declarations (extends OA-2 / OA-8 item 6):** location
+   now also powers "near me" search and pinning a business. For a search,
+   the customer's position goes to the Chakusa API as a query parameter and
+   to OpenStreetMap Nominatim to name the area. It is used in real time and
+   **stored nowhere**. A business's pinned location is stored and shown
+   publicly on its profile, as its address already is. The iOS permission
+   text (`app.json`, `expo-location`) now lists all three uses. Reflect
+   them in Apple App Privacy and Play Data safety.

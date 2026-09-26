@@ -433,6 +433,18 @@ Required:
 
 No declaration should claim a feature/control exists unless the shipped app actually implements it.
 
+**2026-09-26 progress (within #26):**
+- Social sign-in root cause fixed: the local Android release had no
+  `EXPO_PUBLIC_*` config. Build via `npm run android:bundle-release`; builds
+  now fail closed without that config. Console steps are in OA-9.
+- Entry motion added: welcome, launch, and both sign-in screens.
+- Customer "near me" and owner-pinned business location added, on the free
+  stack only (Expo Location, Nominatim, Leaflet/OSM). Coordinates are
+  redacted from request logs.
+- Playwright + Chrome end-to-end suite added (`mobile/e2e/`). It found and
+  fixed 9 defects, including web `Alert.alert` being a no-op.
+- Report: `docs/progress/2026-09-26-auth-fix-motion-location-e2e.md`.
+
 ---
 
 # 9. POST-V1 / CONTROLLED EXPANSION BACKLOG

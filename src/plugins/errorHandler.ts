@@ -54,6 +54,17 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
       return;
     }
 
+    // Fastify's own request-shape errors (empty JSON body, unsupported media
+    // type, body too large, malformed JSON…) carry a 4xx status. They are the
+    // client's mistake, so say so rather than reporting a server fault; the
+    // message is Fastify's generic text and exposes nothing internal.
+    if ("statusCode" in error && typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 500) {
+      reply.status(error.statusCode).send({
+        error: { code: "BAD_REQUEST", message: error.message },
+      });
+      return;
+    }
+
     request.log.error(error);
     reply.status(500).send({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },

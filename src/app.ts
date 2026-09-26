@@ -153,7 +153,17 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
 
   app.removeContentTypeParser("application/json");
-  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (request, body, done) => { request.rawBody = Buffer.from(body); try { done(null, JSON.parse(request.rawBody.toString("utf8"))); } catch (error) { done(error as Error); } });
+  // Keeps the raw bytes (webhook signatures). An empty body sent with a JSON
+  // content-type (a bodyless DELETE) means "no body", not a server error;
+  // malformed JSON is the client's mistake: 400.
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (request, body, done) => {
+    request.rawBody = Buffer.from(body);
+    const text = request.rawBody.toString("utf8");
+    if (!text.trim()) { done(null, undefined); return; }
+    try { done(null, JSON.parse(text)); } catch {
+      done(Object.assign(new Error("Request body is not valid JSON"), { statusCode: 400 }));
+    }
+  });
 
   await app.register(sensible);
   // corsAllowedOrigins is null (permissive `origin: true`) until

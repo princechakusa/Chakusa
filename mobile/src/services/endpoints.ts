@@ -31,6 +31,7 @@ export const businessApi = {
   get: () => api.get<BusinessDto>('/business'),
   patch: (body: Partial<Pick<BusinessDto, 'name' | 'industry' | 'country' | 'timezone' | 'currency' | 'phone' | 'description' | 'logoDataUrl' | 'googleReviewLink' | 'workingHours' | 'defaultServices' | 'reminderDays' | 'preferredTone' | 'bookingMinNoticeMinutes' | 'bookingWindowDays' | 'slotIntervalMinutes' | 'cancellationNoticeMinutes' | 'defaultAppointmentReminderMinutes' | 'paymentRemindersEnabled' | 'noShowFollowUpEnabled'>> & { messagingConsentConfirmed?: boolean }) => api.patch<BusinessDto>('/business', body),
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
+  setLocation: (location: import('../apiTypes').BusinessLocationDto | null) => api.patch<BusinessDto>('/business', { location }),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
 };
 export const calendarApi = {

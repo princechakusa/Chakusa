@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LeafletMap } from '../../components/map/LeafletMap';
+import { directionsUrl } from '../../domain/places';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, Linking } from 'react-native';
 
 import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '../../components/ui';
 import type { MarketplaceBusinessProfileDto } from '../../apiTypes';
@@ -68,7 +70,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   if (error || !profile) return <Screen><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   const bookable = profile.services.filter((s) => s.bookable);
-  const location = [profile.address.line, profile.address.city, profile.address.region].filter(Boolean).join(', ');
+  const location = [...new Set([profile.address.line, profile.address.city, profile.address.region].filter(Boolean))].join(', ');
 
   return (
     <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
@@ -88,6 +90,15 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         <Text style={styles.rating}>★ {profile.reviewsSummary.averageRating.toFixed(1)} · {profile.reviewsSummary.totalReviews} review{profile.reviewsSummary.totalReviews === 1 ? '' : 's'}</Text>
       ) : null}
       {location ? <Text style={styles.meta}>{location}</Text> : null}
+      {profile.address.latitude != null && profile.address.longitude != null ? (
+        <View testID="business-map" style={styles.mapBlock}>
+          <LeafletMap height={170} center={{ latitude: profile.address.latitude, longitude: profile.address.longitude }} zoom={15} markers={[{ latitude: profile.address.latitude, longitude: profile.address.longitude, kind: 'business', label: profile.name }]} accessibilityLabel={'Where ' + profile.name + ' is'} />
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(directionsUrl(profile.address.latitude!, profile.address.longitude!))} style={styles.directions}>
+            <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+            <Text style={styles.directionsText}>Get directions</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {profile.contact.phone ? <Text style={styles.meta}>{profile.contact.phone}</Text> : null}
       {profile.about ? <Text style={styles.about}>{profile.about}</Text> : null}
 
@@ -180,6 +191,9 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  mapBlock: { gap: spacing.xs },
+  directions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, alignSelf: 'flex-start', paddingVertical: spacing.xxs },
+  directionsText: { ...typography.bodyStrong, fontSize: 14, color: colors.primary },
   verified: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
   verifiedText: { ...typography.caption, color: colors.success },
   rating: { ...typography.bodyStrong, color: colors.text },

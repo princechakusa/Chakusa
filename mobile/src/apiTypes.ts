@@ -27,7 +27,9 @@ export type MessageStatus = 'draft' | 'copied' | 'sent' | 'failed';
 export type ActivityEventType = 'LEAD_CREATED' | 'LEAD_CONTACTED' | 'LEAD_BOOKED' | 'LEAD_WON' | 'LEAD_LOST' | 'MESSAGE_COPIED' | 'MESSAGE_MARKED_SENT' | 'REVIEW_REQUEST_CREATED' | 'REVIEW_REQUEST_SENT' | 'REVIEW_OPENED' | 'REVIEW_RECEIVED' | 'FEEDBACK_RECEIVED' | 'REMINDER_CREATED' | 'REMINDER_SENT' | 'REMINDER_COMPLETED' | 'REMINDER_DISMISSED' | 'CUSTOMER_CREATED' | 'CUSTOMER_UPDATED';
 
 export interface UserDto { id: string; email: string; fullName: string; hasPassword?: boolean; authProviders?: ('GOOGLE' | 'APPLE')[]; }
-export interface BusinessDto { id: string; ownerId?: string; name: string; industry: string | null; country?: string | null; timezone?: string | null; currency?: string | null; phone: string | null; description?: string | null; logoDataUrl?: string | null; googleReviewLink?: string | null; workingHours?: Record<string, unknown> | null; defaultServices?: string[] | null; reminderDays?: number; preferredTone?: MessageTone; publicSlug?: string | null; onboardingCompletedAt?: string | null; bookingMinNoticeMinutes?: number; bookingWindowDays?: number; slotIntervalMinutes?: number; cancellationNoticeMinutes?: number; defaultAppointmentReminderMinutes?: number; messagingConsentConfirmedAt?: string | null; paymentRemindersEnabled?: boolean; noShowFollowUpEnabled?: boolean; createdAt?: string; updatedAt?: string; }
+export interface BusinessDto { id: string; ownerId?: string; name: string; industry: string | null; country?: string | null; timezone?: string | null; currency?: string | null; phone: string | null; description?: string | null; logoDataUrl?: string | null; googleReviewLink?: string | null; workingHours?: Record<string, unknown> | null; defaultServices?: string[] | null; reminderDays?: number; preferredTone?: MessageTone; publicSlug?: string | null; onboardingCompletedAt?: string | null; bookingMinNoticeMinutes?: number; bookingWindowDays?: number; slotIntervalMinutes?: number; cancellationNoticeMinutes?: number; defaultAppointmentReminderMinutes?: number; messagingConsentConfirmedAt?: string | null; paymentRemindersEnabled?: boolean; noShowFollowUpEnabled?: boolean; location?: BusinessLocationDto | null; createdAt?: string; updatedAt?: string; }
+/** Where the business is, pinned by the owner for "near me" discovery. */
+export interface BusinessLocationDto { latitude: number; longitude: number; addressLine: string | null; city: string | null; region: string | null; }
 export interface SessionTokens { accessToken: string; refreshToken: string; expiresIn: number; tokenType: 'Bearer'; token?: string; }
 export interface AuthResponse extends SessionTokens { user: UserDto; business: BusinessDto | null; role?: string | null; isNewUser?: boolean; }
 export type RefreshResponse = SessionTokens;
@@ -371,6 +373,11 @@ export interface MarketplaceCardDto {
   reviewCount: number;
   viewCount: number;
   favouriteCount: number;
+  /** The business's pinned position, when it has set one. */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Straight-line distance from the position sent with a "near me" search. */
+  distanceKm?: number | null;
   createdAt: string;
 }
 export interface MarketplacePageDto {

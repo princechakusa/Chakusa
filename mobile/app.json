@@ -55,7 +55,7 @@
         {
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
-          "locationWhenInUsePermission": "Chakusa uses your location only while you choose to share it with a customer for an appointment you are heading to, so they can see you approaching. It stops automatically when you arrive or end sharing.",
+          "locationWhenInUsePermission": "Chakusa uses your location while you are using the app: to show businesses near you, to pin your own business on the map, and - only when you choose - to let a customer see you approaching for an appointment. It is never tracked in the background.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false

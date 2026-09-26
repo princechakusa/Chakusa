@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
 import { config } from "../config.js";
 import { mapIndustryToCategory } from "./categories.js";
+import { displayDistanceKm, haversineKm, type Coordinates } from "./geo.js";
 
 // PROGRAM 2 LOOP 2: business discovery. Reads `Business` / `ServiceOffering` /
 // `Feedback` / `BusinessMember` directly; `BusinessMarketplaceListing` is
@@ -10,6 +11,9 @@ import { mapIndustryToCategory } from "./categories.js";
 
 export const DISCOVERY_MODES = ["browse", "featured", "recent", "popular", "verified", "nearby"] as const;
 export type DiscoveryMode = (typeof DISCOVERY_MODES)[number];
+
+// Upper bound on bounding-box candidates ranked by true distance for "nearby".
+const NEARBY_CANDIDATE_CAP = 200;
 
 const CARD_INCLUDE = {
   marketplaceListing: true,
@@ -38,13 +42,23 @@ async function bookableBusinessIds(businessIds: string[]) {
   return new Set(rows.map((row) => row.businessId));
 }
 
+function distanceFrom(business: BusinessWithListing, origin?: Coordinates) {
+  const listing = business.marketplaceListing;
+  if (!origin || typeof listing?.latitude !== "number" || typeof listing?.longitude !== "number") return null;
+  return haversineKm(origin, { latitude: listing.latitude, longitude: listing.longitude });
+}
+
 function serializeCard(
   business: BusinessWithListing,
   rating: { average: number | null; count: number } | undefined,
   badges?: { loyalty: boolean; membership: boolean; onlineBooking?: boolean },
+  origin?: Coordinates,
 ) {
   const listing = business.marketplaceListing;
+  const distance = distanceFrom(business, origin);
   return {
+    // Straight-line distance from the searcher's position, when they sent one.
+    distanceKm: distance === null ? null : displayDistanceKm(distance),
     slug: business.publicSlug,
     name: business.name,
     category: listing?.categorySlug ?? mapIndustryToCategory(business.industry),
@@ -53,6 +67,9 @@ function serializeCard(
     tagline: listing?.shortTagline ?? null,
     city: listing?.city ?? null,
     region: listing?.region ?? null,
+    // Already public on the business profile; lets clients draw results on a map.
+    latitude: listing?.latitude ?? null,
+    longitude: listing?.longitude ?? null,
     photo: Array.isArray(listing?.photos) && listing.photos.length ? String(listing.photos[0]) : null,
     verified: Boolean(business.verifiedAt),
     featured: Boolean(listing?.featured && (!listing.featuredUntil || listing.featuredUntil > new Date())),
@@ -173,16 +190,29 @@ export async function discoverBusinesses(input: DiscoverInput) {
   // mapping is not expressible in SQL), so over-fetch to reduce the chance a
   // page comes back short. The residual under-fetch on very sparse categories
   // is tracked in the roadmap's deferred-cleanup register.
-  const fetchWindow = input.categorySlug ? (limit + 1) * 4 : limit + 1;
+  const origin = typeof input.lat === "number" && typeof input.lng === "number" ? { latitude: input.lat, longitude: input.lng } : undefined;
+  const nearby = input.mode === "nearby" && Boolean(origin);
+  const fetchWindow = nearby ? NEARBY_CANDIDATE_CAP : input.categorySlug ? (limit + 1) * 4 : limit + 1;
   const rows = await prisma.business.findMany({
     where,
     include: CARD_INCLUDE,
     orderBy: orderFor(input.mode),
     take: fetchWindow,
-    ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    ...(input.cursor && !nearby ? { cursor: { id: input.cursor }, skip: 1 } : {}),
   });
 
   let filtered = rows;
+  if (nearby) {
+    // The SQL filter is a bounding box; trim it to the true radius circle and
+    // order nearest-first. Nearby is one ranked page (no cursor): the closest
+    // `limit` businesses are what "near me" means.
+    const radius = input.radiusKm ?? 15;
+    filtered = rows
+      .map((business) => ({ business, km: distanceFrom(business, origin) ?? Number.POSITIVE_INFINITY }))
+      .filter((row) => row.km <= radius)
+      .sort((a, b) => a.km - b.km)
+      .map((row) => row.business);
+  }
   if (input.categorySlug) {
     filtered = rows.filter((business) => (business.marketplaceListing?.categorySlug ?? mapIndustryToCategory(business.industry)) === input.categorySlug);
   }
@@ -197,8 +227,8 @@ export async function discoverBusinesses(input: DiscoverInput) {
   const loyaltySet = new Set(loyaltyPrograms.map((row) => row.businessId));
   const membershipSet = new Set(membershipPlans.map((row) => row.businessId));
   return {
-    items: page.map((business) => serializeCard(business, ratings.get(business.id), { loyalty: loyaltySet.has(business.id), membership: membershipSet.has(business.id), onlineBooking: bookableSet.has(business.id) })),
-    nextCursor: filtered.length > limit ? page[page.length - 1]?.id ?? null : null,
+    items: page.map((business) => serializeCard(business, ratings.get(business.id), { loyalty: loyaltySet.has(business.id), membership: membershipSet.has(business.id), onlineBooking: bookableSet.has(business.id) }, origin)),
+    nextCursor: !nearby && filtered.length > limit ? page[page.length - 1]?.id ?? null : null,
   };
 }
 

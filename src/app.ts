@@ -4,6 +4,7 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
+import { serializeRequestForLog } from "./lib/requestLogging.js";
 import { prisma } from "./lib/prisma.js";
 import { attachFastifySentry, captureUnexpectedError } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
@@ -110,12 +111,14 @@ export async function buildApp(options: BuildAppOptions = {}) {
   }
 
   const app = Fastify({
+    // Request URLs are logged with location coordinates redacted - see
+    // lib/requestLogging.ts.
     logger:
       config.NODE_ENV === "development"
-        ? { transport: { target: "pino-pretty" } }
+        ? { transport: { target: "pino-pretty" }, serializers: { req: serializeRequestForLog } }
         : config.NODE_ENV === "test"
           ? false
-          : true,
+          : { serializers: { req: serializeRequestForLog } },
     // See config.ts's TRUST_PROXY doc — off by default, must be explicitly
     // enabled once the deployment target's reverse proxy is confirmed to
     // set X-Forwarded-For correctly. Without this, IP-based rate limiting

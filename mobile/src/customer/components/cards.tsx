@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { CustomerBookingDto, MarketplaceCardDto } from '../../apiTypes';
 import { bookingStatusLabel } from '../../domain/booking';
+import { distanceLabel } from '../../domain/places';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
@@ -12,7 +13,8 @@ import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
 // the business screens.
 
 export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPress: () => void }) {
-  const location = [card.city, card.region].filter(Boolean).join(', ');
+  const distance = distanceLabel(card.distanceKm);
+  const location = distance ?? [...new Set([card.city, card.region].filter(Boolean))].join(', ');
   return (
     <Pressable
       accessibilityRole="button"

@@ -31,6 +31,14 @@ const structuredWorkingHoursSchema = z.object({
 // transition. New clients always write the versioned seven-day structure.
 const legacyWorkingHoursSchema = z.object({ summary: z.string().trim().min(1) });
 
+export const businessLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  addressLine: z.string().trim().max(200).nullable().optional(),
+  city: z.string().trim().max(100).nullable().optional(),
+  region: z.string().trim().max(100).nullable().optional(),
+});
+
 export const updateBusinessSchema = z.object({
   name: z.string().min(1).optional(),
   industry: z.string().optional(),
@@ -67,6 +75,10 @@ export const updateBusinessSchema = z.object({
   reviewRequestAutoEnabled: z.boolean().optional(),
   reviewRequestDelayHours: z.number().int().min(1).max(336).optional(),
   reviewRequestMinIntervalDays: z.number().int().min(1).max(365).optional(),
+  // Where the business is, for "near me" discovery: set from the owner's
+  // device position or a pin they drop on a map. `null` clears it (the
+  // business stays listed, just without a distance).
+  location: businessLocationSchema.nullable().optional(),
 });
 export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
 

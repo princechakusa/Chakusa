@@ -75,8 +75,8 @@ export const customerApi = {
 export const marketplaceApi = {
   discover: (params: { mode?: MarketplaceDiscoveryMode; category?: string; q?: string; city?: string; verifiedOnly?: boolean; lat?: number; lng?: number; radiusKm?: number; limit?: number; cursor?: string } = {}) =>
     customerHttp.get<MarketplacePageDto>(`/customer/marketplace${query({ ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
-  nearby: (lat: number, lng: number, radiusKm = 15, limit?: number) =>
-    customerHttp.get<MarketplacePageDto>(`/customer/marketplace/nearby${query({ lat, lng, radiusKm, limit })}`),
+  nearby: (lat: number, lng: number, radiusKm = 15, limit?: number, filters: { category?: string; q?: string } = {}) =>
+    customerHttp.get<MarketplacePageDto>(`/customer/marketplace/nearby${query({ lat, lng, radiusKm, limit, category: filters.category, q: filters.q })}`),
   featured: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/featured${query({ limit })}`),
   recent: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/recent${query({ limit })}`),
   popular: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/popular${query({ limit })}`),

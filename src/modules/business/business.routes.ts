@@ -26,9 +26,14 @@ export default async function businessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/", { preHandler: fastify.requireBusiness }, async (request, reply) => {
-    const business = await prisma.business.findUnique({ where: { id: request.businessId } });
+    const business = await prisma.business.findUnique({
+      where: { id: request.businessId },
+      include: { marketplaceListing: { select: { latitude: true, longitude: true, addressLine: true, city: true, region: true } } },
+    });
     if (!business) throw ApiError.notFound("Business not found");
-    reply.send(business);
+    const { marketplaceListing, ...rest } = business;
+    const pinned = typeof marketplaceListing?.latitude === "number" && typeof marketplaceListing?.longitude === "number";
+    reply.send({ ...rest, location: pinned ? marketplaceListing : null });
   });
 
   // #21 Booking Distribution — the shareable customer-facing booking links for
@@ -129,35 +134,50 @@ export default async function businessRoutes(fastify: FastifyInstance) {
       phoneE164 = toE164OrNull(input.phone, (country as CountryCode | null) ?? undefined);
     }
 
-    const business = await prisma.business.update({
-      where: { id: request.businessId },
-      data: {
-        name: input.name,
-        industry: input.industry,
-        phone: input.phone,
-        phoneE164,
-        country: input.country,
-        timezone: input.timezone,
-        currency: input.currency,
-        googleReviewLink: input.googleReviewLink,
-        description: input.description,
-        logoDataUrl: input.logoDataUrl,
-        workingHours: input.workingHours as Prisma.InputJsonValue | undefined,
-        defaultServices: input.defaultServices as Prisma.InputJsonValue | undefined,
-        reminderDays: input.reminderDays,
-        preferredTone: input.preferredTone,
-        bookingMinNoticeMinutes: input.bookingMinNoticeMinutes,
-        bookingWindowDays: input.bookingWindowDays,
-        slotIntervalMinutes: input.slotIntervalMinutes,
-        cancellationNoticeMinutes: input.cancellationNoticeMinutes,
-        defaultAppointmentReminderMinutes: input.defaultAppointmentReminderMinutes,
-        messagingConsentConfirmedAt: input.messagingConsentConfirmed === undefined ? undefined : input.messagingConsentConfirmed ? new Date() : null,
-        paymentRemindersEnabled: input.paymentRemindersEnabled,
-        noShowFollowUpEnabled: input.noShowFollowUpEnabled,
-        reviewRequestAutoEnabled: input.reviewRequestAutoEnabled,
-        reviewRequestDelayHours: input.reviewRequestDelayHours,
-        reviewRequestMinIntervalDays: input.reviewRequestMinIntervalDays,
-      },
+    const business = await prisma.$transaction(async (tx) => {
+      const updated = await tx.business.update({
+        where: { id: request.businessId },
+        data: {
+          name: input.name,
+          industry: input.industry,
+          phone: input.phone,
+          phoneE164,
+          country: input.country,
+          timezone: input.timezone,
+          currency: input.currency,
+          googleReviewLink: input.googleReviewLink,
+          description: input.description,
+          logoDataUrl: input.logoDataUrl,
+          workingHours: input.workingHours as Prisma.InputJsonValue | undefined,
+          defaultServices: input.defaultServices as Prisma.InputJsonValue | undefined,
+          reminderDays: input.reminderDays,
+          preferredTone: input.preferredTone,
+          bookingMinNoticeMinutes: input.bookingMinNoticeMinutes,
+          bookingWindowDays: input.bookingWindowDays,
+          slotIntervalMinutes: input.slotIntervalMinutes,
+          cancellationNoticeMinutes: input.cancellationNoticeMinutes,
+          defaultAppointmentReminderMinutes: input.defaultAppointmentReminderMinutes,
+          messagingConsentConfirmedAt: input.messagingConsentConfirmed === undefined ? undefined : input.messagingConsentConfirmed ? new Date() : null,
+          paymentRemindersEnabled: input.paymentRemindersEnabled,
+          noShowFollowUpEnabled: input.noShowFollowUpEnabled,
+          reviewRequestAutoEnabled: input.reviewRequestAutoEnabled,
+          reviewRequestDelayHours: input.reviewRequestDelayHours,
+          reviewRequestMinIntervalDays: input.reviewRequestMinIntervalDays,
+        },
+      });
+      // The owner's pinned location lives on the business's own marketplace
+      // listing (scoped by request.businessId - never a client-supplied id).
+      if (input.location !== undefined) {
+        const location = input.location
+          ? { latitude: input.location.latitude, longitude: input.location.longitude, addressLine: input.location.addressLine ?? null, city: input.location.city ?? null, region: input.location.region ?? null }
+          : { latitude: null, longitude: null };
+        await tx.businessMarketplaceListing.upsert({
+          where: { businessId: request.businessId! },
+          create: { businessId: request.businessId!, ...location },
+          update: location,
+        });
+      }
+      return updated;
     });
 
     if (input.defaultServices) await syncServiceOfferingsFromLegacyNames(request.businessId!, input.defaultServices);

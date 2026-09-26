@@ -163,3 +163,71 @@ Commissions, Inventory.
   whole quote before revealing it is Pro. Consider gating at entry. Left
   unchanged because it is a product decision.
 - OSM/Nominatim are volunteer services, suited to current scale (OA-9 step 5).
+
+---
+
+## 8. Follow-up (same day): profile pictures, more flows, defects found
+
+### Profile pictures
+- **Business photo.** The owner could upload one, but customers never saw
+  it, although the settings text promised it on the public page. Upload was
+  also broken on web, and phone photos (2–5 MB) always hit the size limit.
+  - `GET /public/business/:slug/photo` serves the photo as an image, with the
+    same visibility rule as the public page (a public link and an active
+    business) and cacheable.
+  - A versioned `photoUrl` is added to the public profile, the Explore card
+    and the in-app business profile.
+  - Customers now see the photo on Explore and on the business profile.
+- **Customer profile picture.** The `avatarUrl` column existed, but the API
+  took only 2 KB links and there was no UI.
+  - The API now accepts a validated image data URI (PNG/JPEG/WebP/GIF, up
+    to 400 KB), an https link, or `null` to remove it. `javascript:`,
+    `http:` and non-image data URIs are rejected.
+  - Edit profile gets add, change and remove photo. The photo shows on the
+    Account screen.
+- One shared validator (`lib/imageDataUrl.ts`) now backs both pictures.
+- The picker (`services/pickProfileImage.ts`) uses `expo-image-picker`
+  (photo library only; the camera and microphone permissions are
+  explicitly removed) and `expo-image-manipulator`. Any photo is cropped
+  square and shrunk to 512 px JPEG (about 30–80 KB).
+- Tests: backend `profile-pictures` (3); E2E for both pictures (business →
+  customer sees it; customer → account).
+
+### Defects found and fixed
+- **Every bodyless DELETE in the app returned 500.** For example, "Stop
+  sharing location" and removing blocked time.
+  - The app's two API clients sent `Content-Type: application/json` on
+    every request.
+  - The API's custom JSON parser threw on an empty body, and the error
+    handler reported that as a 500.
+  - Fixed on both sides: the clients send the header only with a body; the
+    parser treats an empty body as no body and malformed JSON as 400; Fastify
+    4xx errors are no longer disguised as 500. Regression test:
+    `request-shape-errors`.
+- **Blank screen forever if the brand fonts failed to load.** The app now
+  opens with system fonts after 4 s or on a font error. E2E check with all
+  fonts blocked.
+- Customer "Display name" input had no accessible name.
+
+### New end-to-end flows (both accounts)
+- Customer reschedules.
+- The business confirms, marks "On my way" and **shares live location**,
+  and the customer sees it on the embedded OpenStreetMap map (two browsers
+  at once). The business stops sharing and completes the appointment.
+- Customer books again and cancels.
+- Business adds a service that the customer then sees.
+- Business blocks time off and removes the block.
+- Customer edits their name.
+- Both profile pictures.
+
+The live-location card on booking detail now embeds the Leaflet/OSM map
+instead of linking out to Google Maps (post-V1 backlog: "embedded map").
+
+### Test infrastructure
+- The suite now runs against a **production web build** served statically
+  (`npm run e2e:build` / `e2e:serve`) instead of `expo start`. On this
+  machine the dev server took minutes per page under load; the static build
+  takes about 1 s.
+- Metro ignores generated output folders.
+- Watch mode shows a caption naming the running test.
+- Video is off; failures keep a screenshot and a trace.

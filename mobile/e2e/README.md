@@ -43,18 +43,21 @@ npx tsx scripts/seed-legal-documents.ts --confirm-seed-local
 $env:NODE_ENV = "test"; $env:CORS_ALLOWED_ORIGINS = "http://localhost:8081"
 npm run dev:test
 
-# 3. Expo web pointed at that API (in mobile/, new terminal)
-$env:EXPO_PUBLIC_API_URL = "http://localhost:4000"; $env:EXPO_PUBLIC_EMAIL_ENABLED = "true"
-$env:EXPO_PUBLIC_GOOGLE_AUTH_ENABLED = "true"; $env:EXPO_PUBLIC_APPLE_AUTH_ENABLED = "true"
-$env:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = "e2e-placeholder.apps.googleusercontent.com"
-npx expo start --web --port 8081
+# 3. The app: a production web build pointed at that API, served statically (in mobile/)
+npm run e2e:build     # rebuild after app changes (~2-4 min)
+npm run e2e:serve     # http://localhost:8081
 
 # 4. The tests (in mobile/)
 npm run e2e          # headless
 npm run e2e:watch    # visible Chrome, slowed down, pausing on each screen
 ```
 
-Google and Apple are switched **on** in step 3 on purpose. On web their
+The suite runs against a **production build**, not `expo start`. A dev
+server rebuilds the bundle on demand and stalls when the machine is busy:
+page loads took minutes there, against about 1 s for the static build. The
+production build is also what users actually get.
+
+`e2e:build` turns Google and Apple **on** on purpose. On web their
 buttons must stay hidden, because neither SDK can complete there, and the
 tests check that.
 

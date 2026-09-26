@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 
 export const PASSWORD = 'e2e-password-123456';
 export const uniqueEmail = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@chakusa.test`;
@@ -14,6 +14,7 @@ export function trackErrors(page: Page) {
   page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(`console: ${message.text().slice(0, 300)}`); });
   page.on('response', (response) => {
+    if (response.status() >= 500) errors.push(`server ${response.status()}: ${response.request().method()} ${new URL(response.url()).pathname}`);
     if (/tile\.openstreetmap\.org|nominatim\.openstreetmap\.org|unpkg\.com\/leaflet/.test(response.url()) && response.status() >= 400) {
       errors.push(`map service ${response.status()}: ${response.url().slice(0, 120)}`);
     }
@@ -26,6 +27,7 @@ export function trackErrors(page: Page) {
 
 /** Lets a person watching (E2E_WATCH=1) actually see a screen; free in headless runs. */
 export async function linger(page: Page, ms = 1200) {
+  // Watch mode pauses on each screen so a person can read it.
   if (process.env.E2E_WATCH === '1') await page.waitForTimeout(ms);
 }
 
@@ -96,11 +98,21 @@ export async function expectMapRendered(page: Page, frame: Locator) {
 /** Back out of any pushed screens until the bottom tab bar is showing again. */
 export async function backToTabs(page: Page, tab = 'Dashboard tab') {
   const bar = page.getByRole('tab', { name: tab });
-  // A pushed screen can cover a still-"visible" tab bar, so test real clickability.
-  const reachable = () => bar.click({ trial: true, timeout: 1500 }).then(() => true, () => false);
-  for (let i = 0; i < 5 && !(await reachable()); i++) {
+  // A pushed screen can cover a still-visible tab bar, and a screen may still be
+  // animating away, so retry the real click rather than trusting one probe.
+  for (let i = 0; i < 6; i++) {
+    if (await bar.click({ timeout: 3000 }).then(() => true, () => false)) return;
     await goBack(page);
     await page.waitForTimeout(600);
   }
   await bar.click();
+}
+
+/** Renders a real 800x800 PNG (a coloured square with initials) to use as an uploaded photo. */
+export async function makeTestPhoto(browser: Browser, path: string, color: string, text: string) {
+  const page = await browser.newPage({ viewport: { width: 800, height: 800 } });
+  await page.setContent(`<body style="margin:0"><div style="width:800px;height:800px;background:${color};display:flex;align-items:center;justify-content:center;font:bold 260px sans-serif;color:#fff">${text}</div></body>`);
+  await page.screenshot({ path });
+  await page.close();
+  return path;
 }

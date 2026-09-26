@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { inlineOpacity, linger, openWelcome, trackErrors, transformOf } from './helpers';
 
 // The first screen: what it says, where each choice goes, and proof that
@@ -72,6 +72,14 @@ test.describe('Welcome screen', () => {
     await page.waitForTimeout(4200);
     expect(await page.getByText(/^(Book trusted|Turn missed|Earn rewards|Send invoices)/).innerText()).toBe(first);
     await context.close();
+  });
+
+  test('the app still opens (with system fonts) when the brand fonts cannot load', async ({ page }) => {
+    await page.route(/\.ttf(\?|$)/, (route) => route.abort());
+    await page.goto('/');
+    // Previously a failed font load left the app on a blank screen forever.
+    await expect(page.getByTestId('choose-business')).toBeVisible({ timeout: 15_000 });
+    await linger(page, 1500);
   });
 
   test('each card opens its own sign-in, and back returns to welcome', async ({ page }) => {

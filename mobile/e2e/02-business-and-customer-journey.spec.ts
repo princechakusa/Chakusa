@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
-import { AVONDALE, HARARE_CENTRE, PASSWORD, backToTabs, button, expectMapRendered, goBack, linger, openWelcome, trackErrors, unnamedButtons, uniqueEmail, visibleText } from './helpers';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { AVONDALE, HARARE_CENTRE, PASSWORD, backToTabs, button, expectMapRendered, goBack, linger, makeTestPhoto, openWelcome, trackErrors, unnamedButtons, uniqueEmail, visibleText } from './helpers';
 
 // The whole product, driven like a person would: one business account and
 // one customer account, created fresh, then every main surface of each.
@@ -412,6 +413,222 @@ test.describe('Business and customer, end to end', () => {
     await expect(page.getByText('Haircut').filter({ visible: true }).first()).toBeVisible();
     await recordA11y(page, 'Calendar with a booking');
     await linger(page, 2500);
+    expectClean();
+  });
+
+  test('customer reschedules the booking to another time', async ({ page }) => {
+    const { expectClean } = trackErrors(page);
+    await signInCustomer(page);
+    await page.getByRole('tab', { name: 'Bookings tab' }).click();
+    await button(page, new RegExp(business.name)).click();
+    await expect(visibleText(page, 'SCHEDULED')).toBeVisible();
+    const before = await page.getByText('When', { exact: true }).filter({ visible: true }).locator('xpath=..').innerText();
+    await button(page, /Reschedule/).click();
+    await expect(visibleText(page, 'Pick a new time')).toBeVisible();
+    // Take a time on a later day than the current booking so the change is unmistakable.
+    const dayLabels = page.getByText(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [A-Z][a-z]{2} \d+$/).filter({ visible: true });
+    await expect(dayLabels.first()).toBeVisible();
+    const dayCount = await dayLabels.count();
+    const target = dayLabels.nth(Math.min(2, dayCount - 1));
+    const [, weekday = '', day = ''] = /^(\w{3})\w*, \w{3} (\d+)$/.exec((await target.innerText()).trim()) ?? [];
+    await target.locator('xpath=..').getByRole('button').first().click();
+    await expect(visibleText(page, 'Pick a new time')).toBeHidden();
+    const after = await page.getByText('When', { exact: true }).filter({ visible: true }).locator('xpath=..').innerText();
+    expect(after, 'the booking time changed').not.toBe(before);
+    Object.assign(booked, { weekday, day });
+    await linger(page, 1500);
+    expectClean();
+  });
+
+  test('business confirms the booking and shares live location; the customer sees it on a map', async ({ browser }) => {
+    const bizContext = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: AVONDALE });
+    const custContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const biz = await bizContext.newPage();
+    const cust = await custContext.newPage();
+    const bizErrors = trackErrors(biz);
+    const custErrors = trackErrors(cust);
+
+    await signInBusiness(biz);
+    await biz.getByRole('tab', { name: 'Calendar tab' }).click();
+    await biz.getByRole('button', { name: new RegExp(`^${booked.weekday}\\s*${booked.day}$`, 'i') }).filter({ visible: true }).first().click();
+    await biz.getByText(customer.name).filter({ visible: true }).first().click();
+    await button(biz, 'Confirm appointment').click();
+    await expect(button(biz, 'Mark completed')).toBeVisible();
+    await button(biz, 'On my way').click();
+    await button(biz, 'Share live location with customer').click();
+    await expect(biz.getByText('Sharing your live location with the customer').filter({ visible: true })).toBeVisible();
+    await linger(biz, 1200);
+
+    // Meanwhile, on the customer's phone.
+    await signInCustomer(cust);
+    await cust.getByRole('tab', { name: 'Bookings tab' }).click();
+    await button(cust, new RegExp(business.name)).click();
+    await expect(visibleText(cust, 'CONFIRMED')).toBeVisible();
+    await expect(visibleText(cust, 'Your provider is on the way')).toBeVisible({ timeout: 30_000 });
+    await expectMapRendered(cust, cust.locator('iframe[data-testid=leaflet-map]').filter({ visible: true }).first());
+    await linger(cust, 2500);
+
+    // Business arrives, stops sharing and completes the job; the customer's map disappears.
+    await button(biz, 'Stop sharing').click();
+    await expect(biz.getByText('Sharing your live location with the customer').filter({ visible: true })).toBeHidden();
+    await button(biz, 'Mark completed').click();
+    await expect(button(biz, 'Mark completed')).toBeHidden();
+    await cust.reload();
+    await expect(visibleText(cust, 'COMPLETED')).toBeVisible({ timeout: 30_000 });
+    await expect(cust.getByText('Your provider is on the way')).toHaveCount(0);
+    await linger(cust, 1500);
+
+    bizErrors.expectClean();
+    custErrors.expectClean();
+    await bizContext.close();
+    await custContext.close();
+  });
+
+  test('customer books again and cancels that booking', async ({ page, context }) => {
+    const { expectClean } = trackErrors(page);
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(HARARE_CENTRE);
+    await signInCustomer(page);
+    await page.getByRole('tab', { name: 'Explore tab' }).click();
+    await page.getByTestId('near-me').click();
+    await button(page, new RegExp(business.name)).click();
+    await button(page, 'Book an appointment').click();
+    await button(page, 'Haircut. 60 min').click();
+    const dates = page.getByRole('button', { name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d+$/ }).filter({ visible: true });
+    await dates.nth(3).click();
+    await page.getByRole('button', { name: /\d{1,2}:\d{2}/ }).filter({ visible: true }).first().click();
+    await page.getByRole('button', { name: /^(Confirm|Book|Request)/ }).filter({ visible: true }).last().click();
+    await expect(visibleText(page, 'SCHEDULED')).toBeVisible({ timeout: 20_000 });
+    await linger(page);
+    page.once('dialog', (dialog) => { expect(dialog.message()).toContain('Cancel this booking?'); void dialog.accept(); });
+    await button(page, 'Cancel booking').click();
+    await expect(visibleText(page, /^CANCELL?ED$/)).toBeVisible({ timeout: 20_000 });
+    await expect(visibleText(page, 'This booking is closed.')).toBeVisible();
+    await expect(button(page, 'Cancel booking')).toBeHidden();
+    await linger(page, 1500);
+    expectClean();
+  });
+
+  test('business adds a service, and the customer can see it on the business profile', async ({ browser }) => {
+    const bizContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const biz = await bizContext.newPage();
+    const bizErrors = trackErrors(biz);
+    await signInBusiness(biz);
+    await openMoreItem(biz, 'Services');
+    await button(biz, 'Add service').click();
+    await biz.getByLabel('Service name', { exact: true }).fill(`Beard trim ${stamp}`);
+    await biz.getByLabel('Duration (min)', { exact: true }).fill('30');
+    // Not exact-only: the leftover "More" menu (React web keeps inactive
+    // tabs mounted) has a button whose label contains "priced quotes".
+    await biz.getByLabel('Price', { exact: true }).filter({ visible: true }).fill('15');
+    await linger(biz);
+    await button(biz, 'Save service').click();
+    await expect(biz.getByText(`Beard trim ${stamp}`).filter({ visible: true }).first()).toBeVisible();
+    await expect(biz.getByText('30 min · $15').filter({ visible: true }).first()).toBeVisible();
+    await linger(biz, 1200);
+    bizErrors.expectClean();
+    await bizContext.close();
+
+    const custContext = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: HARARE_CENTRE });
+    const cust = await custContext.newPage();
+    const custErrors = trackErrors(cust);
+    await signInCustomer(cust);
+    await cust.getByRole('tab', { name: 'Explore tab' }).click();
+    await cust.getByTestId('near-me').click();
+    await button(cust, new RegExp(business.name)).click();
+    await expect(button(cust, new RegExp(`Beard trim ${stamp}`))).toBeVisible();
+    await linger(cust, 1500);
+    custErrors.expectClean();
+    await custContext.close();
+  });
+
+  test('business blocks time off and removes the block', async ({ page }) => {
+    const { expectClean } = trackErrors(page);
+    await signInBusiness(page);
+    await openMoreItem(page, 'Booking availability');
+    await button(page, 'Block unavailable time').click();
+    const inTenDays = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    await page.getByLabel('Date (YYYY-MM-DD)').fill(inTenDays);
+    await page.getByLabel('Start', { exact: true }).fill('13:00');
+    await page.getByLabel('End', { exact: true }).fill('14:00');
+    await page.getByLabel('Reason (optional)').fill('Staff training');
+    await linger(page);
+    await button(page, 'Block time').click();
+    await expect(visibleText(page, /Staff training/)).toBeVisible();
+    await linger(page, 1200);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await button(page, 'Remove').click();
+    await expect(page.getByText(/Staff training/).filter({ visible: true })).toHaveCount(0);
+    expectClean();
+  });
+
+  test('customer edits their display name', async ({ page }) => {
+    const { expectClean } = trackErrors(page);
+    await signInCustomer(page);
+    await page.getByRole('tab', { name: 'Account tab' }).click();
+    await button(page, 'Edit profile').click();
+    await page.getByLabel('Display name').fill(`Chipo M ${stamp}`);
+    await linger(page);
+    await button(page, 'Save changes').click();
+    await backToTabs(page, 'Account tab');
+    await expect(visibleText(page, `Chipo M ${stamp}`)).toBeVisible();
+    await linger(page, 1500);
+    expectClean();
+  });
+
+  test('business adds its photo, and customers see it on Explore and the business profile', async ({ browser }, testInfo) => {
+    const photo = await makeTestPhoto(browser, testInfo.outputPath('business-photo.png'), '#EE5D43', 'AH');
+    const bizContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const biz = await bizContext.newPage();
+    const bizErrors = trackErrors(biz);
+    await signInBusiness(biz);
+    await openMoreItem(biz, 'Business profile');
+    const chooser = biz.waitForEvent('filechooser');
+    await button(biz, 'Add photo').click();
+    await (await chooser).setFiles(photo);
+    await expect(visibleText(biz, 'Tap Save business setup to keep this photo.')).toBeVisible();
+    await linger(biz);
+    await button(biz, /Save business setup/).click();
+    await expect(visibleText(biz, 'Tap Save business setup to keep this photo.')).toBeHidden({ timeout: 20_000 });
+    await expect(button(biz, 'Change photo')).toBeVisible();
+    bizErrors.expectClean();
+    await bizContext.close();
+
+    const custContext = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['geolocation'], geolocation: HARARE_CENTRE });
+    const cust = await custContext.newPage();
+    const custErrors = trackErrors(cust);
+    const photoLoads = () => cust.waitForResponse((response) => /\/public\/business\/[^/]+\/photo/.test(response.url()) && response.status() === 200, { timeout: 30_000 });
+    await signInCustomer(cust);
+    const onCard = photoLoads();
+    await cust.getByRole('tab', { name: 'Explore tab' }).click();
+    await cust.getByTestId('near-me').click();
+    const card = button(cust, new RegExp(business.name));
+    await expect(card.getByLabel(`${business.name} photo`)).toBeVisible();
+    expect((await onCard).headers()['content-type']).toMatch(/^image\//);
+    await card.click();
+    await expect(cust.getByTestId('business-photo').filter({ visible: true })).toBeVisible();
+    await linger(cust, 2000);
+    custErrors.expectClean();
+    await custContext.close();
+  });
+
+  test('customer adds a profile picture and sees it on their account', async ({ page, browser }, testInfo) => {
+    const { expectClean } = trackErrors(page);
+    const photo = await makeTestPhoto(browser, testInfo.outputPath('customer-photo.png'), '#2F6BFF', 'CM');
+    await signInCustomer(page);
+    await page.getByRole('tab', { name: 'Account tab' }).click();
+    await expect(page.getByTestId('account-photo').filter({ visible: true })).toHaveAttribute('aria-label', /initials$/);
+    await button(page, 'Edit profile').click();
+    const chooser = page.waitForEvent('filechooser');
+    await button(page, 'Add photo').click();
+    await (await chooser).setFiles(photo);
+    await expect(visibleText(page, 'Tap Save changes to keep your new photo.')).toBeVisible();
+    await expect(page.getByTestId('profile-photo').filter({ visible: true })).toHaveAttribute('aria-label', / photo$/);
+    await linger(page);
+    await button(page, 'Save changes').click();
+    await backToTabs(page, 'Account tab');
+    await expect(page.getByTestId('account-photo').filter({ visible: true })).toHaveAttribute('aria-label', / photo$/);
+    await linger(page, 2000);
     expectClean();
   });
 

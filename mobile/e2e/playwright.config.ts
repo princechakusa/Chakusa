@@ -15,7 +15,7 @@ const headed = watch || process.env.E2E_HEADED === '1';
 
 export default defineConfig({
   testDir: '.',
-  timeout: 180_000,
+  timeout: watch ? 900_000 : 180_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
   workers: 1,
@@ -29,11 +29,13 @@ export default defineConfig({
     viewport: { width: 390, height: 844 },
     // Pin motion on so the animation checks are deterministic on any machine.
     reducedMotion: 'no-preference',
-    launchOptions: { slowMo: watch ? 180 : 0, args: ['--window-size=470,980'] },
+    // Watch mode is paced for a person following along: every action is held ~0.15 s.
+    launchOptions: { slowMo: watch ? 150 : 0, args: ['--window-size=470,980'] },
     actionTimeout: 30_000,
     navigationTimeout: 240_000,
     screenshot: 'on',
     trace: 'retain-on-failure',
-    video: 'on',
+    // Video encoding competes with the app for CPU; failures keep a screenshot and a full trace instead.
+    video: 'off',
   },
 });

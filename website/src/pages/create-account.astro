@@ -20,7 +20,7 @@ const description = "Create a secure Chakusa client account or business workspac
 <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script is:inline src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-  const AUTH_GATEWAY="https://auth.chakusarecovery.com";const TURNSTILE_SITEKEY="0x4AAAAAAEpe472lujrUft2Q";const GOOGLE_CLIENT_ID="618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com";
+  const AUTH_GATEWAY="https://auth.chakusarecovery.com";const TURNSTILE_SITEKEY="0x4AAAAAAEpe472lujrUft2Q";const GOOGLE_CLIENT_ID="1004047431327-s5baiopm6k2msj3phgl2bkjj4q8d1ehv.apps.googleusercontent.com";
   type TurnstileApi={render:(node:HTMLElement,options:Record<string,unknown>)=>string;reset:(id:string)=>void};declare global{interface Window{turnstile?:TurnstileApi;chakusaRegistrationTurnstileReady?:boolean}}
   const tabs=[...document.querySelectorAll<HTMLButtonElement>("[data-realm-tab]")];const panels=[...document.querySelectorAll<HTMLElement>("[data-registration-panel]")];
   const selectRealm=(realm:string)=>{tabs.forEach(tab=>tab.setAttribute("aria-selected",String(tab.dataset.realmTab===realm)));panels.forEach(panel=>panel.hidden=panel.dataset.registrationPanel!==realm);const url=new URL(location.href);url.searchParams.set("type",realm);history.replaceState({},"",url);};tabs.forEach(tab=>tab.addEventListener("click",()=>selectRealm(tab.dataset.realmTab||"client")));selectRealm(new URLSearchParams(location.search).get("type")==="business"?"business":"client");

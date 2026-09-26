@@ -328,13 +328,38 @@ fake token, not 503) and `/auth/apple/challenge` returns 200, so both
 providers are enabled server-side. The remaining steps are console settings
 only the owner can make:
 
-1. **Google Cloud → Credentials (same project as the web client ID):** make
-   sure there are **Android** OAuth clients for `com.chakusa.mobile` with the
-   **upload key SHA-1** *and* the **Play App Signing SHA-1** (commands in the
-   Android handoff doc). Missing either means `DEVELOPER_ERROR` on Android.
-2. **Render → API env:** `GOOGLE_OAUTH_CLIENT_IDS` must include the **web**
-   client ID the app is built with. Google issues the ID token for that
-   audience, even on iOS and Android.
+1. **RESOLVED (2026-09-26, verified on a real Android phone):** the original
+   Google Cloud project (client IDs prefixed `618618639466-...`) turned out
+   to belong to a Google login this account cannot reach — it wasn't in any
+   project visible under "All projects". Re-registered everything under the
+   **"Chakusa"** project (number `1004047431327`) this account does control:
+   a Web application client (now the value of `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
+   in `mobile/eas.json`, and required in Render's `GOOGLE_OAUTH_CLIENT_IDS`
+   below), and Android clients for `com.chakusa.mobile` covering the upload
+   key SHA-1 and the local debug-build SHA-1. Confirmed working end-to-end:
+   signed in with a real Google account on a physical device, all the way to
+   the customer home screen. **Still outstanding:**
+   - **Play App Signing SHA-1** not yet added (only matters once a build is
+     actually re-uploaded to Play Console — the upload-key SHA-1 already
+     covers that step).
+   - **iOS OAuth client not recreated** — `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+     and `app.json`'s `iosUrlScheme` still point at the old, dead project.
+     Create a real iOS client in the "Chakusa" project (bundle ID
+     `com.chakusa.mobile`) before the next iOS build attempts Google
+     Sign-In — see `docs/GOOGLE_SIGN_IN_SETUP.md` §3.
+   - **OAuth consent screen publishing status**: the successful test was
+     with the project owner's own Google account, which always works even
+     while the consent screen is "Testing". Confirm it's published ("In
+     production") — or every other real customer will fail to sign in
+     until they're individually added as a test user.
+   - The website's Google buttons (`website/src/pages/login.astro`,
+     `create-account.astro`) were updated to the same new client ID; they
+     proxy through the `auth-gateway` Cloudflare Worker to the same
+     already-fixed backend, so no separate server config was needed there.
+2. **Render → API env:** confirm `GOOGLE_OAUTH_CLIENT_IDS` includes the
+   **new web client ID** above (`1004047431327-s5baiopm6k2msj3phgl2bkjj4q8d1ehv
+   .apps.googleusercontent.com`) — this was updated during the 2026-09-26
+   test session; verify it's still there and the old dead value is removed.
 3. **Apple:** `APPLE_CLIENT_ID` on the API must be the bundle ID
    `com.chakusa.mobile`, because native Sign in with Apple tokens are issued
    to the bundle ID. The App ID needs the *Sign in with Apple* capability,

@@ -38,7 +38,7 @@ const description = "Sign in securely to your Chakusa client or business account
 <script>
   const AUTH_GATEWAY = "https://auth.chakusarecovery.com";
   const TURNSTILE_SITEKEY = "0x4AAAAAAEpe472lujrUft2Q";
-  const GOOGLE_CLIENT_ID = "618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com";
+  const GOOGLE_CLIENT_ID = "1004047431327-s5baiopm6k2msj3phgl2bkjj4q8d1ehv.apps.googleusercontent.com";
   type TurnstileApi = { render: (node: HTMLElement, options: Record<string, unknown>) => string; reset: (id: string) => void };
   declare global { interface Window { turnstile?: TurnstileApi; chakusaTurnstileReady?: boolean } }
   const setStatus = (message: string) => { const status=document.querySelector<HTMLElement>("[data-auth-status]"); if(status){status.hidden=false;status.textContent=message;status.scrollIntoView({behavior:"smooth",block:"center"});} };

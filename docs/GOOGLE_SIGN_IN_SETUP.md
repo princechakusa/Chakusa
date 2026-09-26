@@ -10,6 +10,22 @@ Google Sign-In uses the native Google SDK. The mobile app sends a Google ID toke
 4. Request only the default `openid`, `email`, and `profile` scopes.
 5. While the app is in Testing, add each tester under **Audience > Test users**.
 
+> **2026-09-26 note:** the Google Cloud project originally used for this app
+> (client IDs prefixed `618618639466-...`) turned out to be inaccessible —
+> no project on the account we could reach contained it, so it was almost
+> certainly created under a different Google login at some point. Android +
+> Web sign-in was re-registered under a project this account controls
+> ("Chakusa", project number `1004047431327`) and confirmed working
+> end-to-end on a real device (see `docs/progress/`). **iOS is not yet
+> redone** — the iOS client ID below is still the old, dead one; create a
+> real iOS OAuth client in the same "Chakusa" project before the next iOS
+> build attempts Google Sign-In (steps unchanged, just use that project).
+>
+> Also confirm the OAuth consent screen's **publishing status**: a project
+> owner's own account can sign in even while status is "Testing" (that's
+> why our device test succeeded), but other real users cannot until it's
+> either published ("In production") or explicitly added under Test users.
+
 ## 2. Server/web OAuth client
 
 Create an OAuth client of type **Web application**. This is the server audience used to request and verify mobile ID tokens. No browser redirect URI is used by the native mobile flow.
@@ -21,7 +37,7 @@ Set the same client ID in:
 GOOGLE_OAUTH_CLIENT_IDS=123456789-example.apps.googleusercontent.com
 
 # EAS or mobile build environment
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=618618639466-1sosi4hua8q64h0til1rjkam36cbpdvd.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=1004047431327-s5baiopm6k2msj3phgl2bkjj4q8d1ehv.apps.googleusercontent.com
 ```
 
 Multiple trusted backend audiences may be comma-separated in `GOOGLE_OAUTH_CLIENT_IDS`. Do not add client IDs belonging to unrelated apps.

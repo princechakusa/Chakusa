@@ -231,3 +231,37 @@ instead of linking out to Google Maps (post-V1 backlog: "embedded map").
 - Metro ignores generated output folders.
 - Watch mode shows a caption naming the running test.
 - Video is off; failures keep a screenshot and a trace.
+
+---
+
+## 9. Google Sign-In verified working on a real device (same day, follow-up)
+
+Root cause found: the Google Cloud project originally used for this app
+(`618618639466-...` client IDs) is not accessible from this account under
+any project — confirmed by checking "All projects" and finding only three
+(none matching). It was almost certainly created under a different Google
+login at some point before this handoff.
+
+**Fix:** re-registered Web + Android OAuth clients under a project this
+account controls ("Chakusa", `1004047431327`), updated
+`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `mobile/eas.json` (all profiles),
+updated the website's two hardcoded Google client IDs to match
+(`website/src/pages/login.astro`, `create-account.astro` — confirmed these
+proxy through the `auth-gateway` Cloudflare Worker to the same backend, so
+no separate server-side config was needed), and updated
+`docs/GOOGLE_SIGN_IN_SETUP.md`'s example values.
+
+**Verified on a real physical Android phone** (Honor, USB-connected, debug
+build via `expo run:android`, Metro reached over `adb reverse`): tapped
+"Continue with Google", picked a real Google account, and landed on the
+signed-in customer home screen ("Good evening, Prince") — confirming the
+whole chain end to end: native Google Sign-In → real ID token → server
+verification against the corrected `GOOGLE_OAUTH_CLIENT_IDS` (updated on
+Render by the owner during this session) → session issued → app rendered.
+
+**Still open** (see OA-9 in `docs/OWNER_ACTIONS.md` for the full list):
+Play App Signing SHA-1 not yet added (only needed once a build is
+re-uploaded to Play Console); iOS OAuth client not recreated in the new
+project yet; OAuth consent screen publishing status not confirmed (the
+project owner's own account always works even in "Testing" — other real
+users may not be able to sign in until it's published or added as testers).

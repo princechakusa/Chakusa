@@ -4,6 +4,7 @@ import { ApiError } from "../errors.js";
 import { config } from "../config.js";
 import { mapIndustryToCategory } from "./categories.js";
 import { displayDistanceKm, haversineKm, type Coordinates } from "./geo.js";
+import { businessPhotoPath } from "../imageDataUrl.js";
 
 // PROGRAM 2 LOOP 2: business discovery. Reads `Business` / `ServiceOffering` /
 // `Feedback` / `BusinessMember` directly; `BusinessMarketplaceListing` is
@@ -60,6 +61,7 @@ function serializeCard(
     // Straight-line distance from the searcher's position, when they sent one.
     distanceKm: distance === null ? null : displayDistanceKm(distance),
     slug: business.publicSlug,
+    photoUrl: businessPhotoPath(business),
     name: business.name,
     category: listing?.categorySlug ?? mapIndustryToCategory(business.industry),
     subcategory: listing?.subcategorySlug ?? null,
@@ -300,6 +302,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
 
   return {
     slug: business.publicSlug,
+    photoUrl: businessPhotoPath(business),
     name: business.name,
     about: business.description,
     category: listing?.categorySlug ?? mapIndustryToCategory(business.industry),

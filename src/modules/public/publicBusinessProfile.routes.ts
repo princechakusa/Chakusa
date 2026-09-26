@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { ApiError } from "../../lib/errors.js";
+import { decodeImageDataUrl } from "../../lib/imageDataUrl.js";
+import { prisma } from "../../lib/prisma.js";
 import { createPublicBookingSchema, publicAvailabilitySchema, reschedulePublicBookingSchema, submitPublicContactSchema } from "./public.schemas.js";
 import { cancelPublicBooking, confirmPublicBooking, createPublicBooking, publicAvailability, publicBookingCalendar, reschedulePublicBooking, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
 import { createAppointmentPaymentLink } from "../payments/payments.service.js";
@@ -22,6 +24,25 @@ export default async function publicBusinessProfileRoutes(fastify: FastifyInstan
         throw ApiError.notFound("This business page is invalid or no longer available");
       }
       reply.send(profile);
+    },
+  );
+
+  // The business's photo, served as an image so customer screens and the
+  // public page can show it without shipping the stored data URI in every
+  // list response. Same visibility rule as the profile itself. Cacheable:
+  // clients use the versioned path from businessPhotoPath().
+  fastify.get<{ Params: { slug: string } }>(
+    "/:slug/photo",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const business = await prisma.business.findFirst({ where: { publicSlug: request.params.slug, platformStatus: "ACTIVE" }, select: { logoDataUrl: true } });
+      const image = decodeImageDataUrl(business?.logoDataUrl);
+      if (!image) throw ApiError.notFound("This business has no photo");
+      reply
+        .header("content-type", image.contentType)
+        .header("cache-control", "public, max-age=86400")
+        .header("x-content-type-options", "nosniff")
+        .send(image.bytes);
     },
   );
 

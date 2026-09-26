@@ -9,6 +9,7 @@ import { calculateAvailability } from "../availability/availability.service.js";
 import { createAppointment, transitionAppointment, updateAppointment } from "../appointments/appointments.service.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
 import { ApiError } from "../../lib/errors.js";
+import { businessPhotoPath } from "../../lib/imageDataUrl.js";
 import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "../appointments/appointmentReminders.js";
 
 /**
@@ -18,6 +19,8 @@ import { sendAppointmentConfirmation, sendCustomerAppointmentMessage } from "../
  * publicReviews.service.ts.
  */
 export interface PublicBusinessProfile {
+  /** Versioned path to the business photo on this API (relative), or null. */
+  photoUrl: string | null;
   name: string;
   industry: string | null;
   phone: string | null;
@@ -39,6 +42,7 @@ export async function resolvePublicBusinessProfile(slug: string): Promise<Public
 function serializePublicBusinessProfile(business: Business & { serviceOfferings: { id: string; name: string; description: string | null; durationMinutes: number; price: { toNumber(): number } | null; depositAmount: { toNumber(): number } | null }[] }): PublicBusinessProfile {
   return {
     name: business.name,
+    photoUrl: businessPhotoPath(business),
     industry: business.industry,
     phone: business.phone,
     description: business.description,

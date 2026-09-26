@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
+import { imageDataUrlSchema } from "../../lib/imageDataUrl.js";
 import type { Prisma } from "@prisma/client";
 import { getCustomerProfileOrThrow, linkCustomerToBusiness, recordCustomerActivity } from "../../lib/customer/customerContext.js";
 import { listCustomerNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/customer/customerNotifications.js";
@@ -11,7 +12,9 @@ import { getOwnAcceptanceHistory, getPendingAcceptances, recordAcceptance, LEGAL
 
 const updateProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(80).optional(),
-  avatarUrl: z.string().trim().url().max(2048).nullable().optional(),
+  // A picture the customer uploads (a small image data URI - the app shrinks
+  // it first) or an https link; null removes it.
+  avatarUrl: z.union([imageDataUrlSchema, z.string().trim().url().regex(/^https:\/\//i, "Must be an https link").max(2048)]).nullable().optional(),
   phone: z.string().trim().max(40).nullable().optional(),
   phoneE164: z.string().trim().max(20).nullable().optional(),
   preferredLanguage: z.string().trim().min(2).max(10).optional(),

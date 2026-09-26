@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { imageDataUrlSchema } from "../../lib/imageDataUrl.js";
 import { isValidCountryCode } from "../../lib/phone.js";
 
 // No onboarding flow collects these yet (Phase 1 foundations only) — this
@@ -54,10 +55,7 @@ export const updateBusinessSchema = z.object({
   // Small business logo as a base64 image data URI. Capped at ~400KB of
   // encoded text so it stays comfortably inside a text column; `null`
   // clears it. Anything larger, or a non-image data URI, is rejected.
-  logoDataUrl: z
-    .string()
-    .regex(/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\r\n]+$/, "Must be a PNG, JPEG, WebP or GIF image")
-    .max(400_000, "Image is too large. Choose one under about 250 KB")
+  logoDataUrl: imageDataUrlSchema
     .nullable()
     .optional(),
   workingHours: z.union([structuredWorkingHoursSchema, legacyWorkingHoursSchema]).optional(),

@@ -226,6 +226,7 @@ export function InvoiceEditorScreen({ route, navigation }: Props) {
             <TextInput
               value={item.description}
               onChangeText={(v) => setItem(index, { description: v })}
+              accessibilityLabel="Item description"
               placeholder="Description"
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
@@ -298,7 +299,7 @@ function LabeledInput({ label, value, onChangeText, keyboardType, placeholder }:
   return (
     <View style={styles.labeled}>
       <Text style={styles.labeledLabel}>{label}</Text>
-      <TextInput value={value} onChangeText={onChangeText} keyboardType={keyboardType} placeholder={placeholder} style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} keyboardType={keyboardType} placeholder={placeholder} style={styles.input} placeholderTextColor={colors.textSecondary} />
     </View>
   );
 }

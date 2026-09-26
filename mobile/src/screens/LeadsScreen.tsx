@@ -265,10 +265,10 @@ export function LeadsScreen() {
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>Missed-call lead</Text>
             <View style={styles.segment}>
-              <Pressable onPress={() => setCallerMode('existing')} style={[styles.segmentItem, callerMode === 'existing' && styles.segmentActive]}>
+              <Pressable accessibilityRole="button" accessibilityState={{ selected: callerMode === 'existing' }} onPress={() => setCallerMode('existing')} style={[styles.segmentItem, callerMode === 'existing' && styles.segmentActive]}>
                 <Text style={[styles.segmentText, callerMode === 'existing' && styles.segmentTextActive]}>Existing customer</Text>
               </Pressable>
-              <Pressable onPress={() => setCallerMode('new')} style={[styles.segmentItem, callerMode === 'new' && styles.segmentActive]}>
+              <Pressable accessibilityRole="button" accessibilityState={{ selected: callerMode === 'new' }} onPress={() => setCallerMode('new')} style={[styles.segmentItem, callerMode === 'new' && styles.segmentActive]}>
                 <Text style={[styles.segmentText, callerMode === 'new' && styles.segmentTextActive]}>New caller</Text>
               </Pressable>
             </View>
@@ -319,7 +319,7 @@ function Field({ label, ...props }: { label: string; value: string; onChangeText
   return (
     <View>
       <Text style={styles.label}>{label}</Text>
-      <TextInput {...props} style={styles.input} />
+      <TextInput accessibilityLabel={label} {...props} style={styles.input} />
     </View>
   );
 }

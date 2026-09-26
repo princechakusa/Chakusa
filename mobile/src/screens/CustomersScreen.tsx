@@ -125,7 +125,7 @@ export function CustomersScreen() {
             </View>
             <Text style={styles.titleMeta}>Patronage, lifetime value and retention</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setShowCreate(true)} style={styles.addBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Add client" onPress={() => setShowCreate(true)} style={styles.addBtn}>
             <Icon name="person_add" size={20} color={m3.onPrimary} />
           </Pressable>
         </View>
@@ -219,7 +219,7 @@ function Field({
   return (
     <View>
       <Text style={styles.label}>{label}</Text>
-      <TextInput {...props} style={styles.input} />
+      <TextInput accessibilityLabel={label} {...props} style={styles.input} />
     </View>
   );
 }

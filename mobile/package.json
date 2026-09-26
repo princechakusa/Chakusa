@@ -35,9 +35,11 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "react-native-webview": "13.16.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "~19.2.2",
     "patch-package": "^8.0.1",
@@ -50,7 +52,12 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --config vitest.config.mjs"
+    "test": "vitest run --config vitest.config.mjs",
+    "web:prod-config": "node scripts/eas-env.mjs production -- expo start --web",
+    "android:bundle-release": "node scripts/eas-env.mjs production --cwd android -- gradlew bundleRelease",
+    "android:assemble-release": "node scripts/eas-env.mjs production --cwd android -- gradlew assembleRelease",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:watch": "node e2e/watch.mjs"
   },
   "private": true
 }

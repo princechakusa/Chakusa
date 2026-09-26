@@ -48,3 +48,7 @@ yarn-error.*
 modules/*/android/build/
 modules/*/android/.gradle/
 modules/*/android/.cxx/
+
+# Playwright output
+e2e-report/
+e2e-results/

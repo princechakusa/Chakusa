@@ -70,6 +70,16 @@ gradle.taskGraph.whenReady { graph ->
             "This project never falls back to the debug keystore for a release build."
         )
     }
+    // EXPO_PUBLIC_* values are inlined into the JS bundle at build time. A
+    // release bundled without them ships with no API URL and a Google
+    // Sign-In that cannot configure itself, so refuse to build one.
+    def missingPublicConfig = ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"].findAll { !System.getenv(it) }
+    if (releaseSigningTaskRequested && !missingPublicConfig.isEmpty()) {
+        throw new GradleException(
+            "Release build blocked: missing " + missingPublicConfig.join(", ") + ". " +
+            "Build through 'npm run android:bundle-release' (applies the eas.json production env)."
+        )
+    }
 }
 `;
     contents = contents + failClosedCheck;

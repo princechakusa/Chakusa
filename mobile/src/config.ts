@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { APPROVED_PUBLIC_DESTINATIONS } from './domain/trustSettings';
-import { normalizeApiUrl, publicFeatureEnabled } from './domain/mobileProduction';
+import { normalizeApiUrl, publicFeatureEnabled, socialSignInProviders } from './domain/mobileProduction';
 
 const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
 
@@ -30,6 +30,7 @@ export const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? '';
 export const EAS_PROJECT_ID = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() ?? '';
 export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() ?? '';
 export const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? '';
+export const SOCIAL_SIGN_IN = socialSignInProviders({ platform: Platform.OS, googleEnabled: GOOGLE_AUTH_ENABLED, googleWebClientId: GOOGLE_WEB_CLIENT_ID, appleEnabled: APPLE_AUTH_ENABLED });
 export const APPLE_PRO_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_APPLE_PRO_MONTHLY_PRODUCT_ID?.trim() ?? '';
 export const GOOGLE_PRO_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_GOOGLE_PRO_MONTHLY_PRODUCT_ID?.trim() ?? '';
 export const APPLE_BUSINESS_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID?.trim() ?? '';

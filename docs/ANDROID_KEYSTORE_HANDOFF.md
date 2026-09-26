@@ -58,14 +58,41 @@ $env:CHAKUSA_UPLOAD_KEY_ALIAS = "chakusa-upload"
 $env:CHAKUSA_UPLOAD_KEY_PASSWORD = "<same value as store password>"
 cd mobile
 npx expo prebuild --platform android
-.\android\gradlew.bat -p android bundleRelease --no-daemon
+npm run android:bundle-release
 ```
 
 Output: `mobile\android\app\build\outputs\bundle\release\app-release.aab`
 
+`npm run android:bundle-release` runs `gradlew bundleRelease` with the
+`production` profile's `env` block from `eas.json` applied
+(`scripts/eas-env.mjs`). EAS cloud builds get that block automatically, but
+a local Gradle build does not. Without it, every `EXPO_PUBLIC_*` value (the
+API URL, the Google web client ID, feature flags) is missing from the JS
+bundle. That is what broke Google Sign-In in the 2026-09-23 AAB: its bundle
+had no API URL and no Google client ID. Don't call `gradlew bundleRelease`
+directly.
+
 The release build **fails closed** (a clear error, not a silent debug-signed
-build) if these environment variables are not set — see
+or unconfigured build) if the signing variables above are not set, or if
+`EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` are missing. See
 `mobile/plugins/withReleaseSigning.js`.
+
+**Google Sign-In on Android also needs the signing certificates registered.**
+Google only issues an ID token to an app whose package name and signing
+SHA-1 match an **Android** OAuth client in the same Google Cloud project as
+the web client ID. Two SHA-1s must be registered as Android OAuth clients
+for `com.chakusa.mobile`:
+
+1. The **upload key**: `keytool -list -v -keystore "<path to chakusa-upload.p12>" -storetype PKCS12 -alias chakusa-upload`
+2. The **Play App Signing key**: Play Console → Test and release → App
+   integrity → App signing key certificate → SHA-1. Installs from Play are
+   re-signed with this key, not the upload key.
+
+If either is missing, Google Sign-In fails with `DEVELOPER_ERROR`. See
+`docs/OWNER_ACTIONS.md` (OA-9).
+
+`react-native-webview` (added for the Leaflet map, 2026-09-26) is
+Java/Kotlin only. It has no C++ and needs no linker patch.
 
 ## Native build note (2026-09-23)
 

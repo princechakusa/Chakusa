@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { googleIosUrlScheme, normalizeApiUrl, passwordResetCopy, productionServiceAvailability, publicFeatureEnabled, renderWakeErrorCopy } from './mobileProduction';
+import { googleIosUrlScheme, normalizeApiUrl, passwordResetCopy, productionServiceAvailability, publicFeatureEnabled, renderWakeErrorCopy, socialSignInProviders } from './mobileProduction';
 
 function listSourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -18,6 +18,16 @@ describe('mobile production configuration', () => {
   it('maps disabled production services without removing their architecture', () => { expect(publicFeatureEnabled('false')).toBe(false); expect(publicFeatureEnabled(undefined)).toBe(true); expect(productionServiceAvailability(false)).toBe('unavailable'); expect(productionServiceAvailability(true)).toBe('available'); });
   it('maps the configured iOS Google client ID to its valid reversed URL scheme', () => { expect(googleIosUrlScheme('618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m.apps.googleusercontent.com')).toBe('com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m'); expect(googleIosUrlScheme()).toBeNull(); expect(googleIosUrlScheme('not-a-client-id')).toBeNull(); });
   it('uses truthful email-disabled and Render wake-up copy', () => { expect(passwordResetCopy(false)).toContain('temporarily unavailable'); expect(passwordResetCopy(true)).toContain('single-use reset link'); expect(renderWakeErrorCopy('REQUEST_TIMEOUT')).toContain('waking up'); expect(renderWakeErrorCopy()).toContain('Unable to reach'); });
+
+  it('only offers social sign-in where the native SDK can complete it', () => {
+    const base = { googleEnabled: true, googleWebClientId: 'web.apps.googleusercontent.com', appleEnabled: true };
+    expect(socialSignInProviders({ ...base, platform: 'ios' })).toEqual({ google: true, apple: true, any: true });
+    expect(socialSignInProviders({ ...base, platform: 'android' })).toEqual({ google: true, apple: false, any: true });
+    expect(socialSignInProviders({ ...base, platform: 'web' })).toEqual({ google: false, apple: false, any: false });
+    // A build bundled without the web client ID must not show a Google button that can only fail.
+    expect(socialSignInProviders({ ...base, platform: 'android', googleWebClientId: ' ' }).google).toBe(false);
+    expect(socialSignInProviders({ ...base, platform: 'ios', appleEnabled: false }).apple).toBe(false);
+  });
 
   it('never references the Sign in with Apple private key or CONFIGURE_ME anywhere in mobile source', () => {
     const srcDir = fileURLToPath(new URL('..', import.meta.url));

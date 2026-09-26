@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
-import { ActivityIndicator, InteractionManager, Platform, StyleSheet, Text, View } from 'react-native';
+import { InteractionManager, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -10,7 +10,9 @@ import { APP_VARIANT } from '../config';
 import { CustomerRoot } from '../customer/CustomerRoot';
 import { getCustomerSession } from '../customer/session';
 import { getStoredSession } from '../services/tokenStorage';
-import { colors, spacing, typography } from '../theme';
+import { BrandMark } from '../components/BrandMark';
+import { authColors, authSpace, authType } from './authTheme';
+import { HeroMark, PulseRings } from './motion';
 import { ExperienceSelectScreen } from './ExperienceSelectScreen';
 import { ExperienceContext, ExperienceValue } from './experienceContext';
 import {
@@ -143,9 +145,12 @@ export function ExperienceRouter() {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
-          <Text style={styles.loadingText}>Chakusa</Text>
+        <View accessibilityLabel="Loading Chakusa" style={styles.loading}>
+          <View style={styles.launchMark}>
+            <PulseRings size={84} color={authColors.coral} />
+            <HeroMark idle><BrandMark size={56} /></HeroMark>
+          </View>
+          <Text style={styles.loadingText}>CHAKUSA</Text>
         </View>
       </SafeAreaProvider>
     );
@@ -166,6 +171,7 @@ export function ExperienceRouter() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.background },
-  loadingText: { ...typography.caption, color: colors.textSecondary, letterSpacing: 2 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: authSpace.md, backgroundColor: authColors.bg },
+  launchMark: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { ...authType.micro, fontSize: 12, letterSpacing: 4, color: authColors.coral },
 });

@@ -58,13 +58,15 @@ export function InsightsScreen({ navigation }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try {
-      const [insightsResult, coachingResult, valueResult] = await Promise.all([dashboardApi.insights(), dashboardApi.coaching(), dashboardApi.value()]);
-      setInsights(insightsResult);
-      setCoaching(coachingResult.insights);
-      setValue(valueResult);
-    } catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Unable to load business insights.'); }
-    finally { setLoading(false); }
+    // Independent calls, not Promise.all: coaching and value are supplementary
+    // (rendered only when present, below), so a failure in either must not
+    // blank the whole screen when the core insights call itself succeeds.
+    const [insightsResult, coachingResult, valueResult] = await Promise.allSettled([dashboardApi.insights(), dashboardApi.coaching(), dashboardApi.value()]);
+    if (insightsResult.status === 'fulfilled') setInsights(insightsResult.value);
+    else setError(insightsResult.reason instanceof ApiError ? insightsResult.reason.message : 'Unable to load business insights.');
+    setCoaching(coachingResult.status === 'fulfilled' ? coachingResult.value.insights : null);
+    setValue(valueResult.status === 'fulfilled' ? valueResult.value : null);
+    setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
 

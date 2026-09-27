@@ -69,6 +69,10 @@ async function main() {
     },
   });
   await prisma.subscription.update({ where: { businessId }, data: { plan: "BUSINESS", status: "ACTIVE" } });
+  // Without this, the owner login lands in the 8-step setup wizard every
+  // time - the real UI marks this on completion, but this script writes
+  // rows directly and skips that endpoint.
+  await prisma.business.update({ where: { id: businessId }, data: { onboardingCompletedAt: new Date() } });
 
   const services = await Promise.all([
     prisma.serviceOffering.create({ data: { businessId, name: "Haircut", durationMinutes: 45, price: 40, publiclyBookable: true, sortOrder: 1 } }),

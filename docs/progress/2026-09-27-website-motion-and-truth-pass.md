@@ -77,9 +77,16 @@ The site is static. It has no auth, no tenant data, and no new network calls. Mo
 - Other Stitch-era copy uses marketing phrasing ("masters of their craft") that is not factually wrong but could be tightened in a later copy pass.
 - Visual QA on a physical iPhone and Android device (release gate).
 
+## Follow-up pass (same day)
+
+- `/contact` rebuilt (3.4k → 1.7k px). Removed promises nobody had established: "< 2h" response SLA, "90-second dispatch", live operator hours, "tier-1 engineering", "zero-knowledge tokenization", and free data migration. Also removed the stock "support specialist" photo and an unrelated Google Maps location panel. The mailto form stays. The FAQs are verified against the business data export and the booking-link cancel/reschedule flow (`cancelPublicBooking`, notice window).
+- "No credit card required" removed from 8 CTAs. Trials are App Store / Google Play subscription trials (`subscriptionReconciliation.ts`), and the stores normally require a payment method.
+- Verified and kept: "No account required to book" (public, rate-limited `POST /:slug/book` plus token-based manage links).
+- `astro build` succeeds. Motion ships as one shared chunk of about 54 KB raw.
+
 ## Commits
 
-`df54cba`, `5b82946`, `3f37a52`, `d0d3567`, `083e67b`.
+`df54cba`, `5b82946`, `3f37a52`, `d0d3567`, `083e67b`, `f2cd8e8`.
 
 ## Next
 

@@ -16,8 +16,11 @@ import type { HubBusiness } from '../domain/customerLoyalty';
 export function PointsSummary({ total, caption }: { total: number; caption: string }) {
   return (
     <View style={styles.points} accessibilityLabel={`${formatPoints(total)} total. ${caption}.`}>
-      <Text style={styles.pointsValue}>{formatPoints(total)}</Text>
-      <Text style={styles.pointsCaption}>{caption}</Text>
+      <View style={styles.pointsIcon}><Ionicons name="sparkles" size={20} color={colors.primary} /></View>
+      <View style={styles.pointsCopy}>
+        <Text style={styles.pointsValue}>{formatPoints(total)}</Text>
+        <Text style={styles.pointsCaption}>{caption}</Text>
+      </View>
     </View>
   );
 }
@@ -49,9 +52,9 @@ export function TierProgressBar({ account }: { account: LoyaltyAccountSummaryDto
   return (
     <View style={styles.tier} accessibilityLabel={label}>
       <View style={styles.tierRow}>
-        <Text style={styles.tierName}>{progress.currentTier}</Text>
+        <View style={styles.tierBadge}><Text style={styles.tierBadgeText}>{progress.currentTier}</Text></View>
         <Text style={styles.tierNext}>
-          {progress.nextTier ? `${formatPoints(progress.pointsAway)} to ${progress.nextTier}` : 'Top tier'}
+          {progress.nextTier ? `${formatPoints(progress.pointsAway)} to ${progress.nextTier}` : 'Top tier reached'}
         </Text>
       </View>
       <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: pct }} style={styles.track}>
@@ -103,13 +106,15 @@ export function MembershipCard({ membership, onPress }: { membership: CustomerMe
 export function RedemptionCodeCard({ redemption, code }: { redemption: RewardRedemptionDto; code: string }) {
   return (
     <View style={styles.codeCard}>
+      <View style={styles.codeStatusRow}>
+        <View style={styles.codeStatusPill}><Text style={styles.codeStatusText}>{redemptionStatusLabel(redemption.status)}</Text></View>
+      </View>
       <Text style={styles.codeLabel}>{redemption.reward?.name ?? 'Reward'}</Text>
       <Text style={styles.codeBusiness}>{redemption.business?.name ?? ''}</Text>
-      <Text style={styles.code} accessibilityLabel={`Redemption code ${code.split('').join(' ')}`}>{code}</Text>
-      <Text style={styles.codeMeta}>
-        {redemptionStatusLabel(redemption.status)}
-        {redemption.expiresAt ? ` · expires ${formatDate(redemption.expiresAt)}` : ''}
-      </Text>
+      <View style={styles.codeChip}>
+        <Text style={styles.code} accessibilityLabel={`Redemption code ${code.split('').join(' ')}`}>{code}</Text>
+      </View>
+      {redemption.expiresAt ? <Text style={styles.codeMeta}>Expires {formatDate(redemption.expiresAt)}</Text> : null}
       <Text style={styles.codeHint}>Show this code to the business to use your reward.</Text>
     </View>
   );
@@ -134,7 +139,9 @@ function ReferralStat({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
-  points: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.xxs, ...shadows.card },
+  points: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...shadows.card },
+  pointsIcon: { width: 48, height: 48, borderRadius: radius.round, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  pointsCopy: { flex: 1, gap: spacing.xxs },
   pointsValue: { ...typography.title, color: colors.text },
   pointsCaption: { ...typography.caption, color: colors.textSecondary },
   card: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
@@ -148,15 +155,21 @@ const styles = StyleSheet.create({
   reason: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxs },
   reasonReady: { color: colors.success },
   tier: { gap: spacing.xs },
-  tierRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  tierBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.round, backgroundColor: colors.primarySoft },
+  tierBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   tierName: { ...typography.bodyStrong, color: colors.text },
   tierNext: { ...typography.caption, color: colors.textSecondary },
   track: { height: 8, borderRadius: radius.round, backgroundColor: colors.divider, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: radius.round, backgroundColor: colors.primary },
-  codeCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, padding: spacing.lg, gap: spacing.xxs, alignItems: 'center' },
-  codeLabel: { ...typography.bodyStrong, color: colors.text },
+  codeCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primary, padding: spacing.lg, gap: spacing.xxs, alignItems: 'center', ...shadows.card },
+  codeStatusRow: { alignSelf: 'stretch', alignItems: 'flex-end' },
+  codeStatusPill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.round, backgroundColor: colors.successSoft },
+  codeStatusText: { ...typography.micro, color: colors.success },
+  codeLabel: { ...typography.bodyStrong, color: colors.text, marginTop: spacing.xs },
   codeBusiness: { ...typography.caption, color: colors.textSecondary },
-  code: { ...typography.heading, color: colors.text, letterSpacing: 2, marginVertical: spacing.xs },
+  codeChip: { marginVertical: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  code: { ...typography.title, color: colors.text, letterSpacing: 3 },
   codeMeta: { ...typography.caption, color: colors.textSecondary },
   codeHint: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xs },
   referral: { flexDirection: 'row', gap: spacing.sm },

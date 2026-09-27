@@ -4,10 +4,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, Screen, StatusBadge } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerInvoiceListItemDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDate, formatMoney } from '../../utils/format';
 import { customerInvoiceStatusLabel, isCustomerInvoiceOverdue, outstandingInvoiceCount, sortCustomerInvoices } from '../domain/customerInvoices';
 import { customerInvoicesApi } from '../endpoints';
@@ -15,9 +15,24 @@ import type { CustomerRootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
-// PROGRAM 3 / Invoicing I7: the customer's invoice inbox. Read-only - 
+const NEUTRAL_STATUSES = new Set(['Paid', 'Won', 'Active']);
+const ATTENTION_STATUSES = new Set(['Overdue', 'Cancelled', 'Void']);
+
+// PROGRAM 3 / Invoicing I7: the customer's invoice inbox. Read-only -
 // invoices a linked business has sent. No pay action (no payment flow
 // exists yet).
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function StatusPill({ label }: { label: string }) {
+  const tone = NEUTRAL_STATUSES.has(label) ? 'positive' : ATTENTION_STATUSES.has(label) ? 'danger' : 'attention';
+  return (
+    <View style={[styles.pill, tone === 'positive' && styles.pillPositive, tone === 'danger' && styles.pillDanger, tone === 'attention' && styles.pillAttention]}>
+      <Text style={[styles.pillText, tone === 'positive' && styles.pillTextPositive, tone === 'danger' && styles.pillTextDanger, tone === 'attention' && styles.pillTextAttention]}>{label}</Text>
+    </View>
+  );
+}
 
 export function CustomerInvoicesScreen() {
   const navigation = useNavigation<Nav>();
@@ -43,12 +58,12 @@ export function CustomerInvoicesScreen() {
   const outstanding = outstandingInvoiceCount(items);
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader
-        eyebrow="INVOICES"
-        title="Your invoices"
-        subtitle={outstanding > 0 ? `${outstanding} outstanding` : 'Invoices your businesses have sent you'}
-      />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>INVOICES</Text>
+        <Text style={styles.title}>Your invoices</Text>
+        <Text style={styles.subtitle}>{outstanding > 0 ? `${outstanding} outstanding` : 'Invoices your businesses have sent you'}</Text>
+      </View>
 
       {!loaded ? (
         <LoadingState label="Loading your invoices…" />
@@ -81,9 +96,9 @@ export function CustomerInvoicesScreen() {
                 </View>
                 <View style={styles.alignEnd}>
                   <Text style={styles.total}>{formatMoney(invoice.total, invoice.currency)}</Text>
-                  <StatusBadge label={customerInvoiceStatusLabel(invoice.status, overdue)} />
+                  <StatusPill label={customerInvoiceStatusLabel(invoice.status, overdue)} />
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                <Ionicons name="chevron-forward" size={16} color={authColors.coral} />
               </Pressable>
             );
           })}
@@ -94,13 +109,25 @@ export function CustomerInvoicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  list: { gap: authSpace.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
   pressed: { opacity: 0.78 },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   alignEnd: { alignItems: 'flex-end', gap: 4 },
-  name: { ...typography.bodyStrong, color: colors.text },
-  meta: { ...typography.caption, color: colors.textSecondary },
-  metaOverdue: { color: colors.negative },
-  total: { ...typography.bodyStrong, color: colors.text },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  meta: { ...authType.body, fontSize: 12 },
+  metaOverdue: { color: authColors.danger },
+  total: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  pill: { paddingHorizontal: authSpace.xs, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft },
+  pillText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.coral },
+  pillPositive: { backgroundColor: '#EAF9F1' },
+  pillTextPositive: { color: authColors.positive },
+  pillDanger: { backgroundColor: '#FDECEC' },
+  pillTextDanger: { color: authColors.danger },
+  pillAttention: { backgroundColor: '#FDF3E4' },
+  pillTextAttention: { color: '#B7791F' },
 });

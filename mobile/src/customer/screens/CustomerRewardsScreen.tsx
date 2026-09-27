@@ -4,11 +4,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, SectionHeader } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { WalletDto } from '../../apiTypes';
 import { transactionLabel } from '../../domain/loyalty';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDate } from '../../utils/format';
 import { LoyaltyBusinessCard, PointsSummary } from '../components/loyalty';
 import { rewardsHubSections, walletIsEmpty } from '../domain/customerLoyalty';
@@ -22,6 +22,13 @@ type IconName = keyof typeof Ionicons.glyphMap;
 // aggregates points, tiers, rewards, memberships and referrals across every
 // business. Points shown here stay business-specific - the copy makes that
 // explicit; they are never one spendable balance.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function SectionLabel({ title }: { title: string }) {
+  return <Text style={styles.sectionLabel}>{title}</Text>;
+}
 
 export function CustomerRewardsScreen() {
   const navigation = useNavigation<Nav>();
@@ -38,8 +45,12 @@ export function CustomerRewardsScreen() {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="MY REWARDS" title="Rewards" subtitle="Points, tiers, rewards and memberships across Chakusa." />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>MY REWARDS</Text>
+        <Text style={styles.title}>Rewards</Text>
+        <Text style={styles.subtitle}>Points, tiers, rewards and memberships across Chakusa.</Text>
+      </View>
 
       {!loaded ? <LoadingState label="Loading your rewards…" />
         : error ? <ErrorState message={error} onRetry={() => void load()} />
@@ -51,7 +62,10 @@ export function CustomerRewardsScreen() {
               title="No rewards yet"
               message="Many businesses on Chakusa reward you for booking. Join a business’s reward program from its profile to start earning points."
             />
-            <PrimaryButton fullWidth icon="compass-outline" label="Explore businesses" onPress={() => navigation.navigate('CustomerTabs', { screen: 'CustomerExplore' })} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Explore businesses" onPress={() => navigation.navigate('CustomerTabs', { screen: 'CustomerExplore' })} style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
+              <Ionicons name="compass-outline" size={18} color={authColors.onCoral} />
+              <Text style={styles.primaryBtnText}>Explore businesses</Text>
+            </Pressable>
           </View>
         ) : (
           <HubBody wallet={wallet} navigation={navigation} />
@@ -74,7 +88,7 @@ function HubBody({ wallet, navigation }: { wallet: WalletDto; navigation: Nav })
 
       {sections.businesses.length ? (
         <>
-          <SectionHeader title="Where you earn rewards" />
+          <SectionLabel title="Where you earn rewards" />
           <View style={styles.list}>
             {sections.businesses.map((business) => (
               <LoyaltyBusinessCard
@@ -89,7 +103,7 @@ function HubBody({ wallet, navigation }: { wallet: WalletDto; navigation: Nav })
 
       {sections.hasActivity ? (
         <>
-          <SectionHeader title="Recent points activity" />
+          <SectionLabel title="Recent points activity" />
           <View style={styles.activity}>
             {wallet.recentTransactions.slice(0, 6).map((txn) => (
               <View key={txn.id} style={styles.activityRow}>
@@ -114,7 +128,7 @@ function HubBody({ wallet, navigation }: { wallet: WalletDto; navigation: Nav })
 function QuickTile({ icon, label, value, onPress }: { icon: IconName; label: string; value: number; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
-      <Ionicons name={icon} size={20} color={colors.primary} />
+      <View style={styles.tileIcon}><Ionicons name={icon} size={18} color={authColors.coral} /></View>
       <Text style={styles.tileValue}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
     </Pressable>
@@ -122,19 +136,27 @@ function QuickTile({ icon, label, value, onPress }: { icon: IconName; label: str
 }
 
 const styles = StyleSheet.create({
-  firstUse: { gap: spacing.md },
-  quickRow: { flexDirection: 'row', gap: spacing.sm },
-  tile: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, alignItems: 'center', gap: spacing.xxs },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  firstUse: { gap: authSpace.md },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  quickRow: { flexDirection: 'row', gap: authSpace.sm },
+  tile: { flex: 1, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, alignItems: 'center', gap: authSpace.xxs, ...authShadow.card },
+  tileIcon: { width: 32, height: 32, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7 },
-  tileValue: { ...typography.heading, color: colors.text },
-  tileLabel: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
-  list: { gap: spacing.xs },
-  activity: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  tileValue: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: authColors.ink },
+  tileLabel: { ...authType.body, fontSize: 11, textAlign: 'center' },
+  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
+  list: { gap: authSpace.xs },
+  activity: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, paddingVertical: authSpace.sm, borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
   activityCopy: { flex: 1, minWidth: 0 },
-  activityLabel: { ...typography.caption, color: colors.text },
-  activityMeta: { ...typography.micro, color: colors.tabInactive, marginTop: 2 },
-  delta: { ...typography.bodyStrong, color: colors.success },
-  deltaNegative: { color: colors.text },
-  footnote: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
+  activityLabel: { ...authType.body, fontSize: 13, color: authColors.ink },
+  activityMeta: { ...authType.micro, textTransform: 'none', letterSpacing: 0, fontSize: 11, marginTop: 2 },
+  delta: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.positive },
+  deltaNegative: { color: authColors.ink },
+  footnote: { ...authType.body, fontSize: 12, marginTop: authSpace.sm },
 });

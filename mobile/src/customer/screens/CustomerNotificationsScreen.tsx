@@ -4,10 +4,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, Screen, SecondaryButton } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerNotificationCategory, CustomerNotificationDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import { loyaltyNotificationTarget } from '../domain/customerLoyalty';
 import { customerApi } from '../endpoints';
@@ -19,6 +19,9 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 // PROGRAM 2 LOOP 7: notifications list + the device-registration entry
 // point. Reads `/customer/notifications`; the "Turn on" button asks for OS
 // permission and registers the Expo token against `/customer/auth/devices`.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 export function CustomerNotificationsScreen() {
   const navigation = useNavigation<Nav>();
@@ -69,19 +72,25 @@ export function CustomerNotificationsScreen() {
   const unread = items.filter((n) => !n.readAt).length;
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="NOTIFICATIONS" title="Updates" subtitle={unread ? `${unread} unread` : 'You’re all caught up'} />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>NOTIFICATIONS</Text>
+        <Text style={styles.title}>Updates</Text>
+        <Text style={styles.subtitle}>{unread ? `${unread} unread` : 'You’re all caught up'}</Text>
+      </View>
 
       {pushStatus !== 'granted' && pushStatus !== 'unsupported' ? (
         <View style={styles.pushCard}>
-          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          <Ionicons name="notifications-outline" size={20} color={authColors.coral} />
           <Text style={styles.pushText}>
             {pushStatus === 'denied'
               ? 'Notifications are turned off in your device settings.'
               : 'Turn on push notifications for booking updates and reminders.'}
           </Text>
           {pushStatus !== 'denied' ? (
-            <SecondaryButton compact label={enabling ? 'Please wait…' : 'Turn on'} disabled={enabling} onPress={() => void turnOn()} />
+            <Pressable accessibilityRole="button" disabled={enabling} onPress={() => void turnOn()} style={({ pressed }) => [styles.turnOnBtn, pressed && styles.pressed]}>
+              <Text style={styles.turnOnText}>{enabling ? 'Please wait…' : 'Turn on'}</Text>
+            </Pressable>
           ) : null}
         </View>
       ) : null}
@@ -100,7 +109,7 @@ export function CustomerNotificationsScreen() {
                 onPress={() => openNotification(notification)}
                 style={[styles.item, !notification.readAt && styles.itemUnread]}
               >
-                <View style={styles.itemIcon}><Ionicons name={categoryIcon(notification.category)} size={18} color={colors.primary} /></View>
+                <View style={styles.itemIcon}><Ionicons name={categoryIcon(notification.category)} size={18} color={authColors.coral} /></View>
                 <View style={styles.itemCopy}>
                   <Text style={styles.itemTitle}>{notification.title}</Text>
                   <Text style={styles.itemBody}>{notification.body}</Text>
@@ -130,17 +139,24 @@ function categoryIcon(category: CustomerNotificationCategory): keyof typeof Ioni
 }
 
 const styles = StyleSheet.create({
-  pushCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  pushText: { flex: 1, ...typography.caption, color: colors.text },
-  list: { gap: spacing.xs },
-  markAll: { alignSelf: 'flex-end', paddingVertical: spacing.xs },
-  markAllText: { ...typography.caption, color: colors.primary },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  itemUnread: { borderColor: colors.primary },
-  itemIcon: { width: 34, height: 34, borderRadius: radius.round, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  pushCard: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, marginBottom: authSpace.sm, ...authShadow.card },
+  pushText: { flex: 1, ...authType.body, fontSize: 12, color: authColors.ink },
+  turnOnBtn: { paddingHorizontal: authSpace.sm, paddingVertical: 8, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft },
+  turnOnText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: authColors.coral },
+  pressed: { opacity: 0.75 },
+  list: { gap: authSpace.xs },
+  markAll: { alignSelf: 'flex-end', paddingVertical: authSpace.xs },
+  markAllText: { ...authType.link },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
+  itemUnread: { borderColor: authColors.coral },
+  itemIcon: { width: 34, height: 34, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
   itemCopy: { flex: 1, minWidth: 0, gap: 2 },
-  itemTitle: { ...typography.bodyStrong, color: colors.text },
-  itemBody: { ...typography.caption, color: colors.textSecondary },
-  itemMeta: { ...typography.micro, color: colors.tabInactive, marginTop: spacing.xxs },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 6 },
+  itemTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  itemBody: { ...authType.body, fontSize: 12 },
+  itemMeta: { ...authType.micro, textTransform: 'none', letterSpacing: 0, fontSize: 11, marginTop: authSpace.xxs },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: authColors.coral, marginTop: 6 },
 });

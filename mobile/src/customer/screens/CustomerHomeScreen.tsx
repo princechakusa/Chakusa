@@ -4,10 +4,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, Reveal, Screen, SectionHeader } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Reveal, Screen } from '../../components/ui';
 import type { CustomerDashboardDto, WalletDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import {
   assistantEntryVisible, homeBusinesses, homeGreeting, homeSectionsState, homeUpcoming, unreadBadge,
@@ -24,6 +24,19 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 // assistant entry point. The loyalty teaser is a best-effort second call to
 // `/customer/loyalty/wallet` - never blocks the main dashboard render and
 // simply stays hidden if it fails or the customer has no points anywhere.
+//
+// Visual language matches experience/authTheme.ts (warm cream, coral, pill
+// shapes), carried over from the auth surfaces per the customer-wide
+// restyle to match the Stitch mockups.
+
+function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {action ? <Pressable hitSlop={8} onPress={onAction}><Text style={styles.sectionAction}>{action}</Text></Pressable> : null}
+    </View>
+  );
+}
 
 const QUICK_ACTIONS: Array<{ key: string; label: string; icon: keyof typeof Ionicons.glyphMap; go: (nav: Nav) => void }> = [
   { key: 'explore', label: 'Explore', icon: 'search-outline', go: (nav) => nav.navigate('CustomerTabs', { screen: 'CustomerExplore' }) },
@@ -51,25 +64,25 @@ export function CustomerHomeScreen() {
   const greeting = homeGreeting(profile?.displayName);
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader
-        title={greeting.title}
-        subtitle={greeting.subtitle}
-        right={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            hitSlop={8}
-            onPress={() => navigation.navigate('CustomerNotifications')}
-            style={styles.bell}
-          >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            {data && unreadBadge(data.unreadNotifications) ? (
-              <View style={styles.badge}><Text style={styles.badgeText}>{unreadBadge(data.unreadNotifications)}</Text></View>
-            ) : null}
-          </Pressable>
-        }
-      />
+    <Screen style={styles.screen} backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.eyebrow}>{greeting.subtitle}</Text>
+          <Text style={styles.title}>{greeting.title}</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+          hitSlop={8}
+          onPress={() => navigation.navigate('CustomerNotifications')}
+          style={styles.bell}
+        >
+          <Ionicons name="notifications-outline" size={20} color={authColors.ink} />
+          {data && unreadBadge(data.unreadNotifications) ? (
+            <View style={styles.badge}><Text style={styles.badgeText}>{unreadBadge(data.unreadNotifications)}</Text></View>
+          ) : null}
+        </Pressable>
+      </View>
 
       <Reveal>
         <View style={styles.quickRow}>
@@ -81,7 +94,7 @@ export function CustomerHomeScreen() {
               onPress={() => action.go(navigation)}
               style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}
             >
-              <View style={styles.quickIcon}><Ionicons name={action.icon} size={20} color={colors.primary} /></View>
+              <View style={styles.quickIcon}><Ionicons name={action.icon} size={20} color={authColors.coral} /></View>
               <Text style={styles.quickLabel}>{action.label}</Text>
             </Pressable>
           ))}
@@ -96,14 +109,14 @@ export function CustomerHomeScreen() {
             onPress={() => navigation.navigate('CustomerRewards')}
             style={({ pressed }) => [styles.loyaltyCard, pressed && styles.pressed]}
           >
-            <View style={styles.loyaltyIcon}><Ionicons name="sparkles" size={18} color={colors.primary} /></View>
+            <View style={styles.loyaltyIcon}><Ionicons name="sparkles" size={18} color={authColors.coral} /></View>
             <View style={styles.cardCopy}>
               <Text style={styles.loyaltyPoints}>{wallet.totalPoints.toLocaleString()} points</Text>
               <Text style={styles.cardMeta}>
                 {wallet.accounts.length} business{wallet.accounts.length === 1 ? '' : 'es'} · tap to view rewards
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.tabInactive} />
+            <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} />
           </Pressable>
         </Reveal>
       ) : null}
@@ -140,9 +153,9 @@ function HomeBody({ data, navigation }: { data: CustomerDashboardDto; navigation
             onPress={() => navigation.navigate('CustomerAssistant')}
             style={({ pressed }) => [styles.assistant, pressed && styles.pressed]}
           >
-            <Ionicons name="sparkles" size={20} color={colors.primary} />
+            <Ionicons name="sparkles" size={20} color={authColors.coral} />
             <Text style={styles.assistantText}>Ask the Chakusa assistant to find or book something</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.tabInactive} />
+            <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} />
           </Pressable>
         </Reveal>
       ) : null}
@@ -195,8 +208,8 @@ function HomeBody({ data, navigation }: { data: CustomerDashboardDto; navigation
                   <Text style={styles.bizName} numberOfLines={1}>{business.name}</Text>
                   {business.industry ? <Text style={styles.cardMeta} numberOfLines={1}>{business.industry}</Text> : null}
                 </View>
-                {business.favourite ? <Ionicons name="heart" size={16} color={colors.primary} /> : null}
-                <Ionicons name="chevron-forward" size={16} color={colors.tabInactive} />
+                {business.favourite ? <Ionicons name="heart" size={16} color={authColors.coral} /> : null}
+                <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} />
               </Pressable>
             ))}
           </View>
@@ -213,48 +226,56 @@ function formatStatus(status: string): string {
 
 function statusPillStyle(status: string) {
   const key = status.toUpperCase();
-  if (key === 'CONFIRMED' || key === 'COMPLETED') return { backgroundColor: colors.successSoft };
-  if (key === 'CANCELLED' || key === 'DECLINED') return { backgroundColor: colors.negativeSoft };
-  return { backgroundColor: colors.attentionSoft };
+  if (key === 'CONFIRMED' || key === 'COMPLETED') return { backgroundColor: '#EAF9F1' };
+  if (key === 'CANCELLED' || key === 'DECLINED') return { backgroundColor: '#FDECEC' };
+  return { backgroundColor: authColors.coralSoft };
 }
 
 function statusPillTextStyle(status: string) {
   const key = status.toUpperCase();
-  if (key === 'CONFIRMED' || key === 'COMPLETED') return { color: colors.success };
-  if (key === 'CANCELLED' || key === 'DECLINED') return { color: colors.negative };
-  return { color: colors.attention };
+  if (key === 'CONFIRMED' || key === 'COMPLETED') return { color: authColors.positive };
+  if (key === 'CANCELLED' || key === 'DECLINED') return { color: authColors.danger };
+  return { color: authColors.coral };
 }
 
 const styles = StyleSheet.create({
-  bell: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: 4, right: 2, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  badgeText: { ...typography.micro, fontSize: 9, color: colors.surface },
+  screen: { backgroundColor: authColors.bg },
+  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: authSpace.md },
+  headerCopy: { flex: 1, minWidth: 0 },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  bell: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: authRadius.pill, backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
+  badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 9, color: authColors.onCoral },
 
-  quickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  quickAction: { flex: 1, alignItems: 'center', gap: spacing.xxs, paddingVertical: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  quickIcon: { width: 36, height: 36, borderRadius: radius.round, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { ...typography.caption, color: colors.text },
+  quickRow: { flexDirection: 'row', gap: authSpace.sm, marginBottom: authSpace.sm },
+  quickAction: { flex: 1, alignItems: 'center', gap: authSpace.xxs, paddingVertical: authSpace.sm, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
+  quickIcon: { width: 36, height: 36, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: authColors.ink },
 
-  loyaltyCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.primarySoft, marginBottom: spacing.sm },
-  loyaltyIcon: { width: 36, height: 36, borderRadius: radius.round, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  loyaltyPoints: { ...typography.bodyStrong, color: colors.text },
+  loyaltyCard: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.coralSoft, marginBottom: authSpace.sm },
+  loyaltyIcon: { width: 36, height: 36, borderRadius: authRadius.pill, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
+  loyaltyPoints: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
 
-  assistant: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  assistantText: { flex: 1, ...typography.caption, color: colors.text },
+  assistant: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
+  assistantText: { flex: 1, ...authType.body, fontSize: 13, color: authColors.ink },
   pressed: { opacity: 0.78 },
-  list: { gap: spacing.xs, marginTop: spacing.xs },
-  apptCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  dateBadge: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  dateBadgeDay: { ...typography.subheading, color: colors.primary, lineHeight: 20 },
-  dateBadgeMonth: { ...typography.micro, color: colors.primary },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: authSpace.lg, marginBottom: authSpace.xs },
+  sectionTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink },
+  sectionAction: { ...authType.link },
+  list: { gap: authSpace.xs },
+  apptCard: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
+  dateBadge: { width: 44, height: 44, borderRadius: authRadius.md, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
+  dateBadgeDay: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.coral, lineHeight: 20 },
+  dateBadgeMonth: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.coral },
   cardCopy: { flex: 1, minWidth: 0 },
-  cardName: { ...typography.bodyStrong, color: colors.text },
-  cardMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  when: { ...typography.caption, color: colors.text, marginTop: 2 },
-  statusPill: { paddingHorizontal: spacing.xs, paddingVertical: 4, borderRadius: radius.round },
-  statusPillText: { ...typography.micro },
-  bizRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  logo: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  logoText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  bizName: { ...typography.bodyStrong, color: colors.text },
+  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  cardMeta: { ...authType.body, fontSize: 12, marginTop: 2 },
+  when: { ...authType.body, fontSize: 12, color: authColors.ink, marginTop: 2 },
+  statusPill: { paddingHorizontal: authSpace.xs, paddingVertical: 4, borderRadius: authRadius.pill },
+  statusPillText: { fontFamily: 'Inter_600SemiBold', fontSize: 11 },
+  bizRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.sm, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
+  logo: { width: 40, height: 40, borderRadius: authRadius.md, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.coral },
+  bizName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
 });

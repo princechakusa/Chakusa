@@ -95,7 +95,7 @@ export function EditCustomerProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen style={styles.screen} scroll>
+    <Screen style={styles.screen} backgroundColor={authColors.bg} scroll>
       <View style={styles.headerRow}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
           <Ionicons name="arrow-back" size={20} color={authColors.ink} />

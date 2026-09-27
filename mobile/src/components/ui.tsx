@@ -14,9 +14,9 @@ import { formatDate, formatDateTime, formatDuration, formatMoney, titleCase } fr
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-export function Screen({ children, scroll = true, style, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void }>) {
+export function Screen({ children, scroll = true, style, backgroundColor, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; backgroundColor?: string; refreshing?: boolean; onRefresh?: () => void }>) {
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, backgroundColor ? { backgroundColor } : null]}>
       {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
         : <View style={[styles.screen, styles.flex, style]}>{children}</View>}
     </SafeAreaView>

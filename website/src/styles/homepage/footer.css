@@ -27,3 +27,29 @@
 .footer-legal__links a{color:var(--muted-text);transition:color 140ms ease}
 .footer-legal__links a:hover{color:var(--primary)}
 @media (max-width:36rem){.footer-legal{flex-direction:column;align-items:flex-start}}
+
+/* Compact footer (2026-09): one row on desktop, Solutions flows in two
+   columns, legal/trust links only once in the bottom row. */
+.marketing-footer{padding-top:clamp(1.75rem,3vw,2.5rem)}
+.footer-main{gap:var(--space-xl);padding-bottom:var(--space-lg)}
+.footer-brand p{margin:.6rem 0}
+.footer-navigation{gap:var(--space-lg)}
+.footer-navigation div{gap:.35rem}
+.footer-navigation a{font-size:.84rem;line-height:1.35}
+.footer-legal{padding:var(--space-md) 0}
+@media (min-width:48rem){
+  .footer-navigation div:last-child{display:block;columns:2;column-gap:var(--space-lg)}
+  .footer-navigation div:last-child h2{column-span:all;margin-bottom:.6rem}
+  .footer-navigation div:last-child a{display:block;margin-bottom:.35rem}
+}
+@media (min-width:64rem){
+  .footer-main{grid-template-columns:minmax(14rem,1fr) 2.2fr;align-items:start}
+  .footer-navigation{grid-template-columns:1fr 2fr}
+}
+@media (max-width:47.99rem){
+  .footer-navigation{grid-template-columns:1fr}
+  .footer-navigation div{display:block;columns:2;column-gap:var(--space-lg)}
+  .footer-navigation h2{column-span:all;margin-bottom:.5rem}
+  .footer-navigation a{display:block;margin-bottom:.4rem}
+  .footer-brand p{display:none}
+}

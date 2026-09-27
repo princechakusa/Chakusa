@@ -31,11 +31,9 @@ export const primaryNavigation = [
   { label: "About", href: "/about" },
 ];
 
-// Shared footer for the complete public website. The Trust & Compliance
-// column connects the four approved legal destinations, and its heading
-// links to the /trust hub page.
+// Shared footer for the complete public website. Legal and trust links
+// live once, in the bottom row (FooterLegal.astro), not repeated here.
 export const footerGroups = [
   { title: "Navigation", links: [{ label: "About Us", href: "/about" }, { label: "Contact Support", href: "/contact" }, { label: "Help Center", href: "/help" }, { label: "How it works", href: "/how-it-works" }, { label: "Pricing", href: "/pricing" }, { label: "Sign in", href: "/login" }, { label: "Get started", href: "/get-started" }] },
   { title: "Solutions", links: [{ label: "Enquiries & leads", href: "/features/enquiries" }, { label: "Bookings", href: "/features/bookings" }, { label: "Reviews", href: "/features/reviews" }, { label: "Customers", href: "/features/customers" }, { label: "Retention", href: "/features/customer-retention" }, { label: "Automation", href: "/features/automation" }, { label: "AI assistant", href: "/features/ai-assistant" }, { label: "Marketplace", href: "/features/marketplace" }, { label: "Business control", href: "/features/business-control" }, { label: "Mobile app", href: "/features/mobile-app" }, { label: "Industries", href: "/industries" }] },
-  { title: "Trust & Compliance", href: "/trust", links: [{ label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "Delete Account", href: "/delete-account" }, { label: "AI Disclosure", href: "/ai-disclosure" }, { label: "Cookie Policy", href: "/cookies" }] },
 ];

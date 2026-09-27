@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { CustomerBookingDto, MarketplaceCardDto } from '../../apiTypes';
 import { bookingStatusLabel } from '../../domain/booking';
 import { distanceLabel } from '../../domain/places';
-import { ProfilePhoto } from '../../components/ProfilePhoto';
+import { initials, photoSource } from '../../components/ProfilePhoto';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
@@ -13,9 +13,24 @@ import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
 // built from the shared theme tokens and `ui.tsx` primitives just like
 // the business screens.
 
+// A photo-forward cover for a business card: the real photo when the
+// business has one, otherwise an initials tile in the same footprint - no
+// fabricated imagery, just a richer fallback than a small round avatar.
+function BusinessCover({ uri, name }: { uri?: string | null; name: string }) {
+  const source = photoSource(uri);
+  return source ? (
+    <Image accessibilityLabel={`${name} photo`} source={{ uri: source }} style={styles.cover} resizeMode="cover" />
+  ) : (
+    <View accessibilityLabel={`${name} initials`} style={[styles.cover, styles.coverFallback]}>
+      <Text style={styles.coverInitials}>{initials(name)}</Text>
+    </View>
+  );
+}
+
 export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPress: () => void }) {
   const distance = distanceLabel(card.distanceKm);
   const location = distance ?? [...new Set([card.city, card.region].filter(Boolean))].join(', ');
+  const badges = marketplaceLoyaltyBadges(card);
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,27 +38,42 @@ export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPr
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.cardTop}>
-        <ProfilePhoto uri={card.photoUrl} name={card.name} size={40} />
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardName} numberOfLines={1}>{card.name}</Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>{card.category}{location ? ` · ${location}` : ''}</Text>
-        </View>
-        {card.verified ? <Ionicons name="shield-checkmark" size={16} color={colors.success} /> : null}
+      <View style={styles.coverWrap}>
+        <BusinessCover uri={card.photoUrl} name={card.name} />
+        {card.verified ? (
+          <View style={styles.verifiedChip}>
+            <Ionicons name="shield-checkmark" size={12} color={colors.surface} />
+            <Text style={styles.verifiedChipText}>Verified</Text>
+          </View>
+        ) : null}
+        {card.rating != null ? (
+          <View style={styles.ratingChip}>
+            <Text style={styles.ratingChipText}>★ {card.rating.toFixed(1)}</Text>
+          </View>
+        ) : null}
       </View>
-      {card.tagline ? <Text style={styles.tagline} numberOfLines={2}>{card.tagline}</Text> : null}
-      {marketplaceLoyaltyBadges(card).length ? (
-        <View style={styles.badgeRow}>
-          {marketplaceLoyaltyBadges(card).map((badge) => (
-            <View key={badge} style={styles.loyaltyBadge}><Text style={styles.loyaltyBadgeText}>{badge}</Text></View>
-          ))}
+
+      <View style={styles.body}>
+        <View style={styles.cardTop}>
+          <View style={styles.cardCopy}>
+            <Text style={styles.cardName} numberOfLines={1}>{card.name}</Text>
+            <Text style={styles.cardMeta} numberOfLines={1}>{card.category}{location ? ` · ${location}` : ''}</Text>
+          </View>
         </View>
-      ) : null}
-      <View style={styles.cardFooter}>
-        <Text style={styles.rating}>
-          {card.rating != null ? `★ ${card.rating.toFixed(1)} (${card.reviewCount})` : 'New to Chakusa'}
-        </Text>
-        <Text style={styles.cardAction}>View <Ionicons name="chevron-forward" size={13} /></Text>
+        {card.tagline ? <Text style={styles.tagline} numberOfLines={2}>{card.tagline}</Text> : null}
+        {badges.length ? (
+          <View style={styles.badgeRow}>
+            {badges.map((badge) => (
+              <View key={badge} style={styles.loyaltyBadge}><Text style={styles.loyaltyBadgeText}>{badge}</Text></View>
+            ))}
+          </View>
+        ) : null}
+        <View style={styles.cardFooter}>
+          <Text style={styles.rating}>
+            {card.rating != null ? `${card.reviewCount} review${card.reviewCount === 1 ? '' : 's'}` : 'New to Chakusa'}
+          </Text>
+          <Text style={styles.cardAction}>View <Ionicons name="chevron-forward" size={13} /></Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -102,8 +132,17 @@ function statusTone(status: CustomerBookingDto['status']) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, gap: spacing.sm, ...shadows.card },
-  pressed: { opacity: 0.78 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, ...shadows.card },
+  pressed: { opacity: 0.9 },
+  coverWrap: { width: '100%', aspectRatio: 16 / 10, backgroundColor: colors.border },
+  cover: { width: '100%', height: '100%' },
+  coverFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
+  coverInitials: { ...typography.heading, color: colors.primary },
+  verifiedChip: { position: 'absolute', top: spacing.xs, left: spacing.xs, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.round, backgroundColor: 'rgba(19,27,46,0.65)' },
+  verifiedChipText: { ...typography.micro, color: colors.surface },
+  ratingChip: { position: 'absolute', top: spacing.xs, right: spacing.xs, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.round, backgroundColor: colors.surface },
+  ratingChipText: { ...typography.micro, color: colors.text, fontWeight: '700' },
+  body: { padding: spacing.md, gap: spacing.sm },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   cardCopy: { flex: 1, minWidth: 0 },
   logo: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },

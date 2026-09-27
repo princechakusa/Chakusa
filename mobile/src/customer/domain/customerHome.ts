@@ -47,6 +47,7 @@ export interface HomeBusinessLink {
   name: string;
   slug: string | null;
   favourite: boolean;
+  industry: string | null;
 }
 
 /** Saved (favourite) businesses first, then the rest of the relationships, de-duplicated. */
@@ -62,6 +63,7 @@ export function homeBusinesses(dashboard: Pick<CustomerDashboardDto, 'savedBusin
       name: link.business?.name ?? 'Saved business',
       slug: link.business?.publicSlug ?? null,
       favourite: link.favourite,
+      industry: link.business?.industry ?? null,
     });
     if (out.length >= limit) break;
   }

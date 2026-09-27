@@ -3,11 +3,11 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, Divider, Screen, SectionHeader } from '../../components/ui';
+import { Screen } from '../../components/ui';
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { useExperience } from '../../experience/experienceContext';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -18,14 +18,25 @@ type IconName = keyof typeof Ionicons.glyphMap;
 // customer backend actually supports, legal links, the intentional "My
 // Rewards" location (full experience is Loop 8), sign out, and close
 // account.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function SectionLabel({ title }: { title: string }) {
+  return <Text style={styles.sectionLabel}>{title}</Text>;
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
 
 function MenuRow({ icon, label, detail, onPress, disabled = false }: { icon: IconName; label: string; detail?: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.rowDisabled]}>
-      <Ionicons name={icon} size={20} color={colors.text} />
+      <View style={styles.rowIcon}><Ionicons name={icon} size={17} color={authColors.coral} /></View>
       <Text style={styles.rowLabel}>{label}</Text>
       {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
-      <Ionicons name="chevron-forward" size={18} color={colors.tabInactive} />
+      <Ionicons name="chevron-forward" size={18} color={authColors.inkFaint} />
     </Pressable>
   );
 }
@@ -54,8 +65,11 @@ export function CustomerAccountScreen() {
   };
 
   return (
-    <Screen>
-      <AppHeader eyebrow="ACCOUNT" title="You" />
+    <Screen backgroundColor={authColors.bg}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>ACCOUNT</Text>
+        <Text style={styles.title}>You</Text>
+      </View>
 
       <View style={styles.identity}>
         <ProfilePhoto testID="account-photo" uri={profile?.avatarUrl} name={profile?.displayName ?? user?.fullName ?? user?.email ?? 'You'} size={56} />
@@ -65,38 +79,38 @@ export function CustomerAccountScreen() {
         </View>
       </View>
 
-      <SectionHeader title="Profile & preferences" />
+      <SectionLabel title="Profile & preferences" />
       <View style={styles.group}>
         <MenuRow icon="person-outline" label="Edit profile" onPress={() => navigation.navigate('EditCustomerProfile')} />
         <Divider />
         <MenuRow icon="notifications-outline" label="Notifications" onPress={() => navigation.navigate('CustomerNotifications')} />
       </View>
 
-      <SectionHeader title="Billing" />
+      <SectionLabel title="Billing" />
       <View style={styles.group}>
         <MenuRow icon="receipt-outline" label="Invoices" detail="Invoices your businesses have sent you" onPress={() => navigation.navigate('CustomerInvoices')} />
       </View>
 
-      <SectionHeader title="Rewards" />
+      <SectionLabel title="Rewards" />
       <View style={styles.group}>
         <MenuRow icon="gift-outline" label="My Rewards" onPress={() => navigation.navigate('CustomerRewards')} />
         <Divider />
         <MenuRow icon="people-outline" label="Invite friends" onPress={() => navigation.navigate('CustomerReferrals')} />
       </View>
 
-      <SectionHeader title="Chakusa" />
+      <SectionLabel title="Chakusa" />
       <View style={styles.group}>
         <MenuRow icon="swap-horizontal-outline" label={switching ? 'Switching…' : 'Switch to business'} disabled={switching} onPress={() => switchExperience('business')} />
       </View>
 
-      <SectionHeader title="Legal" />
+      <SectionLabel title="Legal" />
       <View style={styles.group}>
         <MenuRow icon="document-text-outline" label="Terms of Service" onPress={() => navigation.navigate('CustomerLegalDocument', { type: 'TERMS_OF_SERVICE' })} />
         <Divider />
         <MenuRow icon="lock-closed-outline" label="Privacy Policy" onPress={() => navigation.navigate('CustomerLegalDocument', { type: 'PRIVACY_POLICY' })} />
       </View>
 
-      <SectionHeader title="Session" />
+      <SectionLabel title="Session" />
       <View style={styles.group}>
         <MenuRow icon="log-out-outline" label="Sign out" onPress={() => void logout()} />
         <Divider />
@@ -107,14 +121,20 @@ export function CustomerAccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  header: { marginBottom: authSpace.md },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, marginBottom: authSpace.md },
   identityCopy: { flex: 1, minWidth: 0 },
-  name: { ...typography.heading, color: colors.text },
-  email: { ...typography.caption, color: colors.textSecondary },
-  group: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink },
+  email: { ...authType.body, fontSize: 13 },
+  sectionLabel: { ...authType.micro, marginTop: authSpace.md, marginBottom: authSpace.xs },
+  group: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
+  rowIcon: { width: 30, height: 30, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.6 },
   rowDisabled: { opacity: 0.5 },
-  rowLabel: { flex: 1, ...typography.body, color: colors.text },
-  rowDetail: { ...typography.caption, color: colors.textSecondary },
+  rowLabel: { flex: 1, ...authType.body, fontSize: 14, color: authColors.ink },
+  rowDetail: { ...authType.body, fontSize: 12 },
+  divider: { height: 1, backgroundColor: authColors.lineSoft },
 });

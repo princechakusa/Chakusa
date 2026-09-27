@@ -1,13 +1,13 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, FilterTabs, LoadingState, Screen } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerBookingDto } from '../../apiTypes';
 import { partitionBookings } from '../../domain/booking';
+import { authColors, authRadius, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, spacing, typography } from '../../theme';
 import { BookingCard } from '../components/cards';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
@@ -18,6 +18,9 @@ const TABS = ['upcoming', 'past'] as const;
 // PROGRAM 2 LOOP 7: My Bookings. `/customer/bookings` for the list,
 // split into upcoming/past by `domain/booking.ts`. Management
 // (reschedule/cancel) lives on the detail screen.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 export function CustomerBookingsScreen() {
   const navigation = useNavigation<Nav>();
@@ -38,9 +41,20 @@ export function CustomerBookingsScreen() {
   const shown = tab === 'upcoming' ? upcoming : past;
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="MY BOOKINGS" title="Bookings" subtitle="Everything you’ve booked through Chakusa." />
-      <View style={styles.filterWrap}><FilterTabs options={TABS} value={tab} onChange={setTab} /></View>
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>MY BOOKINGS</Text>
+        <Text style={styles.title}>Bookings</Text>
+        <Text style={styles.subtitle}>Everything you’ve booked through Chakusa.</Text>
+      </View>
+
+      <View style={styles.segment}>
+        {TABS.map((option) => (
+          <Pressable key={option} onPress={() => setTab(option)} style={[styles.segmentItem, tab === option && styles.segmentItemActive]}>
+            <Text style={[styles.segmentText, tab === option && styles.segmentTextActive]}>{option === 'upcoming' ? 'Upcoming' : 'Past'}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       {!loaded ? <LoadingState label="Loading your bookings…" />
         : error ? <ErrorState message={error} onRetry={() => void load()} />
@@ -63,7 +77,15 @@ export function CustomerBookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  filterWrap: { marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  list: { gap: spacing.sm },
-  count: { ...typography.caption, color: colors.textSecondary },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: authColors.bgSunk, marginBottom: authSpace.sm },
+  segmentItem: { flex: 1, alignItems: 'center', paddingVertical: authSpace.sm, borderRadius: authRadius.md },
+  segmentItemActive: { backgroundColor: authColors.coral },
+  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
+  segmentTextActive: { color: authColors.onCoral },
+  list: { gap: authSpace.sm },
+  count: { ...authType.body, fontSize: 12 },
 });

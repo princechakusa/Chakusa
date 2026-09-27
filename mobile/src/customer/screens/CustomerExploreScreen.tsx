@@ -2,18 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader, EmptyState, ErrorState, FilterTabs, LoadingState, Screen, SearchBar } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import { LeafletMap } from '../../components/map/LeafletMap';
 import { LocationPicker } from '../../components/map/LocationPicker';
 import type { MarketplaceCardDto, MarketplaceCategoryDto } from '../../apiTypes';
 import type { Place } from '../../domain/places';
+import { authColors, authRadius, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { currentPosition } from '../../services/devicePosition';
 import { reverseGeocode } from '../../services/geocoding';
-import { colors, radius, spacing, typography } from '../../theme';
 import { BusinessCard } from '../components/cards';
 import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
@@ -28,6 +28,9 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 // Near me: the customer's position (Expo Location, or a place they search /
 // pin on the free OpenStreetMap map) is sent with each nearby search and
 // kept only in this screen's memory - never stored on the server or device.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 const RADII = [5, 15, 50] as const;
 type Radius = (typeof RADII)[number];
@@ -100,20 +103,36 @@ export function CustomerExploreScreen() {
   const mapped = items.filter((card) => typeof card.latitude === 'number' && typeof card.longitude === 'number');
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="EXPLORE" title="Find a business" subtitle="Browse trusted local businesses on Chakusa." />
-      <SearchBar value={term} onChangeText={setTerm} placeholder="Search businesses or services" />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>EXPLORE</Text>
+        <Text style={styles.title}>Find a business</Text>
+        <Text style={styles.subtitle}>Browse trusted local businesses on Chakusa.</Text>
+      </View>
+
+      <View style={styles.search}>
+        <Ionicons name="search" size={18} color={authColors.inkFaint} />
+        <TextInput
+          accessibilityLabel="Search businesses or services"
+          value={term}
+          onChangeText={setTerm}
+          placeholder="Search businesses or services"
+          placeholderTextColor={authColors.inkFaint}
+          style={styles.searchInput}
+          clearButtonMode="while-editing"
+        />
+      </View>
 
       {origin ? (
         <View testID="near-me-active" style={styles.nearCard}>
           <View style={styles.nearRow}>
-            <Ionicons name="navigate" size={18} color={colors.primary} />
+            <Ionicons name="navigate" size={18} color={authColors.coral} />
             <View style={styles.nearCopy}>
               <Text style={styles.nearEyebrow}>NEAR</Text>
               <Text testID="near-me-label" style={styles.nearLabel} numberOfLines={1}>{origin.label}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Change location" onPress={() => { setDraft(origin); setPicking(true); }} hitSlop={8}><Text style={styles.link}>Change</Text></Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Stop searching near me" onPress={() => { setOrigin(null); setView('list'); }} hitSlop={8}><Ionicons name="close-circle" size={20} color={colors.textSecondary} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Stop searching near me" onPress={() => { setOrigin(null); setView('list'); }} hitSlop={8}><Ionicons name="close-circle" size={20} color={authColors.inkFaint} /></Pressable>
           </View>
           <View style={styles.chips}>
             {RADII.map((km) => (
@@ -123,7 +142,7 @@ export function CustomerExploreScreen() {
             ))}
             <View style={styles.flex} />
             <Pressable accessibilityRole="button" accessibilityLabel={view === 'list' ? 'Show on map' : 'Show as list'} onPress={() => setView(view === 'list' ? 'map' : 'list')} style={styles.chip}>
-              <Ionicons name={view === 'list' ? 'map-outline' : 'list-outline'} size={14} color={colors.text} />
+              <Ionicons name={view === 'list' ? 'map-outline' : 'list-outline'} size={14} color={authColors.ink} />
               <Text style={styles.chipText}>{view === 'list' ? 'Map' : 'List'}</Text>
             </Pressable>
           </View>
@@ -131,12 +150,12 @@ export function CustomerExploreScreen() {
       ) : (
         <View style={styles.nearCard}>
           <Pressable testID="near-me" accessibilityRole="button" accessibilityLabel="Find businesses near me" disabled={locating} onPress={() => void useMyLocation()} style={({ pressed }) => [styles.nearRow, pressed && styles.pressed]}>
-            {locating ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="locate" size={20} color={colors.primary} />}
+            {locating ? <ActivityIndicator color={authColors.coral} /> : <Ionicons name="locate" size={20} color={authColors.coral} />}
             <View style={styles.nearCopy}>
               <Text style={styles.nearLabel}>{locating ? 'Finding you…' : 'Businesses near you'}</Text>
               <Text style={styles.nearHint}>Use your location - it is only used for this search.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={18} color={authColors.inkFaint} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Choose a place on the map" onPress={() => { setDraft(null); setPicking(true); }} hitSlop={6}>
             <Text style={styles.link}>Or choose a place on the map</Text>
@@ -147,7 +166,13 @@ export function CustomerExploreScreen() {
 
       {filterOptions.length > 1 ? (
         <View style={styles.filterWrap}>
-          <FilterTabs options={filterOptions} value={category as (typeof filterOptions)[number]} onChange={(v) => setCategory(v)} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+            {filterOptions.map((option) => (
+              <Pressable key={option} onPress={() => setCategory(option)} style={[styles.filter, category === option && styles.filterActive]}>
+                <Text style={[styles.filterText, category === option && styles.filterTextActive]}>{categoryLabel(option)}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
 
@@ -183,7 +208,7 @@ export function CustomerExploreScreen() {
       <Modal visible={picking} animationType="slide" onRequestClose={() => setPicking(false)}>
         <SafeAreaView style={styles.modal}>
           <View style={styles.modalHead}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setPicking(false)} hitSlop={8}><Ionicons name="close" size={24} color={colors.text} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setPicking(false)} hitSlop={8}><Ionicons name="close" size={24} color={authColors.ink} /></Pressable>
             <Text style={styles.modalTitle}>Search near…</Text>
             <View style={styles.modalSpacer} />
           </View>
@@ -208,31 +233,42 @@ export function CustomerExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  filterWrap: { marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  list: { gap: spacing.sm },
-  count: { ...typography.caption, color: colors.textSecondary },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs, minHeight: 48, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, paddingHorizontal: authSpace.sm, marginBottom: authSpace.sm },
+  searchInput: { flex: 1, ...authType.body, fontSize: 15, color: authColors.ink, paddingVertical: authSpace.sm, outlineStyle: 'none' } as never,
+  filterWrap: { marginHorizontal: -authSpace.md, paddingLeft: authSpace.md, marginBottom: authSpace.xs },
+  filters: { gap: authSpace.xs, paddingRight: authSpace.md },
+  filter: { paddingHorizontal: authSpace.sm, paddingVertical: 8, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  filterActive: { backgroundColor: authColors.coral, borderColor: authColors.coral },
+  filterText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink },
+  filterTextActive: { color: authColors.onCoral },
+  list: { gap: authSpace.sm },
+  count: { ...authType.body, fontSize: 12 },
   flex: { flex: 1 },
   pressed: { opacity: 0.75 },
-  nearCard: { gap: spacing.sm, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  nearRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  nearCard: { gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line, marginBottom: authSpace.sm },
+  nearRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
   nearCopy: { flex: 1, gap: 2 },
-  nearEyebrow: { ...typography.caption, fontSize: 11, letterSpacing: 1, color: colors.textSecondary },
-  nearLabel: { ...typography.bodyStrong, color: colors.text },
-  nearHint: { ...typography.caption, color: colors.textSecondary },
-  link: { ...typography.bodyStrong, fontSize: 13, color: colors.primary },
-  chips: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...typography.caption, color: colors.text },
-  chipTextActive: { color: colors.surface },
-  error: { ...typography.caption, color: colors.negative },
-  modal: { flex: 1, backgroundColor: colors.background },
-  modalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  modalTitle: { ...typography.subheading, color: colors.text },
+  nearEyebrow: { ...authType.micro, fontSize: 10 },
+  nearLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  nearHint: { ...authType.body, fontSize: 12 },
+  link: { ...authType.link },
+  chips: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: authSpace.sm, paddingVertical: 6, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bgSunk },
+  chipActive: { backgroundColor: authColors.coral, borderColor: authColors.coral },
+  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: authColors.ink },
+  chipTextActive: { color: authColors.onCoral },
+  error: { ...authType.body, fontSize: 12, color: authColors.danger },
+  modal: { flex: 1, backgroundColor: authColors.bg },
+  modalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: authSpace.lg, paddingVertical: authSpace.sm },
+  modalTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink },
   modalSpacer: { width: 24 },
-  modalBody: { padding: spacing.lg },
-  modalFoot: { padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
-  primary: { minHeight: 50, borderRadius: radius.round, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { ...typography.bodyStrong, color: colors.surface },
+  modalBody: { padding: authSpace.lg },
+  modalFoot: { padding: authSpace.lg, borderTopWidth: 1, borderTopColor: authColors.line },
+  primary: { minHeight: 50, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
   disabled: { opacity: 0.5 },
 });

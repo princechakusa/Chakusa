@@ -35,6 +35,11 @@ function splitWords(el: HTMLElement) {
 
 // Headlines are split everywhere so accent words style consistently;
 // the spring rise only runs when motion is allowed.
+// Any plain-text page heading gets the same treatment automatically, so
+// every page has consistent motion without per-page markup.
+document.querySelectorAll<HTMLElement>("main h1, main h2").forEach((h) => {
+  if (!h.hasAttribute("data-split") && !h.hasAttribute("data-no-split") && h.children.length === 0 && (h.textContent ?? "").trim()) h.setAttribute("data-split", "");
+});
 document.querySelectorAll<HTMLElement>("[data-split]").forEach((el) => {
   const words = splitWords(el);
   (el.dataset.accent ?? "").split(",").filter(Boolean).forEach((i) => words[Number(i)]?.classList.add("fx-accent"));

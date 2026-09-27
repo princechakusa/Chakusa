@@ -1,0 +1,7 @@
+/* Feature-page motion additions (loaded per page). */
+/* Connected-capability links: one compact row of tiles instead of a tall list. */
+.enq-connected__list{grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));margin-top:1.5rem!important}
+.enq-connected__list a{flex-direction:column;gap:.25rem;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.enq-connected__list li{transition:background .2s}
+.enq-connected__list li:hover{background:var(--page-surface)}
+.enq-connected__list li:hover a{transform:translateY(-2px)}

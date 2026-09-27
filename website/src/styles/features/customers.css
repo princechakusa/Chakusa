@@ -9,7 +9,7 @@
 .cu-actions{display:flex;flex-wrap:wrap;gap:1rem}
 .cu-actions .ui-button{white-space:nowrap}
 
-.cu-hero{padding-block:4rem 5rem;background:var(--page-surface);text-align:center}
+.cu-hero{padding-block:2.5rem 3rem;background:var(--page-surface);text-align:center}
 .cu-hero__inner{max-width:44rem}
 .cu-hero h1{margin:1.25rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.4rem,4.6vw,3.2rem);font-weight:700;line-height:1.15;letter-spacing:-.03em}
 .cu-hero>p:not(.cu-badge){margin:1rem auto 0;max-width:36rem;color:var(--body-text);font-size:1.1rem;line-height:1.6}
@@ -19,7 +19,7 @@
 .cu-proof dt{color:var(--body-text);font-size:.72rem}
 .cu-proof dd{margin:0;color:var(--heading);font-family:var(--font-heading);font-size:1.05rem;font-weight:700}
 
-.cu-spotlight{padding-block:4rem;background:#fff}
+.cu-spotlight{padding-block:2.5rem;background:#fff}
 .cu-spotlight__bento{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1.5rem;align-items:start}
 .cu-spotlight__col{display:grid;gap:1.5rem;min-width:0}
 .cu-spotlight__card{padding:1.75rem;border:1px solid var(--hairline);border-radius:1rem;background:var(--page-surface)}
@@ -46,13 +46,13 @@
 .cu-spotlight__visits em{padding:.2rem .5rem;border-radius:.3rem;background:#dff7f2;color:var(--secondary);font-size:.65rem;font-style:normal;justify-self:end}
 @media (max-width:56rem){.cu-spotlight__bento{grid-template-columns:1fr}}
 
-.cu-capabilities{padding-block:4rem;background:var(--page-surface)}
+.cu-capabilities{padding-block:2.5rem;background:var(--page-surface)}
 .cu-capabilities__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}
 .cu-capabilities__card{padding:1.75rem;border-radius:1rem;background:#fff;box-shadow:0 1px 5px rgba(15,23,42,.06)}
 .cu-capabilities__card strong{display:block;margin:1rem 0 .5rem;font-family:var(--font-heading);font-size:1.05rem;color:var(--heading)}
 .cu-capabilities__card p{margin:0;color:var(--body-text);font-size:.85rem;line-height:1.55}
 
-.cu-industries{padding-block:4rem;background:#fff}
+.cu-industries{padding-block:2.5rem;background:#fff}
 .cu-industries__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem}
 .cu-industries article{display:flex;flex-direction:column;padding:1.5rem;border-radius:.75rem;background:var(--page-surface)}
 .cu-industries h3{margin:0 0 .5rem;font:700 1.05rem/1.3 var(--font-heading);color:var(--heading)}
@@ -66,7 +66,7 @@
 .cu-icon--alt{background:#dff7f2;color:var(--secondary)}
 .cu-icon svg{width:1.4rem}
 
-.cu-cta{padding-block:4rem 5rem;background:var(--page-surface)}
+.cu-cta{padding-block:2.5rem 3rem;background:var(--page-surface)}
 .cu-cta__panel{padding:3rem;border-radius:1rem;background:var(--heading);color:#fff;text-align:center}
 .cu-cta h2{max-width:36rem;margin:.5rem auto 0;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
 .cu-cta__panel>p{max-width:32rem;margin:.75rem auto 0;color:#c9ccd3;font-size:.94rem;line-height:1.6}

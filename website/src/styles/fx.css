@@ -1,5 +1,5 @@
 /* Support styles for scripts/motionFx.ts (Motion physics layer). */
-.fx-pending [data-split]{visibility:hidden}
+.fx-pending [data-split],.fx-pending main h1{visibility:hidden}
 .fx-word{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.12em;margin-bottom:-.12em}
 .fx-word__in{display:inline-block;transform-origin:0 100%;will-change:transform}
 .fx-tilt{transform-style:preserve-3d;will-change:transform}
@@ -11,3 +11,9 @@
 [data-spotlight]{position:relative}
 .fx-live [data-spotlight]::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(600px circle at var(--mx,50%) var(--my,-20%),rgba(238,93,67,.14),transparent 40%);z-index:0;transition:opacity .4s}
 .fx-scrub{opacity:clamp(.16,calc(var(--p,1) * var(--n) - var(--i) + 1),1);transition:opacity .15s linear}
+/* FAQ blocks: two columns on wide screens halves their height sitewide. */
+@media (min-width:60rem){
+  .product-faq>div:last-child,.faq-columns{columns:2;column-gap:2.5rem}
+  .product-faq>div:last-child>details,.faq-columns>details{break-inside:avoid}
+}
+main{overflow-x:clip}

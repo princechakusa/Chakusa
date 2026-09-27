@@ -1,0 +1,88 @@
+---
+// Pinned scroll story: the phone stays fixed while the steps scroll past,
+// and its screen swaps (with Motion springs) to match the step in view.
+// Replaces several stacked full-height sections with one, so feature
+// pages get shorter and show the real app flow instead of describing it.
+//
+// Usage: pass `steps`, and one named slot per step (`s0`, `s1`, ...)
+// containing that step's app screen built from styles/app-mock.css.
+import "../../styles/app-mock.css";
+interface Step { title: string; copy: string; chips?: string[] }
+interface Props { id?: string; kicker: string; title: string; intro?: string; steps: Step[] }
+const { id, kicker, title, intro, steps } = Astro.props;
+const headingId = `${id ?? "story"}-title`;
+const screens = await Promise.all(steps.map((_, i) => (Astro.slots.has(`s${i}`) ? Astro.slots.render(`s${i}`) : "")));
+---
+<section class="sstory container" id={id} data-sstory aria-labelledby={headingId}>
+  <div class="sstory__head">
+    <p class="sstory__kicker">{kicker}</p>
+    <h2 id={headingId} data-split>{title}</h2>
+    {intro && <p>{intro}</p>}
+  </div>
+  <div class="sstory__wrap">
+    <ol class="sstory__steps">
+      {steps.map((step, i) => <li class="sstory__step" data-step={i}>
+        <span class="sstory__num">{String(i + 1).padStart(2, "0")}</span>
+        <h3>{step.title}</h3>
+        <p>{step.copy}</p>
+        {step.chips && <ul class="sstory__chips">{step.chips.map((c) => <li>{c}</li>)}</ul>}
+      </li>)}
+    </ol>
+    <div class="sstory__stage" aria-hidden="true">
+      <div class="sstory__sticky">
+        <div class="am am-phone">
+          <span class="am-phone__island"></span>
+          <div class="am-phone__screen">
+            <div class="am-status"><span>9:41</span><span>●●●</span></div>
+            {screens.map((html, i) => <div class="sstory__screen" data-screen={i} set:html={html} />)}
+          </div>
+        </div>
+        <div class="sstory__dots">{steps.map((_, i) => <i data-dot={i}></i>)}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style is:global>
+  .sstory{padding-block:var(--space-4xl)}
+  .sstory__head{max-width:44rem}
+  .sstory__kicker{display:inline-flex;align-items:center;gap:.5rem;margin:0;color:var(--heading);font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .sstory__kicker::before{content:"";width:.45rem;height:.45rem;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px rgba(238,93,67,.15)}
+  .sstory__head h2{margin:.6rem 0 0;font-family:var(--font-heading);font-size:clamp(2rem,4.4vw,3.1rem);font-weight:800;line-height:1.08;letter-spacing:-.035em;color:var(--heading)}
+  .sstory__head>p:last-child{margin-top:.9rem;color:var(--body-text);font-size:1.05rem;line-height:1.7}
+  .sstory__wrap{position:relative;display:grid;gap:var(--space-xl);margin-top:var(--space-2xl)}
+  .sstory__steps{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-md)}
+  .sstory__step{padding:var(--space-lg);border-radius:var(--r-xl);background:var(--card-surface);box-shadow:0 0 0 1px var(--hairline);transition:box-shadow .4s,opacity .4s,transform .5s cubic-bezier(.34,1.56,.64,1)}
+  .sstory__num{display:inline-grid;place-items:center;width:2.2rem;height:2.2rem;border-radius:.7rem;background:var(--page-surface);color:var(--primary);font-weight:800;font-size:.8rem;transition:background .4s,color .4s}
+  .sstory__step h3{margin:.8rem 0 0;font-family:var(--font-heading);font-size:1.35rem;letter-spacing:-.02em;color:var(--heading)}
+  .sstory__step>p{margin:.5rem 0 0;color:var(--body-text);line-height:1.7}
+  .sstory__chips{list-style:none;display:flex;flex-wrap:wrap;gap:.4rem;margin:.9rem 0 0;padding:0}
+  .sstory__chips li{padding:.3rem .7rem;border-radius:999px;background:var(--page-surface);color:var(--heading);font-size:.78rem;font-weight:600;box-shadow:0 0 0 1px var(--hairline)}
+  .sstory__stage{display:none}
+  .sstory__screen{position:absolute;inset:1.6rem 0 0;opacity:0;visibility:hidden}
+  .sstory__screen.is-active{opacity:1;visibility:visible}
+  .sstory__dots{display:flex;justify-content:center;gap:.4rem;margin-top:1.2rem}
+  .sstory__dots i{width:.5rem;height:.5rem;border-radius:999px;background:var(--hairline);transition:width .4s cubic-bezier(.34,1.56,.64,1),background .3s}
+  .sstory__dots i.is-on{width:1.6rem;background:var(--primary)}
+  @media (min-width:60rem){
+    .sstory__wrap{grid-template-columns:minmax(0,1fr) 22rem;gap:clamp(3rem,6vw,6rem)}
+    .sstory__steps{gap:0}
+    .sstory__step{min-height:46vh;display:flex;flex-direction:column;justify-content:center;background:transparent;box-shadow:none;padding-inline:0;opacity:.3}
+    .sstory__step.is-active{opacity:1}
+    .sstory__step.is-active .sstory__num{background:var(--primary);color:#fff}
+    .sstory__step:first-child{min-height:40vh;justify-content:flex-start;padding-top:8vh}
+    .sstory__step:last-child{min-height:56vh}
+    .sstory__stage{display:block;grid-column:2;grid-row:1}
+    .sstory__mini{display:none}
+    .sstory__sticky{position:sticky;top:calc(50vh - 18.5rem);display:grid;justify-items:center}
+  }
+  @media (max-width:59.99rem){
+    /* Mobile: each step gets a small inline preview of its screen via clone (see scrollStory.ts). */
+    .sstory__mini{margin-top:1rem;display:flex;justify-content:center}
+    .sstory__mini .am-phone{transform:scale(.82);transform-origin:top center;margin-bottom:-6rem}
+    .sstory__mini .sstory__screen{opacity:1;visibility:visible}
+  }
+  @media (prefers-reduced-motion:reduce){.sstory__step{opacity:1!important}}
+</style>
+
+<script src="../../scripts/scrollStory.ts"></script>

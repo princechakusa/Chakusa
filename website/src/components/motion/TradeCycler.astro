@@ -1,0 +1,83 @@
+---
+// Compact "same moment across trades" block: trade tabs + one example card
+// that springs between trades. Replaces six-card industry grids (~800px)
+// with one ~420px band. Auto-advances while visible; any click or focus
+// hands control to the visitor. Keyboard: arrow keys move between tabs.
+interface Item { title: string; example: string }
+interface Props { id: string; kicker: string; title: string; items: Item[]; href?: string; linkLabel?: string }
+const { id, kicker, title, items, href = "/industries", linkLabel = "See supported industries" } = Astro.props;
+---
+<section class="tcyc container" aria-labelledby={`${id}-title`} data-tcyc>
+  <div class="tcyc__head">
+    <p class="sstory__kicker">{kicker}</p>
+    <h2 id={`${id}-title`}>{title}</h2>
+  </div>
+  <div class="tcyc__body">
+    <div class="tcyc__tabs" role="tablist" aria-label="Trades">
+      {items.map((it, i) => <button type="button" role="tab" id={`${id}-tab-${i}`} aria-controls={`${id}-panel`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} data-i={i}>
+        {it.title}<span class="tcyc__bar"><i></i></span>
+      </button>)}
+    </div>
+    <div class="tcyc__panel" id={`${id}-panel`} role="tabpanel" aria-live="polite">
+      {items.map((it, i) => <p class="tcyc__text" data-p={i} hidden={i !== 0}><strong>{it.title}.</strong> {it.example}</p>)}
+    </div>
+    <a class="tcyc__link" href={href}>{linkLabel} <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<style is:global>
+  .tcyc{padding-block:var(--space-3xl)}
+  .tcyc__head h2{margin:.6rem 0 0;font-family:var(--font-heading);font-size:clamp(1.8rem,3.6vw,2.6rem);font-weight:800;line-height:1.1;letter-spacing:-.03em;color:var(--heading)}
+  .tcyc__body{margin-top:var(--space-xl);padding:clamp(1.25rem,3vw,2rem);border-radius:var(--r-xl);background:var(--card-surface);box-shadow:0 0 0 1px var(--hairline),0 30px 60px -40px rgba(15,23,42,.35)}
+  .tcyc__tabs{display:flex;flex-wrap:wrap;gap:.4rem}
+  .tcyc__tabs button{position:relative;overflow:hidden;padding:.55rem 1rem;border:0;border-radius:999px;background:var(--page-surface);color:var(--body-text);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:background .25s,color .25s,transform .3s cubic-bezier(.34,1.56,.64,1)}
+  .tcyc__tabs button:hover{transform:translateY(-2px)}
+  .tcyc__tabs button[aria-selected="true"]{background:var(--heading);color:#fff}
+  .tcyc__tabs button:focus-visible{outline:none;box-shadow:var(--focus)}
+  .tcyc__bar{position:absolute;left:0;right:0;bottom:0;height:2px}
+  .tcyc__bar i{display:block;height:100%;background:var(--primary);transform-origin:left;transform:scaleX(0)}
+  .tcyc__tabs button[aria-selected="true"] .tcyc__bar i{transform:scaleX(var(--t,0))}
+  .tcyc__panel{min-height:5.5rem;margin-top:1.25rem;display:grid}
+  .tcyc__text{grid-area:1/1;margin:0;font-size:clamp(1.1rem,2vw,1.4rem);line-height:1.55;color:var(--heading);font-weight:500}
+  .tcyc__text strong{color:var(--primary)}
+  .tcyc__link{display:inline-block;margin-top:1rem;font-weight:700;color:var(--heading)}
+</style>
+
+<script>
+  import { animate, inView } from "motion";
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll<HTMLElement>("[data-tcyc]").forEach((root) => {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const texts = [...root.querySelectorAll<HTMLElement>(".tcyc__text")];
+    let cur = 0; let auto = !reduced; let visible = false; let t0 = performance.now();
+    const DWELL = 4200;
+    function select(i: number, focus = false) {
+      if (i === cur) return;
+      const prev = texts[cur]; cur = i;
+      tabs.forEach((t, k) => { t.setAttribute("aria-selected", String(k === i)); t.tabIndex = k === i ? 0 : -1; t.style.setProperty("--t", "0"); });
+      if (focus) tabs[i].focus();
+      prev.hidden = true; texts[i].hidden = false;
+      if (!reduced) animate(texts[i], { opacity: [0, 1], y: [14, 0], filter: ["blur(4px)", "blur(0px)"] }, { type: "spring", stiffness: 300, damping: 26 });
+      t0 = performance.now();
+    }
+    const stop = () => { auto = false; tabs.forEach((t) => t.style.setProperty("--t", "0")); };
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => { stop(); select(i); });
+      t.addEventListener("keydown", (e) => {
+        const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (d) { e.preventDefault(); stop(); select((cur + d + tabs.length) % tabs.length, true); }
+      });
+    });
+    root.addEventListener("focusin", stop);
+    inView(root, () => { visible = true; t0 = performance.now(); return () => { visible = false; }; }, { amount: 0.4 });
+    const tick = (now: number) => {
+      if (auto && visible && !document.hidden) {
+        const p = (now - t0) / DWELL;
+        tabs[cur].style.setProperty("--t", String(Math.min(1, p)));
+        if (p >= 1) select((cur + 1) % tabs.length);
+      } else t0 = now - (Number(tabs[cur].style.getPropertyValue("--t")) || 0) * DWELL;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+</script>

@@ -8,7 +8,7 @@
 .ai-actions{display:flex;flex-wrap:wrap;gap:1rem}
 .ai-actions .ui-button{white-space:nowrap}
 
-.ai-hero{padding-block:4rem 5rem;background:var(--page-surface);text-align:center}
+.ai-hero{padding-block:2.5rem 3rem;background:var(--page-surface);text-align:center}
 .ai-hero__inner{max-width:46rem}
 .ai-hero h1{margin:1.25rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2rem,4vw,2.7rem);font-weight:700;line-height:1.2;letter-spacing:-.03em}
 .ai-hero>p:not(.ai-badge){margin:1rem auto 0;max-width:38rem;color:var(--body-text);font-size:1.1rem;line-height:1.6}
@@ -18,7 +18,7 @@
 .ai-proof dt{color:var(--body-text);font-size:.72rem}
 .ai-proof dd{margin:0;color:var(--heading);font-family:var(--font-heading);font-size:1rem;font-weight:700}
 
-.ai-roles{padding-block:4rem;background:#fff}
+.ai-roles{padding-block:2.5rem;background:#fff}
 .ai-roles__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .ai-roles article{padding:1.5rem;border-radius:1rem;background:var(--page-surface)}
 .ai-roles h3{margin:0 0 .5rem;font:700 1.05rem/1.3 var(--font-heading);color:var(--heading)}
@@ -28,7 +28,7 @@
 .ai-icon--alt{background:#dff7f2;color:var(--secondary)}
 .ai-icon svg{width:1.4rem}
 
-.ai-governance{padding-block:4rem;background:var(--page-surface)}
+.ai-governance{padding-block:2.5rem;background:var(--page-surface)}
 .ai-governance__grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:3rem;align-items:center}
 .ai-governance__grid>div:first-child h2{margin:.5rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2rem,4vw,2.5rem);line-height:1.2;letter-spacing:-.025em}
 .ai-governance__grid>div:first-child>p:last-child{margin-top:1rem;color:var(--body-text);font-size:.95rem;line-height:1.65}
@@ -42,13 +42,13 @@
 .ai-governance__card strong{display:block;font-size:.88rem;color:var(--heading)}
 .ai-governance__card p{margin:.3rem 0 0;color:var(--body-text);font-size:.8rem;line-height:1.5}
 
-.ai-industries{padding-block:4rem;background:#fff}
+.ai-industries{padding-block:2.5rem;background:#fff}
 .ai-industries__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
 .ai-industries article{padding:1.5rem;border-radius:.75rem;background:var(--page-surface)}
 .ai-industries h3{margin:0 0 .5rem;font:700 1.05rem/1.3 var(--font-heading);color:var(--heading)}
 .ai-industries article>p{margin:0;color:var(--body-text);font-size:.82rem;line-height:1.55}
 
-.ai-cta{padding-block:4rem 5rem;background:var(--page-surface)}
+.ai-cta{padding-block:2.5rem 3rem;background:var(--page-surface)}
 .ai-cta__panel{padding:3rem;border-radius:1rem;background:var(--heading);color:#fff;text-align:center}
 .ai-cta h2{max-width:38rem;margin:.5rem auto 0;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
 .ai-cta__panel>p{max-width:32rem;margin:.75rem auto 0;color:#c9ccd3;font-size:.94rem;line-height:1.6}

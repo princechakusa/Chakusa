@@ -1,4 +1,4 @@
-.hero-section>.container{padding-block:3.75rem 5rem}
+.hero-section>.container{padding-block:3.75rem 3rem}
 .hero-content{max-width:40rem}
 .hero-lead{max-width:36rem}
 .hero-actions{margin-top:2rem}
@@ -25,6 +25,6 @@
 .journey-ribbon b{display:none}
 .journey-ribbon span{justify-content:center;color:var(--ink);font-size:.48rem}
 .hero-trust svg{color:var(--violet)}
-@media(min-width:42rem){.hero-section>.container{padding-block:5rem 6rem}.hero-poster{min-height:34rem}.dashboard-frame{display:block;left:4%;width:92%;height:24rem}.phone-frame{display:none}.journey-ribbon{display:flex}.journey-ribbon b{display:block}.journey-ribbon span{font-size:.58rem}}
-@media(min-width:64rem){h1{font-size:clamp(3.6rem,5.1vw,5rem);line-height:.97}.hero-section>.container{min-height:calc(100svh - 5.25rem);grid-template-columns:minmax(25rem,.9fr) minmax(34rem,1.1fr);gap:4.5rem;padding-block:5.5rem 6.5rem}.hero-media{transform:none}.hero-trust{gap:.8rem 1.25rem}}
+@media(min-width:42rem){.hero-section>.container{padding-block:3rem 3.5rem}.hero-poster{min-height:34rem}.dashboard-frame{display:block;left:4%;width:92%;height:24rem}.phone-frame{display:none}.journey-ribbon{display:flex}.journey-ribbon b{display:block}.journey-ribbon span{font-size:.58rem}}
+@media(min-width:64rem){h1{font-size:clamp(3.6rem,5.1vw,5rem);line-height:.97}.hero-section>.container{min-height:calc(100svh - 5.25rem);grid-template-columns:minmax(25rem,.9fr) minmax(34rem,1.1fr);gap:4.5rem;padding-block:3.25rem 4rem}.hero-media{transform:none}.hero-trust{gap:.8rem 1.25rem}}
 @media(min-width:80rem){.hero-section>.container{gap:6rem}.hero-poster{min-height:38rem}.dashboard-frame{height:27rem}}

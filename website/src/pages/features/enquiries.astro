@@ -1,27 +1,37 @@
 ---
+// Enquiries & leads. Motion pass (2026-09): the page was 13 stacked
+// sections (~10,200px). The capture flow, the three lead stories, the
+// missed-call story, and the status lifecycle are now one pinned
+// ScrollStory showing the real app screens; the two "connections"
+// sections are merged. Every claim still comes from data/enquiries.ts's
+// product-truth ledger (Android-only missed-call capture, template
+// rendering not AI, nothing sends until the owner chooses to).
 import MarketingLayout from "../../layouts/MarketingLayout.astro";
 import SkipLink from "../../components/foundation/SkipLink.astro";
 import Header from "../../components/header/Header.astro";
 import Footer from "../../components/footer/Footer.astro";
 import EnquiriesHero from "../../components/features/enquiries/EnquiriesHero.astro";
-import EnquiryProblem from "../../components/features/enquiries/EnquiryProblem.astro";
-import OpportunityCapture from "../../components/features/enquiries/OpportunityCapture.astro";
-import ProductFeature from "../../components/product/ProductFeature.astro";
-import LeadProgression from "../../components/features/enquiries/LeadProgression.astro";
-import MissedCallStory from "../../components/features/enquiries/MissedCallStory.astro";
-import EnquiryConnections from "../../components/features/enquiries/EnquiryConnections.astro";
-import IndustryExamples from "../../components/features/enquiries/IndustryExamples.astro";
+import ScrollStory from "../../components/motion/ScrollStory.astro";
+import TradeCycler from "../../components/motion/TradeCycler.astro";
+import { industryEnquiryExamples } from "../../data/enquiries";
 import ConnectedFeatures from "../../components/features/enquiries/ConnectedFeatures.astro";
 import EnquiriesFaq from "../../components/features/enquiries/EnquiriesFaq.astro";
 import EnquiriesCta from "../../components/features/enquiries/EnquiriesCta.astro";
 import EnquiriesSchemas from "../../components/features/enquiries/EnquiriesSchemas.astro";
-import { enquiryStories } from "../../data/enquiries";
 import "../../styles/product/product.css";
 import "../../styles/product/product-responsive.css";
 import "../../styles/features/enquiries.css";
 import "../../styles/features/enquiries-responsive.css";
+import "../../styles/features/feature-motion.css";
 const title = "Customer Enquiries & Lead Management | Chakusa";
 const description = "See how Chakusa turns a missed call or a new enquiry into a lead you can track, from first contact to a follow-up you prepare and send yourself, for local service businesses.";
+const steps = [
+  { title: "The enquiry lands as a lead.", copy: "A message through your public Chakusa profile becomes a lead automatically. On Android, so can a missed call, once you turn on the Recovery Engine permission (number and time only, never recordings or contacts). A walk-in, WhatsApp message, or referral takes a few taps to add.", chips: ["Public profile: automatic", "Missed calls: Android", "Anything else: a few taps"] },
+  { title: "It stays in front of you until you act.", copy: "Any lead still marked New is a customer who hasn't heard back yet. It sits in your attention view, oldest first, so a busy day doesn't quietly become a missed opportunity.", chips: ["Needs-attention view", "Oldest first", "Visible until acted on"] },
+  { title: "Everything you need before you call back.", copy: "Service requested, urgency, when the call came in, estimated value, and, if they've been in before, their full history on one customer profile.", chips: ["Service & urgency", "Missed-call time", "Estimated value", "Customer history"] },
+  { title: "Chakusa prepares the message. You send it.", copy: "Prepare message fills your own saved template (or an industry default) with the customer's name, your business name, and the service they asked about. Nothing goes out until you choose Copy, Open SMS, or Open WhatsApp.", chips: ["Your templates", "Copy / SMS / WhatsApp", "Never automatic"] },
+  { title: "Move it forward, one deliberate tap at a time.", copy: "New, Contacted, Booked, Won, or Lost. Every change is a tap you make. Won leads get payment tracking; lost ones stay on record, not deleted.", chips: ["New → Contacted → Booked → Won", "Lost stays on record"] },
+];
 ---
 <MarketingLayout {title} {description}>
   <EnquiriesSchemas />
@@ -29,13 +39,57 @@ const description = "See how Chakusa turns a missed call or a new enquiry into a
   <Header />
   <main id="main-content">
     <EnquiriesHero />
-    <EnquiryProblem />
-    <OpportunityCapture />
-    {enquiryStories.map((story, index) => <ProductFeature {story} {index} />)}
-    <LeadProgression />
-    <MissedCallStory />
-    <EnquiryConnections />
-    <IndustryExamples />
+    <ScrollStory id="capture" kicker="How it works" title="From missed call to next step." intro="Five moments, one lead. Scroll through what actually happens inside the app." {steps}>
+      <Fragment slot="s0">
+        <div class="am-head"><b>Leads</b><span class="am-tag am-tag--red" data-pop="3">1 new</span></div>
+        <div class="am-body">
+          <div class="am-chips"><span class="is-on">All</span><span>New</span><span>Contacted</span><span>Booked</span></div>
+          <div class="am-card am-card--hot" data-pop="1"><span class="am-av">JM</span><span class="am-txt"><strong>Jordan M.</strong><small>Missed call · 9:12</small></span><span class="am-tag am-tag--red">New</span></div>
+          <div class="am-card" data-pop="2"><span class="am-av am-av--t">AK</span><span class="am-txt"><strong>Amara K.</strong><small>Public profile · Colour consult</small></span><span class="am-tag am-tag--red">New</span></div>
+          <div class="am-card"><span class="am-av am-av--b">MT</span><span class="am-txt"><strong>Marcus T.</strong><small>Added by hand · Kids cut</small></span><span class="am-tag">Contacted</span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s1">
+        <div class="am-head"><b>Needs attention</b><small>Oldest first</small></div>
+        <div class="am-body">
+          <div class="am-card am-card--hot" data-pop="1"><span class="am-av">JM</span><span class="am-txt"><strong>Jordan M.</strong><small>Waiting 2h · Skin fade</small></span><span class="am-tag am-tag--red">New</span></div>
+          <div class="am-card" data-pop="2"><span class="am-av am-av--t">AK</span><span class="am-txt"><strong>Amara K.</strong><small>Waiting 40m · Colour consult</small></span><span class="am-tag am-tag--red">New</span></div>
+          <div class="am-note" data-pop="3">Stays here until someone follows up, or it's marked Lost.</div>
+        </div>
+      </Fragment>
+      <Fragment slot="s2">
+        <div class="am-head"><span class="am-back"></span><b>Jordan M.</b><span class="am-tag am-tag--red">New</span></div>
+        <div class="am-body">
+          <div class="am-kv">
+            <div data-pop="1"><small>Service</small><b>Skin fade</b></div>
+            <div data-pop="1"><small>Urgency</small><b>This week</b></div>
+            <div data-pop="2"><small>Missed call</small><b>Today 9:12</b></div>
+            <div data-pop="2"><small>Est. value</small><b>£25</b></div>
+          </div>
+          <p class="am-label">Customer history</p>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--t">✓</span><span class="am-txt"><strong>3 past visits</strong><small>Last: 5 weeks ago · 1 review left</small></span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s3">
+        <div class="am-head"><span class="am-back"></span><b>Prepare message</b></div>
+        <div class="am-body">
+          <div class="am-bubble" data-pop="1"><em>From your template</em>Hi Jordan, sorry we missed your call at Northside Barbers! Want to book your skin fade? Call us on 020 7946 0000.</div>
+          <div class="am-actions" data-pop="2"><span class="am-btn">Copy</span><span class="am-btn">Open SMS</span><span class="am-btn am-btn--primary">WhatsApp</span></div>
+          <div class="am-note" data-pop="3">Nothing sends until you tap one of these.</div>
+        </div>
+      </Fragment>
+      <Fragment slot="s4">
+        <div class="am-head"><span class="am-back"></span><b>Jordan M.</b><span class="am-tag am-tag--teal">Won</span></div>
+        <div class="am-body">
+          <p class="am-label">Status</p>
+          <div class="am-steps" data-pop="1"><span class="is-done">New</span><span class="is-done">Contacted</span><span class="is-done">Booked</span><span class="is-on">Won</span></div>
+          <p class="am-label">Payment</p>
+          <div class="am-chips" data-pop="2"><span class="is-on">Paid</span><span>Partially paid</span><span>Unpaid</span></div>
+          <div class="am-card" data-pop="3"><span class="am-av">↻</span><span class="am-txt"><strong>Bring them back</strong><small>Set a comeback reminder</small></span></div>
+        </div>
+      </Fragment>
+    </ScrollStory>
+    <TradeCycler id="enq-trades" kicker="Built for real service businesses" title="The same moment, across different trades." items={industryEnquiryExamples} />
     <ConnectedFeatures />
     <EnquiriesFaq />
     <EnquiriesCta />

@@ -7,7 +7,7 @@
 .pr-heading h2{margin:.5rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2rem,4vw,2.5rem);line-height:1.2;letter-spacing:-.025em}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
-.pr-hero{padding-block:4rem 3.5rem;background:var(--page-surface);text-align:center}
+.pr-hero{padding-block:2.5rem 3.5rem;background:var(--page-surface);text-align:center}
 .pr-hero__inner{max-width:38rem}
 .pr-hero h1{margin:1.25rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2.3rem,4.6vw,3.1rem);font-weight:700;line-height:1.18;letter-spacing:-.03em}
 .pr-hero>p:not(.pr-badge){margin:1rem auto 0;max-width:32rem;color:var(--body-text);font-size:1.05rem;line-height:1.6}
@@ -15,7 +15,7 @@
 .pr-hero__trust li{display:flex;align-items:center;gap:.4rem;color:var(--body-text);font-size:.8rem;font-weight:600}
 .pr-hero__trust-icon{width:1.1rem;height:1.1rem;color:var(--secondary)}
 
-.pr-plans{padding-block:2rem 4rem;background:var(--page-surface)}
+.pr-plans{padding-block:2rem 2.5rem;background:var(--page-surface)}
 .pr-billing-toggle{display:flex;justify-content:center;gap:0;width:max-content;margin:0 auto 1rem;padding:.3rem;border-radius:999px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.08)}
 .pr-billing-toggle button{display:flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border:0;border-radius:999px;background:transparent;color:var(--body-text);font-size:.82rem;font-weight:700;cursor:pointer}
 .pr-billing-toggle button.is-active{background:var(--page-surface);color:var(--heading)}
@@ -50,7 +50,7 @@
 .pr-valueprops strong{display:block;font-family:var(--font-heading);font-size:.92rem;color:var(--heading)}
 .pr-valueprops p{margin:.25rem 0 0;color:var(--body-text);font-size:.8rem;line-height:1.5}
 
-.pr-compare{padding-block:4rem;background:#fff}
+.pr-compare{padding-block:2.5rem;background:#fff}
 .pr-compare__wrap{overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--r-lg)}
 .pr-compare__table{width:100%;min-width:36rem;border-collapse:collapse;font-size:.85rem}
 .pr-compare__table th,.pr-compare__table td{padding:.9rem 1.25rem;text-align:left;border-bottom:1px solid var(--hairline)}
@@ -60,7 +60,7 @@
 .pr-compare__table tbody:last-child tr:last-child td,.pr-compare__table tbody:last-child tr:last-child th{border-bottom:none}
 .pr-compare__group th{background:#fff0ed;color:var(--primary);font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding-block:.6rem}
 
-.pr-craft{padding-block:4rem;background:#fff}
+.pr-craft{padding-block:2.5rem;background:#fff}
 .pr-craft__grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}
 .pr-craft h2{margin:.5rem 0 0;color:var(--heading);font-family:var(--font-heading);font-size:clamp(2rem,4vw,2.5rem);line-height:1.2;letter-spacing:-.025em}
 .pr-craft>div:first-child>p{margin:1rem 0 1.5rem;color:var(--body-text);font-size:1rem;line-height:1.65}
@@ -71,7 +71,7 @@
 .pr-craft__visual-icon{width:3rem;height:3rem;color:var(--primary)}
 .pr-craft__visual span{color:var(--body-text);font-size:.85rem;font-weight:700}
 
-.pr-faq{padding-block:4rem;background:var(--page-surface)}
+.pr-faq{padding-block:2.5rem;background:var(--page-surface)}
 .pr-faq__list{display:grid;gap:0;border-top:1px solid var(--hairline)}
 .pr-faq__list details{border-bottom:1px solid var(--hairline)}
 .pr-faq__list summary{min-height:4rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:1rem 0;cursor:pointer;font-family:var(--font-heading);font-weight:700;color:var(--heading);list-style:none}
@@ -79,7 +79,7 @@
 .pr-faq__list summary span{font-size:1.3rem;font-weight:400;color:var(--secondary)}
 .pr-faq__list details p{max-width:44rem;margin:0;padding:0 0 1.25rem;color:var(--body-text);line-height:1.6}
 
-.pr-cta{padding-block:4rem 5rem;background:#fff}
+.pr-cta{padding-block:2.5rem 3rem;background:#fff}
 .pr-cta__panel{padding:3rem;border-radius:var(--r-xl);background:var(--heading);color:#fff;text-align:center}
 .pr-cta h2{max-width:32rem;margin:.5rem auto 0;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.4rem);line-height:1.2;letter-spacing:-.025em}
 .pr-cta__panel>p{max-width:28rem;margin:.75rem auto 1.75rem;color:#c9ccd3;font-size:.94rem;line-height:1.6}

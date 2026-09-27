@@ -1,27 +1,48 @@
 ---
+// Grouped mega-menu: real columns with spacing between them, not a flat
+// list. The last column (AI & automation) is a visually distinct dark
+// panel — it's a different kind of capability (assisted, human-reviewed),
+// not just another row next to Bookings or Reviews. Shared by Features
+// and Product (DesktopNavigation.astro), fed different data.
 import MegaMenuIcon from "./MegaMenuIcon.astro";
-import { megaMenuQuadrants } from "../../data/megaMenu";
-interface Props { id: string }
-const { id } = Astro.props;
-const featureLinks = megaMenuQuadrants.flatMap((group) =>
-  group.links.map((link) => ({ ...link, icon: group.icon, group: group.title })),
-).slice(0, 6);
+import type { MegaMenuGroup } from "../../data/megaMenu";
+interface Promo { eyebrow: string; title: string; body: string; linkLabel: string; linkHref: string }
+interface Props { id: string; label: string; groups: MegaMenuGroup[]; aiGroup: MegaMenuGroup; promo: Promo; allHref: string; allLabel: string; triggerLabel: string }
+const { id, label, groups, aiGroup, promo, allHref, allLabel, triggerLabel } = Astro.props;
 ---
 <div class="nav-menu" data-menu-root>
-  <button class="nav-menu__trigger nav-menu__trigger--label" type="button" aria-expanded="false" aria-controls={`menu-${id}`} aria-label="Open Features menu" data-menu-trigger>
-    <span>Features</span>
+  <button class="nav-menu__trigger nav-menu__trigger--label" type="button" aria-expanded="false" aria-controls={`menu-${id}`} aria-label={`Open ${triggerLabel} menu`} data-menu-trigger>
+    <span>{triggerLabel}</span>
     <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
   </button>
-  <div class="mega-menu" id={`menu-${id}`} hidden data-menu-panel>
-    <div class="mega-menu__label">
-      <span>Core platform features</span>
+  <div class="mega-panel" id={`menu-${id}`} hidden data-menu-panel>
+    <div class="mega-panel__label"><span>{label}</span></div>
+    <div class="mega-panel__columns">
+      {groups.map((group) => <div class="mega-panel__col">
+        <p class="mega-panel__col-title">{group.title}</p>
+        <div class="mega-panel__links">
+          {group.links.map((link) => <a class="mega-panel__item" href={link.href}>
+            <span class="mega-panel__icon"><MegaMenuIcon name={link.icon}/></span>
+            <span><strong>{link.label}</strong><small>{link.description}</small></span>
+          </a>)}
+        </div>
+      </div>)}
+      <div class="mega-panel__col mega-panel__col--ai">
+        <p class="mega-panel__col-title mega-panel__col-title--ai">{aiGroup.title}</p>
+        <div class="mega-panel__links">
+          {aiGroup.links.map((link) => <a class="mega-panel__item mega-panel__item--ai" href={link.href}>
+            <span class="mega-panel__icon mega-panel__icon--ai"><MegaMenuIcon name={link.icon}/></span>
+            <span><strong>{link.label}</strong><small>{link.description}</small></span>
+          </a>)}
+        </div>
+        <a class="mega-panel__promo" href={promo.linkHref}>
+          <span class="mega-panel__promo-badge"><MegaMenuIcon name="sparkle"/>{promo.eyebrow}</span>
+          <strong>{promo.title}</strong>
+          <p>{promo.body}</p>
+          <span class="mega-panel__promo-link">{promo.linkLabel}<MegaMenuIcon name="arrow-right"/></span>
+        </a>
+      </div>
     </div>
-    <div class="mega-menu__list">
-      {featureLinks.map((link, index) => <a class:list={["mega-menu__item", { "mega-menu__item--active": index === 0 }]} href={link.href}>
-        <span class="mega-menu__icon"><MegaMenuIcon name={link.icon}/></span>
-        <span><strong>{link.label}</strong><small>{link.group}</small></span>
-      </a>)}
-    </div>
-    <a class="mega-menu__all" href="/features/enquiries"><span>Explore all platform features</span><MegaMenuIcon name="arrow-right"/></a>
+    <a class="mega-panel__all" href={allHref}><span>{allLabel}</span><MegaMenuIcon name="arrow-right"/></a>
   </div>
 </div>

@@ -1,17 +1,15 @@
 ---
-import NavigationDropdown from "./NavigationDropdown.astro";
 import MegaMenu from "./MegaMenu.astro";
-import SimpleMegaMenu from "./SimpleMegaMenu.astro";
 import IndustriesMegaMenu from "./IndustriesMegaMenu.astro";
 import { primaryNavigation } from "../../data/homepage";
-import { productMegaLinks } from "../../data/megaMenu";
+import { featuresMegaGroups, featuresAiGroup, featuresMegaPromo, productMegaGroups, productAiGroup, productMegaPromo } from "../../data/megaMenu";
 ---
 <nav class="desktop-navigation" aria-label="Primary navigation">
   {primaryNavigation.map((item, index) => {
     const id = `primary-${index}`;
-    if (item.label === "Features") return <MegaMenu id={id} />;
-    if (item.label === "Product") return <SimpleMegaMenu id={id} triggerLabel="Product" label="Explore the product" links={productMegaLinks} allHref="/product" allLabel="See the full product" />;
+    if (item.label === "Features") return <MegaMenu id={id} triggerLabel="Features" label="Core platform features" groups={featuresMegaGroups} aiGroup={featuresAiGroup} promo={featuresMegaPromo} allHref="/features/enquiries" allLabel="Explore all platform features" />;
+    if (item.label === "Product") return <MegaMenu id={id} triggerLabel="Product" label="Explore the product" groups={productMegaGroups} aiGroup={productAiGroup} promo={productMegaPromo} allHref="/product" allLabel="See the full product" />;
     if (item.label === "Industries") return <IndustriesMegaMenu id={id} />;
-    return item.children ? <NavigationDropdown {...item} id={id} /> : <a href={item.href}>{item.label}</a>;
+    return <a href={item.href}>{item.label}</a>;
   })}
 </nav>

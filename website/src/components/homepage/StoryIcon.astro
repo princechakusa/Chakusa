@@ -6,7 +6,7 @@
 // same <svg> markup at every call site (Section 13's "not introduce
 // excessive duplicated markup"). Every path is hand-authored, single
 // stroke, 24x24 viewBox, matching the site's existing icon style (see
-// header/NavigationDropdown.astro's chevron).
+// header/MegaMenuIcon.astro's chevron).
 interface Props { name: string; class?: string }
 const { name, class: className } = Astro.props;
 const paths: Record<string, string> = {

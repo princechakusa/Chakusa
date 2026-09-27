@@ -1,32 +1,13 @@
-// Complete public website navigation. Features, Product, and Industries
-// are rendered by the shared premium mega-menu family in DesktopNavigation.
-// Every link below resolves to a public route in the current build.
+// Complete public website navigation. Product, Features, and Industries
+// are rendered by the shared mega-panel family (see data/megaMenu.ts and
+// DesktopNavigation.astro / MobileNavigation.astro) — those three entries
+// carry no `children` here because they're never reached through the
+// generic fallback branch those components use for plain dropdowns.
 export const primaryNavigation = [
-  { label: "Product", href: "/product", children: [
-    { label: "Customer response", href: "/product#customer-response", description: "Respond to enquiries with human oversight." },
-    { label: "Automation", href: "/product#automation", description: "Keep follow-ups and reminders moving." },
-    { label: "Bookings", href: "/product#booking", description: "Manage appointments and availability." },
-    { label: "Customer growth", href: "/product#business-control", description: "Understand and bring customers back." },
-  ] },
-  { label: "Features", href: "/features/enquiries", children: [
-    { label: "Enquiries", href: "/features/enquiries", description: "Every enquiry saved as a lead." },
-    { label: "Bookings", href: "/features/bookings", description: "Customer booking and business availability." },
-    { label: "Reviews", href: "/features/reviews", description: "Ungated review requests on every visit." },
-    { label: "Customers", href: "/features/customers", description: "One profile per customer, with full history." },
-    { label: "Retention", href: "/features/customer-retention", description: "Rebooking reminders for customers who go quiet." },
-    { label: "Automation", href: "/features/automation", description: "Task-creating workflows your team reviews." },
-    { label: "AI Assistant", href: "/features/ai-assistant", description: "Drafts replies, with your team in the loop." },
-    { label: "Marketplace", href: "/features/marketplace", description: "Public profiles customers can book directly." },
-    { label: "Business Control", href: "/features/business-control", description: "One dashboard for what needs attention." },
-    { label: "Mobile App", href: "/features/mobile-app", description: "One app, two connected experiences." },
-  ] },
+  { label: "Product", href: "/product" },
+  { label: "Features", href: "/features/enquiries" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Industries", href: "/industries", children: [
-    { label: "Beauty & wellness", href: "/industries/beauty", description: "Salons, barbers, spas and clinics." },
-    { label: "Home services", href: "/industries/home-services", description: "Cleaners, plumbers and electricians." },
-    { label: "Automotive", href: "/industries/automotive", description: "Mechanics, detailers and car washes." },
-    { label: "Professional services", href: "/industries/professional", description: "Dentists, photographers and consultants." },
-  ] },
+  { label: "Industries", href: "/industries" },
   { label: "Pricing", href: "/pricing" },
   { label: "About", href: "/about" },
 ];

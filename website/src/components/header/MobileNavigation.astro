@@ -1,18 +1,31 @@
 ---
 import { primaryNavigation } from "../../data/homepage";
-import { megaMenuQuadrants } from "../../data/megaMenu";
+import { featuresMegaGroups, featuresAiGroup, productMegaGroups, productAiGroup } from "../../data/megaMenu";
 import { industryGroups } from "../../data/industryNavigation";
+const allGroups = [...featuresMegaGroups, featuresAiGroup];
+const allProductGroups = [...productMegaGroups, productAiGroup];
 ---
 <button class="mobile-menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation" data-mobile-trigger>
   <span></span><span></span><span></span>
 </button>
 <div class="mobile-menu" id="mobile-menu" hidden data-mobile-panel>
   <nav aria-label="Mobile navigation">
-    {primaryNavigation.map((item) => item.label === "Features" ? (
+    {primaryNavigation.map((item) => item.label === "Product" ? (
       <details class="mobile-menu__details" open>
+        <summary>Product</summary>
+        <div class="mobile-menu__sections">
+          <section><strong>Overview</strong><a class="mobile-menu__child" href="/product">Product overview</a></section>
+          {allProductGroups.map((group) => <section>
+            <strong>{group.title}</strong>
+            {group.links.map((link) => <a class="mobile-menu__child" href={link.href}>{link.label}</a>)}
+          </section>)}
+        </div>
+      </details>
+    ) : item.label === "Features" ? (
+      <details class="mobile-menu__details">
         <summary>Features</summary>
         <div class="mobile-menu__sections">
-          {megaMenuQuadrants.map((group) => <section>
+          {allGroups.map((group) => <section>
             <strong>{group.title}</strong>
             {group.links.map((link) => <a class="mobile-menu__child" href={link.href}>{link.label}</a>)}
           </section>)}
@@ -21,7 +34,7 @@ import { industryGroups } from "../../data/industryNavigation";
     ) : item.label === "Industries" ? (
       <details class="mobile-menu__details"><summary>Industries</summary><div class="mobile-menu__industry-groups">{industryGroups.map((group)=><details><summary>{group.label}</summary><div>{group.professions.map((profession)=><a class="mobile-menu__child" href={profession.href}>{profession.label}</a>)}<a class="mobile-menu__child mobile-menu__child--overview" href={group.overviewHref}>Category overview</a></div></details>)}</div></details>
     ) : (
-      <div class="mobile-menu__group"><a href={item.href}>{item.label}</a>{item.children?.map((child) => <a class="mobile-menu__child" href={child.href}>{child.label}</a>)}</div>
+      <div class="mobile-menu__group"><a href={item.href}>{item.label}</a></div>
     ))}
     <a href="/login">Sign in</a>
     <a class="ui-button ui-button--primary" href="/create-account?type=business">Start free trial</a>

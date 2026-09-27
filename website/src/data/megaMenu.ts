@@ -1,89 +1,98 @@
-// Features mega menu, adapted from Stitch's Product Discovery Mega Menu.
-// The structure keeps the four product quadrants and one supporting panel,
-// while the copy points only to real Chakusa routes and real capabilities.
+// Navigation mega-menu content: Features, Product, and Industries.
+// Each menu is column-grouped (real spacing between groups, not a flat
+// list) with automation/AI split into its own visually distinct panel —
+// it's a different kind of capability (assisted, human-reviewed) and
+// reads that way, not just another row next to Bookings.
 export interface MegaMenuLink {
   label: string;
   href: string;
+  icon: string;
+  description: string;
 }
 
-export interface MegaMenuQuadrant {
-  icon: string;
+export interface MegaMenuGroup {
   title: string;
-  body: string;
-  tags: string[];
   links: MegaMenuLink[];
 }
 
-export const megaMenuQuadrants: MegaMenuQuadrant[] = [
+// Features menu: three real columns. The last is the AI/automation panel,
+// rendered with its own dark treatment in MegaMenu.astro.
+export const featuresMegaGroups: MegaMenuGroup[] = [
   {
-    icon: "inbox",
     title: "Customer growth",
-    body: "Capture and act on every new customer moment.",
-    tags: ["Live enquiries", "Public profiles"],
     links: [
-      { label: "Enquiries and leads", href: "/features/enquiries" },
-      { label: "Marketplace", href: "/features/marketplace" },
+      { label: "Enquiries & leads", href: "/features/enquiries", icon: "inbox", description: "Every enquiry saved as a lead, nothing dropped." },
+      { label: "Marketplace", href: "/features/marketplace", icon: "storefront", description: "Public profiles customers can book directly." },
+      { label: "Reviews", href: "/features/reviews", icon: "star", description: "Ungated review requests on every visit." },
     ],
   },
   {
-    icon: "calendar",
     title: "Operations",
-    body: "One calendar and one dashboard for the working day.",
-    tags: ["Booking core", "Attention center"],
     links: [
-      { label: "Bookings", href: "/features/bookings" },
-      { label: "Business control", href: "/features/business-control" },
-    ],
-  },
-  {
-    icon: "users",
-    title: "Customer relationships",
-    body: "Every customer, review, and comeback tracked in one place.",
-    tags: ["Client records", "Ungated reviews"],
-    links: [
-      { label: "Customers", href: "/features/customers" },
-      { label: "Customer retention", href: "/features/customer-retention" },
-      { label: "Reviews", href: "/features/reviews" },
-    ],
-  },
-  {
-    icon: "sparkle",
-    title: "Automation and AI",
-    body: "Task-based workflows and an assistant your team reviews.",
-    tags: ["Human review", "Draft support"],
-    links: [
-      { label: "Automation", href: "/features/automation" },
-      { label: "AI assistant", href: "/features/ai-assistant" },
-      { label: "Mobile app", href: "/features/mobile-app" },
+      { label: "Bookings", href: "/features/bookings", icon: "calendar", description: "Customer booking and business availability." },
+      { label: "Customers", href: "/features/customers", icon: "users", description: "One profile per customer, with full history." },
+      { label: "Retention", href: "/features/customer-retention", icon: "repeat", description: "Rebooking reminders for customers who go quiet." },
+      { label: "Business control", href: "/features/business-control", icon: "shield", description: "One dashboard for what needs attention." },
     ],
   },
 ];
 
-export const megaMenuPromo = {
-  badge: "One app, two modes",
+export const featuresAiGroup: MegaMenuGroup = {
+  title: "Automation & AI",
+  links: [
+    { label: "AI assistant", href: "/features/ai-assistant", icon: "chat", description: "Drafts replies from your own info." },
+    { label: "Automation", href: "/features/automation", icon: "sparkle", description: "Task-creating workflows your team reviews." },
+    { label: "Mobile app", href: "/features/mobile-app", icon: "smartphone", description: "One connected app for the whole team." },
+  ],
+};
+
+export const featuresMegaPromo = {
+  eyebrow: "Assisted, not automatic",
+  title: "A team stays in charge of every send.",
+  body: "AI can draft a reply or flag a task. Eligible automation is owner-reviewed, and a person can take over any conversation at any point.",
+  linkLabel: "See the AI assistant",
+  linkHref: "/features/ai-assistant",
+};
+
+// Product menu: same column/AI-panel treatment, pointed at the product
+// story pages instead of individual feature pages.
+export const productMegaGroups: MegaMenuGroup[] = [
+  {
+    title: "Customer growth",
+    links: [
+      { label: "Enquiries", href: "/features/enquiries", icon: "inbox", description: "Capture and act on every new lead." },
+      { label: "Marketplace", href: "/features/marketplace", icon: "storefront", description: "Public profiles built to convert." },
+    ],
+  },
+  {
+    title: "Operations & relationships",
+    links: [
+      { label: "Bookings", href: "/features/bookings", icon: "calendar", description: "One calendar for the working day." },
+      { label: "Customers", href: "/features/customers", icon: "users", description: "Every customer, one record." },
+      { label: "Reviews", href: "/features/reviews", icon: "star", description: "Honest, never sentiment-gated." },
+      { label: "Business control", href: "/features/business-control", icon: "shield", description: "One dashboard, not five tools." },
+    ],
+  },
+];
+
+export const productAiGroup: MegaMenuGroup = {
+  title: "Automation & AI",
+  links: [
+    { label: "AI assistant", href: "/features/ai-assistant", icon: "chat", description: "Drafts replies, your team sends them." },
+    { label: "Automation", href: "/features/automation", icon: "sparkle", description: "Workflows your team reviews first." },
+    { label: "Mobile app", href: "/features/mobile-app", icon: "smartphone", description: "The whole platform, in your pocket." },
+  ],
+};
+
+export const productMegaPromo = {
+  eyebrow: "One app, two modes",
   title: "The same app, for customers and businesses.",
   body: "A customer discovers and books. A business runs the day in the same Chakusa app.",
   linkLabel: "See how it works",
   linkHref: "/how-it-works",
 };
 
-// Product mega menu - same visual system as Features (SimpleMegaMenu
-// reuses the identical .mega-menu markup/CSS), real product-capability
-// destinations, no dead links.
-export const productMegaLinks = [
-  { label: "Product overview", href: "/product", icon: "storefront", group: "Overview" },
-  { label: "Enquiries", href: "/features/enquiries", icon: "inbox", group: "Customer growth" },
-  { label: "Bookings", href: "/features/bookings", icon: "calendar", group: "Operations" },
-  { label: "Customers", href: "/features/customers", icon: "users", group: "Relationships" },
-  { label: "Reviews", href: "/features/reviews", icon: "star", group: "Relationships" },
-  { label: "Retention", href: "/features/customer-retention", icon: "repeat", group: "Relationships" },
-  { label: "Automation", href: "/features/automation", icon: "sparkle", group: "Automation & AI" },
-  { label: "AI assistant", href: "/features/ai-assistant", icon: "chat", group: "Automation & AI" },
-  { label: "Business control", href: "/features/business-control", icon: "shield", group: "Operations" },
-  { label: "Mobile app", href: "/features/mobile-app", icon: "smartphone", group: "Automation & AI" },
-];
-
-// Industries mega menu - the 4 real, working industry category pages
+// Industries mega menu — the 4 real, working industry category pages
 // (src/data/industries.ts). Per the directive: present industries as
 // product-use categories without creating dead links for specific
 // trades that don't have their own dedicated URL.

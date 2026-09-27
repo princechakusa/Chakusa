@@ -54,6 +54,18 @@ and deploys it to GitHub Pages on every push to `master` that touches
 `website/`. No API tokens or secrets required — GitHub Pages deploys
 authorize themselves via the repo's own built-in permissions.
 
+The same workflow also builds a small, auth-free export of the mobile
+app's public-link screens (`/b/<slug>` business profiles, `/r`, `/q`, `/i`,
+`/team-invite` — see `mobile/src/domain/publicRoutes.ts`) and publishes it
+over this site's `dist/404.html`, replacing `src/pages/404.astro`'s output
+for the deployed site only. GitHub Pages preserves the original URL when it
+falls back to `404.html` (no redirect), so the app's own client-side router
+reads the real path and renders the right screen; anything else — including
+a genuine typo — falls through to a real "page not found" state
+(`mobile/App.tsx`'s `PUBLIC_LINKS_ONLY_BUILD`) instead of `404.astro`'s
+branded page. `404.astro` still renders as normal in `npm run dev` /
+`npm run preview`; only the deployed artifact's `404.html` is overwritten.
+
 One-time setup (two manual steps, one per platform):
 
 1. **GitHub** — repo **Settings → Pages → Build and deployment → Source**,

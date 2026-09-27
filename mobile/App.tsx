@@ -13,9 +13,19 @@ import { publicRouteFromPath } from './src/domain/publicRoutes';
 import { PublicDocumentScreen } from './src/screens/PublicDocumentScreen';
 import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfileScreen';
 import { PublicBookingManagementScreen } from './src/screens/PublicBookingManagementScreen';
+import { PublicNotFoundScreen } from './src/screens/PublicNotFoundScreen';
 import { ExperienceRouter } from './src/experience/ExperienceRouter';
 
 const FONT_WAIT_MS = 4000;
+
+// Set only for the separate export published as chakusarecovery.com's static-host
+// 404 fallback (see website/README.md) - a small, auth-free bundle covering just
+// the public link kinds below, so an unrecognized path there gets a real "page
+// not found" instead of silently booting the full authenticated app shell. The
+// normal app build (this same file, standalone or in Expo Go/dev) never sets
+// this, so its own non-public paths (e.g. a password-reset deep link) are
+// unaffected and still fall through to ExperienceRouter exactly as before.
+const PUBLIC_LINKS_ONLY_BUILD = process.env.EXPO_PUBLIC_BUILD_TARGET === 'public-links';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -52,6 +62,7 @@ export default function App() {
   if (publicRoute?.kind === 'document') return <SafeAreaProvider><StatusBar style="dark" /><PublicDocumentScreen page={publicRoute.page} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-profile') return <SafeAreaProvider><StatusBar style="dark" /><PublicBusinessProfileScreen slug={publicRoute.slug} /></SafeAreaProvider>;
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
+  if (!publicRoute && PUBLIC_LINKS_ONLY_BUILD) return <SafeAreaProvider><StatusBar style="dark" /><PublicNotFoundScreen /></SafeAreaProvider>;
 
   if (!fontsLoaded && !fontError && !fontWaitOver) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
 

@@ -121,6 +121,7 @@ export function ReviewsScreen() {
   const header = (
     <M3Header
       businessName="Reviews & Reputation"
+      onBack={() => navigation.goBack()}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
       hasNotifications={needsResponse > 0}

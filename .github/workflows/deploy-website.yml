@@ -1,10 +1,17 @@
 name: Deploy website to GitHub Pages
 
 # Builds and deploys the static marketing site (chakusarecovery.com) to
-# GitHub Pages. Only runs on changes under website/, completely separate
-# from the backend (/src) and mobile app (/mobile). No API tokens needed:
-# GitHub Pages deploys are authorized via the built-in GITHUB_TOKEN and
-# this repo's own Pages permissions, not an external credential.
+# GitHub Pages, plus a small auth-free export of the mobile app's public-link
+# screens (/b, /r, /q, /i, /team-invite - see mobile/src/domain/publicRoutes.ts)
+# published over this static host's 404.html, since GitHub Pages preserves
+# the original URL when it falls back to 404.html. That lets those links
+# render for real instead of a bare 404; any other unrecognized path (e.g. a
+# typo) gets that same bundle's own "page not found" state (see
+# mobile/App.tsx's PUBLIC_LINKS_ONLY_BUILD) instead of website/'s own
+# src/pages/404.astro, which this overwrites only in the deployed artifact
+# (still used as-is by `npm run dev` / `npm run preview`). No API tokens
+# needed: GitHub Pages deploys are authorized via the built-in GITHUB_TOKEN
+# and this repo's own Pages permissions, not an external credential.
 #
 # One-time manual step required before this can succeed: in this repo's
 # Settings -> Pages -> "Build and deployment" -> Source, select
@@ -14,6 +21,9 @@ on:
     branches: [master]
     paths:
       - "website/**"
+      - "mobile/src/domain/publicRoutes.ts"
+      - "mobile/src/screens/Public*.tsx"
+      - "mobile/App.tsx"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch: {}
 
@@ -61,6 +71,44 @@ jobs:
 
       - working-directory: website
         run: npm run build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - working-directory: mobile
+        run: |
+          for attempt in 1 2 3; do
+            echo "npm ci attempt $attempt/3"
+            if timeout 300 npm ci --no-audit --no-fund; then
+              exit 0
+            fi
+            echo "npm ci attempt $attempt failed or timed out, cleaning cache and retrying"
+            npm cache clean --force
+            sleep 5
+          done
+          echo "npm ci failed after 3 attempts"
+          exit 1
+
+      - working-directory: mobile
+        env:
+          EXPO_PUBLIC_BUILD_TARGET: public-links
+        run: node scripts/eas-env.mjs production -- npx expo export --platform web --output-dir dist-public-links --clear
+
+      # Merge the public-links export into the site's 404 fallback. Renaming
+      # its index.html to 404.html (overwriting 404.astro's build output,
+      # only in this deployed artifact) is what makes GitHub Pages serve it
+      # for an unrecognized path while preserving the original URL, which is
+      # what lets the app's own client-side router (publicRouteFromPath)
+      # read the real /b, /r, /q, /i or /team-invite path and render
+      # correctly; anything else gets that bundle's own not-found state.
+      - run: |
+          cp -r mobile/dist-public-links/_expo website/dist/_expo
+          cp -r mobile/dist-public-links/assets website/dist/assets
+          cp mobile/dist-public-links/favicon.ico website/dist/favicon.ico
+          cp mobile/dist-public-links/index.html website/dist/404.html
 
       - uses: actions/configure-pages@v5
 

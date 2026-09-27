@@ -1,5 +1,8 @@
 ---
-import CustomersIcon from "./CustomersIcon.astro";
+// Compact trade examples (TradeCycler) replacing the card grid. Same
+// verified copy from data/customers.ts, now one springing panel.
+import TradeCycler from "../../motion/TradeCycler.astro";
 import { customerIndustries } from "../../../data/customers";
+const items = customerIndustries.map((it) => ({ title: it.title, example: `${it.body} ${it.fields.map(([k, v]) => `${k}: ${v}.`).join(" ")}` }));
 ---
-<section class="cu-industries" aria-labelledby="customers-industries-title"><div class="cu-shell"><div class="cu-heading cu-heading--center"><p class="cu-label">Adapts to your trade</p><h2 id="customers-industries-title">Flexible enough for how your business actually works.</h2><p>Notes and custom fields, not a rigid one-size-fits-all form.</p></div><div class="cu-industries__grid">{customerIndustries.map((item, i) => <article><div class:list={["cu-icon", i % 2 === 1 && "cu-icon--alt"]}><CustomersIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p><div class="cu-industries__fields">{item.fields.map(([label, example]) => <div><span>{label}</span><b>{example}</b></div>)}</div></article>)}</div></div></section>
+<TradeCycler id="cu-trades" kicker="Adapts to your trade" title="Flexible enough for how your business actually works." {items} />

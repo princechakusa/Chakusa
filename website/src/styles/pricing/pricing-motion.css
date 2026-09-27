@@ -1,0 +1,14 @@
+/* Pricing motion/compaction pass. */
+.pr-compare__toggle{margin-top:1.5rem;border-radius:1.25rem;background:#fff;box-shadow:0 0 0 1px var(--hairline);interpolate-size:allow-keywords}
+.pr-compare__toggle summary{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:1rem 1.25rem;cursor:pointer;list-style:none;font-weight:800;color:var(--heading)}
+.pr-compare__toggle summary::-webkit-details-marker{display:none}
+.pr-compare__toggle summary:hover{color:var(--primary)}
+.pr-compare__toggle summary:focus-visible{outline:none;box-shadow:var(--focus);border-radius:1.25rem}
+.pr-compare__toggle summary i{width:.55rem;height:.55rem;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.pr-compare__toggle[open] summary i{transform:rotate(-135deg)}
+.pr-compare__toggle::details-content{block-size:0;overflow:hidden;transition:block-size .5s cubic-bezier(.22,1,.36,1),content-visibility .5s allow-discrete}
+.pr-compare__toggle[open]::details-content{block-size:auto}
+.pr-compare__toggle .pr-compare__wrap{padding:0 1rem 1rem;margin-top:0}
+.pr-compare{padding-block:1.5rem 3rem!important}
+.pr-compare .pr-heading{margin-bottom:0}
+@media (prefers-reduced-motion:reduce){.pr-compare__toggle::details-content{transition:none}}

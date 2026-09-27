@@ -18,7 +18,7 @@ const valueProps = [
     <button type="button" class="is-active" aria-pressed="true">Monthly billing</button>
   </div>
   <p class="pr-billing-note"><PricingIcon name="shield"/>Monthly billing with clear plan limits</p>
-  <div class="pr-plans__grid">{pricingTiers.map((tier) => <div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}>
+  <div class="pr-plans__grid" data-stagger>{pricingTiers.map((tier) => <div class:list={["pr-plan", tier.featured && "pr-plan--featured"]}>
     {tier.featured && <p class="pr-plan__badge"><PricingIcon name="check"/>Most popular</p>}
     <div class="pr-plan__head"><strong>{tier.name}</strong><span class="pr-plan__chip">{tier.chip}</span></div>
     <p class="pr-plan__tagline">{tier.tagline}</p>

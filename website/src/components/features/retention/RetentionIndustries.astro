@@ -1,5 +1,8 @@
 ---
-import RetentionIcon from "./RetentionIcon.astro";
+// Compact trade examples (TradeCycler) replacing the card grid. Same
+// verified copy from data/retention.ts, now one springing panel.
+import TradeCycler from "../../motion/TradeCycler.astro";
 import { retentionIndustries } from "../../../data/retention";
+const items = retentionIndustries.map((it) => ({ title: it.title, example: `${it.cadence}. ${it.body}` }));
 ---
-<section class="rt-industries" id="cadences" aria-labelledby="retention-industries-title"><div class="rt-shell"><div class="rt-heading rt-heading--center"><p class="rt-label">Every trade has its own cadence</p><h2 id="retention-industries-title">A dental recall schedule shouldn't run a barber's rebooking clock.</h2><p>Set the rebooking window that fits how each trade actually gets revisited.</p></div><div class="rt-industries__grid">{retentionIndustries.map((item, i) => <article><div class:list={["rt-icon", i % 2 === 1 && "rt-icon--alt"]}><RetentionIcon name={item.icon}/></div><h3>{item.title}</h3><p>{item.body}</p><span class="rt-industries__cadence">{item.cadence}</span></article>)}</div></div></section>
+<TradeCycler id="rt-trades" kicker="Every trade has its own cadence" title="A dental recall schedule shouldn't run a barber's rebooking clock." {items} />

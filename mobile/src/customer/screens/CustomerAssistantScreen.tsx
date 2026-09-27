@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerAIConversationDto, CustomerAIMessageDto } from '../../apiTypes';
@@ -135,44 +135,57 @@ export function CustomerAssistantScreen({ route }: Props) {
           <Ionicons name="list" size={19} color={authColors.ink} />
         </Pressable>
       </View>
-      <ScrollView ref={scrollRef} style={styles.thread} contentContainerStyle={styles.threadContent} keyboardShouldPersistTaps="handled">
-        {loadingThread ? <LoadingState label="Loading…" /> : null}
-        {messages.filter((message) => message.role !== 'tool').map((message) => (
-          <View key={message.id} style={message.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant}>
-            <View style={[styles.bubble, message.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
-              <Text style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextUser]}>{message.content}</Text>
-            </View>
-            {message.role === 'assistant' ? (
-              <View style={styles.feedbackRow}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(message.id, 1)}>
-                  <Ionicons name={ratings[message.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={ratings[message.id] === 1 ? authColors.positive : authColors.inkSoft} />
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Not helpful" hitSlop={8} onPress={() => void rate(message.id, -1)}>
-                  <Ionicons name={ratings[message.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={15} color={ratings[message.id] === -1 ? authColors.danger : authColors.inkSoft} />
-                </Pressable>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={8}
+      >
+        <ScrollView
+          ref={scrollRef}
+          style={styles.thread}
+          contentContainerStyle={styles.threadContent}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+        >
+          {loadingThread ? <LoadingState label="Loading…" /> : null}
+          {messages.filter((message) => message.role !== 'tool').map((message) => (
+            <View key={message.id} style={message.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant}>
+              <View style={[styles.bubble, message.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
+                <Text style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextUser]}>{message.content}</Text>
               </View>
-            ) : null}
-          </View>
-        ))}
-        {!loadingThread && !messages.length ? <Text style={styles.hint}>Ask something like “Find a highly-rated barber near me for Saturday morning.”</Text> : null}
-        {threadError ? <Text style={styles.error}>{threadError}</Text> : null}
-      </ScrollView>
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.composerInput}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Message the assistant"
-          placeholderTextColor={authColors.inkFaint}
-          multiline
-        />
-        <PrimaryBtn compact label={sending ? '…' : 'Send'} disabled={sending || !draft.trim()} onPress={() => void send()} />
-      </View>
+              {message.role === 'assistant' ? (
+                <View style={styles.feedbackRow}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(message.id, 1)}>
+                    <Ionicons name={ratings[message.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={ratings[message.id] === 1 ? authColors.positive : authColors.inkSoft} />
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Not helpful" hitSlop={8} onPress={() => void rate(message.id, -1)}>
+                    <Ionicons name={ratings[message.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={15} color={ratings[message.id] === -1 ? authColors.danger : authColors.inkSoft} />
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ))}
+          {!loadingThread && !messages.length ? <Text style={styles.hint}>Ask something like “Find a highly-rated barber near me for Saturday morning.”</Text> : null}
+          {threadError ? <Text style={styles.error}>{threadError}</Text> : null}
+        </ScrollView>
+        <View style={styles.composer}>
+          <TextInput
+            style={styles.composerInput}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Message the assistant"
+            placeholderTextColor={authColors.inkFaint}
+            multiline
+          />
+          <PrimaryBtn compact label={sending ? '…' : 'Send'} disabled={sending || !draft.trim()} onPress={() => void send()} />
+        </View>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   header: { marginBottom: authSpace.sm },
   eyebrow: { ...authType.micro, color: authColors.coral },
   title: { ...authType.title, marginTop: 2 },

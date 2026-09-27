@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, EmptyState, ErrorState, LoadingState, Screen, SecondaryButton } from '../../components/ui';
-import type { CustomerNotificationDto } from '../../apiTypes';
+import type { CustomerNotificationCategory, CustomerNotificationDto } from '../../apiTypes';
 import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
@@ -100,9 +100,13 @@ export function CustomerNotificationsScreen() {
                 onPress={() => openNotification(notification)}
                 style={[styles.item, !notification.readAt && styles.itemUnread]}
               >
-                <Text style={styles.itemTitle}>{notification.title}</Text>
-                <Text style={styles.itemBody}>{notification.body}</Text>
-                <Text style={styles.itemMeta}>{formatDateTime(notification.createdAt)}</Text>
+                <View style={styles.itemIcon}><Ionicons name={categoryIcon(notification.category)} size={18} color={colors.primary} /></View>
+                <View style={styles.itemCopy}>
+                  <Text style={styles.itemTitle}>{notification.title}</Text>
+                  <Text style={styles.itemBody}>{notification.body}</Text>
+                  <Text style={styles.itemMeta}>{formatDateTime(notification.createdAt)}</Text>
+                </View>
+                {!notification.readAt ? <View style={styles.unreadDot} /> : null}
               </Pressable>
             ))}
           </View>
@@ -111,15 +115,32 @@ export function CustomerNotificationsScreen() {
   );
 }
 
+function categoryIcon(category: CustomerNotificationCategory): keyof typeof Ionicons.glyphMap {
+  switch (category) {
+    case 'booking_update':
+    case 'appointment_reminder': return 'calendar-outline';
+    case 'message': return 'chatbubble-outline';
+    case 'ai_reply': return 'sparkles';
+    case 'promotion': return 'pricetag-outline';
+    case 'review_reminder': return 'star-outline';
+    case 'loyalty': return 'gift-outline';
+    case 'legal_update': return 'document-text-outline';
+    default: return 'notifications-outline';
+  }
+}
+
 const styles = StyleSheet.create({
   pushCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   pushText: { flex: 1, ...typography.caption, color: colors.text },
   list: { gap: spacing.xs },
   markAll: { alignSelf: 'flex-end', paddingVertical: spacing.xs },
   markAllText: { ...typography.caption, color: colors.primary },
-  item: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.xxs },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   itemUnread: { borderColor: colors.primary },
+  itemIcon: { width: 34, height: 34, borderRadius: radius.round, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  itemCopy: { flex: 1, minWidth: 0, gap: 2 },
   itemTitle: { ...typography.bodyStrong, color: colors.text },
   itemBody: { ...typography.caption, color: colors.textSecondary },
   itemMeta: { ...typography.micro, color: colors.tabInactive, marginTop: spacing.xxs },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 6 },
 });

@@ -1,11 +1,11 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { MembershipPlanDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { membershipPlanPriceCaption } from '../domain/customerLoyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
@@ -18,6 +18,17 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerMembers
 // payment. There is no Stripe / IAP / Play Billing / card form / checkout.
 // The price is shown for transparency, always paired with the fact that
 // Chakusa is not collecting it here.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function PrimaryBtn({ label, disabled, onPress }: { label: string; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      <Text style={styles.primaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
   const { slug, businessName } = route.params;
@@ -58,12 +69,15 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
     );
   };
 
-  if (!loaded) return <Screen><LoadingState label="Loading plans…" /></Screen>;
-  if (error) return <Screen><ErrorState message={error} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading plans…" /></Screen>;
+  if (error) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={load} /></Screen>;
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="MEMBERSHIP" title={businessName ? `${businessName} membership` : 'Membership plans'} />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>MEMBERSHIP</Text>
+        <Text style={styles.title}>{businessName ? `${businessName} membership` : 'Membership plans'}</Text>
+      </View>
       <Text style={styles.disclaimer}>Chakusa does not collect membership payment in the app. Joining records your membership and its benefits; the business arranges any payment with you directly.</Text>
 
       {!plans.length ? (
@@ -80,7 +94,7 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
                 {plan.priorityBooking ? <Text style={styles.perk}>• Priority booking</Text> : null}
                 {(plan.perks ?? []).map((perk, index) => <Text key={index} style={styles.perk}>• {perk}</Text>)}
               </View>
-              <PrimaryButton fullWidth label={enrollingId === plan.id ? 'Joining…' : 'Join this plan'} disabled={enrollingId != null} onPress={() => enrol(plan)} />
+              <PrimaryBtn label={enrollingId === plan.id ? 'Joining…' : 'Join this plan'} disabled={enrollingId != null} onPress={() => enrol(plan)} />
             </View>
           ))}
         </View>
@@ -90,12 +104,19 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  disclaimer: { ...typography.caption, color: colors.textSecondary },
-  list: { gap: spacing.sm },
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
-  name: { ...typography.subheading, color: colors.text },
-  meta: { ...typography.caption, color: colors.textSecondary },
-  price: { ...typography.bodyStrong, color: colors.text },
-  perks: { gap: spacing.xxs },
-  perk: { ...typography.caption, color: colors.textSecondary },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  disclaimer: { ...authType.body, fontSize: 12, marginBottom: authSpace.sm },
+  list: { gap: authSpace.sm },
+  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink },
+  meta: { ...authType.body, fontSize: 12 },
+  price: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  perks: { gap: authSpace.xxs },
+  perk: { ...authType.body, fontSize: 12 },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.85 },
 });

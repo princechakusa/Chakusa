@@ -4,10 +4,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, FilterTabs, LoadingState, Screen } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { RewardRedemptionDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDate } from '../../utils/format';
 import { redemptionIsUsable, redemptionStatusLabel } from '../domain/customerLoyalty';
 import { loyaltyApi } from '../endpoints';
@@ -20,6 +20,9 @@ const TABS = ['active', 'used'] as const;
 // `/customer/loyalty/rewards`. A still-valid "issued" reward opens to a
 // full-screen code the customer shows the business. The customer app never
 // marks a reward redeemed - that is the business app's job (Loop 6).
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 export function CustomerRedemptionsScreen() {
   const navigation = useNavigation<Nav>();
@@ -39,9 +42,20 @@ export function CustomerRedemptionsScreen() {
   const shown = items.filter((r) => (tab === 'active' ? redemptionIsUsable(r) : !redemptionIsUsable(r)));
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="REWARDS READY" title="Your rewards" subtitle="Codes to show the business when you redeem." />
-      <View style={styles.filterWrap}><FilterTabs options={TABS} value={tab} onChange={setTab} /></View>
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>REWARDS READY</Text>
+        <Text style={styles.title}>Your rewards</Text>
+        <Text style={styles.subtitle}>Codes to show the business when you redeem.</Text>
+      </View>
+
+      <View style={styles.segment}>
+        {TABS.map((option) => (
+          <Pressable key={option} onPress={() => setTab(option)} style={[styles.segmentItem, tab === option && styles.segmentItemActive]}>
+            <Text style={[styles.segmentText, tab === option && styles.segmentTextActive]}>{option === 'active' ? 'Active' : 'Used'}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       {!loaded ? <LoadingState label="Loading your rewards…" />
         : error ? <ErrorState message={error} onRetry={() => void load()} />
@@ -69,7 +83,7 @@ export function CustomerRedemptionsScreen() {
                     <Text style={styles.meta}>{redemption.business?.name ?? ''} · {redemptionStatusLabel(redemption.status)}</Text>
                     {redemption.expiresAt ? <Text style={styles.meta}>Expires {formatDate(redemption.expiresAt)}</Text> : null}
                   </View>
-                  {usable ? <Ionicons name="chevron-forward" size={16} color={colors.primary} /> : null}
+                  {usable ? <Ionicons name="chevron-forward" size={16} color={authColors.coral} /> : null}
                 </Pressable>
               );
             })}
@@ -80,11 +94,19 @@ export function CustomerRedemptionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  filterWrap: { marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  list: { gap: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: authColors.bgSunk, marginBottom: authSpace.sm },
+  segmentItem: { flex: 1, alignItems: 'center', paddingVertical: authSpace.sm, borderRadius: authRadius.md },
+  segmentItemActive: { backgroundColor: authColors.coral },
+  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
+  segmentTextActive: { color: authColors.onCoral },
+  list: { gap: authSpace.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
   pressed: { opacity: 0.78 },
   copy: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...typography.bodyStrong, color: colors.text },
-  meta: { ...typography.caption, color: colors.textSecondary },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  meta: { ...authType.body, fontSize: 12 },
 });

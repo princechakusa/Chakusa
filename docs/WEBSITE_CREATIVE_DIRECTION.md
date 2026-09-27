@@ -114,6 +114,8 @@ Builds on the Master Plan's motion table with per-interaction detail. Every row 
 | Primary/secondary buttons | — | — | 1px lift + background shift (built) | Tactile confirmation | 140ms ease-out | Low (already correct — carry forward) |
 | Nav on scroll | Header background solidifies past hero | — | — | Legibility once hero background is scrolled past | 200ms ease-out | Low |
 
+> **Amendment 2026-09-27 (owner direction):** the owner asked for rich, physics-based marketing motion. Ambient and looping motion is now allowed when it *demonstrates the real product* (e.g. the hero app demo, the pinned scroll story, trade marquees). It must still pause off-screen, give the visitor control (pause button or hand-over on interaction), and fall back to a readable static frame under `prefers-reduced-motion`. The honesty rules below are unchanged. See `docs/progress/2026-09-27-website-motion-and-truth-pass.md`.
+
 **Rule that governs all of it:** every animation on this list earns its place by communicating something (state change, hierarchy, causality). None are ambient/decorative loops — no floating particles, no infinite pulse, no auto-playing carousels. A premium feel comes from *restraint executed precisely*, not from more motion.
 
 ---

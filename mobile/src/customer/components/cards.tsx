@@ -16,12 +16,12 @@ import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
 // A photo-forward cover for a business card: the real photo when the
 // business has one, otherwise an initials tile in the same footprint - no
 // fabricated imagery, just a richer fallback than a small round avatar.
-function BusinessCover({ uri, name }: { uri?: string | null; name: string }) {
+export function BusinessCover({ uri, name, testID }: { uri?: string | null; name: string; testID?: string }) {
   const source = photoSource(uri);
   return source ? (
-    <Image accessibilityLabel={`${name} photo`} source={{ uri: source }} style={styles.cover} resizeMode="cover" />
+    <Image testID={testID} accessibilityLabel={`${name} photo`} source={{ uri: source }} style={styles.cover} resizeMode="cover" />
   ) : (
-    <View accessibilityLabel={`${name} initials`} style={[styles.cover, styles.coverFallback]}>
+    <View testID={testID} accessibilityLabel={`${name} initials`} style={[styles.cover, styles.coverFallback]}>
       <Text style={styles.coverInitials}>{initials(name)}</Text>
     </View>
   );

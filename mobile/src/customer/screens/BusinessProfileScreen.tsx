@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LeafletMap } from '../../components/map/LeafletMap';
-import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { directionsUrl } from '../../domain/places';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, Linking } from 'react-native';
+import { Modal, Pressable, Share, StyleSheet, Text, View, Linking } from 'react-native';
 
 import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '../../components/ui';
 import type { MarketplaceBusinessProfileDto } from '../../apiTypes';
@@ -12,9 +11,12 @@ import { ApiError } from '../../services/api';
 import { colors, radius, spacing, typography } from '../../theme';
 import { formatMoney } from '../../utils/format';
 import { formatPoints } from '../../domain/loyalty';
+import { BusinessCover } from '../components/cards';
 import { profileLoyaltyState } from '../domain/customerLoyalty';
 import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+
+const REPORT_REASONS = ['Spam or scam', 'Inappropriate content', 'Permanently closed', 'Other'] as const;
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BusinessProfile'>;
 
@@ -30,6 +32,8 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   const [favourite, setFavourite] = useState(false);
   const [following, setFollowing] = useState(false);
   const [pending, setPending] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +71,18 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
     finally { setPending(false); }
   };
 
+  const share = async () => {
+    try {
+      const info = await marketplaceApi.share(slug);
+      await Share.share({ message: info.message, url: info.shareUrl });
+    } catch { /* sharing is best-effort */ }
+  };
+
+  const submitReport = async (reason: string) => {
+    setReporting(false);
+    try { await marketplaceApi.report(slug, reason); setReportSent(true); } catch { /* best-effort */ }
+  };
+
   if (!loaded) return <Screen><LoadingState label="Loading…" /></Screen>;
   if (error || !profile) return <Screen><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
@@ -75,15 +91,22 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 
   return (
     <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      {profile.photoUrl ? <ProfilePhoto testID="business-photo" uri={profile.photoUrl} name={profile.name} size={72} /> : null}
+      <View style={styles.heroWrap}>
+        <BusinessCover testID="business-photo" uri={profile.photoUrl} name={profile.name} />
+      </View>
       <AppHeader
         eyebrow={profile.category.toUpperCase()}
         title={profile.name}
         subtitle={profile.tagline ?? undefined}
         right={
-          <Pressable accessibilityRole="button" accessibilityLabel={favourite ? 'Remove favourite' : 'Add favourite'} hitSlop={8} onPress={() => void toggleFavourite()}>
-            <Ionicons name={favourite ? 'heart' : 'heart-outline'} size={24} color={favourite ? colors.primary : colors.text} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Share this business" hitSlop={8} onPress={() => void share()}>
+              <Ionicons name="share-outline" size={22} color={colors.text} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={favourite ? 'Remove favourite' : 'Add favourite'} hitSlop={8} onPress={() => void toggleFavourite()}>
+              <Ionicons name={favourite ? 'heart' : 'heart-outline'} size={24} color={favourite ? colors.primary : colors.text} />
+            </Pressable>
+          </View>
         }
       />
 
@@ -188,11 +211,45 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
           </View>
         </>
       ) : null}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Report this business"
+        disabled={reportSent}
+        onPress={() => setReporting(true)}
+        style={styles.reportRow}
+      >
+        <Ionicons name="flag-outline" size={14} color={colors.textSecondary} />
+        <Text style={styles.reportText}>{reportSent ? 'Report sent — thank you' : 'Report this business'}</Text>
+      </Pressable>
+
+      <Modal visible={reporting} transparent animationType="fade" onRequestClose={() => setReporting(false)}>
+        <Pressable style={styles.reportOverlay} onPress={() => setReporting(false)}>
+          <View style={styles.reportSheet}>
+            <Text style={styles.reportTitle}>Report {profile.name}</Text>
+            {REPORT_REASONS.map((reason) => (
+              <Pressable key={reason} accessibilityRole="button" onPress={() => void submitReport(reason)} style={({ pressed }) => [styles.reportOption, pressed && styles.pressed]}>
+                <Text style={styles.reportOptionText}>{reason}</Text>
+              </Pressable>
+            ))}
+            <SecondaryButton fullWidth label="Cancel" onPress={() => setReporting(false)} />
+          </View>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  heroWrap: { marginHorizontal: -spacing.lg, marginTop: -spacing.sm, aspectRatio: 16 / 9, backgroundColor: colors.border },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  reportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxs, paddingVertical: spacing.md },
+  reportText: { ...typography.caption, color: colors.textSecondary },
+  reportOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  reportSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, gap: spacing.sm },
+  reportTitle: { ...typography.subheading, color: colors.text, marginBottom: spacing.xs },
+  reportOption: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  reportOptionText: { ...typography.body, color: colors.text },
   mapBlock: { gap: spacing.xs },
   directions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, alignSelf: 'flex-start', paddingVertical: spacing.xxs },
   directionsText: { ...typography.bodyStrong, fontSize: 14, color: colors.primary },

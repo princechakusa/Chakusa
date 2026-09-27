@@ -39,9 +39,9 @@ function PrimaryBtn({ label, onPress, disabled }: { label: string; onPress: () =
   );
 }
 
-function SecondaryBtn({ label, icon, compact, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; compact?: boolean; onPress: () => void }) {
+function SecondaryBtn({ label, icon, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, compact && styles.secondaryBtnCompact, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
       {icon ? <Ionicons name={icon} size={16} color={authColors.ink} /> : null}
       <Text style={styles.secondaryBtnText}>{label}</Text>
     </Pressable>
@@ -182,14 +182,17 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
             )}
             <View style={styles.loyaltyActions}>
               {loyalty.hasProgram ? (
-                <SecondaryBtn
-                  compact
-                  label={loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}
-                  onPress={() => navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name })}
-                />
+                <View style={styles.loyaltyActionItem}>
+                  <SecondaryBtn
+                    label={loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}
+                    onPress={() => navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name })}
+                  />
+                </View>
               ) : null}
               {loyalty.hasMemberships ? (
-                <SecondaryBtn compact label="Membership" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} />
+                <View style={styles.loyaltyActionItem}>
+                  <SecondaryBtn label="Membership" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} />
+                </View>
               ) : null}
             </View>
           </View>
@@ -301,11 +304,11 @@ const styles = StyleSheet.create({
   loyaltyHeader: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
   loyaltyTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
   loyaltyMeta: { ...authType.body, fontSize: 12 },
-  loyaltyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
+  loyaltyActions: { flexDirection: 'row', gap: authSpace.xs },
+  loyaltyActionItem: { flex: 1, minWidth: 0 },
   primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
   primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xxs, minHeight: 48, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  secondaryBtnCompact: { minHeight: 40, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-start' },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xxs, minHeight: 44, paddingHorizontal: authSpace.sm, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
   secondaryBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink },
   disabled: { opacity: 0.5 },
 });

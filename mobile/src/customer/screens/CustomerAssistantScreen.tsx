@@ -3,10 +3,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { AppHeader, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen } from '../../components/ui';
+import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerAIConversationDto, CustomerAIMessageDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatDateTime } from '../../utils/format';
 import { customerAssistantApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
@@ -18,6 +18,18 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerAssista
 // Shown only because `/customer/dashboard` reports the entry is enabled
 // (Home guards the link); this screen also degrades gracefully if a call
 // is refused.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function PrimaryBtn({ label, icon, compact, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; compact?: boolean; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, compact && styles.primaryBtnCompact, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
+      <Text style={styles.primaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function CustomerAssistantScreen({ route }: Props) {
   const initialId = route.params?.conversationId ?? null;
@@ -88,9 +100,13 @@ export function CustomerAssistantScreen({ route }: Props) {
 
   if (activeId === null) {
     return (
-      <Screen refreshing={loadedList && !listError} onRefresh={() => void loadList()}>
-        <AppHeader eyebrow="ASSISTANT" title="Chakusa assistant" subtitle="Ask about businesses, availability, or your bookings." />
-        <PrimaryButton fullWidth icon="add" label="New conversation" onPress={() => setActiveId('')} />
+      <Screen backgroundColor={authColors.bg} refreshing={loadedList && !listError} onRefresh={() => void loadList()}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>ASSISTANT</Text>
+          <Text style={styles.title}>Chakusa assistant</Text>
+          <Text style={styles.subtitle}>Ask about businesses, availability, or your bookings.</Text>
+        </View>
+        <PrimaryBtn icon="add" label="New conversation" onPress={() => setActiveId('')} />
         {!loadedList ? <LoadingState label="Loading…" />
           : listError ? <ErrorState message={listError} onRetry={() => void loadList()} />
           : !conversations.length ? <EmptyState icon="chatbubbles-outline" title="No conversations yet" message="Start one to get personalised help finding and booking businesses." />
@@ -109,16 +125,16 @@ export function CustomerAssistantScreen({ route }: Props) {
   }
 
   return (
-    <Screen scroll={false}>
-      <AppHeader
-        eyebrow="ASSISTANT"
-        title="Chakusa assistant"
-        right={
-          <Pressable accessibilityRole="button" accessibilityLabel="All conversations" hitSlop={8} onPress={() => setActiveId(null)}>
-            <Ionicons name="list" size={22} color={colors.text} />
-          </Pressable>
-        }
-      />
+    <Screen backgroundColor={authColors.bg} scroll={false}>
+      <View style={styles.threadHeader}>
+        <View>
+          <Text style={styles.eyebrow}>ASSISTANT</Text>
+          <Text style={styles.title}>Chakusa assistant</Text>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="All conversations" hitSlop={8} onPress={() => setActiveId(null)} style={styles.iconBtn}>
+          <Ionicons name="list" size={19} color={authColors.ink} />
+        </Pressable>
+      </View>
       <ScrollView ref={scrollRef} style={styles.thread} contentContainerStyle={styles.threadContent} keyboardShouldPersistTaps="handled">
         {loadingThread ? <LoadingState label="Loading…" /> : null}
         {messages.filter((message) => message.role !== 'tool').map((message) => (
@@ -129,10 +145,10 @@ export function CustomerAssistantScreen({ route }: Props) {
             {message.role === 'assistant' ? (
               <View style={styles.feedbackRow}>
                 <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(message.id, 1)}>
-                  <Ionicons name={ratings[message.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={ratings[message.id] === 1 ? colors.success : colors.textSecondary} />
+                  <Ionicons name={ratings[message.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={ratings[message.id] === 1 ? authColors.positive : authColors.inkSoft} />
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel="Not helpful" hitSlop={8} onPress={() => void rate(message.id, -1)}>
-                  <Ionicons name={ratings[message.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={15} color={ratings[message.id] === -1 ? colors.negative : colors.textSecondary} />
+                  <Ionicons name={ratings[message.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={15} color={ratings[message.id] === -1 ? authColors.danger : authColors.inkSoft} />
                 </Pressable>
               </View>
             ) : null}
@@ -147,33 +163,43 @@ export function CustomerAssistantScreen({ route }: Props) {
           value={draft}
           onChangeText={setDraft}
           placeholder="Message the assistant"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={authColors.inkFaint}
           multiline
         />
-        <PrimaryButton compact label={sending ? '…' : 'Send'} disabled={sending || !draft.trim()} onPress={() => void send()} />
+        <PrimaryBtn compact label={sending ? '…' : 'Send'} disabled={sending || !draft.trim()} onPress={() => void send()} />
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.xs },
-  convo: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.xxs },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  threadHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: authSpace.sm },
+  iconBtn: { width: 36, height: 36, borderRadius: authRadius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
+  list: { gap: authSpace.xs },
+  convo: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs, ...authShadow.card },
   pressed: { opacity: 0.78 },
-  convoTitle: { ...typography.bodyStrong, color: colors.text },
-  convoMeta: { ...typography.caption, color: colors.textSecondary },
+  convoTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  convoMeta: { ...authType.body, fontSize: 12 },
   thread: { flex: 1 },
-  threadContent: { gap: spacing.xs, paddingBottom: spacing.md },
+  threadContent: { gap: authSpace.xs, paddingBottom: authSpace.md },
   bubbleRowUser: { alignItems: 'flex-end' },
-  bubbleRowAssistant: { alignItems: 'flex-start', gap: spacing.xxs },
-  bubble: { maxWidth: '86%', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.lg },
-  bubbleUser: { backgroundColor: colors.primary },
-  bubbleAssistant: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  bubbleText: { ...typography.body, color: colors.text },
-  bubbleTextUser: { color: colors.surface },
-  feedbackRow: { flexDirection: 'row', gap: spacing.sm, paddingLeft: spacing.sm },
-  hint: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.lg },
-  error: { ...typography.caption, color: colors.negative },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, paddingTop: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border },
-  composerInput: { flex: 1, maxHeight: 120, minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingTop: spacing.sm, ...typography.body, color: colors.text },
+  bubbleRowAssistant: { alignItems: 'flex-start', gap: authSpace.xxs },
+  bubble: { maxWidth: '86%', paddingHorizontal: authSpace.md, paddingVertical: authSpace.sm, borderRadius: authRadius.lg },
+  bubbleUser: { backgroundColor: authColors.coral },
+  bubbleAssistant: { backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
+  bubbleText: { ...authType.body, fontSize: 14, color: authColors.ink },
+  bubbleTextUser: { color: authColors.onCoral },
+  feedbackRow: { flexDirection: 'row', gap: authSpace.sm, paddingLeft: authSpace.sm },
+  hint: { ...authType.body, fontSize: 13, textAlign: 'center', paddingVertical: authSpace.lg },
+  error: { ...authType.body, fontSize: 12, color: authColors.danger },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: authSpace.xs, paddingTop: authSpace.xs, borderTopWidth: 1, borderTopColor: authColors.line },
+  composerInput: { flex: 1, maxHeight: 120, minHeight: 44, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bgSunk, paddingHorizontal: authSpace.md, paddingTop: authSpace.sm, ...authType.body, fontSize: 15, color: authColors.ink },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
+  primaryBtnCompact: { minHeight: 44, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-end' },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  disabled: { opacity: 0.5 },
 });

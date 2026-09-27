@@ -2,14 +2,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton } from '../../components/ui';
+import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { BookableServicesDto, BookingAvailabilityDto } from '../../apiTypes';
 import {
   BookingDraft, canAdvanceFrom, currentBookingStep, emptyDraft, formatServiceMeta,
   formatSlotTime, groupSlotsByDay, slotsForStaff, staffOptions,
 } from '../../domain/booking';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ServiceRow } from '../components/cards';
 import { memberPriceDisplay } from '../domain/customerLoyalty';
 import { bookingApi } from '../endpoints';
@@ -21,8 +21,27 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingFlow'>;
 // server's - this screen only walks the customer through
 // service → staff → date → time → confirm using `domain/booking.ts`, then
 // posts to `/customer/bookings`. No payment surface.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 const HORIZON_DAYS = 21;
+
+function PrimaryBtn({ label, disabled, onPress }: { label: string; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      <Text style={styles.primaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SecondaryBtn({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
+      <Text style={styles.secondaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function BookingFlowScreen({ route, navigation }: Props) {
   const { slug, serviceId } = route.params;
@@ -93,14 +112,18 @@ export function BookingFlowScreen({ route, navigation }: Props) {
     }
   };
 
-  if (loadingServices) return <Screen><LoadingState label="Loading services…" /></Screen>;
-  if (error && !services) return <Screen><ErrorState message={error} onRetry={() => navigation.replace('BookingFlow', route.params)} /></Screen>;
+  if (loadingServices) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading services…" /></Screen>;
+  if (error && !services) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={() => navigation.replace('BookingFlow', route.params)} /></Screen>;
 
   const stepIndex = STEP_ORDER.indexOf(step);
 
   return (
-    <Screen>
-      <AppHeader eyebrow="NEW BOOKING" title={services?.businessName ?? 'Book'} subtitle={stepLabel(step)} />
+    <Screen backgroundColor={authColors.bg}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>NEW BOOKING</Text>
+        <Text style={styles.title}>{services?.businessName ?? 'Book'}</Text>
+        <Text style={styles.subtitle}>{stepLabel(step)}</Text>
+      </View>
       <View style={styles.progressRow} accessibilityLabel={`Step ${stepIndex + 1} of ${STEP_ORDER.length}: ${stepLabel(step)}`}>
         {STEP_ORDER.map((s, index) => (
           <View key={s} style={[styles.progressSegment, index <= stepIndex && styles.progressSegmentActive]} />
@@ -198,13 +221,12 @@ export function BookingFlowScreen({ route, navigation }: Props) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <PrimaryButton
-        fullWidth
+      <PrimaryBtn
         label={submitting ? 'Booking…' : step === 'confirm' ? 'Confirm booking' : stepLabel(step)}
         disabled={submitting || !canAdvanceFrom('confirm', draft)}
         onPress={() => void submit()}
       />
-      <SecondaryButton fullWidth label="Cancel" onPress={() => navigation.goBack()} />
+      <SecondaryBtn label="Cancel" onPress={() => navigation.goBack()} />
     </Screen>
   );
 }
@@ -230,21 +252,31 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
-  progressRow: { flexDirection: 'row', gap: spacing.xxs },
-  progressSegment: { flex: 1, height: 4, borderRadius: radius.round, backgroundColor: colors.divider },
-  progressSegmentActive: { backgroundColor: colors.primary },
-  memberBanner: { padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  memberBannerText: { ...typography.caption, color: colors.text },
-  groupLabel: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  list: { gap: spacing.xs },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: { minHeight: 38, paddingHorizontal: spacing.md, justifyContent: 'center', borderRadius: radius.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipActive: { backgroundColor: colors.text, borderColor: colors.text },
-  chipText: { ...typography.caption, color: colors.textSecondary },
-  chipTextActive: { color: colors.surface },
-  empty: { ...typography.caption, color: colors.textSecondary },
-  summary: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.xxs },
-  summaryTitle: { ...typography.bodyStrong, color: colors.text },
-  summaryLine: { ...typography.caption, color: colors.textSecondary },
-  error: { ...typography.caption, color: colors.negative },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  progressRow: { flexDirection: 'row', gap: authSpace.xxs, marginBottom: authSpace.sm },
+  progressSegment: { flex: 1, height: 4, borderRadius: authRadius.pill, backgroundColor: authColors.lineSoft },
+  progressSegmentActive: { backgroundColor: authColors.coral },
+  memberBanner: { padding: authSpace.sm, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.coral, backgroundColor: authColors.coralSoft },
+  memberBannerText: { ...authType.body, fontSize: 12, color: authColors.ink },
+  groupLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink, marginTop: authSpace.sm },
+  list: { gap: authSpace.xs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
+  chip: { minHeight: 38, paddingHorizontal: authSpace.md, justifyContent: 'center', borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  chipActive: { backgroundColor: authColors.coral, borderColor: authColors.coral },
+  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
+  chipTextActive: { color: authColors.onCoral },
+  empty: { ...authType.body, fontSize: 13 },
+  summary: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs, ...authShadow.card },
+  summaryTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  summaryLine: { ...authType.body, fontSize: 13 },
+  error: { ...authType.body, fontSize: 12, color: authColors.danger },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.85 },
 });

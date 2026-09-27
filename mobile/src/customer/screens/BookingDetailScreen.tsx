@@ -5,11 +5,11 @@ import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { LeafletMap } from '../../components/map/LeafletMap';
 import { directionsUrl } from '../../domain/places';
-import { AppHeader, Divider, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton } from '../../components/ui';
+import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { BookingAvailabilityDto, CustomerBookingDto } from '../../apiTypes';
 import { bookingActions, bookingStatusLabel, formatSlotTime, groupSlotsByDay, reminderStatusLabel } from '../../domain/booking';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { formatDateTime, formatMoney } from '../../utils/format';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
@@ -20,6 +20,41 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingDetail'>
 // for the detail; reschedule and cancel call the matching server routes,
 // which own the actual eligibility rules - `domain/booking.ts` only mirrors
 // them to decide what to show.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Ionicons name={icon} size={18} color={authColors.coral} />
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
+function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
+      <Text style={styles.primaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SecondaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      {icon ? <Ionicons name={icon} size={17} color={authColors.ink} /> : null}
+      <Text style={styles.secondaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function BookingDetailScreen({ route, navigation }: Props) {
   const { bookingId } = route.params;
@@ -93,12 +128,16 @@ export function BookingDetailScreen({ route, navigation }: Props) {
     ]);
   };
 
-  if (!loaded) return <Screen><LoadingState label="Loading…" /></Screen>;
-  if (error || !booking) return <Screen><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
+  if (error || !booking) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow={bookingStatusLabel(booking.status).toUpperCase()} title={booking.serviceName} subtitle={booking.business.name} />
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>{bookingStatusLabel(booking.status).toUpperCase()}</Text>
+        <Text style={styles.title}>{booking.serviceName}</Text>
+        <Text style={styles.subtitle}>{booking.business.name}</Text>
+      </View>
 
       <View style={styles.card}>
         <InfoRow icon="calendar-outline" label="When" value={formatDateTime(booking.startsAt)} />
@@ -133,19 +172,19 @@ export function BookingDetailScreen({ route, navigation }: Props) {
               </View>
             </View>
           ))}
-          <SecondaryButton fullWidth label="Keep current time" onPress={() => setRescheduling(false)} />
+          <SecondaryBtn label="Keep current time" onPress={() => setRescheduling(false)} />
         </View>
       ) : (
         <View style={styles.actions}>
-          {actions.canReschedule ? <SecondaryButton fullWidth icon="swap-horizontal" label={busy ? 'Please wait…' : 'Reschedule'} disabled={busy} onPress={() => void beginReschedule()} /> : null}
-          {actions.canCancel ? <PrimaryButton fullWidth icon="close" label="Cancel booking" disabled={busy} onPress={cancel} /> : null}
+          {actions.canReschedule ? <SecondaryBtn icon="swap-horizontal" label={busy ? 'Please wait…' : 'Reschedule'} disabled={busy} onPress={() => void beginReschedule()} /> : null}
+          {actions.canCancel ? <PrimaryBtn icon="close" label="Cancel booking" disabled={busy} onPress={cancel} /> : null}
           {!actions.canReschedule && !actions.canCancel ? (
             <View style={styles.closedRow}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} />
+              <Ionicons name="information-circle-outline" size={16} color={authColors.inkSoft} />
               <Text style={styles.dim}>{actions.reason ?? 'No changes can be made to this booking.'}</Text>
             </View>
           ) : null}
-          <SecondaryButton fullWidth label="Back to bookings" onPress={() => navigation.goBack()} />
+          <SecondaryBtn label="Back to bookings" onPress={() => navigation.goBack()} />
         </View>
       )}
     </Screen>
@@ -183,7 +222,7 @@ function ProviderLocationCard({ bookingId, active }: { bookingId: string; active
       <Text style={styles.dim}>Sharing their live location · updated {agoSec < 60 ? `${agoSec}s` : `${Math.round(agoSec / 60)}m`} ago</Text>
       <LeafletMap height={180} center={share} zoom={15} markers={[{ ...share, kind: 'you', label: 'Your provider' }]} accessibilityLabel="Where your provider is now" />
       <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(directionsUrl(share.latitude, share.longitude))} style={styles.locBtn}>
-        <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+        <Ionicons name="navigate-outline" size={16} color={authColors.coral} />
         <Text style={styles.locBtnText}>Open in OpenStreetMap</Text>
       </Pressable>
     </View>
@@ -191,22 +230,36 @@ function ProviderLocationCard({ bookingId, active }: { bookingId: string; active
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  locCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
-  locRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  locDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
-  locTitle: { ...typography.bodyStrong, color: colors.text },
-  locBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
-  locBtnText: { ...typography.caption, color: colors.primary },
-  notes: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic' },
-  actions: { gap: spacing.sm },
-  closedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  dim: { ...typography.caption, color: colors.textSecondary },
-  reschedule: { gap: spacing.sm },
-  groupLabel: { ...typography.caption, color: colors.textSecondary },
-  dayBlock: { gap: spacing.xs },
-  dayLabel: { ...typography.bodyStrong, color: colors.text },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: { minHeight: 38, paddingHorizontal: spacing.md, justifyContent: 'center', borderRadius: radius.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipText: { ...typography.caption, color: colors.text },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  infoRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
+  infoLabel: { ...authType.body, fontSize: 13, flex: 1 },
+  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink, textAlign: 'right', maxWidth: '58%' },
+  divider: { height: 1, backgroundColor: authColors.lineSoft },
+  locCard: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
+  locDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: authColors.positive },
+  locTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  locBtn: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs, marginTop: authSpace.xs },
+  locBtnText: { ...authType.link },
+  notes: { ...authType.body, fontStyle: 'italic' },
+  actions: { gap: authSpace.sm },
+  closedRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
+  dim: { ...authType.body, fontSize: 12 },
+  reschedule: { gap: authSpace.sm },
+  groupLabel: { ...authType.body, fontSize: 12 },
+  dayBlock: { gap: authSpace.xs },
+  dayLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
+  chip: { minHeight: 38, paddingHorizontal: authSpace.md, justifyContent: 'center', borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.85 },
 });

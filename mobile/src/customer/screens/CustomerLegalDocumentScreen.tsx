@@ -1,11 +1,11 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, ErrorState, LoadingState, Screen } from '../../components/ui';
+import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { LegalDocumentDto } from '../../apiTypes';
+import { authColors, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, spacing, typography } from '../../theme';
 import { legalApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -14,6 +14,9 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLegalDo
 // PROGRAM 2 LOOP 7: read-only legal document viewer. Uses the public
 // `/legal/documents/:type` route - no account required - so it works from
 // the acceptance gate before anything else is unlocked.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
 
 export function CustomerLegalDocumentScreen({ route }: Props) {
   const { type } = route.params;
@@ -32,12 +35,16 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
 
   useEffect(load, [type]);
 
-  if (loading) return <Screen><LoadingState label="Loading…" /></Screen>;
-  if (error || !doc) return <Screen><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (loading) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
+  if (error || !doc) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
-    <Screen>
-      <AppHeader eyebrow="LEGAL" title={doc.title} subtitle={doc.effectiveAt ? `Effective ${new Date(doc.effectiveAt).toLocaleDateString()}` : undefined} />
+    <Screen backgroundColor={authColors.bg}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>LEGAL</Text>
+        <Text style={styles.title}>{doc.title}</Text>
+        {doc.effectiveAt ? <Text style={styles.subtitle}>Effective {new Date(doc.effectiveAt).toLocaleDateString()}</Text> : null}
+      </View>
       {doc.summary ? <Text style={styles.summary}>{doc.summary}</Text> : null}
       <Text style={styles.body}>{doc.content}</Text>
     </Screen>
@@ -45,6 +52,10 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  summary: { ...typography.bodyStrong, color: colors.text },
-  body: { ...typography.body, color: colors.textSecondary },
+  header: { marginBottom: authSpace.sm },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  summary: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  body: { ...authType.body },
 });

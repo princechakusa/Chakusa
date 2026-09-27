@@ -96,9 +96,16 @@ export function BookingFlowScreen({ route, navigation }: Props) {
   if (loadingServices) return <Screen><LoadingState label="Loading services…" /></Screen>;
   if (error && !services) return <Screen><ErrorState message={error} onRetry={() => navigation.replace('BookingFlow', route.params)} /></Screen>;
 
+  const stepIndex = STEP_ORDER.indexOf(step);
+
   return (
     <Screen>
       <AppHeader eyebrow="NEW BOOKING" title={services?.businessName ?? 'Book'} subtitle={stepLabel(step)} />
+      <View style={styles.progressRow} accessibilityLabel={`Step ${stepIndex + 1} of ${STEP_ORDER.length}: ${stepLabel(step)}`}>
+        {STEP_ORDER.map((s, index) => (
+          <View key={s} style={[styles.progressSegment, index <= stepIndex && styles.progressSegmentActive]} />
+        ))}
+      </View>
 
       {services?.membership ? (
         <View style={styles.memberBanner}>
@@ -202,6 +209,8 @@ export function BookingFlowScreen({ route, navigation }: Props) {
   );
 }
 
+const STEP_ORDER = ['service', 'staff', 'date', 'time', 'confirm'] as const;
+
 function stepLabel(step: ReturnType<typeof currentBookingStep>): string {
   return { service: 'Choose a service', staff: 'Choose staff', date: 'Choose a date', time: 'Choose a time', confirm: 'Review & confirm' }[step];
 }
@@ -221,6 +230,9 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
+  progressRow: { flexDirection: 'row', gap: spacing.xxs },
+  progressSegment: { flex: 1, height: 4, borderRadius: radius.round, backgroundColor: colors.divider },
+  progressSegmentActive: { backgroundColor: colors.primary },
   memberBanner: { padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primarySoft },
   memberBannerText: { ...typography.caption, color: colors.text },
   groupLabel: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },

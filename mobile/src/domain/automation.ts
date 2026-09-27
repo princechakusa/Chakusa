@@ -1,6 +1,8 @@
-import { AutomationRuleDto, AutomationRunHistoryItemDto, AutomationRunReason, AutomationRunStatus, SubscriptionStatusValue } from '../apiTypes';
+import { AutomationChannel, AutomationRuleDto, AutomationRunHistoryItemDto, AutomationRunReason, AutomationRunStatus, SubscriptionStatusValue } from '../apiTypes';
 
 export const AUTOMATION_DELAYS = [0, 60, 120, 300, 600, 900, 1800] as const;
+export const AUTOMATION_CHANNELS = ['SMS', 'WHATSAPP'] as const;
+export function channelLabel(channel: AutomationChannel) { return channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'; }
 export type AutomationAvailability = 'available' | 'free-locked' | 'subscription-unavailable' | 'service-unavailable' | 'loading';
 export function automationAvailability(plan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null, feature: boolean | null, serviceEnabled = true): AutomationAvailability { if (plan === null || status === null || feature === null) return 'loading'; if (!serviceEnabled) return 'service-unavailable'; if (plan === 'FREE') return 'free-locked'; return feature ? 'available' : 'subscription-unavailable'; }
 export function automationStatusCopy(enabled: boolean) { return enabled ? 'Enabled' : 'Disabled'; }
@@ -10,7 +12,7 @@ export function runStatusCopy(status: AutomationRunStatus | string) { return ({ 
 export function isTerminalRunStatus(status: AutomationRunStatus) { return ['COMPLETED', 'FAILED', 'CANCELLED'].includes(status); }
 export function safeAutomationFailureCopy() { return 'Chakusa could not complete this follow-up.'; }
 export function canChangeAutomation(availability: AutomationAvailability, rule: AutomationRuleDto | null, nextEnabled: boolean) { return availability === 'available' && Boolean(rule) && rule!.enabled !== nextEnabled; }
-export function missedCallRules(rules: AutomationRuleDto[]) { return rules.filter(rule => rule.triggerType === 'LEAD_CREATED' && rule.channel === 'SMS'); }
+export function missedCallRules(rules: AutomationRuleDto[]) { return rules.filter(rule => rule.triggerType === 'LEAD_CREATED'); }
 export type LifecycleAutomationKind = 'LEAD_FOLLOW_UP' | 'REVIEW_REQUEST_FOLLOW_UP' | 'CUSTOMER_RETENTION';
 export interface LifecycleAutomationDefinition {
   triggerType: LifecycleAutomationKind;
@@ -28,12 +30,12 @@ export function lifecycleAutomationDefinitions(reminderDays = 42): LifecycleAuto
     { triggerType: 'CUSTOMER_RETENTION', name: 'Customer win-back', title: 'Bring customers back', description: `Chakusa contacts customers who previously completed a job but have not returned in ${reminderDays} days.`, when: `No new visit for ${reminderDays} days`, delaySeconds: 0, config: { minDaysSinceVisit: reminderDays } },
   ];
 }
-export function lifecycleRule(rules: AutomationRuleDto[], triggerType: LifecycleAutomationKind) { return rules.find(rule => rule.triggerType === triggerType && rule.channel === 'SMS') ?? null; }
+export function lifecycleRule(rules: AutomationRuleDto[], triggerType: LifecycleAutomationKind) { return rules.find(rule => rule.triggerType === triggerType) ?? null; }
 export function automationReasonCopy(reason: AutomationRunReason | string | null) {
   if (reason === null) return null;
   return ({
     INVALID_PHONE: "The customer's phone number is invalid.",
-    CUSTOMER_OPTED_OUT: 'This customer has opted out of SMS messages.',
+    CUSTOMER_OPTED_OUT: 'This customer has opted out of automated messages.',
     SUBSCRIPTION_INACTIVE: 'Automation was unavailable because the subscription was inactive.',
     LEAD_ALREADY_CONTACTED: 'No message was sent because the lead had already been contacted.',
     RULE_DISABLED: 'The automation rule was disabled before this message could be sent.',

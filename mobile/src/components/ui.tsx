@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CustomerDto, LeadDto, ReminderDto, ReviewRequestDto } from '../apiTypes';
+import { AutomationChannel, CustomerDto, LeadDto, ReminderDto, ReviewRequestDto } from '../apiTypes';
+import { AUTOMATION_CHANNELS, channelLabel } from '../domain/automation';
 import { recoveryNextStep, recoveryPriority, recoveryPriorityLabel, recoverySourceLabel } from '../domain/recovery';
 import { TimelineItem } from '../types';
 import { colors, radius, shadows, spacing, typography } from '../theme';
@@ -25,6 +26,15 @@ export function Screen({ children, scroll = true, style, backgroundColor, refres
 
 export function AppHeader({ title, subtitle, eyebrow, right }: { title: string; subtitle?: string; eyebrow?: string; right?: ReactNode }) {
   return <View style={styles.header}><View style={styles.headerCopy}>{eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<Text style={styles.title}>{title}</Text>{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}</View>{right}</View>;
+}
+
+/** Shared SMS/WhatsApp choice for a message-sending automation rule - used by AutomationScreen (the missed-call rule) and LifecycleAutomationCards (each lifecycle rule). */
+export function ChannelPicker({ value, onChange, disabled }: { value: AutomationChannel; onChange: (value: AutomationChannel) => void; disabled: boolean }) {
+  return <View accessibilityRole="radiogroup" accessibilityLabel="Message channel" style={styles.channelOptions}>
+    {AUTOMATION_CHANNELS.map(channel => <Pressable key={channel} accessibilityRole="radio" accessibilityState={{ checked: value === channel, disabled }} disabled={disabled} onPress={() => onChange(channel)} style={({ pressed }) => [styles.channelOption, value === channel && styles.channelOptionSelected, pressed && styles.channelOptionPressed]}>
+      <Text style={[styles.channelOptionText, value === channel && styles.channelOptionTextSelected]}>{channelLabel(channel)}</Text>
+    </Pressable>)}
+  </View>;
 }
 
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
@@ -120,6 +130,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 }, safeArea: { flex: 1, backgroundColor: colors.background }, screen: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 120, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md }, headerCopy: { flex: 1 }, eyebrow: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xxs }, title: { ...typography.title, color: colors.text }, subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xxs },
   sectionHeader: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sectionTitle: { ...typography.heading, color: colors.text }, sectionAction: { ...typography.bodyStrong, color: colors.primary },
+  channelOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, channelOption: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round }, channelOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft }, channelOptionText: { ...typography.caption, color: colors.textSecondary }, channelOptionTextSelected: { color: colors.primary, fontWeight: '700' }, channelOptionPressed: { opacity: 0.7 },
   button: { minHeight: 48, paddingHorizontal: spacing.lg, borderRadius: radius.md, flexDirection: 'row', gap: spacing.xs, alignItems: 'center', justifyContent: 'center' }, buttonCompact: { alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: spacing.md }, fullWidth: { alignSelf: 'stretch' }, primaryButton: { backgroundColor: colors.primary }, primaryPressed: { backgroundColor: colors.primaryPressed }, primaryButtonText: { ...typography.bodyStrong, color: colors.surface }, secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, secondaryPressed: { backgroundColor: colors.background }, secondaryButtonText: { ...typography.bodyStrong, color: colors.text }, disabled: { opacity: 0.45 }, iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   badge: { borderRadius: radius.round, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }, badgeText: { ...typography.micro, color: colors.text }, badgeSuccess: { borderColor: colors.success }, badgeNegative: { borderColor: colors.negative }, badgeNegativeText: { color: colors.negative }, badgeAttention: { borderColor: colors.attention },
   metric: { minWidth: 128, flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }, metricPrimary: { backgroundColor: colors.primary, borderColor: colors.primary }, metricSuccess: { backgroundColor: colors.success, borderColor: colors.success }, metricLabel: { ...typography.caption, color: colors.textSecondary }, metricValue: { ...typography.heading, color: colors.text, marginTop: spacing.xs }, metricDetail: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxs }, metricOnColor: { color: colors.surface }, metricDetailOnColor: { color: 'rgba(255,255,255,0.85)' },

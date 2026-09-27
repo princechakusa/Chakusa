@@ -13,7 +13,7 @@ describe('automation product rules', () => {
   it.each([['PENDING','Scheduled'],['RUNNING','Sending'],['COMPLETED','Sent'],['FAILED','Failed'],['CANCELLED','Canceled']] as const)('maps run %s to %s', (status, copy) => expect(runStatusCopy(status)).toBe(copy));
   it.each([
     ['INVALID_PHONE', "The customer's phone number is invalid."],
-    ['CUSTOMER_OPTED_OUT', 'This customer has opted out of SMS messages.'],
+    ['CUSTOMER_OPTED_OUT', 'This customer has opted out of automated messages.'],
     ['SUBSCRIPTION_INACTIVE', 'Automation was unavailable because the subscription was inactive.'],
     ['LEAD_ALREADY_CONTACTED', 'No message was sent because the lead had already been contacted.'],
     ['RULE_DISABLED', 'The automation rule was disabled before this message could be sent.'],

@@ -5,10 +5,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, Share, StyleSheet, Text, View, Linking } from 'react-native';
 
-import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '../../components/ui';
+import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { MarketplaceBusinessProfileDto } from '../../apiTypes';
+import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
-import { colors, radius, spacing, typography } from '../../theme';
 import { formatMoney } from '../../utils/format';
 import { formatPoints } from '../../domain/loyalty';
 import { BusinessCover } from '../components/cards';
@@ -23,6 +23,30 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BusinessProfile
 // PROGRAM 2 LOOP 7: a business's public profile. `/customer/marketplace/
 // businesses/:slug` for the content; favourite/follow/report are the only
 // writes. "Book" hands off to the booking flow.
+//
+// Visual language matches experience/authTheme.ts, carried over from the
+// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+
+function SectionLabel({ title }: { title: string }) {
+  return <Text style={styles.sectionLabel}>{title}</Text>;
+}
+
+function PrimaryBtn({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      <Text style={styles.primaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SecondaryBtn({ label, icon, compact, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; compact?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, compact && styles.secondaryBtnCompact, pressed && styles.pressed]}>
+      {icon ? <Ionicons name={icon} size={16} color={authColors.ink} /> : null}
+      <Text style={styles.secondaryBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function BusinessProfileScreen({ route, navigation }: Props) {
   const { slug } = route.params;
@@ -83,34 +107,35 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
     try { await marketplaceApi.report(slug, reason); setReportSent(true); } catch { /* best-effort */ }
   };
 
-  if (!loaded) return <Screen><LoadingState label="Loading…" /></Screen>;
-  if (error || !profile) return <Screen><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
+  if (error || !profile) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   const bookable = profile.services.filter((s) => s.bookable);
   const location = [...new Set([profile.address.line, profile.address.city, profile.address.region].filter(Boolean))].join(', ');
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
       <View style={styles.heroWrap}>
         <BusinessCover testID="business-photo" uri={profile.photoUrl} name={profile.name} />
       </View>
-      <AppHeader
-        eyebrow={profile.category.toUpperCase()}
-        title={profile.name}
-        subtitle={profile.tagline ?? undefined}
-        right={
-          <View style={styles.headerActions}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Share this business" hitSlop={8} onPress={() => void share()}>
-              <Ionicons name="share-outline" size={22} color={colors.text} />
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={favourite ? 'Remove favourite' : 'Add favourite'} hitSlop={8} onPress={() => void toggleFavourite()}>
-              <Ionicons name={favourite ? 'heart' : 'heart-outline'} size={24} color={favourite ? colors.primary : colors.text} />
-            </Pressable>
-          </View>
-        }
-      />
 
-      {profile.verified ? <View style={styles.verified}><Ionicons name="shield-checkmark" size={15} color={colors.success} /><Text style={styles.verifiedText}>Verified business</Text></View> : null}
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.eyebrow}>{profile.category.toUpperCase()}</Text>
+          <Text style={styles.title}>{profile.name}</Text>
+          {profile.tagline ? <Text style={styles.subtitle}>{profile.tagline}</Text> : null}
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Share this business" hitSlop={8} onPress={() => void share()} style={styles.iconBtn}>
+            <Ionicons name="share-outline" size={19} color={authColors.ink} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={favourite ? 'Remove favourite' : 'Add favourite'} hitSlop={8} onPress={() => void toggleFavourite()} style={styles.iconBtn}>
+            <Ionicons name={favourite ? 'heart' : 'heart-outline'} size={20} color={favourite ? authColors.coral : authColors.ink} />
+          </Pressable>
+        </View>
+      </View>
+
+      {profile.verified ? <View style={styles.verified}><Ionicons name="shield-checkmark" size={15} color={authColors.positive} /><Text style={styles.verifiedText}>Verified business</Text></View> : null}
       {profile.reviewsSummary.averageRating != null ? (
         <Text style={styles.rating}>★ {profile.reviewsSummary.averageRating.toFixed(1)} · {profile.reviewsSummary.totalReviews} review{profile.reviewsSummary.totalReviews === 1 ? '' : 's'}</Text>
       ) : null}
@@ -119,7 +144,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         <View testID="business-map" style={styles.mapBlock}>
           <LeafletMap height={170} center={{ latitude: profile.address.latitude, longitude: profile.address.longitude }} zoom={15} markers={[{ latitude: profile.address.latitude, longitude: profile.address.longitude, kind: 'business', label: profile.name }]} accessibilityLabel={'Where ' + profile.name + ' is'} />
           <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(directionsUrl(profile.address.latitude!, profile.address.longitude!))} style={styles.directions}>
-            <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+            <Ionicons name="navigate-outline" size={16} color={authColors.coral} />
             <Text style={styles.directionsText}>Get directions</Text>
           </Pressable>
         </View>
@@ -128,13 +153,12 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
       {profile.about ? <Text style={styles.about}>{profile.about}</Text> : null}
 
       <View style={styles.actions}>
-        <PrimaryButton
-          fullWidth
+        <PrimaryBtn
           label={bookable.length ? 'Book an appointment' : 'No online booking'}
           disabled={!bookable.length}
           onPress={() => navigation.navigate('BookingFlow', { slug })}
         />
-        <SecondaryButton fullWidth label={following ? 'Following' : 'Follow'} icon={following ? 'checkmark' : 'add'} onPress={() => void toggleFollow()} />
+        <SecondaryBtn label={following ? 'Following' : 'Follow'} icon={following ? 'checkmark' : 'add'} onPress={() => void toggleFollow()} />
       </View>
 
       {(() => {
@@ -143,7 +167,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         return (
           <View style={styles.loyaltyCard}>
             <View style={styles.loyaltyHeader}>
-              <Ionicons name="gift-outline" size={18} color={colors.primary} />
+              <Ionicons name="gift-outline" size={18} color={authColors.coral} />
               <Text style={styles.loyaltyTitle}>Rewards{loyalty.hasMemberships ? ' & membership' : ''}</Text>
             </View>
             {loyalty.enrolled ? (
@@ -158,14 +182,14 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
             )}
             <View style={styles.loyaltyActions}>
               {loyalty.hasProgram ? (
-                <SecondaryButton
+                <SecondaryBtn
                   compact
                   label={loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}
                   onPress={() => navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name })}
                 />
               ) : null}
               {loyalty.hasMemberships ? (
-                <SecondaryButton compact label="Membership" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} />
+                <SecondaryBtn compact label="Membership" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} />
               ) : null}
             </View>
           </View>
@@ -174,7 +198,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 
       {profile.services.length ? (
         <>
-          <SectionHeader title="Services" />
+          <SectionLabel title="Services" />
           <View style={styles.list}>
             {profile.services.map((service) => (
               <Pressable
@@ -191,7 +215,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                     {service.durationMinutes} min{service.price != null ? ` · ${formatMoney(service.price)}` : ''}
                   </Text>
                 </View>
-                {service.bookable ? <Ionicons name="chevron-forward" size={16} color={colors.tabInactive} /> : <Text style={styles.cardMeta}>In person</Text>}
+                {service.bookable ? <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} /> : <Text style={styles.cardMeta}>In person</Text>}
               </Pressable>
             ))}
           </View>
@@ -200,7 +224,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 
       {profile.reviewsSummary.recent.length ? (
         <>
-          <SectionHeader title="Recent reviews" />
+          <SectionLabel title="Recent reviews" />
           <View style={styles.list}>
             {profile.reviewsSummary.recent.map((review, index) => (
               <View key={index} style={styles.reviewCard}>
@@ -219,7 +243,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         onPress={() => setReporting(true)}
         style={styles.reportRow}
       >
-        <Ionicons name="flag-outline" size={14} color={colors.textSecondary} />
+        <Ionicons name="flag-outline" size={14} color={authColors.inkSoft} />
         <Text style={styles.reportText}>{reportSent ? 'Report sent — thank you' : 'Report this business'}</Text>
       </Pressable>
 
@@ -232,7 +256,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                 <Text style={styles.reportOptionText}>{reason}</Text>
               </Pressable>
             ))}
-            <SecondaryButton fullWidth label="Cancel" onPress={() => setReporting(false)} />
+            <SecondaryBtn label="Cancel" onPress={() => setReporting(false)} />
           </View>
         </Pressable>
       </Modal>
@@ -241,34 +265,47 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  heroWrap: { marginHorizontal: -spacing.lg, marginTop: -spacing.sm, aspectRatio: 16 / 9, backgroundColor: colors.border },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  reportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxs, paddingVertical: spacing.md },
-  reportText: { ...typography.caption, color: colors.textSecondary },
-  reportOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
-  reportSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, gap: spacing.sm },
-  reportTitle: { ...typography.subheading, color: colors.text, marginBottom: spacing.xs },
-  reportOption: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  reportOptionText: { ...typography.body, color: colors.text },
-  mapBlock: { gap: spacing.xs },
-  directions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, alignSelf: 'flex-start', paddingVertical: spacing.xxs },
-  directionsText: { ...typography.bodyStrong, fontSize: 14, color: colors.primary },
-  verified: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
-  verifiedText: { ...typography.caption, color: colors.success },
-  rating: { ...typography.bodyStrong, color: colors.text },
-  meta: { ...typography.caption, color: colors.textSecondary },
-  about: { ...typography.body, color: colors.textSecondary },
-  actions: { gap: spacing.sm },
-  list: { gap: spacing.xs },
-  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  heroWrap: { marginHorizontal: -authSpace.md, marginTop: -authSpace.sm, aspectRatio: 16 / 9, backgroundColor: authColors.line },
+  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: authSpace.sm, marginTop: authSpace.sm },
+  headerCopy: { flex: 1, minWidth: 0 },
+  eyebrow: { ...authType.micro, color: authColors.coral },
+  title: { ...authType.title, marginTop: 2 },
+  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
+  iconBtn: { width: 36, height: 36, borderRadius: authRadius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
+  reportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xxs, paddingVertical: authSpace.md },
+  reportText: { ...authType.body, fontSize: 12 },
+  reportOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.45)', justifyContent: 'flex-end' },
+  reportSheet: { backgroundColor: authColors.surface, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg, gap: authSpace.sm },
+  reportTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink, marginBottom: authSpace.xs },
+  reportOption: { paddingVertical: authSpace.sm, borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
+  reportOptionText: { ...authType.body, fontSize: 14, color: authColors.ink },
+  mapBlock: { gap: authSpace.xs },
+  directions: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xxs, alignSelf: 'flex-start', paddingVertical: authSpace.xxs },
+  directionsText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.coral },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xxs },
+  verifiedText: { ...authType.body, fontSize: 12, color: authColors.positive },
+  rating: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  meta: { ...authType.body, fontSize: 13 },
+  about: { ...authType.body },
+  actions: { gap: authSpace.sm },
+  list: { gap: authSpace.xs },
+  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink, marginTop: authSpace.md },
+  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, ...authShadow.card },
   pressed: { opacity: 0.78 },
   cardCopy: { flex: 1, minWidth: 0 },
-  cardName: { ...typography.bodyStrong, color: colors.text },
-  cardMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  reviewCard: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: spacing.xxs },
-  loyaltyCard: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface, gap: spacing.xs },
-  loyaltyHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  loyaltyTitle: { ...typography.bodyStrong, color: colors.text },
-  loyaltyMeta: { ...typography.caption, color: colors.textSecondary },
-  loyaltyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  cardMeta: { ...authType.body, fontSize: 12, marginTop: 2 },
+  reviewCard: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs },
+  loyaltyCard: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.coral, backgroundColor: authColors.coralSoft, gap: authSpace.xs },
+  loyaltyHeader: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
+  loyaltyTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  loyaltyMeta: { ...authType.body, fontSize: 12 },
+  loyaltyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xxs, minHeight: 48, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  secondaryBtnCompact: { minHeight: 40, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-start' },
+  secondaryBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink },
+  disabled: { opacity: 0.5 },
 });

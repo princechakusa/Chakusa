@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorState } from '../../components/ui';
-import { colors, spacing, typography } from '../../theme';
+import { authColors, authSpace, authType } from '../../experience/authTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import { BookingDetailScreen } from '../screens/BookingDetailScreen';
 import { BookingFlowScreen } from '../screens/BookingFlowScreen';
@@ -51,7 +51,7 @@ const tabLabels: Record<keyof CustomerTabParamList, string> = {
 function CustomerTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, spacing.xs) }]}>
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, authSpace.xs) }]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const key = route.name as keyof CustomerTabParamList;
@@ -68,7 +68,7 @@ function CustomerTabBar({ state, navigation }: BottomTabBarProps) {
             }}
             style={styles.tab}
           >
-            <Ionicons name={focused ? icon.active : icon.inactive} size={23} color={focused ? colors.primary : colors.tabInactive} />
+            <Ionicons name={focused ? icon.active : icon.inactive} size={23} color={focused ? authColors.coral : authColors.inkFaint} />
             <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{tabLabels[key]}</Text>
           </Pressable>
         );
@@ -105,7 +105,7 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
   if (status === 'restoring') {
     return (
       <View style={styles.centre}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={authColors.coral} />
         <Text style={styles.centreText}>Getting things ready…</Text>
       </View>
     );
@@ -120,11 +120,11 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
     <Stack.Navigator
       screenOptions={{
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
+        headerStyle: { backgroundColor: authColors.bg },
+        headerTintColor: authColors.ink,
         headerTitle: '',
         headerBackButtonDisplayMode: 'minimal',
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle: { backgroundColor: authColors.bg },
       }}
     >
       {!authed ? (
@@ -170,10 +170,10 @@ function LegalGate() {
 }
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.background },
-  centreText: { ...typography.body, color: colors.textSecondary },
-  tabBar: { minHeight: 64, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', paddingTop: spacing.xs, paddingHorizontal: spacing.xs },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: authSpace.sm, backgroundColor: authColors.bg },
+  centreText: { ...authType.body, color: authColors.inkSoft },
+  tabBar: { minHeight: 64, backgroundColor: authColors.surface, borderTopWidth: 1, borderTopColor: authColors.line, flexDirection: 'row', paddingTop: authSpace.xs, paddingHorizontal: authSpace.xs },
   tab: { flex: 1, minWidth: 0, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  tabLabel: { ...typography.micro, fontSize: 10, color: colors.tabInactive },
-  tabLabelActive: { color: colors.primary },
+  tabLabel: { ...authType.micro, fontSize: 10, color: authColors.inkFaint },
+  tabLabelActive: { color: authColors.coral },
 });

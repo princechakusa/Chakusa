@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LeafletMap } from '../../components/map/LeafletMap';
 import { directionsUrl } from '../../domain/places';
@@ -56,6 +56,56 @@ function SecondaryBtn({ label, icon, disabled, onPress }: { label: string; icon?
   );
 }
 
+interface SelectOption { key: string; label: string; }
+
+// A single tap target that opens a bottom-sheet list, instead of dumping
+// every open slot as wrapping pills - the same fix applied to the booking
+// wizard's own Date/Time pickers.
+function SelectField({ placeholder, value, options, disabled, onSelect }: { placeholder: string; value: string | null; options: SelectOption[]; disabled?: boolean; onSelect: (key: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.key === value) ?? null;
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={selected ? selected.label : placeholder}
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.select, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+      >
+        <Text style={[styles.selectText, !selected && styles.selectPlaceholder]} numberOfLines={1}>
+          {selected ? selected.label : placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color={authColors.inkSoft} />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setOpen(false)}>
+          <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+            <Text style={styles.sheetTitle}>{placeholder}</Text>
+            <ScrollView style={styles.sheetList}>
+              {options.map((option) => {
+                const isActive = option.key === value;
+                return (
+                  <Pressable
+                    key={option.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    onPress={() => { onSelect(option.key); setOpen(false); }}
+                    style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.sheetRowText, isActive && styles.sheetRowTextActive]}>{option.label}</Text>
+                    {isActive ? <Ionicons name="checkmark" size={18} color={authColors.coral} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 export function BookingDetailScreen({ route, navigation }: Props) {
   const { bookingId } = route.params;
   const [booking, setBooking] = useState<CustomerBookingDto | null>(null);
@@ -63,6 +113,7 @@ export function BookingDetailScreen({ route, navigation }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<string | null>(null);
   const [availability, setAvailability] = useState<BookingAvailabilityDto | null>(null);
 
   const load = useCallback(async () => {
@@ -79,6 +130,10 @@ export function BookingDetailScreen({ route, navigation }: Props) {
     () => availability ? groupSlotsByDay(availability.slots, timezone) : [],
     [availability, timezone],
   );
+  const rescheduleDaySlots = useMemo(
+    () => dayGroups.find((g) => g.day === rescheduleDate)?.slots ?? [],
+    [dayGroups, rescheduleDate],
+  );
 
   const beginReschedule = async () => {
     if (!booking || !booking.serviceId || !booking.business.slug) {
@@ -90,6 +145,7 @@ export function BookingDetailScreen({ route, navigation }: Props) {
       const from = new Date();
       const to = new Date(from.getTime() + 21 * 86_400_000);
       setAvailability(await bookingApi.availability(booking.business.slug, booking.serviceId, from.toISOString(), to.toISOString()));
+      setRescheduleDate(null);
       setRescheduling(true);
     } catch (caught) {
       Alert.alert('Could not load times', caught instanceof ApiError ? caught.message : 'Please try again.');
@@ -157,21 +213,28 @@ export function BookingDetailScreen({ route, navigation }: Props) {
       {rescheduling ? (
         <View style={styles.reschedule}>
           <Text style={styles.groupLabel}>Pick a new time</Text>
-          {dayGroups.length === 0 ? <Text style={styles.dim}>No open times in the next 21 days.</Text> : null}
-          {dayGroups.map((group) => (
-            <View key={group.day} style={styles.dayBlock}>
-              <Text style={styles.dayLabel}>
-                {new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'short', day: 'numeric', timeZone: timezone }).format(new Date(group.slots[0].startsAt))}
-              </Text>
-              <View style={styles.chips}>
-                {group.slots.map((slot) => (
-                  <Pressable key={slot.startsAt} accessibilityRole="button" disabled={busy} onPress={() => void confirmReschedule(slot.startsAt)} style={styles.chip}>
-                    <Text style={styles.chipText}>{formatSlotTime(slot.startsAt, timezone)}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ))}
+          {dayGroups.length === 0 ? <Text style={styles.dim}>No open times in the next 21 days.</Text> : (
+            <>
+              <SelectField
+                placeholder="Choose a date"
+                value={rescheduleDate}
+                options={dayGroups.map((group) => ({
+                  key: group.day,
+                  label: new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: timezone }).format(new Date(group.slots[0].startsAt)),
+                }))}
+                onSelect={setRescheduleDate}
+              />
+              {rescheduleDate ? (
+                <SelectField
+                  placeholder="Choose a time"
+                  value={null}
+                  disabled={busy}
+                  options={rescheduleDaySlots.map((slot) => ({ key: slot.startsAt, label: formatSlotTime(slot.startsAt, timezone) }))}
+                  onSelect={(startsAt) => void confirmReschedule(startsAt)}
+                />
+              ) : null}
+            </>
+          )}
           <SecondaryBtn label="Keep current time" onPress={() => setRescheduling(false)} />
         </View>
       ) : (
@@ -251,11 +314,16 @@ const styles = StyleSheet.create({
   dim: { ...authType.body, fontSize: 12 },
   reschedule: { gap: authSpace.sm },
   groupLabel: { ...authType.body, fontSize: 12 },
-  dayBlock: { gap: authSpace.xs },
-  dayLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
-  chip: { minHeight: 38, paddingHorizontal: authSpace.md, justifyContent: 'center', borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink },
+  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: authSpace.md, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
+  selectText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink, flex: 1 },
+  selectPlaceholder: { color: authColors.inkFaint, fontFamily: 'Inter_400Regular' },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.45)', justifyContent: 'flex-end' },
+  sheet: { maxHeight: '70%', backgroundColor: authColors.surface, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg },
+  sheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink, marginBottom: authSpace.xs },
+  sheetList: { flexGrow: 0 },
+  sheetRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
+  sheetRowText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: authColors.ink },
+  sheetRowTextActive: { color: authColors.coral, fontFamily: 'Inter_600SemiBold' },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
   primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },

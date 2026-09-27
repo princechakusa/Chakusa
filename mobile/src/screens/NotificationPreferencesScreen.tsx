@@ -1,39 +1,88 @@
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { AppHeader, Screen } from '../components/ui';
 import { AttentionPreferences, usePreferences } from '../state/PreferencesContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
+import { Icon, IconName, M3Card, M3Header, M3Screen } from '../experience/businessKit';
+import { RootStackParamList } from '../types';
 
-const options: { key: keyof AttentionPreferences; icon: keyof typeof Ionicons.glyphMap; title: string; detail: string }[] = [
-  { key: 'missedCalls', icon: 'call-outline', title: 'Missed calls', detail: 'Show supported missed-call follow-up in your attention view.' },
-  { key: 'reviews', icon: 'star-outline', title: 'Review requests', detail: 'Show customers who are ready for a review request.' },
-  { key: 'comebacks', icon: 'refresh-outline', title: 'Comeback reminders', detail: 'Show customers who may be ready to return.' },
-  { key: 'businessActivity', icon: 'pulse-outline', title: 'Business activity', detail: 'Show important customer and business activity.' },
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const options: { key: keyof AttentionPreferences; icon: IconName; title: string; detail: string }[] = [
+  { key: 'missedCalls', icon: 'call', title: 'Missed calls', detail: 'Show supported missed-call follow-up in your attention view.' },
+  { key: 'reviews', icon: 'star', title: 'Review requests', detail: 'Show customers who are ready for a review request.' },
+  { key: 'comebacks', icon: 'restart_alt', title: 'Comeback reminders', detail: 'Show customers who may be ready to return.' },
+  { key: 'businessActivity', icon: 'monitor_heart', title: 'Business activity', detail: 'Show important customer and business activity.' },
 ];
 
 export function NotificationPreferencesScreen() {
+  const navigation = useNavigation<Nav>();
   const preferences = usePreferences();
   const update = (key: keyof AttentionPreferences, value: boolean) => preferences.setAttention({ ...preferences.attention, [key]: value });
 
-  return <Screen>
-    <AppHeader eyebrow="PREFERENCES" title="Notifications" subtitle="Choose what Chakusa highlights in your in-app attention view." />
-    <View style={styles.notice}><Ionicons name="information-circle-outline" size={21} color={colors.primary} /><Text style={styles.noticeText}>These preferences affect what Chakusa shows inside the app on this device. Phone notification permission is controlled by your device settings.</Text></View>
-    <View style={styles.card}>{options.map((option, index) => <View key={option.key} style={[styles.row, index < options.length - 1 && styles.border]}>
-      <View style={styles.icon}><Ionicons name={option.icon} size={20} color={colors.primary} /></View>
-      <View style={styles.copy}><Text style={styles.title}>{option.title}</Text><Text style={styles.detail}>{option.detail}</Text></View>
-      <Switch accessibilityLabel={`${option.title} in-app attention preference`} value={preferences.attention[option.key]} onValueChange={value => update(option.key, value)} trackColor={{ false: colors.border, true: colors.success }} thumbColor={colors.surface} />
-    </View>)}</View>
-  </Screen>;
+  return (
+    <M3Screen
+      header={
+        <M3Header
+          businessName="Notifications"
+          onBack={() => navigation.goBack()}
+          onNotificationsPress={() => navigation.navigate('AttentionCenter')}
+          hasNotifications={false}
+        />
+      }
+    >
+      <View style={styles.titleBlock}>
+        <Text style={styles.eyebrow}>PREFERENCES</Text>
+        <Text style={styles.title}>Attention view</Text>
+        <Text style={styles.subtitle}>Choose what Chakusa highlights in your in-app attention view.</Text>
+      </View>
+
+      <View style={styles.notice}>
+        <Icon name="info" size={18} color={m3.primary} />
+        <Text style={styles.noticeText}>
+          These preferences affect what Chakusa shows inside the app on this device. Phone notification permission is
+          controlled by your device settings.
+        </Text>
+      </View>
+
+      <M3Card padded={false} style={styles.card}>
+        {options.map((option, index) => (
+          <View key={option.key} style={[styles.row, index < options.length - 1 && styles.border]}>
+            <View style={styles.icon}>
+              <Icon name={option.icon} size={19} color={m3.primary} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.rowTitle}>{option.title}</Text>
+              <Text style={styles.rowDetail}>{option.detail}</Text>
+            </View>
+            <Switch
+              accessibilityLabel={`${option.title} in-app attention preference`}
+              value={preferences.attention[option.key]}
+              onValueChange={(value) => update(option.key, value)}
+              trackColor={{ false: m3.surfaceContainerHigh, true: m3.secondary }}
+              thumbColor={m3.surfaceContainerLowest}
+            />
+          </View>
+        ))}
+      </M3Card>
+    </M3Screen>
+  );
 }
 
 const styles = StyleSheet.create({
-  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.primarySoft },
-  noticeText: { ...typography.caption, color: colors.text, flex: 1 },
-  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md },
-  row: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  border: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  icon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
-  copy: { flex: 1, minWidth: 0 },
-  title: { ...typography.bodyStrong, color: colors.text },
-  detail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  flex: { flex: 1, minWidth: 0 },
+  titleBlock: { gap: 2 },
+  eyebrow: { ...m3Type.labelSm, color: m3.secondary, letterSpacing: 0.6 },
+  title: { ...m3Type.headlineMd, color: m3.onSurface, marginTop: 2 },
+  subtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
+
+  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: m3Space.xs, padding: m3Space.md, borderRadius: m3Radius.md, backgroundColor: 'rgba(171,45,25,0.08)' },
+  noticeText: { ...m3Type.bodySm, color: m3.onSurface, flex: 1 },
+
+  card: { paddingHorizontal: m3Space.md },
+  row: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, paddingVertical: m3Space.sm },
+  border: { borderBottomWidth: 1, borderBottomColor: m3.surfaceContainerHigh },
+  icon: { width: 40, height: 40, borderRadius: m3Radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: m3.surfaceContainerHigh },
+  rowTitle: { ...m3Type.labelLg, color: m3.onSurface },
+  rowDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
 });

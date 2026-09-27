@@ -1,15 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { FormError, FormModal, NumberField, Segmented, TextField } from '../components/loyaltyForms';
 import { LoyaltyCampaignDto, LoyaltyCampaignInput, LoyaltyCampaignKind } from '../apiTypes';
 import { ApiError } from '../services/api';
 import { businessLoyaltyApi } from '../services/businessLoyalty';
 import { CampaignFormDraft, campaignKindLabel, campaignWindowLabel, validateCampaignDraft } from '../domain/loyaltyBusiness';
 import { useAuth } from '../state/AuthContext';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
+import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { RootStackParamList } from '../types';
 import { formatDate } from '../utils/format';
 
@@ -20,12 +19,24 @@ const isoDay = (offsetDays: number) => { const d = new Date(); d.setUTCHours(0, 
 const blank = (): CampaignFormDraft => ({ name: '', description: '', kind: 'multiplier', multiplier: '2', bonusPoints: '0', startsAt: isoDay(0), endsAt: isoDay(7) });
 const toDraft = (c: LoyaltyCampaignDto): CampaignFormDraft => ({ name: c.name, description: c.description ?? '', kind: (c.kind === 'bonus_points' ? 'bonus_points' : 'multiplier'), multiplier: String(c.multiplier), bonusPoints: String(c.bonusPoints), startsAt: c.startsAt, endsAt: c.endsAt });
 
-export function LoyaltyCampaignsScreen(_props: Props) {
+const STATUS_FILTERS = ['all', 'live', 'scheduled', 'ended'] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+function statusFilterFor(campaign: LoyaltyCampaignDto): StatusFilter {
+  const label = campaignWindowLabel(campaign).toLowerCase();
+  if (!campaign.active) return 'ended';
+  if (label.includes('live') || label.includes('active')) return 'live';
+  if (label.includes('upcoming') || label.includes('scheduled')) return 'scheduled';
+  return 'ended';
+}
+
+export function LoyaltyCampaignsScreen({ navigation }: Props) {
   const { role } = useAuth();
   const canManage = role === 'OWNER' || role === 'ADMIN';
   const [campaigns, setCampaigns] = useState<LoyaltyCampaignDto[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<LoyaltyCampaignDto | 'new' | null>(null);
   const [draft, setDraft] = useState<CampaignFormDraft>(blank());
   const [formError, setFormError] = useState<string | null>(null);
@@ -74,33 +85,75 @@ export function LoyaltyCampaignsScreen(_props: Props) {
     ]);
   };
 
+  const visible = campaigns.filter((c) => filter === 'all' || statusFilterFor(c) === filter);
+  const header = <M3Header businessName="Campaigns" onBack={() => navigation.goBack()} hasNotifications={false} />;
+
   return (
     <>
-      <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-        <AppHeader eyebrow="LOYALTY & REWARDS" title="Campaigns" subtitle="Time-boxed boosts to points earned on bookings and reviews." />
-        {!loaded ? <LoadingState label="Loading campaigns…" />
-          : error && !campaigns.length ? <ErrorState message={error} onRetry={() => void load()} />
-          : !campaigns.length ? <EmptyState icon="flash-outline" title="No campaigns" message="Run a limited-time double-points week or a fixed bonus on every completed booking." />
-          : (
-            <View style={styles.list}>
-              {campaigns.map((campaign) => (
-                <Pressable key={campaign.id} accessibilityRole="button" accessibilityLabel={`${campaign.name}. ${campaignKindLabel(campaign.kind)}. ${campaignWindowLabel(campaign)}.`} onPress={() => canManage && open(campaign)} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-                  <View style={styles.cardTop}>
-                    <View style={styles.icon}><Ionicons name="flash-outline" size={20} color={colors.primary} /></View>
-                    <View style={styles.copy}>
-                      <Text style={styles.name}>{campaign.name}</Text>
-                      <Text style={styles.detail}>{campaign.kind === 'multiplier' ? `${campaign.multiplier}× points` : `+${campaign.bonusPoints} points`} · {formatDate(campaign.startsAt)} - {formatDate(campaign.endsAt)}</Text>
-                    </View>
-                    <StatusBadge label={campaignWindowLabel(campaign)} />
+      <M3Screen header={header} refreshControl={undefined}>
+        <View style={styles.titleRow}>
+          <View style={styles.flex}>
+            <Text style={styles.title}>Loyalty Campaigns</Text>
+            <Text style={styles.subtitle}>Time-boxed boosts to points earned on bookings and reviews.</Text>
+          </View>
+          {canManage ? (
+            <Pressable accessibilityRole="button" onPress={() => open()} style={styles.addBtn}>
+              <Icon name="add" size={18} color={m3.onPrimary} />
+              <Text style={styles.addText}>Add</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.chipsWrap}>
+          {STATUS_FILTERS.map((f) => (
+            <Chip
+              key={f}
+              label={f === 'all' ? 'All' : f[0].toUpperCase() + f.slice(1)}
+              selected={filter === f}
+              count={f === 'all' ? campaigns.length : campaigns.filter((c) => statusFilterFor(c) === f).length}
+              onPress={() => setFilter(f)}
+            />
+          ))}
+        </View>
+
+        {!loaded ? (
+          <M3Loading label="Loading campaigns…" />
+        ) : error && !campaigns.length ? (
+          <M3Error message={error} onRetry={() => void load()} />
+        ) : !visible.length ? (
+          <M3Empty icon="bolt" title="No campaigns" message="Run a limited-time double-points week or a fixed bonus on every completed booking." />
+        ) : (
+          <View style={styles.list}>
+            {visible.map((campaign) => (
+              <M3Card key={campaign.id} onPress={() => canManage && open(campaign)} style={styles.card}>
+                <View style={styles.cardTop}>
+                  <View style={styles.icon}>
+                    <Icon name="bolt" size={20} color={m3.primary} />
                   </View>
-                  {campaign.description ? <Text style={styles.description}>{campaign.description}</Text> : null}
-                  {canManage ? <View style={styles.actions}><SecondaryButton compact label="Edit" onPress={() => open(campaign)} /><SecondaryButton compact label={campaign.active ? 'Turn off' : 'Turn on'} onPress={() => toggleActive(campaign)} /></View> : null}
-                </Pressable>
-              ))}
-            </View>
-          )}
-        {canManage && loaded && !error ? <PrimaryButton fullWidth icon="add" label="Add campaign" onPress={() => open()} /> : null}
-      </Screen>
+                  <View style={styles.flex}>
+                    <Text style={styles.name}>{campaign.name}</Text>
+                    <Text style={styles.detail}>
+                      {campaign.kind === 'multiplier' ? `${campaign.multiplier}× points` : `+${campaign.bonusPoints} points`} · {formatDate(campaign.startsAt)} - {formatDate(campaign.endsAt)}
+                    </Text>
+                  </View>
+                  <Chip label={campaignWindowLabel(campaign)} tone={campaign.active ? 'secondary' : 'neutral'} />
+                </View>
+                {campaign.description ? <Text style={styles.description}>{campaign.description}</Text> : null}
+                {canManage ? (
+                  <View style={styles.actions}>
+                    <Pressable accessibilityRole="button" onPress={() => open(campaign)} style={styles.ghostBtn}>
+                      <Text style={styles.ghostBtnText}>Edit</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" onPress={() => toggleActive(campaign)} style={styles.ghostBtn}>
+                      <Text style={styles.ghostBtnText}>{campaign.active ? 'Turn off' : 'Turn on'}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </M3Card>
+            ))}
+          </View>
+        )}
+      </M3Screen>
 
       <FormModal visible={Boolean(editing)} title={editing === 'new' ? 'New campaign' : 'Edit campaign'} busy={saving} submitLabel={editing === 'new' ? 'Create campaign' : 'Save campaign'} onClose={() => setEditing(null)} onSubmit={() => void submit()}>
         <TextField label="Campaign name" value={draft.name} onChangeText={(v) => set('name', v)} placeholder="e.g. Double points week" />
@@ -125,30 +178,41 @@ function DateStepper({ label, value, onShift }: { label: string; value: string; 
         <Text style={styles.stepperValue}>{formatDate(value, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
       </View>
       <View style={styles.stepperButtons}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label} one day earlier`} onPress={() => onShift(-1)} style={styles.stepperButton}><Ionicons name="remove" size={18} color={colors.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} one day earlier`} onPress={() => onShift(-1)} style={styles.stepperButton}><Icon name="remove" size={18} color={m3.onSurface} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={`${label} one week later`} onPress={() => onShift(7)} style={styles.stepperButton}><Text style={styles.stepperWeek}>+1w</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label} one day later`} onPress={() => onShift(1)} style={styles.stepperButton}><Ionicons name="add" size={18} color={colors.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label} one day later`} onPress={() => onShift(1)} style={styles.stepperButton}><Icon name="add" size={18} color={m3.onSurface} /></Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.sm },
-  card: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, ...shadows.card },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  icon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
-  copy: { flex: 1, minWidth: 0 },
-  name: { ...typography.bodyStrong, color: colors.text },
-  detail: { ...typography.caption, color: colors.textSecondary },
-  description: { ...typography.body, color: colors.text },
-  actions: { flexDirection: 'row', gap: spacing.xs },
-  pressed: { opacity: 0.72 },
+  flex: { flex: 1, minWidth: 0 },
+  list: { gap: m3Space.sm },
+
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: m3Space.sm },
+  title: { ...m3Type.headlineMd, color: m3.onSurface },
+  subtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 38, paddingHorizontal: 12, borderRadius: m3Radius.sm, backgroundColor: m3.primary },
+  addText: { ...m3Type.labelMd, color: m3.onPrimary },
+
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: m3Space.xs },
+
+  card: { gap: m3Space.sm },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm },
+  icon: { width: 42, height: 42, borderRadius: m3Radius.full, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  name: { ...m3Type.labelLg, color: m3.onSurface },
+  detail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  description: { ...m3Type.bodyMd, color: m3.onSurface },
+  actions: { flexDirection: 'row', gap: m3Space.xs },
+  ghostBtn: { height: 34, paddingHorizontal: 12, borderRadius: m3Radius.sm, backgroundColor: m3.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
+  ghostBtnText: { ...m3Type.labelMd, color: m3.onSurface },
+
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 52 },
   stepperCopy: { gap: 2 },
-  stepperLabel: { ...typography.caption, color: colors.text },
-  stepperValue: { ...typography.bodyStrong, color: colors.text },
-  stepperButtons: { flexDirection: 'row', gap: spacing.xs },
-  stepperButton: { minWidth: 44, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  stepperWeek: { ...typography.caption, color: colors.text, fontWeight: '700' },
+  stepperLabel: { ...m3Type.labelMd, color: m3.onSurface },
+  stepperValue: { ...m3Type.labelLg, color: m3.onSurface },
+  stepperButtons: { flexDirection: 'row', gap: m3Space.xs },
+  stepperButton: { minWidth: 44, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: m3Radius.md, borderWidth: 1, borderColor: m3.outlineVariant, backgroundColor: m3.surfaceContainerLowest },
+  stepperWeek: { ...m3Type.labelMd, color: m3.onSurface },
 });

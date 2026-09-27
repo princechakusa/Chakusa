@@ -1,8 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, Avatar, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton } from '../components/ui';
 import { FieldLabel, FormError, FormModal, NumberField, Segmented, TextField } from '../components/loyaltyForms';
 import { LoyaltyMemberDto } from '../apiTypes';
 import { ApiError } from '../services/api';
@@ -10,7 +8,8 @@ import { businessLoyaltyApi } from '../services/businessLoyalty';
 import { AdjustmentDraft, projectedBalance, resolveAdjustment } from '../domain/loyaltyBusiness';
 import { formatPoints } from '../domain/loyalty';
 import { useAuth } from '../state/AuthContext';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
+import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { RootStackParamList } from '../types';
 import { formatDateTime, titleCase } from '../utils/format';
 
@@ -18,7 +17,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'LoyaltyMembers'>;
 
 const blankAdjust: AdjustmentDraft = { amount: '', direction: 'add', reason: '' };
 
-export function LoyaltyMembersScreen({ route }: Props) {
+function initials(name: string) {
+  return name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
+}
+
+export function LoyaltyMembersScreen({ navigation, route }: Props) {
   const { role } = useAuth();
   const canManage = role === 'OWNER' || role === 'ADMIN';
   const [members, setMembers] = useState<LoyaltyMemberDto[]>([]);
@@ -74,49 +77,65 @@ export function LoyaltyMembersScreen({ route }: Props) {
   };
 
   const check = resolveAdjustment(adjustDraft);
+  const header = (
+    <M3Header
+      businessName="Members"
+      onBack={() => navigation.goBack()}
+      hasNotifications={false}
+    />
+  );
 
   return (
     <>
-      <Screen
-        refreshing={loaded && !error}
-        onRefresh={() => void load(1, false)}
-      >
-        <AppHeader eyebrow="LOYALTY & REWARDS" title="Members" subtitle={route.params?.tierKey ? `${titleCase(route.params.tierKey)} tier` : `${total} enrolled customer${total === 1 ? '' : 's'}`} />
+      <M3Screen header={header}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>Loyalty Members</Text>
+          <Text style={styles.subtitle}>{route.params?.tierKey ? `${titleCase(route.params.tierKey)} tier` : `${total} enrolled customer${total === 1 ? '' : 's'}`}</Text>
+        </View>
 
         {confirmation ? (
           <View style={styles.confirm}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Icon name="check_circle" size={20} color={m3.secondary} />
             <Text style={styles.confirmText}>{confirmation.name}: balance is now {formatPoints(confirmation.balanceAfter)}{confirmation.tierChanged ? ' · tier changed' : ''}.</Text>
           </View>
         ) : null}
 
-        {!loaded ? <LoadingState label="Loading members…" />
-          : error && !members.length ? <ErrorState message={error} onRetry={() => void load(1, false)} />
-          : !members.length ? <EmptyState icon="people-outline" title="No members yet" message="Customers appear here once they earn their first points - from a completed booking, a review, or a manual credit." />
-          : (
-            <View style={styles.list}>
-              {members.map((member) => (
-                <Pressable
-                  key={member.id}
-                  accessibilityRole={canManage ? 'button' : undefined}
-                  accessibilityLabel={`${member.name}. ${formatPoints(member.pointsBalance)}. ${member.tierKey ? titleCase(member.tierKey) + ' tier' : ''}. ${canManage ? 'Adjust points.' : ''}`}
-                  disabled={!canManage}
-                  onPress={() => openAdjust(member)}
-                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-                >
-                  <Avatar name={member.name} />
-                  <View style={styles.copy}>
-                    <Text style={styles.name}>{member.name}</Text>
+        {!loaded ? (
+          <M3Loading label="Loading members…" />
+        ) : error && !members.length ? (
+          <M3Error message={error} onRetry={() => void load(1, false)} />
+        ) : !members.length ? (
+          <M3Empty icon="group" title="No members yet" message="Customers appear here once they earn their first points - from a completed booking, a review, or a manual credit." />
+        ) : (
+          <View style={styles.list}>
+            {members.map((member) => (
+              <M3Card
+                key={member.id}
+                onPress={canManage ? () => openAdjust(member) : undefined}
+                style={styles.row}
+              >
+                <View style={styles.rowInner}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initials(member.name)}</Text>
+                  </View>
+                  <View style={styles.flex}>
+                    <Text numberOfLines={1} style={styles.name}>{member.name}</Text>
                     <Text style={styles.meta}>{member.tierKey ? `${titleCase(member.tierKey)} · ` : ''}{formatPoints(member.pointsBalance)} · {member.lifetimePoints.toLocaleString('en-US')} lifetime</Text>
                     {member.lastActivityAt ? <Text style={styles.sub}>Last activity {formatDateTime(member.lastActivityAt)}</Text> : null}
                   </View>
-                  {canManage ? <Ionicons name="create-outline" size={18} color={colors.tabInactive} /> : null}
-                </Pressable>
-              ))}
-              {hasMore ? <SecondaryButton fullWidth label={loadingMore ? 'Loading…' : 'Load more'} onPress={loadMore} disabled={loadingMore} /> : null}
-            </View>
-          )}
-      </Screen>
+                  {member.tierKey ? <Chip label={titleCase(member.tierKey)} tone="secondary" /> : null}
+                  {canManage ? <Icon name="edit" size={18} color={m3.onSurfaceVariant} /> : null}
+                </View>
+              </M3Card>
+            ))}
+            {hasMore ? (
+              <Pressable accessibilityRole="button" disabled={loadingMore} onPress={loadMore} style={styles.loadMore}>
+                <Text style={styles.loadMoreText}>{loadingMore ? 'Loading…' : 'Load more'}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+      </M3Screen>
 
       <FormModal
         visible={Boolean(adjusting)}
@@ -143,16 +162,27 @@ export function LoyaltyMembersScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  confirm: { flexDirection: 'row', gap: spacing.xs, alignItems: 'center', padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.successSoft },
-  confirmText: { flex: 1, ...typography.caption, color: colors.text },
-  list: { gap: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
-  copy: { flex: 1, minWidth: 0 },
-  name: { ...typography.bodyStrong, color: colors.text },
-  meta: { ...typography.caption, color: colors.textSecondary },
-  sub: { ...typography.caption, color: colors.tabInactive },
-  pressed: { opacity: 0.72 },
-  currentBalance: { gap: spacing.xs },
-  balanceValue: { ...typography.heading, color: colors.text },
-  projected: { ...typography.caption, color: colors.textSecondary },
+  flex: { flex: 1, minWidth: 0 },
+  titleBlock: { gap: 2 },
+  title: { ...m3Type.headlineMd, color: m3.onSurface },
+  subtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 2 },
+
+  confirm: { flexDirection: 'row', gap: m3Space.xs, alignItems: 'center', padding: m3Space.sm, borderRadius: m3Radius.md, backgroundColor: 'rgba(134,242,228,0.35)' },
+  confirmText: { flex: 1, ...m3Type.bodySm, color: m3.onSurface },
+
+  list: { gap: m3Space.xs },
+  row: { padding: 0 },
+  rowInner: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, padding: m3Space.md },
+  avatar: { width: 44, height: 44, borderRadius: m3Radius.full, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...m3Type.labelLg, color: m3.primary },
+  name: { ...m3Type.headlineSm, fontSize: 16, color: m3.onSurface },
+  meta: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 1 },
+  sub: { ...m3Type.labelXs, color: m3.onSurfaceVariant },
+
+  loadMore: { height: 44, borderRadius: m3Radius.md, backgroundColor: m3.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
+  loadMoreText: { ...m3Type.labelMd, color: m3.onSurface },
+
+  currentBalance: { gap: m3Space.xs },
+  balanceValue: { ...m3Type.headlineMd, color: m3.onSurface },
+  projected: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
 });

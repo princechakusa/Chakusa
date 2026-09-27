@@ -1,20 +1,35 @@
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppHeader, EmptyState, ErrorState, LoadingState, MetricCard, PrimaryButton, Screen, SectionHeader, StatusBadge } from '../components/ui';
 import { BusinessRedemptionDto, LoyaltyBusinessAnalyticsDto, LoyaltyProgramDto } from '../apiTypes';
 import { ApiError } from '../services/api';
 import { businessLoyaltyApi } from '../services/businessLoyalty';
 import { analyticsTiles, programStatusLabel, redemptionStatusLabel, tierBreakdownRows } from '../domain/loyaltyBusiness';
 import { useAuth } from '../state/AuthContext';
-import { colors, radius, shadows, spacing, typography } from '../theme';
+import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
+import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen, SectionTitle } from '../experience/businessKit';
 import { RootStackParamList } from '../types';
 import { formatDateTime, titleCase } from '../utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LoyaltyManagement'>;
 
-type IconName = keyof typeof Ionicons.glyphMap;
+const TILE_ICON: Record<string, string> = {
+  members: 'group',
+  enrolled: 'group',
+  points: 'blur_circular',
+  issued: 'blur_circular',
+  claimed: 'redeem',
+  redemptions: 'redeem',
+  retention: 'trending_up',
+};
+
+function tileIcon(key: string) {
+  const lower = key.toLowerCase();
+  const match = Object.keys(TILE_ICON).find((needle) => lower.includes(needle));
+  return match ? TILE_ICON[match] : 'insights';
+}
+
+const TIER_ICON = ['military_tech', 'workspace_premium', 'emoji_events', 'star'];
 
 export function LoyaltyManagementScreen({ navigation }: Props) {
   const { role } = useAuth();
@@ -47,118 +62,170 @@ export function LoyaltyManagementScreen({ navigation }: Props) {
 
   const status = programStatusLabel(program);
   const notSetUp = status === 'Not set up';
+  const tiers = analytics ? tierBreakdownRows(analytics) : [];
+
+  const header = (
+    <M3Header
+      businessName="Loyalty & Rewards"
+      onBack={() => navigation.goBack()}
+      onNotificationsPress={() => navigation.navigate('AttentionCenter')}
+      hasNotifications={false}
+    />
+  );
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
-      <AppHeader eyebrow="LOYALTY & REWARDS" title="Loyalty" subtitle="Reward customers for booking, reviewing and referring - points, tiers, rewards and memberships." />
+    <M3Screen header={header}>
+      <View style={styles.titleRow}>
+        <View style={styles.flex}>
+          <Text style={styles.title}>Loyalty & Rewards Program</Text>
+          <Text style={styles.subtitle}>Patron rewards configuration, multi-tier perks, and point ledger calibration.</Text>
+        </View>
+        {!notSetUp ? <Chip label={status} tone={status === 'Active' ? 'secondary' : 'neutral'} /> : null}
+      </View>
 
       {!loaded ? (
-        <LoadingState label="Loading your loyalty program…" />
+        <M3Loading label="Loading your loyalty program…" />
       ) : error ? (
-        <ErrorState message={error} onRetry={() => void load()} />
+        <M3Error message={error} onRetry={() => void load()} />
       ) : (
         <>
-          <Pressable
-            accessibilityRole={canManage ? 'button' : undefined}
-            accessibilityLabel={`Loyalty program status: ${status}. ${canManage ? 'Open program settings.' : ''}`}
-            disabled={!canManage}
-            onPress={() => navigation.navigate('LoyaltyProgramSettings')}
-            style={({ pressed }) => [styles.statusCard, pressed && styles.pressed]}
-          >
-            <View style={styles.statusTop}>
-              <View style={[styles.statusIcon, status === 'Active' && styles.statusIconActive]}>
-                <Ionicons name="ribbon-outline" size={22} color={status === 'Active' ? colors.success : colors.primary} />
-              </View>
-              <View style={styles.statusCopy}>
-                <Text style={styles.statusTitle}>Program {status.toLowerCase()}</Text>
-                <Text style={styles.statusDetail}>
-                  {notSetUp
-                    ? 'Set your point values and tiers to switch loyalty on.'
-                    : `${program?.pointsPerCurrency ?? 0} point${program?.pointsPerCurrency === 1 ? '' : 's'} per unit spent${program?.welcomeBonus ? ` · ${program.welcomeBonus} pt welcome bonus` : ''}`}
-                </Text>
-              </View>
-              {canManage ? <Ionicons name="chevron-forward" size={18} color={colors.tabInactive} /> : null}
-            </View>
-            {!notSetUp ? <StatusBadge label={status} /> : null}
-          </Pressable>
-
           {notSetUp ? (
-            <EmptyState
-              icon="ribbon-outline"
+            <M3Empty
+              icon="loyalty"
               title="Loyalty isn't set up yet"
               message="Turn on a loyalty program to give your customers points for completed bookings and reviews, unlock rewards at tiers you choose, and offer memberships."
             />
           ) : null}
 
           {analytics && !notSetUp ? (
-            <>
-              <SectionHeader title="Last 30 days" />
-              <View style={styles.tiles}>
-                {analyticsTiles(analytics).map((tile) => (
-                  <View key={tile.key} style={styles.tileWrap}>
-                    <MetricCard label={tile.label} value={tile.value} detail={tile.detail} />
-                  </View>
-                ))}
-              </View>
-
-              {tierBreakdownRows(analytics).length ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Members by tier</Text>
-                  {tierBreakdownRows(analytics).map((row) => (
-                    <View key={row.tier} style={styles.tierRow} accessibilityLabel={`${titleCase(row.tier)}: ${row.count} members, ${Math.round(row.share * 100)} percent`}>
-                      <Text style={styles.tierName}>{titleCase(row.tier)}</Text>
-                      <View style={styles.tierBarTrack}>
-                        <View style={[styles.tierBarFill, { width: `${Math.max(4, row.share * 100)}%` }]} />
-                      </View>
-                      <Text style={styles.tierCount}>{row.count}</Text>
+            <View style={styles.statGrid}>
+              {analyticsTiles(analytics).slice(0, 4).map((tile) => (
+                <M3Card key={tile.key} style={styles.statCard}>
+                  <View style={styles.statTop}>
+                    <Text style={styles.statLabel}>{tile.label}</Text>
+                    <View style={styles.statIcon}>
+                      <Icon name={tileIcon(tile.key)} size={16} color={m3.primary} />
                     </View>
-                  ))}
-                </View>
-              ) : null}
-            </>
+                  </View>
+                  <Text style={styles.statValue}>{tile.value}</Text>
+                  {tile.detail ? <Text style={styles.statDetail}>{tile.detail}</Text> : null}
+                </M3Card>
+              ))}
+            </View>
           ) : null}
 
-          <SectionHeader title="Manage" />
-          <View style={styles.menuCard}>
-            <MenuRow icon="settings-outline" title="Program settings" detail="Point values, expiry, welcome bonus, tiers" onPress={() => navigation.navigate('LoyaltyProgramSettings')} disabled={!canManage} />
-            <MenuRow icon="gift-outline" title="Rewards" detail="What customers can unlock with points" onPress={() => navigation.navigate('LoyaltyRewards')} />
-            <MenuRow icon="card-outline" title="Membership plans" detail="Member pricing and priority booking" onPress={() => navigation.navigate('LoyaltyMembershipPlans')} />
-            <MenuRow icon="flash-outline" title="Campaigns" detail="Time-boxed bonus points and multipliers" onPress={() => navigation.navigate('LoyaltyCampaigns')} />
-            <MenuRow icon="people-outline" title="Members" detail={analytics ? `${analytics.members} enrolled · adjust points` : 'Enrolled customers · adjust points'} onPress={() => navigation.navigate('LoyaltyMembers')} />
-            <MenuRow icon="qr-code-outline" title="Redeem a reward" detail="Look up and honour a customer's code" onPress={() => navigation.navigate('LoyaltyRedemptions')} last />
-          </View>
+          {!notSetUp ? (
+            <View style={styles.actionsRow}>
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('LoyaltyRewards')} style={styles.actionPrimary}>
+                <Icon name="add_circle" size={18} color={m3.onPrimary} />
+                <Text style={styles.actionPrimaryText}>New Perk</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('LoyaltyRedemptions')} style={styles.actionSecondary}>
+                <Icon name="qr_code_2" size={18} color={m3.onSurface} />
+                <Text style={styles.actionSecondaryText}>Quick Redeem</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <Pressable
+            accessibilityRole={canManage ? 'button' : undefined}
+            accessibilityLabel={`Loyalty program status: ${status}. ${canManage ? 'Open program settings.' : ''}`}
+            disabled={!canManage}
+            onPress={() => navigation.navigate('LoyaltyProgramSettings')}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <M3Card style={styles.rulesCard}>
+              <View style={styles.rulesHead}>
+                <View style={styles.flex}>
+                  <Text style={styles.cardTitle}>Rules Configuration</Text>
+                  <Text style={styles.cardSubtitle}>Automated ledger logic and earning criteria</Text>
+                </View>
+                {canManage ? <Icon name="tune" size={20} color={m3.onSurfaceVariant} /> : null}
+              </View>
+              <Text style={styles.rulesSummary}>
+                {notSetUp
+                  ? 'Set your point values and tiers to switch loyalty on.'
+                  : `${program?.pointsPerCurrency ?? 0} point${program?.pointsPerCurrency === 1 ? '' : 's'} per unit spent${program?.welcomeBonus ? ` · ${program.welcomeBonus} pt welcome bonus` : ''}${program?.pointExpiryDays ? ` · expires after ${program.pointExpiryDays}d` : ''}`}
+              </Text>
+            </M3Card>
+          </Pressable>
+
+          {tiers.length ? (
+            <View style={styles.section}>
+              <SectionTitle title="Active Tier Structures" actionLabel="Edit Tiers" onAction={() => canManage && navigation.navigate('LoyaltyProgramSettings')} />
+              {tiers.map((row, index) => (
+                <M3Card key={row.tier} style={styles.tierCard}>
+                  <View style={styles.tierTop}>
+                    <View style={styles.tierIcon}>
+                      <Icon name={TIER_ICON[index % TIER_ICON.length]} size={20} color={m3.primary} />
+                    </View>
+                    <View style={styles.flex}>
+                      <Text style={styles.tierName}>{titleCase(row.tier)}</Text>
+                    </View>
+                    <Text style={styles.tierCount}>{row.count} Patrons</Text>
+                  </View>
+                  <View style={styles.tierBarTrack}>
+                    <View style={[styles.tierBarFill, { width: `${Math.max(4, row.share * 100)}%` }]} />
+                  </View>
+                </M3Card>
+              ))}
+            </View>
+          ) : null}
 
           {redemptions.length ? (
-            <>
-              <SectionHeader title="Recent redemptions" action="View all" onAction={() => navigation.navigate('LoyaltyRedemptions')} />
-              <View style={styles.menuCard}>
-                {redemptions.map((redemption, index) => (
-                  <Pressable
-                    key={redemption.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${redemption.reward?.name ?? 'Reward'}, ${redemptionStatusLabel(redemption.status)}, issued ${formatDateTime(redemption.issuedAt)}`}
-                    onPress={() => navigation.navigate('LoyaltyRedemptions', { code: redemption.code })}
-                    style={({ pressed }) => [styles.redemptionRow, index < redemptions.length - 1 && styles.rowBorder, pressed && styles.pressed]}
-                  >
-                    <View style={styles.redemptionCopy}>
-                      <Text style={styles.redemptionName}>{redemption.reward?.name ?? 'Reward'}</Text>
-                      <Text style={styles.redemptionMeta}>{redemption.code} · {formatDateTime(redemption.issuedAt)}</Text>
+            <View style={styles.section}>
+              <SectionTitle title="Active Perks & Rewards" actionLabel="View all" onAction={() => navigation.navigate('LoyaltyRedemptions')} />
+              {redemptions.map((redemption) => (
+                <Pressable
+                  key={redemption.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${redemption.reward?.name ?? 'Reward'}, ${redemptionStatusLabel(redemption.status)}, issued ${formatDateTime(redemption.issuedAt)}`}
+                  onPress={() => navigation.navigate('LoyaltyRedemptions', { code: redemption.code })}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <M3Card style={styles.rewardRow}>
+                    <View style={styles.rewardIcon}>
+                      <Icon name="redeem" size={18} color={m3.primary} />
                     </View>
-                    <StatusBadge label={redemptionStatusLabel(redemption.status)} />
-                  </Pressable>
-                ))}
-              </View>
-            </>
+                    <View style={styles.flex}>
+                      <Text style={styles.rewardName}>{redemption.reward?.name ?? 'Reward'}</Text>
+                      <Text style={styles.rewardMeta}>{redemption.code} · {formatDateTime(redemption.issuedAt)}</Text>
+                    </View>
+                    <Chip label={redemptionStatusLabel(redemption.status)} tone="neutral" />
+                  </M3Card>
+                </Pressable>
+              ))}
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('LoyaltyRewards')} style={styles.manageLink}>
+                <Text style={styles.manageLinkText}>Manage Catalog Inventory & Stock Limits</Text>
+              </Pressable>
+            </View>
           ) : null}
 
-          {notSetUp && canManage ? <PrimaryButton fullWidth icon="add" label="Set up loyalty" onPress={() => navigation.navigate('LoyaltyProgramSettings')} /> : null}
+          <View style={styles.section}>
+            <SectionTitle title="Manage" />
+            <M3Card padded={false}>
+              <MenuRow icon="settings" title="Program settings" detail="Point values, expiry, welcome bonus, tiers" onPress={() => navigation.navigate('LoyaltyProgramSettings')} disabled={!canManage} />
+              <MenuRow icon="card_giftcard" title="Rewards" detail="What customers can unlock with points" onPress={() => navigation.navigate('LoyaltyRewards')} />
+              <MenuRow icon="badge" title="Membership plans" detail="Member pricing and priority booking" onPress={() => navigation.navigate('LoyaltyMembershipPlans')} />
+              <MenuRow icon="bolt" title="Campaigns" detail="Time-boxed bonus points and multipliers" onPress={() => navigation.navigate('LoyaltyCampaigns')} />
+              <MenuRow icon="group" title="Members" detail={analytics ? `${analytics.members} enrolled · adjust points` : 'Enrolled customers · adjust points'} onPress={() => navigation.navigate('LoyaltyMembers')} />
+              <MenuRow icon="qr_code_2" title="Redeem a reward" detail="Look up and honour a customer's code" onPress={() => navigation.navigate('LoyaltyRedemptions')} last />
+            </M3Card>
+          </View>
+
+          {notSetUp && canManage ? (
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('LoyaltyProgramSettings')} style={styles.setupBtn}>
+              <Icon name="add" size={18} color={m3.onPrimary} />
+              <Text style={styles.setupBtnText}>Set up loyalty</Text>
+            </Pressable>
+          ) : null}
         </>
       )}
-    </Screen>
+    </M3Screen>
   );
 }
 
-function MenuRow({ icon, title, detail, onPress, last, disabled }: { icon: IconName; title: string; detail: string; onPress: () => void; last?: boolean; disabled?: boolean }) {
+function MenuRow({ icon, title, detail, onPress, last, disabled }: { icon: string; title: string; detail: string; onPress: () => void; last?: boolean; disabled?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -168,44 +235,67 @@ function MenuRow({ icon, title, detail, onPress, last, disabled }: { icon: IconN
       onPress={onPress}
       style={({ pressed }) => [styles.menuRow, !last && styles.rowBorder, pressed && styles.pressed, disabled && styles.disabled]}
     >
-      <View style={styles.menuIcon}><Ionicons name={icon} size={20} color={colors.primary} /></View>
-      <View style={styles.menuCopy}>
+      <View style={styles.menuIcon}><Icon name={icon} size={18} color={m3.primary} /></View>
+      <View style={styles.flex}>
         <Text style={styles.menuTitle}>{title}</Text>
         <Text style={styles.menuDetail}>{detail}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.tabInactive} />
+      <Icon name="chevron_right" size={18} color={m3.onSurfaceVariant} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  statusCard: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, ...shadows.card },
-  statusTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  statusIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
-  statusIconActive: { backgroundColor: colors.successSoft },
-  statusCopy: { flex: 1, minWidth: 0 },
-  statusTitle: { ...typography.bodyStrong, color: colors.text },
-  statusDetail: { ...typography.caption, color: colors.textSecondary },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tileWrap: { width: '47%', flexGrow: 1 },
-  card: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, ...shadows.card },
-  cardTitle: { ...typography.subheading, color: colors.text },
-  tierRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  tierName: { ...typography.caption, color: colors.text, width: 76 },
-  tierBarTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.divider, overflow: 'hidden' },
-  tierBarFill: { height: 8, borderRadius: 4, backgroundColor: colors.primary },
-  tierCount: { ...typography.caption, color: colors.textSecondary, width: 32, textAlign: 'right' },
-  menuCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minHeight: 60 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  menuIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
-  menuCopy: { flex: 1, minWidth: 0 },
-  menuTitle: { ...typography.bodyStrong, color: colors.text },
-  menuDetail: { ...typography.caption, color: colors.textSecondary },
-  redemptionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minHeight: 56 },
-  redemptionCopy: { flex: 1, minWidth: 0 },
-  redemptionName: { ...typography.bodyStrong, color: colors.text },
-  redemptionMeta: { ...typography.caption, color: colors.textSecondary },
-  pressed: { opacity: 0.72 },
+  flex: { flex: 1, minWidth: 0 },
+  section: { gap: m3Space.xs },
+
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: m3Space.sm },
+  title: { ...m3Type.headlineMd, color: m3.onSurface },
+  subtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 4 },
+
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: m3Space.xs },
+  statCard: { width: '47%', flexGrow: 1, gap: 2 },
+  statTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  statLabel: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0 },
+  statIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  statValue: { ...m3Type.headlineSm, color: m3.onSurface, marginTop: 2 },
+  statDetail: { ...m3Type.labelXs, color: m3.secondary },
+
+  actionsRow: { flexDirection: 'row', gap: m3Space.xs },
+  actionPrimary: { flex: 1, height: 46, borderRadius: m3Radius.md, backgroundColor: m3.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionPrimaryText: { ...m3Type.labelLg, color: m3.onPrimary },
+  actionSecondary: { flex: 1, height: 46, borderRadius: m3Radius.md, backgroundColor: m3.surfaceContainerLowest, borderWidth: 1, borderColor: m3.outlineVariant, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionSecondaryText: { ...m3Type.labelLg, color: m3.onSurface },
+
+  rulesCard: { gap: m3Space.sm },
+  rulesHead: { flexDirection: 'row', alignItems: 'flex-start', gap: m3Space.xs },
+  cardTitle: { ...m3Type.titleMd, color: m3.onSurface },
+  cardSubtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant, marginTop: 1 },
+  rulesSummary: { ...m3Type.bodySm, color: m3.onSurface, backgroundColor: m3.surfaceContainerLow, borderRadius: m3Radius.sm, padding: m3Space.sm },
+
+  tierCard: { gap: m3Space.xs },
+  tierTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tierIcon: { width: 38, height: 38, borderRadius: m3Radius.full, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  tierName: { ...m3Type.labelLg, color: m3.onSurface },
+  tierCount: { ...m3Type.labelSm, color: m3.onSurfaceVariant, letterSpacing: 0 },
+  tierBarTrack: { height: 6, borderRadius: 3, backgroundColor: m3.surfaceContainerHigh, overflow: 'hidden' },
+  tierBarFill: { height: 6, borderRadius: 3, backgroundColor: m3.primary },
+
+  rewardRow: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm },
+  rewardIcon: { width: 36, height: 36, borderRadius: m3Radius.sm, backgroundColor: m3.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  rewardName: { ...m3Type.labelLg, color: m3.onSurface },
+  rewardMeta: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  manageLink: { paddingVertical: m3Space.xs, alignItems: 'center' },
+  manageLinkText: { ...m3Type.labelMd, color: m3.primary },
+
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, paddingHorizontal: m3Space.md, paddingVertical: m3Space.sm, minHeight: 60 },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: m3.surfaceContainerHigh },
+  menuIcon: { width: 36, height: 36, borderRadius: m3Radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: m3.surfaceContainerHigh },
+  menuTitle: { ...m3Type.labelLg, color: m3.onSurface },
+  menuDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  pressed: { opacity: 0.85 },
   disabled: { opacity: 0.45 },
+
+  setupBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 48, borderRadius: m3Radius.md, backgroundColor: m3.primary },
+  setupBtnText: { ...m3Type.labelLg, color: m3.onPrimary },
 });

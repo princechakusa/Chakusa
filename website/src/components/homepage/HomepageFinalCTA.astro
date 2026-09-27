@@ -4,12 +4,12 @@ import StoryIcon from "./StoryIcon.astro";
 import { finalCta } from "../../data/homepageStory";
 ---
 <section class="story-cta container" aria-labelledby="story-cta-title">
-  <div class="story-cta__panel">
+  <div class="story-cta__panel" data-spotlight>
     <span class="story-cta__blob story-cta__blob--a" aria-hidden="true"></span>
     <span class="story-cta__blob story-cta__blob--b" aria-hidden="true"></span>
     <div class="story-cta__panel-inner">
       <p class="story-kicker">{finalCta.eyebrow}</p>
-      <h2 id="story-cta-title">{finalCta.title}</h2>
+      <h2 id="story-cta-title" data-split>{finalCta.title}</h2>
       <p>{finalCta.body}</p>
       <div class="story-cta__grid">
         <div class="story-cta__card">
@@ -25,7 +25,6 @@ import { finalCta } from "../../data/homepageStory";
           <Button href="/get-started">{finalCta.business.label}</Button>
         </div>
       </div>
-      <p class="story-cta__footnote">Questions? See <a href="/pricing">pricing</a> or <a href="/how-it-works">how it works</a>.</p>
     </div>
   </div>
 </section>

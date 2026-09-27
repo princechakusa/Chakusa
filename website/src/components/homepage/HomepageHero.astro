@@ -1,44 +1,41 @@
 ---
-// PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B.
-// Corrected from Stage 3: Stitch's hero is centered, single narrow
-// column, with the customer/business cards stacked BELOW the text, not
-// beside it in a two-column split. Stage 3 built a left-aligned
-// side-by-side layout, which the owner's visual review correctly flagged.
+// Homepage hero.
+// History: Stage 3B centred this hero to match the Stitch reference. The
+// 2026-09 motion pass returns to a split layout at the owner's request:
+// the centred text wall pushed the product below the fold. Copy stays on
+// the left; the live app demo (HeroLoopDemo) sits on the right, above the
+// fold on desktop. On mobile the two stack, copy first.
 import Button from "../foundation/Button.astro";
 import StoryIcon from "./StoryIcon.astro";
-import TradeCharacter from "./TradeCharacter.astro";
+import HeroLoopDemo from "./HeroLoopDemo.astro";
 import { heroCopy, heroTrust } from "../../data/homepageStory";
+// Every trade listed here has a live /industries page.
+const trades = ["barbers", "hair salons", "cleaners", "mechanics", "photographers", "spas", "dentists", "electricians"];
 ---
-<section class="story-hero container" aria-labelledby="story-hero-title">
-  <div class="story-hero__copy">
-    <p class="story-kicker">{heroCopy.eyebrow}</p>
-    <h1 id="story-hero-title">{heroCopy.title}</h1>
-    <p>{heroCopy.body}</p>
-    <div class="story-hero__actions">
-      <Button href="/get-started">Start free trial</Button>
-      <Button href="/how-it-works" variant="secondary">See how it works</Button>
-    </div>
-    <ul class="story-hero__trust">
-      {heroTrust.map((item) => <li><StoryIcon name={item.icon} class="story-hero__trust-icon" />{item.label}</li>)}
-    </ul>
+<section class="hero2" data-spotlight aria-labelledby="story-hero-title">
+  <div class="hero2__bg" aria-hidden="true">
+    <span class="hero2__aurora hero2__aurora--a"></span>
+    <span class="hero2__aurora hero2__aurora--b"></span>
+    <span class="hero2__aurora hero2__aurora--c"></span>
+    <span class="hero2__grid"></span>
   </div>
-  <div class="story-hero__illustration" aria-hidden="true">
-    <TradeCharacter />
-    <div class="story-hero__signal">
-      <span>New enquiry</span>
-      <strong>Visible until you respond</strong>
+  <div class="container hero2__inner">
+    <div class="hero2__copy">
+      <p class="hero2__badge"><span class="hero2__badge-dot"></span>{heroCopy.eyebrow}</p>
+      <h1 id="story-hero-title" data-split data-accent="5,6">{heroCopy.title}</h1>
+      <p class="hero2__lede">{heroCopy.lede}</p>
+      <p class="hero2__for">Built for <span class="hero2__rotate" data-rotate={trades.join("|")}>{trades[0]}</span></p>
+      <div class="hero2__actions">
+        <Button href="/get-started">Start free trial <StoryIcon name="arrow_forward" class="hero2__arrow" /></Button>
+        <Button href="/how-it-works" variant="secondary">See how it works</Button>
+      </div>
+      <ul class="hero2__trust">
+        {heroTrust.map((item) => <li><StoryIcon name={item.icon} class="hero2__trust-icon" />{item.label}</li>)}
+        <li><StoryIcon name="event_available" class="hero2__trust-icon" />14-day free trial</li>
+      </ul>
     </div>
-  </div>
-  <div class="story-hero__visual" aria-hidden="true">
-    <div class="story-hero__card">
-      <span class="story-hero__card-label"><StoryIcon name="person" class="story-hero__card-icon" />Customer view</span>
-      <strong>Find a business, see real availability, book directly.</strong>
-      <span class="story-hero__card-meta">No phone tag</span>
-    </div>
-    <div class="story-hero__card story-hero__card--business">
-      <span class="story-hero__card-label"><StoryIcon name="storefront" class="story-hero__card-icon" />Business view</span>
-      <strong>Today's bookings, new enquiries, and who's due back.</strong>
-      <span class="story-hero__card-meta">One working view</span>
+    <div class="hero2__demo">
+      <HeroLoopDemo />
     </div>
   </div>
 </section>

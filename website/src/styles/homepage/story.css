@@ -70,8 +70,8 @@
 .story-modules__card strong{font-family:var(--font-heading);font-size:1.05rem;color:var(--heading)}
 .story-modules__card>p{margin:var(--space-md) 0 0;color:var(--body-text);font-size:.85rem;line-height:1.6}
 .story-modules__preview{margin-top:var(--space-md);padding:var(--space-sm) var(--space-md);border:1px dashed var(--hairline);border-radius:var(--r-sm);background:var(--page-surface)}
-.story-modules__preview span{font-size:.72rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--secondary)}
-.story-modules__preview p{margin:.35rem 0 0;color:var(--muted-text);font-size:.82rem;line-height:1.5}
+.story-modules__preview>span{font-size:.72rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--secondary)}
+.story-modules__preview>p{margin:.35rem 0 0;color:var(--muted-text);font-size:.82rem;line-height:1.5}
 .story-modules__stat{display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-md);padding-top:var(--space-sm);border-top:1px solid var(--hairline);font-size:.78rem}
 .story-modules__stat span:first-child{color:var(--muted-text)}
 .story-modules__stat span:last-child{font-weight:700;color:var(--heading)}

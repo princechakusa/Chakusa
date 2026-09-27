@@ -2,28 +2,39 @@
 // PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B.
 // Stage 3 correctly removed Stitch's fabricated testimonial (a named
 // person, a photo, and invented outcome numbers) - that stays removed.
-// This corrects the *visual* regression that removal caused: Stitch's
-// section is a two-column composition (photo left, text + stat row
-// right), and Stage 3 collapsed it to a single centered text block.
-//
 // No photo is used here. A stock or generic "customer" photo next to
-// this copy would recreate the exact deception Stage 3 fixed - a face
-// implying a specific real person said this, when no such person exists.
-// The left column is an honest, non-photographic visual instead. If a
-// real, consented customer photo is ever supplied, it belongs here.
-import StoryIcon from "./StoryIcon.astro";
+// this copy would recreate the exact deception Stage 3 fixed.
+//
+// Motion pass: the left visual is scroll-scrubbed. The five separate
+// tools named in the copy are pulled into the Chakusa app icon as the
+// section scrolls into place (scripts/consolidate.ts), and the copy
+// lights up word by word ([data-scrub-words] in motionFx.ts).
+import chakusaAppIcon from "../../assets/chakusa-app-icon.png";
 import { independentStory } from "../../data/homepageStory";
+const tools = [
+  { label: "Phone calls", icon: "M7 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 5 6a2 2 0 0 1 2-2Z" },
+  { label: "Booking notebook", icon: "M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6V3Zm0 0v18M9 8h6M9 12h6" },
+  { label: "Spreadsheet", icon: "M4 5h16v14H4V5Zm0 5h16M4 14h16M10 5v14" },
+  { label: "Reviews app", icon: "m12 3 2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6L12 3Z" },
+  { label: "Follow-up list", icon: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" },
+];
 ---
 <section class="story-independent container" aria-labelledby="story-independent-title">
-  <div class="story-independent__card">
-    <div class="story-independent__visual" aria-hidden="true">
-      <StoryIcon name="storefront" class="story-independent__visual-icon" />
-      <span>Built for independent operators</span>
+  <div class="story-independent__card consol" data-consolidate>
+    <div class="consol__visual" aria-hidden="true">
+      <div class="consol__orbit"></div>
+      {tools.map((t, i) => <span class="consol__tool" data-tool={i}>
+        <svg viewBox="0 0 24 24"><path d={t.icon} /></svg>{t.label}
+      </span>)}
+      <span class="consol__hub"><img src={chakusaAppIcon.src} alt="" width="72" height="72" /></span>
+      <span class="consol__caption">Five tools → one app</span>
     </div>
     <div class="story-independent__copy">
       <p class="story-independent__badge">{independentStory.badge}</p>
-      <h2 id="story-independent-title">{independentStory.title}</h2>
-      <p>{independentStory.body}</p>
+      <h2 id="story-independent-title" data-split>{independentStory.title}</h2>
+      <p class="consol__body" data-scrub-words>{independentStory.body}</p>
     </div>
   </div>
 </section>
+
+<script src="../../scripts/consolidate.ts"></script>

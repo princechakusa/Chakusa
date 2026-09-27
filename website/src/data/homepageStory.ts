@@ -26,6 +26,8 @@
 export const heroCopy = {
   eyebrow: "The 2-in-1 platform for local services",
   title: "Where trusted local businesses and loyal customers meet.",
+  // Short hero lede for the split hero (the full body is kept for reuse).
+  lede: "Capture every enquiry, keep bookings synced, and bring customers back. One app for your business, and the same app your customers book with.",
   body: "Chakusa connects customer discovery with full business management. Capture enquiries, keep bookings synced, follow up on what's outstanding, and build a customer relationship that lasts past the first visit, all in one place.",
 };
 

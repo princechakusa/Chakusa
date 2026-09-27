@@ -1,0 +1,189 @@
+---
+// Animated hero demo: one customer travelling the real Chakusa loop inside
+// the business app (Leads -> message thread -> Calendar -> review request
+// -> Customers due). Every beat mirrors a shipped behaviour: missed calls
+// become leads, replies are drafted from the business's own template and
+// sent by a person (never automatically), review requests go out for every
+// visit, and comeback reminders surface customers who are due back.
+// All names are demo data. Driven by src/scripts/heroLoop.ts; renders a
+// readable static frame under prefers-reduced-motion.
+const steps = [
+  { id: "capture", label: "Capture" },
+  { id: "reply", label: "Reply" },
+  { id: "book", label: "Book" },
+  { id: "review", label: "Review" },
+  { id: "return", label: "Return" },
+];
+---
+<div class="loop" data-loop data-scene="capture">
+  <p class="sr-only">
+    Animated demo of the Chakusa business app. A missed call from a customer is saved as a lead.
+    A reply is drafted from the business's template and a team member sends it. The customer books Thursday at 10:30,
+    and a reminder is scheduled. After the visit a review request goes out. Four weeks later the customer is flagged as due back.
+  </p>
+
+  <div class="loop__stage" aria-hidden="true">
+    <!-- Left: what Chakusa did -->
+    <div class="loop__feed" data-parallax="-40">
+      <p class="loop__panel-title"><span class="loop__live"></span>What Chakusa did</p>
+      <ol>
+        <li data-feed="1"><span class="loop__check"></span><div><strong>Missed call saved as a lead</strong><small>Nothing slips through</small></div></li>
+        <li data-feed="2"><span class="loop__check"></span><div><strong>Reply drafted, you sent it</strong><small>From your own template</small></div></li>
+        <li data-feed="3"><span class="loop__check"></span><div><strong>Booked, reminder scheduled</strong><small>Thu 10:30 · Skin fade</small></div></li>
+        <li data-feed="4"><span class="loop__check"></span><div><strong>Review requested</strong><small>Every visit, never filtered</small></div></li>
+        <li data-feed="5"><span class="loop__check"></span><div><strong>Flagged as due back</strong><small>Before they drift away</small></div></li>
+      </ol>
+    </div>
+
+    <!-- Centre: the business app -->
+    <div class="loop__phone">
+      <div class="phone">
+        <div class="phone__island"></div>
+        <div class="phone__status"><span>9:41</span><span class="phone__bars"><i></i><i></i><i></i></span></div>
+
+        <div class="app-head">
+          <span class="app-head__logo"><svg viewBox="0 0 24 24"><path d="M6 6a3 3 0 1 1 4.24 2.72L18 16.5V19h-2.5l-7.86-7.86A3 3 0 0 1 6 6Zm0 12a3 3 0 1 0 2.83-4M18 5l-4 4"/></svg></span>
+          <span class="app-head__name"><strong>Northside Barbers</strong><small>Demo business</small></span>
+          <span class="app-head__bell"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Zm4 4h4"/></svg><i></i></span>
+        </div>
+
+        <div class="app-screens">
+          <!-- 1. Leads -->
+          <section class="scr scr--capture">
+            <h4 class="scr__title">Leads</h4>
+            <div class="scr__chips"><span class="is-on">All</span><span>New</span><span>Follow-up</span></div>
+            <div class="lead lead--new">
+              <span class="lead__avatar">JM</span>
+              <span class="lead__body"><strong>Jordan M.</strong><small>Skin fade · just now</small></span>
+              <span class="lead__src lead__src--missed">Missed call</span>
+            </div>
+            <div class="lead">
+              <span class="lead__avatar lead__avatar--b">PS</span>
+              <span class="lead__body"><strong>Priya S.</strong><small>Beard trim · 1h ago</small></span>
+              <span class="lead__src">Website form</span>
+            </div>
+            <div class="lead">
+              <span class="lead__avatar lead__avatar--c">MT</span>
+              <span class="lead__body"><strong>Marcus T.</strong><small>Kids cut · yesterday</small></span>
+              <span class="lead__src">WhatsApp</span>
+            </div>
+            <div class="lead lead--ghost"><span class="lead__avatar"></span><span class="lead__body"><i></i><i></i></span></div>
+          </section>
+
+          <!-- 2. Thread -->
+          <section class="scr scr--reply">
+            <div class="thread__head">
+              <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+              <span><strong>Jordan M.</strong><small>Missed call · Skin fade</small></span>
+            </div>
+            <p class="thread__sys">Missed call · 9:12</p>
+            <div class="bubble bubble--out">
+              <span class="bubble__meta"><em class="bubble__draft">Draft · from your template</em><em class="bubble__sent">Sent by you · 9:14 ✓✓</em></span>
+              <span class="bubble__dots"><i></i><i></i><i></i></span>
+              <span class="bubble__text" data-type="Hi Jordan, sorry we missed your call! We have Thursday 10:30 free for a skin fade. Want it?"></span>
+            </div>
+            <div class="bubble bubble--in">Thursday 10:30 works 👍</div>
+            <div class="thread__actions">
+              <span class="btn btn--primary btn--send">Send via WhatsApp</span>
+              <span class="btn btn--primary btn--book">Book appointment</span>
+            </div>
+          </section>
+
+          <!-- 3. Calendar -->
+          <section class="scr scr--book">
+            <h4 class="scr__title">Thursday 14</h4>
+            <div class="cal__days"><span>M<b>11</b></span><span>T<b>12</b></span><span>W<b>13</b></span><span class="is-on">T<b>14</b></span><span>F<b>15</b></span></div>
+            <div class="cal__grid">
+              <span class="cal__hour">9:00</span><span class="cal__hour">10:00</span><span class="cal__hour">11:00</span><span class="cal__hour">12:00</span>
+              <div class="appt appt--a"><strong>Priya S.</strong><small>Beard trim · Confirmed</small></div>
+              <div class="appt appt--new"><strong>Jordan M.</strong><small>Skin fade · Confirmed</small></div>
+              <div class="appt appt--b"><strong>Marcus T.</strong><small>Kids cut · Confirmed</small></div>
+            </div>
+            <div class="toast toast--book"><span class="toast__ico">✓</span>Reminder scheduled · Wed 6:00pm</div>
+          </section>
+
+          <!-- 4. Review -->
+          <section class="scr scr--review">
+            <h4 class="scr__title">Reviews</h4>
+            <div class="rev__visit">
+              <span class="lead__avatar">JM</span>
+              <span class="lead__body"><strong>Jordan M.</strong><small>Skin fade · Thu 10:30</small></span>
+              <span class="rev__done">Completed</span>
+            </div>
+            <div class="rev__req"><span class="rev__req-dot"></span><span><strong>Review request sent</strong><small>Every visit. Never filtered by expected rating.</small></span></div>
+            <div class="rev__card">
+              <div class="rev__stars">
+                {[0, 1, 2, 3, 4].map(() => <svg class="star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6L12 3Z"/></svg>)}
+              </div>
+              <p class="rev__text">"Sharp fade and booking took seconds."</p>
+              <small>New review · Jordan M.</small>
+            </div>
+          </section>
+
+          <!-- 5. Customers due -->
+          <section class="scr scr--return">
+            <span class="due__later">4 weeks later</span>
+            <h4 class="scr__title">Customers due</h4>
+            <div class="due">
+              <div class="due__row due__row--hot">
+                <span class="lead__avatar">JM</span>
+                <span class="lead__body"><strong>Jordan M.</strong><small>Usually every 4 weeks</small><span class="due__bar"><i></i></span></span>
+                <span class="due__chip">Due back</span>
+              </div>
+              <div class="due__row">
+                <span class="lead__avatar lead__avatar--b">PS</span>
+                <span class="lead__body"><strong>Priya S.</strong><small>Usually every 3 weeks</small><span class="due__bar due__bar--ok"><i></i></span></span>
+                <span class="due__chip due__chip--ok">On track</span>
+              </div>
+            </div>
+            <span class="btn btn--primary btn--remind">Create reminder</span>
+            <div class="toast toast--return"><span class="toast__ico">✓</span>Reminder ready. You choose when to send.</div>
+          </section>
+        </div>
+
+        <nav class="app-tabs">
+          <span data-tab="dash"><i class="ti ti--dash"></i>Dashboard</span>
+          <span data-tab="cal"><i class="ti ti--cal"></i>Calendar</span>
+          <span data-tab="leads"><i class="ti ti--leads"></i>Leads</span>
+          <span data-tab="clients"><i class="ti ti--clients"></i>Clients</span>
+          <span data-tab="more"><i class="ti ti--more"></i>More</span>
+        </nav>
+
+        <div class="push">
+          <span class="push__icon">C</span>
+          <span><strong>Missed call · Jordan M.</strong><small>Saved to Leads so you can follow up</small></span>
+        </div>
+        <span class="tap"></span>
+      </div>
+    </div>
+
+    <!-- Right: what the customer sees -->
+    <div class="loop__customer" data-parallax="-90">
+      <p class="loop__panel-title">Jordan's phone</p>
+      <div class="cust">
+        <div class="cust__empty">No new messages</div>
+        <div class="cust__msg" data-cust="1">Hi Jordan, sorry we missed your call! We have Thursday 10:30 free for a skin fade. Want it?</div>
+        <div class="cust__msg cust__msg--me" data-cust="2">Thursday 10:30 works 👍</div>
+        <div class="cust__msg cust__msg--sys" data-cust="3"><strong>Booking confirmed</strong>Thu 14 · 10:30 · Skin fade</div>
+        <div class="cust__msg" data-cust="4">Thanks for visiting! How did we do? <u>Leave a review</u></div>
+        <div class="cust__msg" data-cust="5">Hi Jordan, it's been about 4 weeks. Ready for a fresh cut? <u>Book again</u></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loop__rail">
+    <div class="loop__steps" role="group" aria-label="Jump to a step of the demo">
+      {steps.map((s, i) => <button type="button" class="loop__step" data-step={i}>
+        <span class="loop__step-num">{String(i + 1).padStart(2, "0")}</span>
+        <span class="loop__step-label">{s.label}</span>
+        <span class="loop__step-bar"><i></i></span>
+      </button>)}
+    </div>
+    <button type="button" class="loop__toggle" data-loop-toggle aria-label="Pause demo" aria-pressed="false">
+      <svg class="loop__ico-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>
+      <svg class="loop__ico-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script src="../../scripts/heroLoop.ts"></script>

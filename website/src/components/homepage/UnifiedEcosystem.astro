@@ -2,35 +2,63 @@
 // PROGRAM: CHAKUSA WEBSITE FRONTEND MIGRATION, STAGE 3B.
 // Corrected from Stage 3: Stitch centers this section's heading and
 // intro copy on the dark background; Stage 3 left-aligned it.
+//
+// Motion pass: the two mode cards now show the one thing that makes the
+// 2-in-1 app matter. A customer picks a time in Customer mode, and the
+// same booking lands in the business's schedule in Business mode. The
+// hand-off is animated by scripts/ecosystemFlight.ts (Motion springs).
+// Demo data only.
 import StoryIcon from "./StoryIcon.astro";
 import { ecosystemCopy } from "../../data/homepageStory";
 ---
-<section class="story-ecosystem" aria-labelledby="story-ecosystem-title">
+<section class="story-ecosystem" data-spotlight aria-labelledby="story-ecosystem-title">
   <div class="container story-ecosystem__inner">
     <p class="story-kicker story-kicker--light">{ecosystemCopy.eyebrow}</p>
-    <h2 id="story-ecosystem-title">{ecosystemCopy.title}</h2>
+    <h2 id="story-ecosystem-title" data-split>{ecosystemCopy.title}</h2>
     <p>{ecosystemCopy.body}</p>
-    <div class="story-ecosystem__modes">
-      <div class="story-ecosystem__mode">
-        <div class="story-ecosystem__mode-head">
-          <span class="story-ecosystem__pill">Customer mode</span>
-          <StoryIcon name="person" class="story-ecosystem__icon" />
-        </div>
-        <p>Browse nearby businesses, see real availability, and book directly.</p>
-        <div class="story-ecosystem__preview" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </div>
+  </div>
+  <div class="container eco" data-eco>
+    <div class="story-ecosystem__mode eco__card eco__card--customer">
+      <div class="story-ecosystem__mode-head">
+        <span class="story-ecosystem__pill">Customer mode</span>
+        <StoryIcon name="person" class="story-ecosystem__icon" />
       </div>
-      <div class="story-ecosystem__mode">
-        <div class="story-ecosystem__mode-head">
-          <span class="story-ecosystem__pill">Business mode</span>
-          <StoryIcon name="storefront" class="story-ecosystem__icon" />
+      <p>Browse nearby businesses, see real availability, and book directly.</p>
+      <div class="eco__ui" aria-hidden="true">
+        <div class="eco__biz">
+          <span class="eco__biz-logo">NB</span>
+          <span><strong>Northside Barbers</strong><small>Skin fade · 45 min</small></span>
         </div>
-        <p>See today's schedule, new enquiries, and customers due for a follow-up.</p>
-        <div class="story-ecosystem__preview" aria-hidden="true">
-          <span></span><span></span><span></span>
+        <p class="eco__label">Thursday 14</p>
+        <div class="eco__slots">
+          <span>9:15</span><span class="eco__slot-pick">10:30</span><span>11:45</span><span>13:00</span><span>14:30</span><span>16:00</span>
+        </div>
+        <span class="eco__book">Book 10:30</span>
+      </div>
+    </div>
+
+    <div class="eco__bridge" aria-hidden="true">
+      <svg viewBox="0 0 100 20" preserveAspectRatio="none"><path class="eco__path" d="M0 10 C 30 -6, 70 26, 100 10" /></svg>
+      <span class="eco__sync">Same app · live</span>
+    </div>
+
+    <div class="story-ecosystem__mode eco__card eco__card--business">
+      <div class="story-ecosystem__mode-head">
+        <span class="story-ecosystem__pill">Business mode</span>
+        <StoryIcon name="storefront" class="story-ecosystem__icon" />
+      </div>
+      <p>See today's schedule, new enquiries, and customers due for a follow-up.</p>
+      <div class="eco__ui" aria-hidden="true">
+        <p class="eco__label">Thursday 14 · Schedule</p>
+        <div class="eco__sched">
+          <div class="eco__row"><b>9:15</b><span>Priya S. · Beard trim</span></div>
+          <div class="eco__row eco__row--new"><b>10:30</b><span>New booking · Skin fade</span><em>New</em></div>
+          <div class="eco__row"><b>13:00</b><span>Marcus T. · Kids cut</span></div>
         </div>
       </div>
     </div>
+    <span class="eco__token" aria-hidden="true">10:30</span>
   </div>
 </section>
+
+<script src="../../scripts/ecosystemFlight.ts"></script>

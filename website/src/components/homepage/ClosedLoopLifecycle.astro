@@ -5,11 +5,11 @@ import { lifecycleSteps } from "../../data/homepageStory";
 <section class="story-lifecycle container" aria-labelledby="story-lifecycle-title">
   <div class="story-section-heading">
     <p class="story-kicker">The closed-loop engine</p>
-    <h2 id="story-lifecycle-title">The 7-step Chakusa lifecycle.</h2>
+    <h2 id="story-lifecycle-title" data-split>The 7-step Chakusa lifecycle.</h2>
     <p>From the first search to a repeat visit, Chakusa keeps every step of the relationship connected.</p>
   </div>
-  <ol class="story-lifecycle__grid">
-    {lifecycleSteps.map((step) => <li>
+  <ol class="story-lifecycle__grid" data-scroll-progress>
+    {lifecycleSteps.map((step, i) => <li style={`--i:${i}`}>
       <span class="story-lifecycle__number">{step.number}</span>
       <StoryIcon name={step.icon} class="story-lifecycle__icon" />
       <strong>{step.label}</strong>

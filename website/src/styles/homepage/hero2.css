@@ -1,0 +1,45 @@
+/* Split hero with a living background (HomepageHero.astro). */
+.hero2{position:relative;overflow:hidden;isolation:isolate;padding-block:clamp(2.5rem,6vw,4.5rem) clamp(3rem,6vw,5rem);background:linear-gradient(180deg,#fff 0%,var(--page-surface) 100%)}
+.hero2__bg{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.hero2__aurora{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;will-change:transform}
+.hero2__aurora--a{width:38rem;height:38rem;top:-14rem;right:-8rem;background:radial-gradient(circle,rgba(238,93,67,.55),transparent 65%);animation:aurora-a 18s ease-in-out infinite alternate}
+.hero2__aurora--b{width:32rem;height:32rem;bottom:-14rem;right:18%;background:radial-gradient(circle,rgba(13,148,136,.45),transparent 65%);animation:aurora-b 22s ease-in-out infinite alternate}
+.hero2__aurora--c{width:26rem;height:26rem;top:10%;left:-10rem;background:radial-gradient(circle,rgba(245,165,36,.35),transparent 65%);animation:aurora-c 20s ease-in-out infinite alternate}
+@keyframes aurora-a{to{transform:translate(-8rem,6rem) scale(1.15)}}
+@keyframes aurora-b{to{transform:translate(6rem,-5rem) scale(1.2)}}
+@keyframes aurora-c{to{transform:translate(5rem,4rem) scale(.9)}}
+.hero2__grid{position:absolute;inset:0;background-image:radial-gradient(rgba(15,23,42,.13) 1px,transparent 1.2px);background-size:22px 22px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 75%)}
+.fx-live .hero2[data-spotlight]::after{background:radial-gradient(500px circle at var(--mx,70%) var(--my,30%),rgba(238,93,67,.10),transparent 45%);z-index:-1}
+
+.hero2__inner{display:grid;gap:clamp(2.5rem,5vw,4rem);align-items:center}
+.hero2__copy{max-width:36rem;text-align:left}
+.hero2__badge{position:relative;display:inline-flex;align-items:center;gap:.55rem;margin:0;padding:.42rem .9rem .42rem .6rem;border-radius:999px;background:rgba(255,255,255,.75);backdrop-filter:blur(8px);color:var(--heading);font-size:.78rem;font-weight:700;letter-spacing:.01em;box-shadow:0 0 0 1px var(--hairline),0 6px 20px -12px rgba(15,23,42,.3);overflow:hidden}
+.hero2__badge::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.95) 50%,transparent 70%);transform:translateX(-120%);animation:badge-shine 4.5s 1.2s ease-in-out infinite}
+@keyframes badge-shine{0%,60%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.hero2__badge-dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--primary);box-shadow:0 0 0 0 rgba(238,93,67,.5);animation:loop-live 1.8s infinite}
+.hero2 h1{margin:1.1rem 0 0;font-family:var(--font-heading);font-size:clamp(2.5rem,4.6vw,3.9rem);font-weight:800;line-height:1.02;letter-spacing:-.045em;color:var(--heading)}
+.fx-accent{background:linear-gradient(100deg,var(--primary) 0%,#ff8a5c 45%,var(--secondary) 110%);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.04em}
+.hero2__lede{margin:1.25rem 0 0;max-width:32rem;color:var(--body-text);font-size:clamp(1.05rem,1.4vw,1.2rem);line-height:1.6}
+.hero2__for{margin:1rem 0 0;color:var(--muted-text);font-size:.95rem;font-weight:600}
+.hero2__rotate{display:inline-block;color:var(--heading);font-weight:800;border-bottom:2px solid rgba(238,93,67,.4)}
+.hero2__actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.75rem}
+.hero2__actions .ui-button{min-height:3.2rem;padding-inline:1.5rem;font-size:1rem;border-radius:999px}
+.hero2__actions .ui-button--primary{box-shadow:0 14px 30px -12px rgba(238,93,67,.75),inset 0 1px 0 rgba(255,255,255,.25)}
+.hero2__arrow{width:1.1rem;height:1.1rem;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.hero2__actions .ui-button:hover .hero2__arrow{transform:translateX(4px)}
+.hero2__trust{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;margin:1.75rem 0 0;padding:0}
+.hero2__trust li{display:flex;align-items:center;gap:.4rem;color:var(--body-text);font-size:.82rem;font-weight:600}
+.hero2__trust-icon{width:1.05rem;height:1.05rem;color:var(--secondary)}
+.hero2__demo{position:relative;min-width:0}
+@media (min-width:64rem){
+  .hero2__inner{grid-template-columns:minmax(0,1fr) auto}
+  .hero2{min-height:calc(100vh - 5rem);display:grid;align-items:center}
+}
+@media (max-width:63.99rem){
+  .hero2__copy{margin-inline:auto;text-align:center}
+  .hero2__lede{margin-inline:auto}
+  .hero2__actions,.hero2__trust{justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){
+  .hero2__aurora,.hero2__badge::after,.hero2__badge-dot{animation:none}
+}

@@ -1,0 +1,13 @@
+/* Support styles for scripts/motionFx.ts (Motion physics layer). */
+.fx-pending [data-split]{visibility:hidden}
+.fx-word{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.12em;margin-bottom:-.12em}
+.fx-word__in{display:inline-block;transform-origin:0 100%;will-change:transform}
+.fx-tilt{transform-style:preserve-3d;will-change:transform}
+.fx-tilt:hover{background-image:radial-gradient(circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.9),rgba(255,255,255,0) 45%)}
+/* Motion owns these entrances; drop the CSS scroll-timeline versions so they don't fight. */
+.fx-live [data-stagger]>*,.fx-live [data-split]{animation:none!important}
+[data-marquee]{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+[data-marquee]>*{display:flex;width:max-content;will-change:transform}
+[data-spotlight]{position:relative}
+.fx-live [data-spotlight]::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(600px circle at var(--mx,50%) var(--my,-20%),rgba(238,93,67,.14),transparent 40%);z-index:0;transition:opacity .4s}
+.fx-scrub{opacity:clamp(.16,calc(var(--p,1) * var(--n) - var(--i) + 1),1);transition:opacity .15s linear}

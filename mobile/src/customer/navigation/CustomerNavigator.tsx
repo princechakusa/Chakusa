@@ -153,7 +153,7 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
           <Stack.Screen name="CustomerReferrals" component={CustomerReferralsScreen} />
           <Stack.Screen name="CustomerInvoices" component={CustomerInvoicesScreen} />
           <Stack.Screen name="CustomerInvoiceDetail" component={CustomerInvoiceDetailScreen} />
-          <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
+          <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CustomerLegalDocument" component={CustomerLegalDocumentScreen} />
         </>
       )}

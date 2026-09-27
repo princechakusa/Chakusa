@@ -15,8 +15,12 @@ import { PublicBusinessProfileScreen } from './src/screens/PublicBusinessProfile
 import { PublicBookingManagementScreen } from './src/screens/PublicBookingManagementScreen';
 import { PublicNotFoundScreen } from './src/screens/PublicNotFoundScreen';
 import { ExperienceRouter } from './src/experience/ExperienceRouter';
+import { RuntimeShell } from './src/components/RuntimeShell';
+import { startRuntimeConfig } from './src/services/runtimeConfig';
 
 const FONT_WAIT_MS = 4000;
+// Runtime config: wait for the cached copy only (never the network), capped.
+const CONFIG_WAIT_MS = 1000;
 
 // Set only for the separate export published as chakusarecovery.com's static-host
 // 404 fallback (see website/README.md) - a small, auth-free bundle covering just
@@ -38,6 +42,16 @@ export default function App() {
   const [fontWaitOver, setFontWaitOver] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setFontWaitOver(true), FONT_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  // Admin-controlled runtime config (switches, links, notices, minimum
+  // version) - see src/services/runtimeConfig.ts.
+  const [configReady, setConfigReady] = useState(false);
+  useEffect(() => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; setConfigReady(true); } };
+    const timer = setTimeout(finish, CONFIG_WAIT_MS);
+    void startRuntimeConfig().finally(finish);
     return () => clearTimeout(timer);
   }, []);
   // PROGRAM 2 LOOP 9: Chakusa is now ONE app with two experiences. The
@@ -64,7 +78,7 @@ export default function App() {
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
   if (!publicRoute && PUBLIC_LINKS_ONLY_BUILD) return <SafeAreaProvider><StatusBar style="dark" /><PublicNotFoundScreen /></SafeAreaProvider>;
 
-  if (!fontsLoaded && !fontError && !fontWaitOver) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
+  if ((!fontsLoaded && !fontError && !fontWaitOver) || !configReady) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
 
-  return <ExperienceRouter />;
+  return <SafeAreaProvider><RuntimeShell><ExperienceRouter /></RuntimeShell></SafeAreaProvider>;
 }

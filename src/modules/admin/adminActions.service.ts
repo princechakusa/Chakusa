@@ -1,3 +1,4 @@
+import { resetCommunicationsSwitchCache } from "../../lib/messaging/messagingService.js";
 import { Prisma, type AdminMembershipStatus, type AdminRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
@@ -170,6 +171,7 @@ export async function updateAdminPlatformSetting(actor: AdminAuditActor, key: (t
   const current = await prisma.platformSetting.findUnique({ where: { key } });
   if (!current) throw ApiError.notFound("Platform setting not found");
   const updated = await prisma.platformSetting.update({ where: { key }, data: { value: enabled }, select: { key: true, value: true, description: true, updatedAt: true } });
+  if (key === "communications_enabled") resetCommunicationsSwitchCache();
   await recordAdminAudit({ actor, action: "PLATFORM_SETTING_UPDATED", targetType: "platform_setting", targetId: key, oldValue: { value: current.value }, newValue: { value: enabled }, context });
   return updated;
 }

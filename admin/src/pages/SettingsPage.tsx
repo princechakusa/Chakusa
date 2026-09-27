@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, SlidersHorizontal, ToggleLeft } from "lucide-react";
+import { KeyRound, Link2, Megaphone, Smartphone, SlidersHorizontal, ToggleLeft } from "lucide-react";
 import { apiFetch } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, LoadingState, PageHeader, StatusBadge, formatDate } from "../components/ui";
@@ -14,6 +14,45 @@ function PlatformSettingsSection() {
   if (query.isLoading) return <LoadingState label="Loading platform settings" />;
   if (query.error || !query.data) return <ErrorState message={(query.error as Error)?.message ?? "Settings unavailable"} onRetry={() => void query.refetch()} />;
   return <section className="panel settings-list">{query.data.items.map((setting) => { const enabled = setting.value === true; return <div className="setting-row" key={setting.key}><div className="setting-icon"><SlidersHorizontal size={17} /></div><div className="setting-copy"><strong>{setting.key.replaceAll("_", " ")}</strong><span>{setting.description}</span></div><StatusBadge value={enabled ? "enabled" : "disabled"} /><button className={`button ${enabled ? "danger-outline" : "secondary"}`} disabled={!auth.hasPermission("settings.manage") || mutation.isPending} onClick={() => mutation.mutate({ key: setting.key, enabled: !enabled })}>{enabled ? "Disable" : "Enable"}</button></div>; })}{mutation.error instanceof Error && <p className="error-copy">{mutation.error.message}</p>}</section>;
+}
+
+interface AppConfigItem { key: string; kind: "boolean" | "url" | "email" | "version" | "text"; label: string; description: string; value: boolean | string | null; defaultValue: boolean | string | null; isDefault: boolean; updatedAt: string | null }
+
+// Runtime app configuration: read by the mobile app at launch (GET
+// /app-config), so these take effect without a new app build or store
+// release. Validated and audited server-side.
+function AppConfigSection() {
+  const auth = useAuth(); const client = useQueryClient();
+  const canManage = auth.hasPermission("settings.manage");
+  const query = useQuery({ queryKey: ["admin-app-config"], queryFn: () => apiFetch<{ items: AppConfigItem[] }>("/admin/app-config") });
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const save = useMutation({
+    mutationFn: (input: { key: string; value: boolean | string | null }) => apiFetch("/admin/app-config", { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: async (_d, v) => { await client.invalidateQueries({ queryKey: ["admin-app-config"] }); setDrafts((prev) => { const next = { ...prev }; delete next[v.key]; return next; }); },
+  });
+  if (query.isLoading) return <LoadingState label="Loading app configuration" />;
+  if (query.error || !query.data) return <ErrorState message={(query.error as Error)?.message ?? "App configuration unavailable"} onRetry={() => void query.refetch()} />;
+  const icon = (kind: AppConfigItem["kind"]) => kind === "boolean" ? <Smartphone size={17} /> : kind === "text" ? <Megaphone size={17} /> : <Link2 size={17} />;
+  return <section className="panel settings-list">
+    <p className="muted">These reach the Chakusa app within a few minutes of saving, with no new build or store release. They only change what the app shows; the server still enforces plans, permissions, and the platform flags below.</p>
+    {query.data.items.map((item) => {
+      const draft = drafts[item.key];
+      const shown = draft ?? (typeof item.value === "string" ? item.value : "");
+      return <div className="setting-row" key={item.key}>
+        <div className="setting-icon">{icon(item.kind)}</div>
+        <div className="setting-copy"><strong>{item.label}</strong><span>{item.description}{item.updatedAt ? ` · updated ${formatDate(item.updatedAt)}` : ""}</span></div>
+        {item.isDefault ? <StatusBadge value="default" /> : null}
+        {item.kind === "boolean"
+          ? <><StatusBadge value={item.value === true ? "enabled" : "disabled"} /><button className={`button ${item.value === true ? "danger-outline" : "secondary"}`} disabled={!canManage || save.isPending} onClick={() => save.mutate({ key: item.key, value: item.value !== true })}>{item.value === true ? "Turn off" : "Turn on"}</button></>
+          : <>
+            <input aria-label={item.label} placeholder={item.kind === "version" ? "e.g. 1.4.0" : item.kind === "text" ? "Empty for no notice" : typeof item.defaultValue === "string" ? item.defaultValue : ""} value={shown} maxLength={item.kind === "text" ? 160 : 300} disabled={!canManage} onChange={(event) => setDrafts((prev) => ({ ...prev, [item.key]: event.target.value }))} />
+            <button className="button secondary" disabled={!canManage || save.isPending || draft === undefined} onClick={() => save.mutate({ key: item.key, value: shown.trim() === "" ? null : shown.trim() })}>Save</button>
+          </>}
+        {!item.isDefault && canManage ? <button className="button danger-outline" disabled={save.isPending} onClick={() => save.mutate({ key: item.key, value: null })}>Reset</button> : null}
+      </div>;
+    })}
+    {save.error instanceof Error && <p className="error-copy">{save.error.message}</p>}
+  </section>;
 }
 
 interface FeatureFlag { id: string; key: string; scope: "PLATFORM" | "BUSINESS" | "USER"; businessId: string | null; userId: string | null; enabled: boolean; rolloutPercent: number; updatedAt: string }
@@ -114,7 +153,9 @@ function ProviderSecretsSection() {
 export default function SettingsPage() {
   const auth = useAuth();
   return <div className="page">
-    <PageHeader eyebrow="Platform controls" title="Settings" description="Manage guarded platform flags. Every change is permission-checked and audited." />
+    <PageHeader eyebrow="Platform controls" title="Settings" description="Manage the live app configuration and guarded platform flags. Every change is permission-checked and audited." />
+    <h2 className="section-title">App configuration (live, no app update needed)</h2>
+    <AppConfigSection />
     <h2 className="section-title">Platform flags</h2>
     <PlatformSettingsSection />
     <h2 className="section-title">Feature flags</h2>

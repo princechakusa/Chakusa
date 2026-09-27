@@ -25,9 +25,10 @@ const benefits = [
   'Unlimited custom templates',
   'Advanced analytics and extended history',
 ];
-const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
 
 export function ProScreen() {
+  // Read per render: these links are admin-controlled runtime config.
+  const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { plan, status, subscription } = usePlanExperience(); const billing = useBilling(); const { role, business } = useAuth();
   const entitled = isEntitledStatus(status); const maySubscribe = role === 'OWNER' && (canPurchasePlan(plan, status, 'PRO') || canPurchasePlan(plan, status, 'BUSINESS'));

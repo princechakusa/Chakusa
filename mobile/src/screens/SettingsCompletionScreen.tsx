@@ -6,8 +6,10 @@ import appConfig from '../../app.json';
 import { SUPPORT_EMAIL, SUPPORT_URL } from '../config';
 import { subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
 import { formatAppVersion, supportDestination } from '../domain/trustSettings';
+import { copyrightLine } from '../domain/runtimeConfig';
 import { openExternalDestination } from '../services/externalDestinations';
 import { businessApi } from '../services/endpoints';
+import { useRuntimeConfig } from '../services/runtimeConfig';
 import { useAuth } from '../state/AuthContext';
 import { useBilling } from '../state/BillingContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
@@ -16,11 +18,13 @@ import { RootStackParamList } from '../types';
 import { Icon, M3Header, M3Card, M3Screen } from '../experience/businessKit';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 
-const support = supportDestination(SUPPORT_URL, SUPPORT_EMAIL);
 const expoConfig = appConfig.expo as typeof appConfig.expo & { ios?: { buildNumber?: string }; android?: { versionCode?: number } };
 const version = formatAppVersion(expoConfig.version, expoConfig.ios?.buildNumber ?? expoConfig.android?.versionCode);
 
 export function SettingsCompletionScreen() {
+  // Read per render: the support link and company info are admin-controlled runtime config.
+  const support = supportDestination(SUPPORT_URL, SUPPORT_EMAIL);
+  const { company } = useRuntimeConfig();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { business, user, role, logout, logoutAll } = useAuth();
   const preferences = usePreferences();
@@ -162,7 +166,8 @@ export function SettingsCompletionScreen() {
       </Group>
 
       <Group title="About">
-        <Row icon="info" label="Chakusa" value={version} last />
+        <Row icon="info" label="Chakusa" value={version} />
+        <Row icon="copyright" label={copyrightLine(company)} last />
       </Group>
     </M3Screen>
   );

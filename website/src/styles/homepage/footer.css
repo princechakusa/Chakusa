@@ -53,3 +53,11 @@
   .footer-navigation a{display:block;margin-bottom:.4rem}
   .footer-brand p{display:none}
 }
+.footer-legal__id{display:grid;gap:.2rem}
+.footer-legal__company{font-size:.72rem;color:var(--muted-text)}
+.footer-social{display:flex;gap:.5rem}
+.footer-social a{display:grid;place-items:center;width:2rem;height:2rem;border-radius:50%;background:var(--page-surface);color:var(--heading);box-shadow:0 0 0 1px var(--hairline);transition:transform .3s cubic-bezier(.34,1.56,.64,1),color .2s}
+.footer-social a:hover{transform:translateY(-2px);color:var(--primary)}
+.footer-social svg{width:1rem;height:1rem}
+.site-notice{position:relative;z-index:60;padding:.55rem 1rem;background:var(--heading);color:#fff;text-align:center;font-size:.85rem;font-weight:600}
+.site-notice--warn{background:#8D1704}

@@ -1,3 +1,5 @@
+import { getAdminBusinessOperations } from "./businessOperationsAdmin.service.js";
+import { listAdminAppConfig, updateAdminAppConfig } from "../appConfig/appConfig.service.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
@@ -190,6 +192,14 @@ function requireRefreshCookie(request: FastifyRequest): string {
   const value = cookieValue(request.headers.cookie, REFRESH_COOKIE);
   if (!value) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Admin refresh session is missing");
   return value;
+}
+
+
+// Admin → Settings → support_read_only_impersonation. When switched off, the
+// read-only support views (context and operations snapshot) are closed.
+async function requireSupportViewsEnabled() {
+  const row = await prisma.platformSetting.findUnique({ where: { key: "support_read_only_impersonation" }, select: { value: true } });
+  if (row?.value === false) throw ApiError.forbidden("Read-only support views are switched off in platform settings");
 }
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -459,10 +469,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   fastify.get("/support/businesses/:id/context", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
     fastify.requireAdminPermission(request, "support.impersonate.read");
+    await requireSupportViewsEnabled();
     const { id } = adminIdParamsSchema.parse(request.params);
     const context = await getAdminSupportContext(id);
     await recordAdminAudit({ actor: request.admin!, action: "SUPPORT_READ_ONLY_CONTEXT_VIEWED", targetType: "business", targetId: id, newValue: { mode: "read_only", memberCount: context.members.length, ticketCount: context.supportTickets.length }, context: auditContext(request) });
     reply.send(context);
+  });
+
+  // Read-only operational snapshot (leads, reviews, invoices, quotes,
+  // services, inventory, reminders) without customer personal data.
+  fastify.get("/businesses/:id/operations", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "support.impersonate.read");
+    await requireSupportViewsEnabled();
+    const { id } = adminIdParamsSchema.parse(request.params);
+    const snapshot = await getAdminBusinessOperations(id);
+    await recordAdminAudit({ actor: request.admin!, action: "SUPPORT_OPERATIONS_VIEWED", targetType: "business", targetId: id, newValue: { mode: "read_only" }, context: auditContext(request) });
+    reply.send(snapshot);
   });
 
   fastify.get("/audit", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
@@ -499,6 +521,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     await fastify.requireAdminCsrf(request);
     const input = adminSettingUpdateSchema.parse(request.body);
     reply.send(await updateAdminPlatformSetting(request.admin!, input.key, input.enabled, auditContext(request)));
+  });
+
+  // Runtime app configuration (read by the apps at launch via /app-config),
+  // so switches, links, minimum version and notices change without a build.
+  fastify.get("/app-config", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.read");
+    reply.send({ items: await listAdminAppConfig() });
+  });
+  fastify.patch("/app-config", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
+    fastify.requireAdminPermission(request, "settings.manage");
+    await fastify.requireAdminCsrf(request);
+    const input = z.object({ key: z.string().trim().min(1).max(80), value: z.union([z.boolean(), z.string().max(500), z.null()]) }).parse(request.body);
+    reply.send(await updateAdminAppConfig(request.admin!, input.key, input.value, auditContext(request)));
   });
 
   // Feature flags (e.g. "ai.customer_agent") — platform/business/user scoped

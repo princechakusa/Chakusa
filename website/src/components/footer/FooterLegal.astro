@@ -1,5 +1,9 @@
 ---
-const year = new Date().getFullYear();
+// The © line, company details, and social links are runtime content from
+// the API's /app-config (Admin → Settings → App configuration), filled in
+// by scripts/siteConfig.ts. The static values below are the fallback when
+// the API is unreachable; the year range is computed in the browser either
+// way, so it never goes stale with a static build.
 const legalLinks = [
   { label: "Trust center", href: "/trust" },
   { label: "Privacy", href: "/privacy" },
@@ -10,7 +14,11 @@ const legalLinks = [
 ];
 ---
 <div class="footer-legal">
-  <span>© {year} Chakusa. All rights reserved.</span>
+  <div class="footer-legal__id">
+    <span data-cfg-copyright data-start-year="2026" data-holder="Chakusa">© 2026 Chakusa. All rights reserved.</span>
+    <span class="footer-legal__company" data-cfg-company hidden></span>
+  </div>
+  <nav class="footer-social" data-cfg-social aria-label="Chakusa on social media" hidden></nav>
   <nav class="footer-legal__links" aria-label="Legal">
     {legalLinks.map((link) => <a href={link.href}>{link.label}</a>)}
   </nav>

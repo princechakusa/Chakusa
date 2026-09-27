@@ -104,23 +104,28 @@ export function ServiceRow({
 }
 
 export function BookingCard({ booking, onPress }: { booking: CustomerBookingDto; onPress: () => void }) {
+  const startsAt = new Date(booking.startsAt);
+  const day = Number.isNaN(startsAt.getTime()) ? '–' : String(startsAt.getDate());
+  const month = Number.isNaN(startsAt.getTime()) ? '' : startsAt.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${booking.serviceName} with ${booking.business.name}. ${formatDateTime(booking.startsAt)}. ${bookingStatusLabel(booking.status)}.`}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.bookingCard, pressed && styles.pressed]}
     >
-      <View style={styles.cardTop}>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardName} numberOfLines={1}>{booking.serviceName}</Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>{booking.business.name}</Text>
-        </View>
-        <View style={[styles.statusChip, statusTone(booking.status)]}>
-          <Text style={styles.statusText}>{bookingStatusLabel(booking.status)}</Text>
-        </View>
+      <View style={styles.dateBadge}>
+        <Text style={styles.dateBadgeDay}>{day}</Text>
+        <Text style={styles.dateBadgeMonth}>{month}</Text>
       </View>
-      <Text style={styles.when}>{formatDateTime(booking.startsAt)}{booking.staffName ? ` · ${booking.staffName}` : ''}</Text>
+      <View style={styles.cardCopy}>
+        <Text style={styles.cardName} numberOfLines={1}>{booking.serviceName}</Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>{booking.business.name}</Text>
+        <Text style={styles.when}>{formatDateTime(booking.startsAt)}{booking.staffName ? ` · ${booking.staffName}` : ''}</Text>
+      </View>
+      <View style={[styles.statusChip, statusTone(booking.status)]}>
+        <Text style={styles.statusText}>{bookingStatusLabel(booking.status)}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -158,7 +163,11 @@ const styles = StyleSheet.create({
   cardAction: { ...typography.caption, color: colors.primary },
   serviceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   serviceRowSelected: { borderColor: colors.primary },
+  bookingCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, ...shadows.card },
+  dateBadge: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  dateBadgeDay: { ...typography.subheading, color: colors.primary, lineHeight: 20 },
+  dateBadgeMonth: { ...typography.micro, color: colors.primary },
   statusChip: { borderRadius: radius.round, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, backgroundColor: colors.background },
   statusText: { ...typography.micro, color: colors.text },
-  when: { ...typography.caption, color: colors.text },
+  when: { ...typography.caption, color: colors.text, marginTop: 2 },
 });

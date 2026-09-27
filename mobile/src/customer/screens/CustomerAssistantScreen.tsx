@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: authSpace.xs, paddingTop: authSpace.xs, borderTopWidth: 1, borderTopColor: authColors.line },
   composerInput: { flex: 1, maxHeight: 120, minHeight: 44, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bgSunk, paddingHorizontal: authSpace.md, paddingTop: authSpace.sm, ...authType.body, fontSize: 15, color: authColors.ink },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
-  primaryBtnCompact: { minHeight: 44, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-end' },
+  primaryBtnCompact: { minHeight: 44, minWidth: 72, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-end' },
   primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
   disabled: { opacity: 0.5 },
 });

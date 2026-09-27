@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
@@ -212,20 +212,22 @@ export function CustomerExploreScreen() {
             <Text style={styles.modalTitle}>Search near…</Text>
             <View style={styles.modalSpacer} />
           </View>
-          <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-            <LocationPicker value={draft} onChange={setDraft} onLookupChange={setDraftPending} mapHeight={320} hint="Tap the map to search around that spot." />
-          </ScrollView>
-          <View style={styles.modalFoot}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Search here"
-              disabled={!draft || draftPending}
-              onPress={() => { if (draft) { setOrigin(draft); setLocationError(null); } setPicking(false); }}
-              style={[styles.primary, (!draft || draftPending) && styles.disabled]}
-            >
-              <Text style={styles.primaryText}>Search here</Text>
-            </Pressable>
-          </View>
+          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+            <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
+              <LocationPicker value={draft} onChange={setDraft} onLookupChange={setDraftPending} mapHeight={320} hint="Tap the map to search around that spot." />
+            </ScrollView>
+            <View style={styles.modalFoot}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Search here"
+                disabled={!draft || draftPending}
+                onPress={() => { if (draft) { setOrigin(draft); setLocationError(null); } setPicking(false); }}
+                style={[styles.primary, (!draft || draftPending) && styles.disabled]}
+              >
+                <Text style={styles.primaryText}>Search here</Text>
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </Screen>

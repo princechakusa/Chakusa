@@ -3,8 +3,8 @@
 // that springs between trades. Replaces six-card industry grids (~800px)
 // with one ~420px band. Auto-advances while visible; any click or focus
 // hands control to the visitor. Keyboard: arrow keys move between tabs.
-interface Item { title: string; example: string }
-interface Props { id: string; kicker: string; title: string; items: Item[]; href?: string; linkLabel?: string }
+interface Item { title: string; example?: string; parts?: [string, string][] }
+interface Props { id: string; kicker: string; title: string; items: Item[]; href?: string | null; linkLabel?: string }
 const { id, kicker, title, items, href = "/industries", linkLabel = "See supported industries" } = Astro.props;
 ---
 <section class="tcyc container" aria-labelledby={`${id}-title`} data-tcyc>
@@ -19,9 +19,11 @@ const { id, kicker, title, items, href = "/industries", linkLabel = "See support
       </button>)}
     </div>
     <div class="tcyc__panel" id={`${id}-panel`} role="tabpanel" aria-live="polite">
-      {items.map((it, i) => <p class="tcyc__text" data-p={i} hidden={i !== 0}><strong>{it.title}.</strong> {it.example}</p>)}
+      {items.map((it, i) => it.parts
+        ? <div class="tcyc__text tcyc__parts" data-p={i} hidden={i !== 0}>{it.parts.map(([label, text]) => <div><span>{label}</span><p>{text}</p></div>)}</div>
+        : <p class="tcyc__text" data-p={i} hidden={i !== 0}><strong>{it.title}.</strong> {it.example}</p>)}
     </div>
-    <a class="tcyc__link" href={href}>{linkLabel} <span aria-hidden="true">→</span></a>
+    {href && <a class="tcyc__link" href={href}>{linkLabel} <span aria-hidden="true">→</span></a>}
   </div>
 </section>
 
@@ -40,6 +42,10 @@ const { id, kicker, title, items, href = "/industries", linkLabel = "See support
   .tcyc__panel{min-height:5.5rem;margin-top:1.25rem;display:grid}
   .tcyc__text{grid-area:1/1;margin:0;font-size:clamp(1.1rem,2vw,1.4rem);line-height:1.55;color:var(--heading);font-weight:500}
   .tcyc__text strong{color:var(--primary)}
+  .tcyc__parts{display:grid;gap:1rem;font-size:1rem!important}
+  .tcyc__parts span{display:block;color:var(--primary);font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .tcyc__parts p{margin:.35rem 0 0;color:var(--body-text);font-size:.98rem;line-height:1.6;font-weight:400}
+  @media (min-width:48rem){.tcyc__parts{grid-template-columns:repeat(3,1fr)}.tcyc__parts>div+div{border-left:1px solid var(--hairline);padding-left:1rem}}
   .tcyc__link{display:inline-block;margin-top:1rem;font-weight:700;color:var(--heading)}
 </style>
 
@@ -50,7 +56,7 @@ const { id, kicker, title, items, href = "/industries", linkLabel = "See support
     const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
     const texts = [...root.querySelectorAll<HTMLElement>(".tcyc__text")];
     let cur = 0; let auto = !reduced; let visible = false; let t0 = performance.now();
-    const DWELL = 4200;
+    const DWELL = root.querySelector(".tcyc__parts") ? 7000 : 4200;
     function select(i: number, focus = false) {
       if (i === cur) return;
       const prev = texts[cur]; cur = i;

@@ -1,0 +1,47 @@
+/* Compact, animated sections for the shared industry template
+   (BeautyVerticalPage.astro). */
+.ivp-reality,.ivp-features{padding-block:clamp(2.5rem,5vw,3.5rem)!important}
+.ivp-fixes{display:grid;gap:.75rem;margin-top:1.5rem}
+.ivp-fixes article{position:relative;padding:1.1rem 1.2rem;border-radius:1.1rem;background:#fff;box-shadow:0 0 0 1px var(--hairline);display:grid;grid-template-columns:auto 1fr;column-gap:.8rem;align-items:start}
+.ivp-fixes i{grid-row:span 3;display:grid;place-items:center;width:2.3rem;height:2.3rem;border-radius:.7rem;background:#fff1ee;color:var(--primary)}
+.ivp-fixes i svg{width:1.2rem;height:1.2rem}
+.ivp-fixes h3{margin:0;font-size:.98rem;color:var(--heading)}
+.ivp-fixes p{margin:.3rem 0 0;font-size:.84rem;line-height:1.5;color:var(--body-text)}
+.ivp-fixes footer{display:flex;gap:.4rem;margin-top:.55rem;padding:.35rem .6rem;border-radius:.55rem;background:#e9f8f5;color:var(--secondary);font-size:.78rem;font-weight:700;width:max-content;max-width:100%}
+@media (min-width:44rem){.ivp-fixes{grid-template-columns:1fr 1fr}}
+@media (min-width:68rem){.ivp-fixes{grid-template-columns:repeat(3,1fr)}}
+
+/* Journey: one horizontal line, lit by scroll progress. */
+.ivp-flow{padding-block:clamp(2.5rem,5vw,3.5rem)!important}
+.ivp-flow__line{--progress:0;position:relative;list-style:none;display:grid;gap:1.1rem;margin:1.75rem 0 0;padding:0}
+.ivp-flow__line li{position:relative;display:grid;grid-template-columns:auto 1fr;column-gap:.8rem}
+.ivp-flow__dot{grid-row:span 2;display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:50%;background:#fff;color:var(--muted-text);box-shadow:0 0 0 1px var(--hairline);transition:background .4s,color .4s,box-shadow .4s,transform .5s cubic-bezier(.34,1.56,.64,1)}
+.ivp-flow__dot svg{width:1.2rem;height:1.2rem}
+.ivp-flow__line strong{font-size:.95rem;color:var(--heading)}
+.ivp-flow__line p{margin:.25rem 0 0;font-size:.84rem;line-height:1.5;color:var(--body-text)}
+/* A step lights once scroll progress passes its slot. */
+.ivp-flow__line li{--lit:clamp(0,calc((var(--progress) * (var(--count) + .6) - var(--i)) * 4),1)}
+.ivp-flow__line li .ivp-flow__dot{background:color-mix(in srgb,var(--primary) calc(var(--lit) * 100%),#fff);color:color-mix(in srgb,#fff calc(var(--lit) * 100%),var(--muted-text));transform:scale(calc(.9 + var(--lit) * .1))}
+.fx-static .ivp-flow__line li{--lit:1}
+@media (min-width:60rem){
+  .ivp-flow__line{grid-template-columns:repeat(var(--count),1fr);gap:1.25rem}
+  .ivp-flow__line::before,.ivp-flow__line::after{content:"";position:absolute;left:1.3rem;right:1.3rem;top:1.3rem;height:2px;background:var(--hairline)}
+  .ivp-flow__line::after{background:linear-gradient(90deg,var(--primary),#ff9a7a);transform-origin:left;transform:scaleX(var(--progress))}
+  .ivp-flow__line li{grid-template-columns:1fr;row-gap:.7rem;z-index:1}
+  .ivp-flow__dot{grid-row:auto}
+}
+
+.ivp-feature-grid{display:grid;gap:.75rem;margin-top:1.5rem}
+.ivp-feature-grid article{display:flex;gap:.8rem;padding:1rem 1.1rem;border-radius:1rem;background:#fff;box-shadow:0 0 0 1px var(--hairline);transition:transform .35s cubic-bezier(.34,1.56,.64,1),box-shadow .3s}
+.ivp-feature-grid article:hover{transform:translateY(-3px);box-shadow:0 0 0 1px var(--hairline),0 18px 30px -20px rgba(15,23,42,.35)}
+.ivp-feature-grid i{flex:none;display:grid;place-items:center;width:2.2rem;height:2.2rem;border-radius:.65rem;background:#e9f8f5;color:var(--secondary)}
+.ivp-feature-grid i svg{width:1.15rem;height:1.15rem}
+.ivp-feature-grid h3{margin:0;font-size:.95rem;color:var(--heading)}
+.ivp-feature-grid p{margin:.25rem 0 0;font-size:.84rem;line-height:1.5;color:var(--body-text)}
+@media (min-width:44rem){.ivp-feature-grid{grid-template-columns:1fr 1fr}}
+@media (min-width:68rem){.ivp-feature-grid{grid-template-columns:repeat(3,1fr)}}
+
+.ivp-reasons{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem;margin:1rem 0 0;padding:0}
+.ivp-reasons li{padding:.35rem .8rem;border-radius:999px;background:rgba(255,255,255,.12);box-shadow:0 0 0 1px rgba(255,255,255,.25);font-size:.8rem;font-weight:600}
+.ib-faq{padding-block:clamp(2.5rem,5vw,3.5rem)!important}
+.ib-hero{padding-block:clamp(2rem,4vw,3rem)!important}

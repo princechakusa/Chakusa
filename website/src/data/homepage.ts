@@ -9,7 +9,7 @@ export const primaryNavigation = [
     { label: "Customer growth", href: "/product#business-control", description: "Understand and bring customers back." },
   ] },
   { label: "Features", href: "/features/enquiries", children: [
-    { label: "Enquiries", href: "/features/enquiries", description: "Instant capture and qualification." },
+    { label: "Enquiries", href: "/features/enquiries", description: "Every enquiry saved as a lead." },
     { label: "Bookings", href: "/features/bookings", description: "Customer booking and business availability." },
     { label: "Reviews", href: "/features/reviews", description: "Ungated review requests on every visit." },
     { label: "Customers", href: "/features/customers", description: "One profile per customer, with full history." },

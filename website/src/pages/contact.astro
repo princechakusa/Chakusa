@@ -1,25 +1,133 @@
 ---
+// Contact. 2026-09 rebuild: the Stitch version promised response SLAs
+// ("< 2h", "90-second dispatch"), live operator hours, "tier-1
+// engineering", "zero-knowledge tokenization", free data migration, and
+// used a stock photo as a named support role. None of that is an
+// established commitment, so it's gone. The form keeps its real mechanism:
+// it composes an email in the visitor's own mail app (nothing is sent to a
+// server). FAQ answers are checked against the backend: business data
+// export (src/modules/business/businessExport.service.ts) and customer
+// cancellation from the booking link, up to the business's notice window
+// (publicBusinessProfile.service.ts cancelPublicBooking).
 import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import ContactHero from "../components/contact/ContactHero.astro";
-import ContactChannels from "../components/contact/ContactChannels.astro";
-import ContactDispatch from "../components/contact/ContactDispatch.astro";
-import ContactFaq from "../components/contact/ContactFaq.astro";
-import "../styles/contact/contact-stitch.css";
-
+import StoryIcon from "../components/homepage/StoryIcon.astro";
+import "../styles/homepage/hero2.css";
 const title = "Contact and Support | Chakusa";
-const description = "Contact the Chakusa team for business onboarding, booking assistance, account support, privacy requests, partnerships, and product feedback.";
+const description = "Contact the Chakusa team about setting up your business, a booking, your account, privacy and data requests, partnerships, or product feedback.";
+const topics = ["Setting up my business", "A booking I made", "My account", "Privacy or data request", "Partnerships or press", "Product feedback"];
+const faqs = [
+  { q: "I booked through a business's Chakusa page. How do I cancel or change it?", a: "Use the link in your booking confirmation. You can cancel or reschedule there up to the business's cancellation notice window; after that, contact the business directly." },
+  { q: "Can I take my business data with me?", a: "Yes. Businesses can export their records from the app. Your customer relationships stay yours." },
+  { q: "How do I delete my account or request my data?", a: "See the account deletion page, or email privacy@chakusarecovery.com with the email address on your account." },
+];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content">
-    <ContactHero />
-    <ContactChannels />
-    <ContactDispatch />
-    <ContactFaq />
+    <section class="hero2 ct-hero" data-spotlight aria-labelledby="contact-title">
+      <div class="hero2__bg" aria-hidden="true"><span class="hero2__aurora hero2__aurora--a"></span><span class="hero2__aurora hero2__aurora--b"></span><span class="hero2__grid"></span></div>
+      <div class="container ct-grid">
+        <div class="ct-copy">
+          <p class="hero2__badge"><span class="hero2__badge-dot"></span>Contact &amp; support</p>
+          <h1 id="contact-title" data-split data-accent="2,3">Talk to the Chakusa team.</h1>
+          <p class="hero2__lede">Questions about setting up your business, a booking, your account, or your data. A person reads every message.</p>
+          <div class="ct-mailboxes">
+            <a href="mailto:support@chakusarecovery.com" data-magnetic><StoryIcon name="forum" /><span><b>Support</b>support@chakusarecovery.com</span></a>
+            <a href="mailto:privacy@chakusarecovery.com" data-magnetic><StoryIcon name="shield" /><span><b>Privacy &amp; data</b>privacy@chakusarecovery.com</span></a>
+          </div>
+          <p class="ct-links">Looking for answers first? Try the <a href="/help">Help Center</a>, <a href="/pricing">pricing</a>, or <a href="/delete-account">account deletion</a>.</p>
+        </div>
+
+        <form class="ct-form" data-contact-form>
+          <p class="ct-form__label" id="topic-label">What's it about?</p>
+          <div class="ct-topics" role="radiogroup" aria-labelledby="topic-label">
+            {topics.map((t, i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} data-topic={t}>{t}</button>)}
+          </div>
+          <div class="ct-row">
+            <label>Your name<input name="name" autocomplete="name" required /></label>
+            <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+          </div>
+          <label>Message<textarea name="message" rows="5" placeholder="If it's about a booking, include the business name and the date." required></textarea></label>
+          <button type="submit" class="ui-button ui-button--primary ct-submit">Open in my email app <StoryIcon name="arrow_forward" class="hero2__arrow" /></button>
+          <p class="ct-note">This composes an email in your own mail app, addressed to support@chakusarecovery.com. We only use your details to reply.</p>
+          <p class="ct-status" data-form-status aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section class="container ct-faq" aria-labelledby="ct-faq-title">
+      <h2 id="ct-faq-title">Quick answers</h2>
+      <div class="ct-faq__grid" data-stagger>
+        {faqs.map((f) => <article><h3>{f.q}</h3><p>{f.a}</p></article>)}
+      </div>
+    </section>
   </main>
   <Footer />
 </MarketingLayout>
+
+<style>
+  .ct-hero{min-height:0!important}
+  .ct-grid{display:grid;gap:clamp(2rem,5vw,4rem);align-items:start}
+  .ct-copy h1{margin:1rem 0 0;font-family:var(--font-heading);font-size:clamp(2.4rem,5vw,3.8rem);font-weight:800;line-height:1.02;letter-spacing:-.045em;color:var(--heading)}
+  .ct-mailboxes{display:grid;gap:.6rem;margin-top:1.75rem;max-width:26rem}
+  .ct-mailboxes a{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;border-radius:1rem;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px var(--hairline),0 12px 28px -20px rgba(15,23,42,.4);color:var(--heading);text-decoration:none}
+  .ct-mailboxes a:hover{box-shadow:0 0 0 1.5px var(--primary),0 12px 28px -18px rgba(238,93,67,.5)}
+  .ct-mailboxes svg{flex:none;width:1.4rem;height:1.4rem;color:var(--primary)}
+  .ct-mailboxes span{display:grid;font-size:.9rem}
+  .ct-mailboxes b{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-text)}
+  .ct-links{margin-top:1.25rem;color:var(--body-text);font-size:.92rem}
+  .ct-links a{color:var(--heading);font-weight:700}
+  .ct-form{display:grid;gap:1rem;padding:clamp(1.25rem,3vw,2rem);border-radius:1.5rem;background:#fff;box-shadow:0 0 0 1px var(--hairline),0 40px 80px -50px rgba(15,23,42,.45)}
+  .ct-form__label{margin:0;font-weight:800;color:var(--heading)}
+  .ct-topics{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:-.4rem}
+  .ct-topics button{padding:.5rem .85rem;border:0;border-radius:999px;background:var(--page-surface);box-shadow:0 0 0 1px var(--hairline);font:inherit;font-size:.85rem;font-weight:600;color:var(--body-text);cursor:pointer;transition:background .2s,color .2s,transform .3s cubic-bezier(.34,1.56,.64,1)}
+  .ct-topics button:hover{transform:translateY(-2px)}
+  .ct-topics button[aria-checked="true"]{background:var(--heading);color:#fff;box-shadow:none}
+  .ct-topics button:focus-visible{outline:none;box-shadow:var(--focus)}
+  .ct-row{display:grid;gap:1rem}
+  .ct-form label{display:grid;gap:.35rem;font-size:.85rem;font-weight:700;color:var(--heading)}
+  .ct-form input,.ct-form textarea{width:100%;padding:.75rem .9rem;border:1px solid var(--hairline);border-radius:.8rem;background:var(--page-surface);font:inherit;font-weight:400;color:var(--heading);transition:border-color .2s,box-shadow .2s,background .2s}
+  .ct-form input:focus,.ct-form textarea:focus{outline:none;border-color:var(--primary);box-shadow:var(--focus);background:#fff}
+  .ct-submit{justify-self:start;border-radius:999px;min-height:3rem;padding-inline:1.4rem}
+  .ct-note{margin:0;color:var(--muted-text);font-size:.8rem}
+  .ct-status{margin:0;color:var(--secondary);font-weight:700;font-size:.85rem}
+  .ct-faq{padding-block:var(--space-2xl) var(--space-3xl)}
+  .ct-faq h2{margin:0;font-family:var(--font-heading);font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;letter-spacing:-.03em;color:var(--heading)}
+  .ct-faq__grid{display:grid;gap:.75rem;margin-top:1.25rem}
+  .ct-faq__grid article{padding:1.2rem 1.3rem;border-radius:1.1rem;background:#fff;box-shadow:0 0 0 1px var(--hairline)}
+  .ct-faq__grid h3{margin:0;font-size:1rem;color:var(--heading)}
+  .ct-faq__grid p{margin:.45rem 0 0;color:var(--body-text);line-height:1.6;font-size:.92rem}
+  @media (min-width:40rem){.ct-row{grid-template-columns:1fr 1fr}}
+  @media (min-width:64rem){.ct-grid{grid-template-columns:1fr 1.1fr}.ct-faq__grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-contact-form]");
+  const status = document.querySelector<HTMLElement>("[data-form-status]");
+  const topics = [...document.querySelectorAll<HTMLButtonElement>("[data-topic]")];
+  let topic = topics[0]?.dataset.topic ?? "Support request";
+  const choose = (btn: HTMLButtonElement, focus = false) => {
+    topics.forEach((b) => { const on = b === btn; b.setAttribute("aria-checked", String(on)); b.tabIndex = on ? 0 : -1; });
+    topic = btn.dataset.topic ?? topic;
+    if (focus) btn.focus();
+  };
+  topics.forEach((btn, i) => {
+    btn.addEventListener("click", () => choose(btn));
+    btn.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+      if (d) { e.preventDefault(); choose(topics[(i + d + topics.length) % topics.length], true); }
+    });
+  });
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    const body = [`Name: ${data.get("name")}`, `Email: ${data.get("email")}`, `Topic: ${topic}`, "", String(data.get("message") ?? "")].join("\n");
+    window.location.href = `mailto:support@chakusarecovery.com?subject=${encodeURIComponent(`Chakusa: ${topic}`)}&body=${encodeURIComponent(body)}`;
+    if (status) status.textContent = "Your email app should open with the message ready to send.";
+  });
+</script>

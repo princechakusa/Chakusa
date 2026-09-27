@@ -1,0 +1,9 @@
+/* Product page motion/compaction pass. */
+.pd-engines__grid{gap:1rem!important;margin-top:1.75rem!important}
+.pd-engines__card{padding:1.3rem!important}
+.pd-cta__panel{padding:clamp(2rem,4vw,3.25rem)!important}
+.pd-cta__blob--a{animation:aurora-a 16s ease-in-out infinite alternate}
+.pd-cta__blob--b{animation:aurora-b 19s ease-in-out infinite alternate}
+@keyframes aurora-a{to{transform:translate(8rem,4rem) scale(1.2)}}
+@keyframes aurora-b{to{transform:translate(-6rem,-3rem) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.pd-cta__blob--a,.pd-cta__blob--b{animation:none}}

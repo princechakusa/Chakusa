@@ -1,0 +1,24 @@
+---
+// Two counter-scrolling rows of trade chips (speed reacts to scroll
+// velocity via [data-marquee] in scripts/motionFx.ts). Only the first copy
+// of the first row is focusable, so keyboard users get each link once.
+// Every trade below has a live /industries/<slug> page.
+const trades = [["Barbers","barbers"],["Hair salons","hair-salons"],["Spas & massage","spas-massage"],["Beauty clinics","beauty-clinics"],["Dentists","dentists"],["Photographers","photographers"],["Cleaners","cleaners"],["Plumbers","plumbers"],["Electricians","electricians"],["Movers","movers"],["Small contractors","small-contractors"],["Mechanics","mechanics"],["Detailers","detailers"],["Car washes","car-washes"],["Restaurants","restaurants"],["Consultants","consultants"]];
+---
+{[trades, [...trades.slice(8), ...trades.slice(0, 8)]].map((row, r) => <div class="trade-marquee" data-marquee={r === 1 ? "reverse" : ""}>
+  <div>
+    {[0, 1].map((copy) => row.map(([name, slug]) => <a href={`/industries/${slug}`} class="trade-marquee__chip" aria-hidden={copy === 1 || r === 1 ? "true" : undefined} tabindex={copy === 1 || r === 1 ? -1 : undefined}>{name}</a>))}
+  </div>
+</div>)}
+<p class="trade-more"><a href="/industries">See all supported industries <span aria-hidden="true">→</span></a></p>
+
+<style is:global>
+  .trade-marquee{margin:var(--space-xl) 0 var(--space-lg);padding-block:.3rem}
+  .trade-marquee>div{gap:.6rem}
+  .trade-marquee+.trade-marquee{margin-top:-.6rem}
+  .trade-marquee__chip{flex:none;padding:.6rem 1.1rem;border-radius:999px;border:1px solid var(--hairline);background:var(--card-surface);color:var(--heading);font-weight:600;font-size:.9rem;text-decoration:none;white-space:nowrap;transition:border-color .2s,color .2s,transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s}
+  .trade-marquee__chip:hover,.trade-marquee__chip:focus-visible{border-color:var(--primary);color:var(--primary);transform:translateY(-3px);box-shadow:0 10px 20px -12px rgba(238,93,67,.6)}
+  .fx-static .trade-marquee>div{flex-wrap:wrap;width:auto}
+  .trade-more{margin-top:var(--space-lg)}
+  .trade-more a{font-weight:700;color:var(--heading)}
+</style>

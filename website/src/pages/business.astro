@@ -1,17 +1,26 @@
 ---
+// For businesses. 2026-09 rebuild: the Stitch version shipped a fabricated
+// testimonial (named owner, photo, quotes, "+38% Repeat Clients"), invented
+// dashboard metrics and customer reviews, and described an AI that replies
+// with pricing within 30 seconds and captures deposits. None of that is how
+// the shipped app works (automation is off in production builds; replies
+// are prepared from templates and sent by a person). This page now shows
+// the real business app flow with demo data, labelled as such.
 import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import BusinessStitchHeader from "../components/business/BusinessStitchHeader.astro";
-import BusinessStitchDashboard from "../components/business/BusinessStitchDashboard.astro";
-import BusinessStitchWorkflow from "../components/business/BusinessStitchWorkflow.astro";
-import BusinessStitchControls from "../components/business/BusinessStitchControls.astro";
-import BusinessStitchSpotlight from "../components/business/BusinessStitchSpotlight.astro";
-import BusinessStitchCta from "../components/business/BusinessStitchCta.astro";
-import "../styles/business/business-stitch.css";
-import "../styles/business/business-stitch-fixes.css";
-
+import Button from "../components/foundation/Button.astro";
+import StoryIcon from "../components/homepage/StoryIcon.astro";
+import HeroLoopDemo from "../components/homepage/HeroLoopDemo.astro";
+import ScrollStory from "../components/motion/ScrollStory.astro";
+import PlatformModules from "../components/homepage/PlatformModules.astro";
+import TradeMarquee from "../components/motion/TradeMarquee.astro";
+import "../styles/homepage/story.css";
+import "../styles/homepage/story-complete.css";
+import "../styles/homepage/loop.css";
+import "../styles/homepage/story-motion.css";
+import "../styles/homepage/hero2.css";
 const title = "Chakusa for service businesses | Enquiries, bookings and repeat customers";
 const description = "Run enquiries, bookings, customer records, reviews, follow-up, and repeat customer activity from one connected Chakusa workspace.";
 const breadcrumb = {
@@ -22,18 +31,119 @@ const breadcrumb = {
     { "@type": "ListItem", position: 2, name: "For businesses", item: new URL("/business", Astro.site).toString() },
   ],
 };
+const steps = [
+  { title: "One screen for what needs you today.", copy: "The dashboard pulls together new leads, today's bookings, reviews, and customers due back, so the first look of the day tells you where to start.", chips: ["New leads", "Today's bookings", "Due back"] },
+  { title: "A calendar built around your services.", copy: "Services, durations, and team availability shape the calendar. Customers booking through Chakusa get a confirmation and a reminder by SMS.", chips: ["Services & team", "SMS confirmation", "Reminders"] },
+  { title: "Every customer on one profile.", copy: "Leads, bookings, messages, reviews, reminders, and payments collect on the customer's profile, so every conversation starts with context.", chips: ["Full history", "Notes", "Export"] },
+  { title: "Ask every customer for a review.", copy: "Review requests go out for every eligible visit, never withheld based on the rating you expect. Reviews and private feedback land in one place.", chips: ["Ungated", "Every visit"] },
+  { title: "See who is due back, before they drift.", copy: "Chakusa surfaces customers past their usual rebooking window. You decide when to reach out, and the reminder goes from you.", chips: ["Comeback reminders", "You choose when"] },
+];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content">
-    <BusinessStitchHeader />
-    <BusinessStitchDashboard />
-    <BusinessStitchWorkflow />
-    <BusinessStitchControls />
-    <BusinessStitchSpotlight />
-    <BusinessStitchCta />
+    <section class="hero2" data-spotlight aria-labelledby="biz-title">
+      <div class="hero2__bg" aria-hidden="true"><span class="hero2__aurora hero2__aurora--a"></span><span class="hero2__aurora hero2__aurora--b"></span><span class="hero2__aurora hero2__aurora--c"></span><span class="hero2__grid"></span></div>
+      <div class="container hero2__inner">
+        <div class="hero2__copy">
+          <p class="hero2__badge"><span class="hero2__badge-dot"></span>For service businesses</p>
+          <h1 id="biz-title" data-split data-accent="4,5">Run the whole customer relationship from one app.</h1>
+          <p class="hero2__lede">Capture every enquiry, keep the calendar full, ask every customer for a review, and see who is due back. You stay in charge of every message.</p>
+          <div class="hero2__actions">
+            <Button href="/get-started">Start free trial <StoryIcon name="arrow_forward" class="hero2__arrow" /></Button>
+            <Button href="/pricing" variant="secondary">See pricing</Button>
+          </div>
+          <ul class="hero2__trust">
+            <li><StoryIcon name="event_available" class="hero2__trust-icon" />14-day free trial</li>
+            <li><StoryIcon name="shield" class="hero2__trust-icon" />Nothing sends without you</li>
+            <li><StoryIcon name="account_box" class="hero2__trust-icon" />Your customers stay yours</li>
+          </ul>
+        </div>
+        <div class="hero2__demo"><HeroLoopDemo /></div>
+      </div>
+    </section>
+
+    <ScrollStory id="biz-day" kicker="Inside the business app" title="Your working day, in one place." {steps}>
+      <Fragment slot="s0">
+        <div class="am-head"><b>Dashboard</b><small>Northside Barbers</small></div>
+        <div class="am-body">
+          <div class="am-kv">
+            <div data-pop="1"><small>New leads</small><b>2</b></div>
+            <div data-pop="1"><small>Today</small><b>6 bookings</b></div>
+            <div data-pop="2"><small>Reviews</small><b>1 new</b></div>
+            <div data-pop="2"><small>Due back</small><b>3 customers</b></div>
+          </div>
+          <p class="am-label">Attention required</p>
+          <div class="am-card am-card--hot" data-pop="3"><span class="am-av">JM</span><span class="am-txt"><strong>Jordan M.</strong><small>Missed call · 2h ago</small></span><span class="am-tag am-tag--red">New</span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s1">
+        <div class="am-head"><b>Thursday 14</b><small>Calendar</small></div>
+        <div class="am-body">
+          <div class="am-card" data-pop="1"><span class="am-av am-av--t">9:15</span><span class="am-txt"><strong>Priya S.</strong><small>Beard trim · 30 min</small></span><span class="am-tag am-tag--teal">Confirmed</span></div>
+          <div class="am-card am-card--hot" data-pop="2"><span class="am-av">10:30</span><span class="am-txt"><strong>Jordan M.</strong><small>Skin fade · 45 min</small></span><span class="am-tag am-tag--teal">Confirmed</span></div>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--b">13:00</span><span class="am-txt"><strong>Marcus T.</strong><small>Kids cut · 30 min</small></span><span class="am-tag">Booked</span></div>
+          <div class="am-note" data-pop="4">Confirmation sent to Jordan by SMS.</div>
+        </div>
+      </Fragment>
+      <Fragment slot="s2">
+        <div class="am-head"><span class="am-back"></span><b>Jordan M.</b><span class="am-tag am-tag--teal">Customer</span></div>
+        <div class="am-body">
+          <div class="am-kv"><div data-pop="1"><small>Visits</small><b>4</b></div><div data-pop="1"><small>Usually every</small><b>4 weeks</b></div></div>
+          <p class="am-label">History</p>
+          <div class="am-card" data-pop="2"><span class="am-av am-av--t">★</span><span class="am-txt"><strong>Left a review</strong><small>2 weeks ago</small></span></div>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--b">✓</span><span class="am-txt"><strong>Skin fade · Paid</strong><small>2 weeks ago</small></span></div>
+          <div class="am-card" data-pop="4"><span class="am-av">✉</span><span class="am-txt"><strong>Missed call → lead</strong><small>6 weeks ago</small></span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s3">
+        <div class="am-head"><b>Reviews</b><small>Every visit</small></div>
+        <div class="am-body">
+          <div class="am-card" data-pop="1"><span class="am-av am-av--t">✓</span><span class="am-txt"><strong>Request sent · Jordan M.</strong><small>After Thursday's visit</small></span></div>
+          <div class="am-card" data-pop="2"><span class="am-av">★</span><span class="am-txt"><strong>★★★★★ Priya S.</strong><small>"Quick, friendly, sharp trim."</small></span></div>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--b">✎</span><span class="am-txt"><strong>Private feedback · Marcus T.</strong><small>Ask for a later slot next time</small></span></div>
+          <div class="am-note" data-pop="4">Requests are never filtered by expected rating.</div>
+        </div>
+      </Fragment>
+      <Fragment slot="s4">
+        <div class="am-head"><b>Customers due</b><small>Comeback</small></div>
+        <div class="am-body">
+          <div class="am-card am-card--hot" data-pop="1"><span class="am-av">JM</span><span class="am-txt"><strong>Jordan M.</strong><small>5 weeks · usually 4</small></span><span class="am-tag am-tag--red">Due back</span></div>
+          <div class="am-card" data-pop="2"><span class="am-av am-av--t">AK</span><span class="am-txt"><strong>Amara K.</strong><small>7 weeks · usually 6</small></span><span class="am-tag am-tag--red">Due back</span></div>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--b">PS</span><span class="am-txt"><strong>Priya S.</strong><small>2 weeks · usually 3</small></span><span class="am-tag am-tag--teal">On track</span></div>
+          <span class="am-btn am-btn--primary" data-pop="4">Create reminder</span>
+        </div>
+      </Fragment>
+    </ScrollStory>
+
+    <PlatformModules />
+
+    <section class="story-industries container" aria-labelledby="biz-trades-title">
+      <div class="story-section-heading">
+        <p class="story-kicker">Built for your trade</p>
+        <h2 id="biz-trades-title">One app, shaped around how you work.</h2>
+      </div>
+      <TradeMarquee />
+    </section>
+
+    <section class="biz-cta container" aria-labelledby="biz-cta-title">
+      <div class="biz-cta__panel" data-spotlight>
+        <h2 id="biz-cta-title">Try it with your next enquiry.</h2>
+        <p>Set up in one sitting. 14 days free, then choose the plan that fits.</p>
+        <div class="hero2__actions"><Button href="/get-started">Start free trial</Button><Button href="/pricing" variant="secondary">See pricing</Button></div>
+      </div>
+    </section>
   </main>
   <Footer />
   <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumb)} />
 </MarketingLayout>
+
+<style>
+  .biz-cta{padding-block:var(--space-2xl) var(--space-3xl)}
+  .biz-cta__panel{position:relative;overflow:hidden;padding:clamp(2rem,5vw,3.5rem);border-radius:var(--r-xl);background:var(--heading);color:#fff;text-align:center}
+  .biz-cta__panel>*{position:relative;z-index:1}
+  .biz-cta h2{margin:0;font-family:var(--font-heading);font-size:clamp(1.9rem,4vw,2.8rem);font-weight:800;letter-spacing:-.035em;color:#fff}
+  .biz-cta p{margin:.75rem auto 0;max-width:32rem;color:#c9ccd3}
+  .biz-cta .hero2__actions{justify-content:center}
+</style>

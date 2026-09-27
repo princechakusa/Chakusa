@@ -67,11 +67,11 @@ const screens = await Promise.all(steps.map((_, i) => (Astro.slots.has(`s${i}`) 
   @media (min-width:60rem){
     .sstory__wrap{grid-template-columns:minmax(0,1fr) 22rem;gap:clamp(3rem,6vw,6rem)}
     .sstory__steps{gap:0}
-    .sstory__step{min-height:46vh;display:flex;flex-direction:column;justify-content:center;background:transparent;box-shadow:none;padding-inline:0;opacity:.3}
+    .sstory__step{min-height:38vh;display:flex;flex-direction:column;justify-content:center;background:transparent;box-shadow:none;padding-inline:0;opacity:.3}
     .sstory__step.is-active{opacity:1}
     .sstory__step.is-active .sstory__num{background:var(--primary);color:#fff}
-    .sstory__step:first-child{min-height:40vh;justify-content:flex-start;padding-top:8vh}
-    .sstory__step:last-child{min-height:56vh}
+    .sstory__step:first-child{min-height:34vh;justify-content:flex-start;padding-top:6vh}
+    .sstory__step:last-child{min-height:50vh}
     .sstory__stage{display:block;grid-column:2;grid-row:1}
     .sstory__mini{display:none}
     .sstory__sticky{position:sticky;top:calc(50vh - 18.5rem);display:grid;justify-items:center}

@@ -1,20 +1,25 @@
 ---
+// For clients (customers). 2026-09 rebuild: the Stitch version used
+// fabricated reviews, ratings, and loyalty figures. This page walks the
+// real customer mode of the Chakusa app (mobile/src/customer/screens:
+// Explore with map + search, business profile with services and recent
+// reviews, booking flow with date/time and "Anyone" team choice,
+// Upcoming bookings, Rewards for businesses that run a loyalty
+// programme). Demo data only.
 import MarketingLayout from "../layouts/MarketingLayout.astro";
 import SkipLink from "../components/foundation/SkipLink.astro";
 import Header from "../components/header/Header.astro";
 import Footer from "../components/footer/Footer.astro";
-import ClientStitchHeader from "../components/client/ClientStitchHeader.astro";
-import ClientStitchDashboard from "../components/client/ClientStitchDashboard.astro";
-import ClientStitchWorkflow from "../components/client/ClientStitchWorkflow.astro";
-import ClientStitchControls from "../components/client/ClientStitchControls.astro";
-import ClientStitchSpotlight from "../components/client/ClientStitchSpotlight.astro";
-import ClientStitchCta from "../components/client/ClientStitchCta.astro";
-import "../styles/business/business-stitch.css";
-import "../styles/business/business-stitch-fixes.css";
-import "../styles/client/client-stitch-fixes.css";
-
+import Button from "../components/foundation/Button.astro";
+import StoryIcon from "../components/homepage/StoryIcon.astro";
+import ScrollStory from "../components/motion/ScrollStory.astro";
+import TradeMarquee from "../components/motion/TradeMarquee.astro";
+import "../styles/app-mock.css";
+import "../styles/homepage/story.css";
+import "../styles/homepage/story-motion.css";
+import "../styles/homepage/hero2.css";
 const title = "Chakusa for customers | Discover and book local businesses";
-const description = "Browse local businesses, see real availability, book directly, and leave ungated reviews, all in the Chakusa app, no account required to start.";
+const description = "Find local service businesses near you, see their services and real availability, book a time, and get reminders, all in the Chakusa app.";
 const breadcrumb = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -23,18 +28,127 @@ const breadcrumb = {
     { "@type": "ListItem", position: 2, name: "For clients", item: new URL("/client", Astro.site).toString() },
   ],
 };
+const steps = [
+  { title: "Find businesses near you.", copy: "Search by business or service, or look around the map. Explore shows local businesses close to where you are, or anywhere you choose.", chips: ["Search", "Map", "Near me"] },
+  { title: "See exactly what's offered.", copy: "A business profile shows its services, what they involve, and recent reviews from other customers, before you commit to anything.", chips: ["Services", "Recent reviews"] },
+  { title: "Pick a time that's actually free.", copy: "Choose a service, a date, and a time from the business's real availability, with anyone on the team or someone specific.", chips: ["Real availability", "Choose who"] },
+  { title: "Everything booked, in one list.", copy: "Upcoming visits sit together in Bookings, with a confirmation and a reminder by SMS so nothing slips your mind.", chips: ["Upcoming", "SMS reminders"] },
+  { title: "Rewards where they apply.", copy: "When a business runs a loyalty programme, your points and rewards for that business show up in Rewards.", chips: ["Points", "Rewards ready"] },
+];
 ---
 <MarketingLayout {title} {description}>
   <SkipLink />
   <Header />
   <main id="main-content">
-    <ClientStitchHeader />
-    <ClientStitchDashboard />
-    <ClientStitchWorkflow />
-    <ClientStitchControls />
-    <ClientStitchSpotlight />
-    <ClientStitchCta />
+    <section class="hero2" data-spotlight aria-labelledby="client-title">
+      <div class="hero2__bg" aria-hidden="true"><span class="hero2__aurora hero2__aurora--a"></span><span class="hero2__aurora hero2__aurora--b"></span><span class="hero2__aurora hero2__aurora--c"></span><span class="hero2__grid"></span></div>
+      <div class="container hero2__inner">
+        <div class="hero2__copy">
+          <p class="hero2__badge"><span class="hero2__badge-dot"></span>For customers</p>
+          <h1 id="client-title" data-split data-accent="2,3">Book the local businesses you trust.</h1>
+          <p class="hero2__lede">Find barbers, salons, mechanics, cleaners and more near you. See their services and real availability, book in a few taps, and get reminded before you go.</p>
+          <div class="hero2__actions">
+            <Button href="/industries">Explore local businesses <StoryIcon name="arrow_forward" class="hero2__arrow" /></Button>
+            <Button href="/how-it-works" variant="secondary">How it works</Button>
+          </div>
+          <ul class="hero2__trust">
+            <li><StoryIcon name="event_available" class="hero2__trust-icon" />Real availability</li>
+            <li><StoryIcon name="star_rate" class="hero2__trust-icon" />Honest, ungated reviews</li>
+          </ul>
+        </div>
+        <div class="hero2__demo client-phone" aria-hidden="true">
+          <div class="am am-phone">
+            <span class="am-phone__island"></span>
+            <div class="am-phone__screen">
+              <div class="am-status"><span>9:41</span><span>●●●</span></div>
+              <div class="am-head"><b>Explore</b><small>Near you</small></div>
+              <div class="am-body client-explore">
+                <div class="client-search">Search businesses or services</div>
+                <div class="client-map"><i style="left:22%;top:38%"></i><i style="left:58%;top:24%" class="is-hot"></i><i style="left:70%;top:62%"></i><i style="left:36%;top:70%"></i><span class="client-map__me"></span></div>
+                <div class="am-card am-card--hot client-float"><span class="am-av">NB</span><span class="am-txt"><strong>Northside Barbers</strong><small>Skin fade · Beard trim · 0.4 mi</small></span><span class="am-tag am-tag--teal">Open</span></div>
+                <div class="am-card"><span class="am-av am-av--t">GS</span><span class="am-txt"><strong>Glow Studio</strong><small>Colour · Cuts · 0.9 mi</small></span></div>
+              </div>
+              <div class="am-tabs"><span>Home</span><span class="is-on">Explore</span><span>Bookings</span><span>Rewards</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <ScrollStory id="client-flow" kicker="Inside customer mode" title="From search to seat, in a few taps." {steps}>
+      <Fragment slot="s0">
+        <div class="am-head"><b>Explore</b><small>Near you</small></div>
+        <div class="am-body">
+          <div class="client-search" data-pop="1">skin fade</div>
+          <div class="am-card am-card--hot" data-pop="2"><span class="am-av">NB</span><span class="am-txt"><strong>Northside Barbers</strong><small>0.4 mi · Skin fade from £25</small></span></div>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--b">FC</span><span class="am-txt"><strong>Fade Club</strong><small>1.2 mi · Skin fade</small></span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s1">
+        <div class="am-head"><span class="am-back"></span><b>Northside Barbers</b></div>
+        <div class="am-body">
+          <p class="am-label">Services</p>
+          <div class="am-card" data-pop="1"><span class="am-txt"><strong>Skin fade</strong><small>45 min · £25</small></span><span class="am-tag am-tag--ink">Book</span></div>
+          <div class="am-card" data-pop="2"><span class="am-txt"><strong>Beard trim</strong><small>30 min · £15</small></span><span class="am-tag">Book</span></div>
+          <p class="am-label">Recent reviews</p>
+          <div class="am-card" data-pop="3"><span class="am-av am-av--t">★</span><span class="am-txt"><strong>★★★★★</strong><small>"Sharp fade, easy booking."</small></span></div>
+        </div>
+      </Fragment>
+      <Fragment slot="s2">
+        <div class="am-head"><span class="am-back"></span><b>Book · Skin fade</b></div>
+        <div class="am-body">
+          <p class="am-label">With</p>
+          <div class="am-chips" data-pop="1"><span class="is-on">Anyone</span><span>Leo</span><span>Sam</span></div>
+          <p class="am-label">Thursday 14</p>
+          <div class="am-chips" data-pop="2"><span>9:15</span><span class="is-on">10:30</span><span>11:45</span><span>13:00</span></div>
+          <span class="am-btn am-btn--primary" data-pop="3">Book 10:30</span>
+        </div>
+      </Fragment>
+      <Fragment slot="s3">
+        <div class="am-head"><b>Bookings</b></div>
+        <div class="am-body">
+          <p class="am-label">Upcoming</p>
+          <div class="am-card am-card--hot" data-pop="1"><span class="am-av">14</span><span class="am-txt"><strong>Skin fade · Northside Barbers</strong><small>Thu 10:30 · with Leo</small></span><span class="am-tag am-tag--teal">Confirmed</span></div>
+          <div class="am-note" data-pop="2">SMS: "Your skin fade is booked for Thu 14, 10:30."</div>
+          <div class="am-note" data-pop="3">SMS: "Reminder: your appointment is tomorrow at 10:30."</div>
+        </div>
+      </Fragment>
+      <Fragment slot="s4">
+        <div class="am-head"><b>Rewards</b></div>
+        <div class="am-body">
+          <div class="am-card" data-pop="1"><span class="am-av">NB</span><span class="am-txt"><strong>Northside Barbers</strong><small>Loyalty programme</small></span><span class="am-tag am-tag--teal">Reward ready</span></div>
+          <p class="am-label">Recent points activity</p>
+          <div class="am-card" data-pop="2"><span class="am-av am-av--t">+</span><span class="am-txt"><strong>Visit completed</strong><small>Thu 14 · Skin fade</small></span></div>
+          <div class="am-note" data-pop="3">Rewards appear only for businesses that run a loyalty programme.</div>
+        </div>
+      </Fragment>
+    </ScrollStory>
+
+    <section class="story-industries container" aria-labelledby="client-trades-title">
+      <div class="story-section-heading">
+        <p class="story-kicker">Who you can book</p>
+        <h2 id="client-trades-title">Local services, one app.</h2>
+      </div>
+      <TradeMarquee />
+    </section>
   </main>
   <Footer />
   <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumb)} />
 </MarketingLayout>
+
+<style>
+  .client-phone{display:grid;justify-items:center}
+  .client-phone .am-phone{transform:rotateY(-8deg) rotateX(3deg);transition:transform .8s cubic-bezier(.22,1,.36,1)}
+  .client-phone:hover .am-phone{transform:none}
+  :global(.client-search){padding:.55rem .8rem;border-radius:999px;background:#fff;box-shadow:0 0 0 1px #e3e6f3;font-size:.66rem;color:#5b6275}
+  .client-map{position:relative;height:10.5rem;border-radius:1rem;overflow:hidden;background:linear-gradient(135deg,#e8f4ef 0%,#eef1fb 100%);background-image:linear-gradient(90deg,rgba(19,27,46,.05) 1px,transparent 1px),linear-gradient(rgba(19,27,46,.05) 1px,transparent 1px),linear-gradient(135deg,#e8f4ef,#eef1fb);background-size:18px 18px,18px 18px,100% 100%}
+  .client-map i{position:absolute;width:.9rem;height:.9rem;margin:-.45rem;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#006A61;box-shadow:0 4px 10px rgba(0,106,97,.4);animation:pin-drop .8s cubic-bezier(.34,1.56,.64,1) both}
+  .client-map i:nth-child(2){animation-delay:.2s}.client-map i:nth-child(3){animation-delay:.35s}.client-map i:nth-child(4){animation-delay:.5s}
+  .client-map i.is-hot{background:#AB2D19;width:1.2rem;height:1.2rem;box-shadow:0 0 0 6px rgba(171,45,25,.15),0 4px 10px rgba(171,45,25,.45)}
+  .client-map__me{position:absolute;left:45%;top:48%;width:.8rem;height:.8rem;border-radius:50%;background:#2563eb;box-shadow:0 0 0 0 rgba(37,99,235,.5);animation:me-pulse 2s infinite}
+  @keyframes pin-drop{from{opacity:0;transform:translateY(-24px) rotate(-45deg)}}
+  @keyframes me-pulse{70%{box-shadow:0 0 0 14px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}
+  .client-float{animation:float-card 5s ease-in-out infinite}
+  @keyframes float-card{50%{transform:translateY(-4px)}}
+  @media (prefers-reduced-motion:reduce){.client-map i,.client-map__me,.client-float{animation:none}}
+</style>

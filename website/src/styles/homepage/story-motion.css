@@ -9,11 +9,6 @@
 .fx-static .story-lifecycle__grid li::before{transform:scaleX(1)}
 
 /* Trades marquee */
-.trade-marquee{margin:var(--space-xl) 0 var(--space-lg);padding-block:.3rem}
-.trade-marquee>div{gap:.6rem}
-.trade-marquee__chip{flex:none;padding:.6rem 1.1rem;border-radius:999px;border:1px solid var(--hairline);background:var(--card-surface);color:var(--heading);font-weight:600;font-size:.9rem;text-decoration:none;white-space:nowrap;transition:border-color .2s,color .2s,transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s}
-.trade-marquee__chip:hover,.trade-marquee__chip:focus-visible{border-color:var(--primary);color:var(--primary);transform:translateY(-3px);box-shadow:0 10px 20px -12px rgba(238,93,67,.6)}
-.fx-static .trade-marquee>div{flex-wrap:wrap;width:auto}
 
 /* Ecosystem hand-off */
 .story-ecosystem{position:relative;overflow:hidden}
@@ -138,9 +133,6 @@
 .story-cta__panel>*{position:relative;z-index:1}
 @media (prefers-reduced-motion:reduce){.story-cta__card--primary{animation:none}}
 .story-cta .story-kicker{display:inline-flex}
-.trade-marquee+.trade-marquee{margin-top:-.6rem}
-.trade-more{margin-top:var(--space-lg)}
-.trade-more a{font-weight:700;color:var(--heading)}
 .story-industries{padding-block:var(--space-3xl)!important}
 .story-modules__preview{padding:var(--space-sm)!important;border-style:solid!important}
 .story-modules__preview .mdemo{margin:0}

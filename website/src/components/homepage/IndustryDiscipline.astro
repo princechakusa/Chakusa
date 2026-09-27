@@ -1,6 +1,5 @@
 ---
-// Every trade below has a live /industries/<slug> page.
-const trades = [["Barbers","barbers"],["Hair salons","hair-salons"],["Spas & massage","spas-massage"],["Beauty clinics","beauty-clinics"],["Dentists","dentists"],["Photographers","photographers"],["Cleaners","cleaners"],["Plumbers","plumbers"],["Electricians","electricians"],["Movers","movers"],["Small contractors","small-contractors"],["Mechanics","mechanics"],["Detailers","detailers"],["Car washes","car-washes"],["Restaurants","restaurants"],["Consultants","consultants"]];
+import TradeMarquee from "../motion/TradeMarquee.astro";
 ---
 <section class="story-industries container" aria-labelledby="story-industries-title">
   <div class="story-section-heading">
@@ -8,10 +7,5 @@ const trades = [["Barbers","barbers"],["Hair salons","hair-salons"],["Spas & mas
     <h2 id="story-industries-title" data-split>Engineered for every local service discipline.</h2>
     <p>Chakusa adapts to how each trade actually books, follows up, and brings customers back.</p>
   </div>
-  {[trades, [...trades.slice(8), ...trades.slice(0, 8)]].map((row, r) => <div class="trade-marquee" data-marquee={r === 1 ? "reverse" : ""}>
-    <div>
-      {[0, 1].map((copy) => row.map(([name, slug]) => <a href={`/industries/${slug}`} class="trade-marquee__chip" aria-hidden={copy === 1 || r === 1 ? "true" : undefined} tabindex={copy === 1 || r === 1 ? -1 : undefined}>{name}</a>))}
-    </div>
-  </div>)}
-  <p class="trade-more"><a href="/industries">See all supported industries <span aria-hidden="true">→</span></a></p>
+  <TradeMarquee />
 </section>

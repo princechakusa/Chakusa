@@ -7,6 +7,7 @@ import { config } from "../lib/config.js";
 import { permissionsForAdminRole, requireAdminPermission, type AdminPermission } from "../modules/admin/admin.permissions.js";
 import { adminCsrfHeaderSchema } from "../modules/admin/admin.schemas.js";
 import { tokenHashMatches } from "../lib/authTokens.js";
+import { extractCloudflareAccessToken, verifyCloudflareAccessToken } from "../lib/cloudflareAccess.js";
 
 export interface AdminPrincipal {
   membershipId: string;
@@ -30,6 +31,18 @@ declare module "fastify" {
 export default fp(async function adminAuthPlugin(fastify: FastifyInstance) {
   fastify.decorate("authenticateAdmin", async function (request: FastifyRequest) {
     if (!config.ADMIN_CONSOLE_ENABLED) throw ApiError.notFound();
+    // Second, independent auth layer (see src/lib/cloudflareAccess.ts):
+    // checked before the app's own session JWT, so a valid admin password
+    // alone is never enough when this is turned on - the request must also
+    // carry a Cloudflare-signed assertion that this admin cleared the Access
+    // application in front of the console.
+    if (config.CF_ACCESS_ENABLED) {
+      try {
+        await verifyCloudflareAccessToken(extractCloudflareAccessToken(request));
+      } catch {
+        throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Cloudflare Access verification failed");
+      }
+    }
     try {
       await request.jwtVerify();
     } catch {

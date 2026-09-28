@@ -252,6 +252,19 @@ export const envSchema = z.object({
   // requires its exact HTTPS origin (the eventual Cloudflare URL).
   ADMIN_CONSOLE_ENABLED: booleanFlag,
   ADMIN_CONSOLE_ORIGIN: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  // Second auth layer in front of the admin console: Cloudflare Access sits
+  // in front of the console's own domain and, once a visitor clears it,
+  // every request Cloudflare proxies carries a signed Cf-Access-Jwt-Assertion
+  // header. When enabled, authenticateAdmin (src/plugins/adminAuth.ts) also
+  // verifies that header against Cloudflare's own JWKS before trusting the
+  // app's own session JWT - a compromised admin password alone is no longer
+  // enough. TEAM_DOMAIN is the team name chosen in the Zero Trust dashboard
+  // (it serves JWKS at https://<team>.cloudflareaccess.com/cdn-cgi/access/certs);
+  // AUD is the Access Application's "Application Audience (AUD) Tag" shown
+  // on that application's Overview page.
+  CF_ACCESS_ENABLED: booleanFlag,
+  CF_ACCESS_TEAM_DOMAIN: optionalSecret,
+  CF_ACCESS_AUD: optionalSecret,
   // Production Infrastructure Phase 4: same "off by default, feature-flag
   // gated" shape as EMAIL_ENABLED above — Sentry is an operational nicety,
   // not something local dev/test or an unconfigured deployment should ever
@@ -307,6 +320,10 @@ export const envSchema = z.object({
     } else if (new URL(env.ADMIN_CONSOLE_ORIGIN).origin !== env.ADMIN_CONSOLE_ORIGIN) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["ADMIN_CONSOLE_ORIGIN"], message: "ADMIN_CONSOLE_ORIGIN must be an origin only, with no path or trailing slash" });
     }
+  }
+  if (env.CF_ACCESS_ENABLED) {
+    if (!env.CF_ACCESS_TEAM_DOMAIN) context.addIssue({ code: z.ZodIssueCode.custom, path: ["CF_ACCESS_TEAM_DOMAIN"], message: "CF_ACCESS_TEAM_DOMAIN is required when CF_ACCESS_ENABLED=true" });
+    if (!env.CF_ACCESS_AUD) context.addIssue({ code: z.ZodIssueCode.custom, path: ["CF_ACCESS_AUD"], message: "CF_ACCESS_AUD is required when CF_ACCESS_ENABLED=true" });
   }
   if (!env.PUBLIC_REVIEW_BASE_URL) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["PUBLIC_REVIEW_BASE_URL"], message: "PUBLIC_REVIEW_BASE_URL is required in production to generate customer-facing review links" });

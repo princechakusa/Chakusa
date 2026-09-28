@@ -11,6 +11,7 @@ import { encryptProviderCredential, decryptProviderCredential } from "./provider
 export const PLATFORM_PROVIDER_SECRET_KEYS = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
+  "GEMINI_API_KEY",
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
   "TWILIO_FROM_NUMBER",

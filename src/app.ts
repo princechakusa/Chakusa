@@ -204,6 +204,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerBuiltInAIProviders({
     OPENAI_API_KEY: platformSecretOverrides.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: platformSecretOverrides.ANTHROPIC_API_KEY,
+    GEMINI_API_KEY: platformSecretOverrides.GEMINI_API_KEY,
   });
   if (
     platformSecretOverrides.TWILIO_ACCOUNT_SID ||

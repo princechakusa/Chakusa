@@ -272,6 +272,9 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: optionalSecret,
   ANTHROPIC_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
   ANTHROPIC_DEFAULT_MODEL: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
+  GEMINI_API_KEY: optionalSecret,
+  GEMINI_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
+  GEMINI_DEFAULT_MODEL: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
   // Timeout (ms) and max retry attempts applied by every provider adapter.
   AI_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(30_000),
   AI_PROVIDER_MAX_RETRIES: z.coerce.number().int().min(0).max(6).default(2),

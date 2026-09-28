@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createOpenAIProvider } from "../src/lib/ai/providers/openaiProvider.js";
 import { createAnthropicProvider } from "../src/lib/ai/providers/anthropicProvider.js";
+import { createGeminiProvider } from "../src/lib/ai/providers/geminiProvider.js";
 import { AIProviderError, createFetchTransport, type ProviderTransport, type TransportRequest } from "../src/lib/ai/providers/providerTransport.js";
 
 function stubTransport(handler: (request: TransportRequest) => { status?: number; json: unknown }): ProviderTransport & { calls: TransportRequest[] } {
@@ -66,6 +67,36 @@ describe("AI provider adapters (LOOP 4)", () => {
       const provider = createAnthropicProvider({ apiKey: "ak-test", transport });
       const result = await provider.invoke({ model: "claude-sonnet-5", task: "conversation", prompt: "when can I come in", context: {}, tools: [{ name: "check_availability", schema: { type: "object" } }] });
       expect(result.toolRequests).toEqual([{ name: "check_availability", arguments: { serviceOfferingId: "s1" } }]);
+    });
+  });
+
+  describe("Gemini adapter", () => {
+    it("authenticates with x-goog-api-key, targets generateContent, and returns text", async () => {
+      const transport = stubTransport(() => ({ json: { candidates: [{ content: { parts: [{ text: "Hello there" }] } }], usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 4 } } }));
+      const provider = createGeminiProvider({ apiKey: "gm-test", transport });
+      const result = await provider.invoke({ model: "gemini-2.0-flash", task: "conversation", prompt: "hi", context: {}, tools: [] });
+      expect(result.output).toBe("Hello there");
+      expect(result.usage).toEqual({ inputTokens: 12, outputTokens: 4 });
+      expect(transport.calls[0]?.url).toMatch(/\/models\/gemini-2\.0-flash:generateContent$/);
+      expect(transport.calls[0]?.headers["x-goog-api-key"]).toBe("gm-test");
+    });
+
+    it("maps functionCall parts to toolRequests", async () => {
+      const transport = stubTransport(() => ({
+        json: { candidates: [{ content: { parts: [{ functionCall: { name: "book_appointment", args: { serviceOfferingId: "abc" } } }] } }] },
+      }));
+      const provider = createGeminiProvider({ apiKey: "gm-test", transport });
+      const result = await provider.invoke({ model: "gemini-2.0-flash", task: "conversation", prompt: "book", context: {}, tools: [{ name: "book_appointment", schema: { type: "object" } }] });
+      expect(result.toolRequests).toEqual([{ name: "book_appointment", arguments: { serviceOfferingId: "abc" } }]);
+      expect((transport.calls[0]?.body as { tools?: unknown[] }).tools).toHaveLength(1);
+    });
+
+    it("requests JSON output for extraction tasks and parses it", async () => {
+      const transport = stubTransport(() => ({ json: { candidates: [{ content: { parts: [{ text: '{"intent":"booking"}' }] } }] } }));
+      const provider = createGeminiProvider({ apiKey: "gm-test", transport });
+      const result = await provider.invoke({ model: "gemini-2.0-flash", task: "extraction", prompt: "classify", context: {}, tools: [] });
+      expect(result.output).toEqual({ intent: "booking" });
+      expect((transport.calls[0]?.body as { generationConfig?: unknown }).generationConfig).toEqual({ responseMimeType: "application/json" });
     });
   });
 

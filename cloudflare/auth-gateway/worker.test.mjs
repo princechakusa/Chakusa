@@ -88,3 +88,106 @@ test("#22 new protected routes still reject a missing session", async () => {
     assert.equal(response.status, 401);
   }
 });
+
+// --- Legal acceptance at sign-in ---------------------------------------------
+// Stubs the network: Turnstile always passes, the backend answers from `routes`.
+function stubNetwork(routes) {
+  const calls = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(typeof input === "string" ? input : input.url);
+    if (url.hostname === "challenges.cloudflare.com") {
+      const token = new URLSearchParams(String(init.body)).get("response");
+      return Response.json({ success: true, action: token, hostname: "chakusarecovery.com" });
+    }
+    const key = `${init.method || "GET"} ${url.pathname}`;
+    calls.push({ key, body: init.body ? JSON.parse(init.body) : undefined });
+    const handler = routes[key];
+    const [status, body] = handler ? handler() : [404, {}];
+    return Response.json(body, { status });
+  };
+  return { calls, restore: () => { globalThis.fetch = original; } };
+}
+
+const env = { API_BASE_URL: "https://api.test", TURNSTILE_SECRET: "test" };
+const session = { accessToken: "access.jwt", refreshToken: "refresh.token", expiresIn: 900, user: { id: "u1" } };
+function signIn(path, body) {
+  return worker.fetch(new Request(`https://auth.chakusarecovery.com${path}`, {
+    method: "POST",
+    headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }), env);
+}
+const googleBody = (extra = {}) => ({ realm: "client", idToken: "x".repeat(40), flow: "login", turnstileToken: "chakusa_login", ...extra });
+const passwordBody = (extra = {}) => ({ realm: "client", email: "a@b.co", password: "pw", turnstileToken: "chakusa_login", ...extra });
+
+test("Google sign-in without acceptance is refused and revoked while documents are pending", async () => {
+  const net = stubNetwork({
+    "POST /customer/auth/google": () => [200, { ...session, isNewUser: true }],
+    "GET /customer/legal/status": () => [200, { pending: [{ type: "TERMS_OF_SERVICE" }] }],
+    "POST /customer/auth/logout": () => [200, {}],
+  });
+  try {
+    const response = await signIn("/v1/google", googleBody());
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).code, "LEGAL_ACCEPTANCE_REQUIRED");
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.ok(!net.calls.some((call) => call.key === "POST /customer/legal/accept"), "no acceptance may be recorded without the box ticked");
+    assert.deepEqual(net.calls.find((call) => call.key === "POST /customer/auth/logout").body, { refreshToken: "refresh.token" });
+  } finally { net.restore(); }
+});
+
+test("Google sign-in with the box ticked records each document and opens a session", async () => {
+  let accepted = 0;
+  const net = stubNetwork({
+    "POST /customer/auth/google": () => [200, session],
+    "POST /customer/legal/accept": () => { accepted += 1; return [201, { id: "e" }]; },
+    "GET /customer/legal/status": () => [200, { pending: accepted === 3 ? [] : [{ type: "TERMS_OF_SERVICE" }] }],
+  });
+  try {
+    const response = await signIn("/v1/google", googleBody({ acceptedLegal: true }));
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get("set-cookie"));
+    const sources = net.calls.filter((call) => call.key === "POST /customer/legal/accept").map((call) => call.body.source);
+    assert.deepEqual(sources, ["website_google_auth", "website_google_auth", "website_google_auth"]);
+  } finally { net.restore(); }
+});
+
+test("returning users with nothing pending sign in without recording a new acceptance", async () => {
+  const net = stubNetwork({
+    "POST /customer/auth/login": () => [200, session],
+    "GET /customer/legal/status": () => [200, { pending: [] }],
+  });
+  try {
+    const response = await signIn("/v1/login", passwordBody());
+    assert.equal(response.status, 200);
+    assert.ok(!net.calls.some((call) => call.key === "POST /customer/legal/accept"));
+  } finally { net.restore(); }
+});
+
+test("password sign-in with pending documents is refused until accepted", async () => {
+  const net = stubNetwork({
+    "POST /customer/auth/login": () => [200, session],
+    "GET /customer/legal/status": () => [200, { pending: [{ type: "PRIVACY_POLICY" }] }],
+    "POST /customer/auth/logout": () => [200, {}],
+  });
+  try {
+    const response = await signIn("/v1/login", passwordBody());
+    assert.equal(response.status, 403);
+    assert.equal(response.headers.get("set-cookie"), null);
+  } finally { net.restore(); }
+});
+
+test("an unreachable legal status fails closed without a session", async () => {
+  const net = stubNetwork({
+    "POST /customer/auth/login": () => [200, session],
+    "GET /customer/legal/status": () => [503, {}],
+    "POST /customer/auth/logout": () => [200, {}],
+  });
+  try {
+    const response = await signIn("/v1/login", passwordBody());
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.ok(net.calls.some((call) => call.key === "POST /customer/auth/logout"));
+  } finally { net.restore(); }
+});

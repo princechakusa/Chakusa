@@ -111,6 +111,28 @@ async function callApi(env, path, { method = "GET", body, accessToken } = {}) {
   return { response, payload };
 }
 
+// A sign-in only yields a website session once the account has accepted the
+// current Terms, Privacy Policy, and AI Disclosure. Acceptance is recorded
+// only when the person ticked the box in this request; otherwise any pending
+// document refuses the session and the page asks for explicit acceptance.
+// The backend's /legal/status is the source of truth, so a failed accept call
+// or an unreachable status endpoint can never produce a session (fail closed).
+async function settleLegalAcceptance(env, realm, accessToken, acceptedLegal, source) {
+  if (acceptedLegal === true) {
+    await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source, platform: "web" }, accessToken })));
+  }
+  const { response, payload } = await callApi(env, `${legalBase(realm)}/status`, { accessToken });
+  if (!response.ok || !Array.isArray(payload.pending)) return "unavailable";
+  return payload.pending.length ? "required" : "accepted";
+}
+
+async function refuseSession(env, realm, refreshToken, outcome, origin) {
+  try { await callApi(env, authPath(realm, "logout"), { method: "POST", body: { refreshToken } }); } catch { /* The session cookie is never issued either way. */ }
+  return outcome === "required"
+    ? json({ error: "Review and accept the Terms of Service, Privacy Policy, and AI Disclosure to continue.", code: "LEGAL_ACCEPTANCE_REQUIRED" }, 403, origin)
+    : json({ error: "Sign-in is temporarily unavailable." }, 503, origin);
+}
+
 function validEmail(value) { return typeof value === "string" && value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()); }
 function validPassword(value, registration = false) { return typeof value === "string" && value.length <= 256 && value.length >= (registration ? 12 : 1); }
 
@@ -143,6 +165,9 @@ async function authenticate(request, env, origin, action) {
     }
     if (registration) {
       await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source: "website_registration", platform: "web" }, accessToken: payload.accessToken })));
+    } else {
+      const legal = await settleLegalAcceptance(env, realm, payload.accessToken, input.acceptedLegal, "website_login");
+      if (legal !== "accepted") return refuseSession(env, realm, payload.refreshToken, legal, origin);
     }
     return json({ ...safeAuthPayload(payload), realm, next: registration && realm === "business" ? "/dashboard/business/setup" : `/dashboard/${realm}` }, response.status, origin, { cookies: sessionCookies(realm, payload, input.remember === true) });
   } catch {
@@ -167,6 +192,8 @@ async function googleAuthenticate(request, env, origin) {
       const message = response.status === 409 ? "An account with this email already exists. Sign in with your password, then connect Google from account settings." : "Google sign-in was not completed.";
       return json({ error: message }, response.status === 429 ? 429 : response.status === 409 ? 409 : 401, origin);
     }
+    const legal = await settleLegalAcceptance(env, realm, payload.accessToken, input.acceptedLegal, "website_google_auth");
+    if (legal !== "accepted") return refuseSession(env, realm, payload.refreshToken, legal, origin);
     let business = payload.business;
     if (realm === "business" && !business) {
       const name = typeof input.businessName === "string" ? input.businessName.trim() : "";
@@ -174,9 +201,6 @@ async function googleAuthenticate(request, env, origin) {
       const created = await callApi(env, "/business", { method: "POST", body: { name, industry: typeof input.industry === "string" ? input.industry.trim() || undefined : undefined }, accessToken: payload.accessToken });
       if (!created.response.ok) return json({ error: "Your Google account is secure, but the business workspace could not be created." }, 400, origin);
       business = created.payload;
-    }
-    if (input.acceptedLegal === true) {
-      await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source: "website_google_auth", platform: "web" }, accessToken: payload.accessToken })));
     }
     const next = realm === "business" && (payload.isNewUser || !payload.business) ? "/dashboard/business/setup" : `/dashboard/${realm}`;
     return json({ ...safeAuthPayload(payload), business, realm, next }, 200, origin, { cookies: sessionCookies(realm, payload, input.remember === true) });

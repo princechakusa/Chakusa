@@ -1,0 +1,100 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Calendar | Chakusa" description="Your week of bookings at a glance." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="calendar" />
+  <PageStates loadingText="Loading your calendar..." />
+  <div class="dashboard-content calendar-page" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow">Schedule</p><h1 data-range>This week</h1><p data-summary></p></div>
+      <div class="calendar-page__nav" role="group" aria-label="Change week">
+        <button type="button" data-shift="-7" aria-label="Previous week">‹ Previous</button>
+        <button type="button" data-today>Today</button>
+        <button type="button" data-shift="7" aria-label="Next week">Next ›</button>
+      </div>
+    </header>
+    <label class="catalog__filter calendar-page__filter"><input type="checkbox" data-hide-canceled checked /> Hide canceled and no-shows</label>
+    <div class="calendar-page__week" data-week></div>
+    <p class="setup-message" data-message role="status"></p>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, loadIdentity, itemsOf, label, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const startOfWeek = (date: Date) => { const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()); const offset = (day.getDay() + 6) % 7; day.setDate(day.getDate() - offset); return day; };
+  const requested = new URLSearchParams(location.search).get("week");
+  let weekStart = startOfWeek(requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && !Number.isNaN(Date.parse(requested)) ? new Date(`${requested}T00:00:00`) : new Date());
+  let appointments: any[] = [];
+  const HIDDEN = new Set(["CANCELED", "NO_SHOW"]);
+
+  const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const time = (value: Date) => value.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  const render = () => {
+    const week = $("[data-week]")!;
+    week.replaceChildren();
+    const end = new Date(weekStart); end.setDate(end.getDate() + 6);
+    $("[data-range]")!.textContent = `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+    const hide = $<HTMLInputElement>("[data-hide-canceled]")!.checked;
+    const visible = appointments.filter((item) => !hide || !HIDDEN.has(item.status));
+    $("[data-summary]")!.textContent = `${visible.length} booking${visible.length === 1 ? "" : "s"} this week`;
+    const today = new Date();
+    for (let offset = 0; offset < 7; offset += 1) {
+      const day = new Date(weekStart); day.setDate(day.getDate() + offset);
+      const items = visible.filter((item) => sameDay(new Date(item.startsAt), day)).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+      const column = el("section", { className: `calendar-page__day${sameDay(day, today) ? " calendar-page__day--today" : ""}`, attrs: { "aria-label": day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) } },
+        el("h2", {}, el("span", { text: day.toLocaleDateString(undefined, { weekday: "short" }) }), el("strong", { text: String(day.getDate()) })));
+      if (!items.length) column.append(el("p", { className: "calendar-page__empty", text: "No bookings" }));
+      for (const item of items) {
+        const starts = new Date(item.startsAt);
+        const ends = item.endsAt ? new Date(item.endsAt) : null;
+        const customerId = item.customer?.id ?? item.customerId;
+        const body = [
+          el("span", { className: "calendar-page__time", text: `${time(starts)}${ends ? ` – ${time(ends)}` : ""}` }),
+          el("strong", { text: item.serviceName || "Booking" }),
+          el("span", { text: [item.customer?.name, item.assignedMember?.user?.fullName].filter(Boolean).join(" · ") || "No customer" }),
+          el("small", { text: label(item.status) }),
+        ];
+        const card = typeof customerId === "string" && isUuid(customerId)
+          ? el("a", { className: "calendar-page__item", attrs: { href: `/dashboard/business/customers/profile?id=${encodeURIComponent(customerId)}` } }, ...body)
+          : el("div", { className: "calendar-page__item" }, ...body);
+        card.dataset.status = String(item.status || "").toLowerCase();
+        column.append(card);
+      }
+      week.append(column);
+    }
+  };
+
+  const load = async () => {
+    const from = new Date(weekStart);
+    const to = new Date(weekStart); to.setDate(to.getDate() + 7);
+    $("[data-message]")!.textContent = "";
+    appointments = itemsOf(await api(`/v1/business/appointments?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`));
+    render();
+  };
+
+  const move = async (days: number | null) => {
+    weekStart = days === null ? startOfWeek(new Date()) : new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + days);
+    const key = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
+    history.replaceState(null, "", `?week=${key}`);
+    try { await load(); } catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-message]")!.textContent = error instanceof Error ? error.message : "The calendar could not be loaded."; }
+  };
+
+  document.querySelectorAll<HTMLButtonElement>("[data-shift]").forEach((button) => button.addEventListener("click", () => void move(Number(button.dataset.shift))));
+  $("[data-today]")!.addEventListener("click", () => void move(null));
+  $("[data-hide-canceled]")!.addEventListener("change", render);
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      await load();
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

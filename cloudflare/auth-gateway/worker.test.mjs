@@ -104,7 +104,7 @@ function stubNetwork(routes) {
     calls.push({ key, body: init.body ? JSON.parse(init.body) : undefined });
     const handler = routes[key];
     const [status, body] = handler ? handler() : [404, {}];
-    return Response.json(body, { status });
+    return status === 204 ? new Response(null, { status }) : Response.json(body, { status });
   };
   return { calls, restore: () => { globalThis.fetch = original; } };
 }
@@ -241,4 +241,145 @@ test("delete requests are allowed by CORS preflight and still require a session"
 test("a cross-site delete is rejected before any session lookup", async () => {
   const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/invoices/11111111-2222-4333-8444-555555555555", { method: "DELETE", headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" } }), {});
   assert.equal(response.status, 403);
+});
+
+test("service catalogue writes map exactly and archive is the only delete", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/services", "POST").path, "/services");
+  assert.equal(route(`/v1/business/services/${uuid}`, "PATCH").path, `/services/${uuid}`);
+  assert.equal(route(`/v1/business/services/${uuid}`, "DELETE").path, `/services/${uuid}`);
+  assert.equal(route("/v1/business/services", "DELETE"), null);
+  assert.equal(route("/v1/business/services/not-a-uuid", "PATCH"), null);
+  assert.equal(route(`/v1/business/services/${uuid}/members`, "POST"), null);
+});
+
+// --- Account settings --------------------------------------------------------
+test("API error messages are surfaced from the { error: { message } } shape", () => {
+  assert.equal(internals.upstreamErrorMessage({ error: { code: "CONFLICT", message: "Only draft documents can be edited" } }), "Only draft documents can be edited");
+  assert.equal(internals.upstreamErrorMessage({ message: "legacy" }), "legacy");
+  assert.equal(internals.upstreamErrorMessage({ error: { message: "x".repeat(301) } }), null);
+  assert.equal(internals.upstreamErrorMessage(null), null);
+});
+
+test("account profile is a named business route; password and deletion are dedicated handlers", () => {
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/account/profile"), "PATCH").path, "/auth/profile");
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/account/password"), "POST"), null);
+  assert.equal(internals.matchProtectedRoute(new URL("https://a/v1/business/account/delete"), "POST"), null);
+  assert.equal(internals.ACCOUNT_ACTIONS["/v1/business/account/delete"].upstream, "/auth/delete-account");
+  assert.equal(internals.ACCOUNT_ACTIONS["/v1/client/account/close"].realm, "client");
+  assert.equal(internals.ACCOUNT_ACTIONS["/v1/business/account/__proto__"], undefined);
+});
+
+function sessionRequest(path, body, cookie) {
+  return new Request(`https://auth.chakusarecovery.com${path}`, {
+    method: "POST",
+    headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", "content-type": "application/json", cookie },
+    body: JSON.stringify(body),
+  });
+}
+const businessAccess = `__Host-chakusa_access=${internals.encodeAccessCookie("business", "access.jwt")}; __Host-chakusa_refresh=${internals.encodeRefreshCookie("business", "refresh.token")}`;
+
+test("a wrong password is not retried and does not end the session", async () => {
+  let attempts = 0;
+  const net = stubNetwork({
+    "POST /auth/delete-account": () => { attempts += 1; return [401, { error: { code: "AUTH_REAUTHENTICATION_REQUIRED", message: "Password confirmation failed" } }]; },
+  });
+  try {
+    const response = await worker.fetch(sessionRequest("/v1/business/account/delete", { password: "wrong" }, businessAccess), env);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error, "Password confirmation failed");
+    assert.equal(attempts, 1);
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.ok(!net.calls.some((call) => call.key === "POST /auth/refresh"));
+  } finally { net.restore(); }
+});
+
+test("a successful deletion clears both session cookies", async () => {
+  const net = stubNetwork({ "POST /auth/delete-account": () => [204, {}] });
+  try {
+    const response = await worker.fetch(sessionRequest("/v1/business/account/delete", { password: "right" }, businessAccess), env);
+    assert.equal(response.status, 200);
+    const cookies = response.headers.get("set-cookie");
+    assert.match(cookies, /__Host-chakusa_refresh=; .*Max-Age=0/);
+    assert.match(cookies, /__Host-chakusa_access=; .*Max-Age=0/);
+    assert.deepEqual(net.calls[0].body, { password: "right" });
+  } finally { net.restore(); }
+});
+
+test("an expired access token is refreshed and the action retried once", async () => {
+  let attempts = 0;
+  const net = stubNetwork({
+    "POST /auth/change-password": () => { attempts += 1; return attempts === 1 ? [401, { error: { code: "AUTH_TOKEN_INVALID", message: "expired" } }] : [204, {}]; },
+    "POST /auth/refresh": () => [200, { accessToken: "new.jwt", refreshToken: "new.refresh", expiresIn: 900 }],
+  });
+  try {
+    const response = await worker.fetch(sessionRequest("/v1/business/account/password", { currentPassword: "a", newPassword: "b".repeat(12) }, businessAccess), env);
+    assert.equal(response.status, 200);
+    assert.equal(attempts, 2);
+    assert.ok(response.headers.get("set-cookie"));
+  } finally { net.restore(); }
+});
+
+test("a client session can never run a business account action", async () => {
+  const clientCookie = `__Host-chakusa_access=${internals.encodeAccessCookie("client", "access.jwt")}`;
+  const net = stubNetwork({});
+  try {
+    const response = await worker.fetch(sessionRequest("/v1/business/account/delete", { password: "x" }, clientCookie), env);
+    assert.equal(response.status, 401);
+    assert.equal(net.calls.length, 0);
+  } finally { net.restore(); }
+});
+
+test("team administration routes map exactly; ownership transfer is never reachable", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/team/summary", "GET").path, "/team/summary");
+  assert.equal(route(`/v1/business/team/members/${uuid}`, "PATCH").path, `/team/members/${uuid}`);
+  assert.equal(route(`/v1/business/team/members/${uuid}`, "DELETE").path, `/team/members/${uuid}`);
+  assert.equal(route(`/v1/business/team/members/${uuid}/reactivate`, "POST").path, `/team/members/${uuid}/reactivate`);
+  assert.equal(route("/v1/business/team/invitations", "GET").path, "/team/invitations");
+  assert.equal(route("/v1/business/team/invitations", "POST").path, "/team/invitations");
+  assert.equal(route(`/v1/business/team/invitations/${uuid}`, "DELETE").path, `/team/invitations/${uuid}`);
+  assert.equal(route("/v1/business/team/ownership-transfer", "POST"), null);
+  assert.equal(route("/v1/business/team/members", "DELETE"), null);
+  assert.equal(route(`/v1/client/team/members/${uuid}`, "DELETE"), null);
+});
+
+test("customer profile routes are UUID-only", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route(`/v1/business/customers/${uuid}`, "GET").path, `/customers/${uuid}`);
+  assert.equal(route(`/v1/business/customers/${uuid}`, "PATCH").path, `/customers/${uuid}`);
+  assert.equal(route("/v1/business/customers/audiences", "GET"), null);
+  assert.equal(route("/v1/business/customers/bulk-import", "POST"), null);
+});
+
+test("client invoice detail and pay are client-realm and UUID-only", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route(`/v1/client/invoices/${uuid}`, "GET").realm, "client");
+  assert.equal(route(`/v1/client/invoices/${uuid}`, "GET").path, `/customer/invoices/${uuid}`);
+  assert.equal(route(`/v1/client/invoices/${uuid}/pay`, "POST").path, `/customer/invoices/${uuid}/pay`);
+  assert.equal(route(`/v1/client/invoices/${uuid}/pay`, "GET"), null);
+  assert.equal(route("/v1/client/invoices/abc/pay", "POST"), null);
+});
+
+test("customer CSV import routes allow a larger body only on those two routes", async () => {
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/customers/import/preview", "POST").path, "/customers/bulk-import/preview");
+  assert.equal(route("/v1/business/customers/import", "POST").path, "/customers/bulk-import");
+  assert.equal(route("/v1/business/customers/import", "POST").maxBytes, 262_144);
+  assert.equal(route("/v1/business/customers", "POST").maxBytes, undefined);
+  // A 100 KB body is refused on an ordinary route before any upstream call.
+  const cookie = `__Host-chakusa_access=${internals.encodeAccessCookie("business", "access.jwt")}`;
+  const net = stubNetwork({ "POST /customers": () => [201, {}] , "POST /customers/bulk-import/preview": () => [200, { valid: true, rows: [] }] });
+  try {
+    const big = JSON.stringify({ name: "x", notes: "n".repeat(100_000) });
+    const refused = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/customers", { method: "POST", headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", "content-type": "application/json", cookie }, body: big }), env);
+    assert.equal(refused.status, 413);
+    assert.equal(net.calls.length, 0);
+    const accepted = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/customers/import/preview", { method: "POST", headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", "content-type": "application/json", cookie }, body: JSON.stringify({ csv: "name\n" + "a\n".repeat(50_000) }) }), env);
+    assert.equal(accepted.status, 200);
+  } finally { net.restore(); }
 });

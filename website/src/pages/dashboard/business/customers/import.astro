@@ -1,0 +1,105 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Import customers | Chakusa" description="Import your existing customer list from a CSV file." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="customers" />
+  <PageStates loadingText="Opening the importer..." backHref="/dashboard/business/customers" />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow"><a href="/dashboard/business/customers">Customers</a></p><h1>Import customers</h1><p>Upload a CSV with a header row: <strong>name</strong> (required), and optionally <strong>phone</strong>, <strong>email</strong>, <strong>notes</strong>. Up to 500 customers per import.</p></div></header>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>1. Choose a file</h2><p>Nothing is saved until you confirm the import. Customers with a phone number you already have are skipped.</p></div></div>
+      <form class="dashboard-form" data-file-form novalidate>
+        <label class="catalog__wide">CSV file<input type="file" name="file" accept=".csv,text/csv" required /></label>
+        <div class="dashboard-form__actions"><button type="submit">Check file</button></div>
+        <p class="setup-message" data-file-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel" data-preview-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>2. Review</h2><p data-preview-summary></p></div></div>
+      <ul class="catalog__errors" data-errors></ul>
+      <div class="sales-doc__table-wrap"><table class="sales-doc__table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col">Notes</th></tr></thead><tbody data-rows></tbody></table></div>
+      <div class="sales-doc__actions catalog__confirm"><button type="button" data-import hidden>Import customers</button></div>
+      <p class="setup-message" data-import-message role="status"></p>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, el, pageStates } from "../../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const MAX_FILE_BYTES = 200_000;
+  let validRows: any[] = [];
+
+  const showPreview = (result: any) => {
+    const errors = $("[data-errors]")!; errors.replaceChildren();
+    const rows = $("[data-rows]")!; rows.replaceChildren();
+    validRows = result?.valid && Array.isArray(result.rows) ? result.rows : [];
+    for (const message of Array.isArray(result?.errors) ? result.errors.slice(0, 25) : []) errors.append(el("li", { text: String(message) }));
+    for (const row of validRows.slice(0, 25)) rows.append(el("tr", {}, ...[row.name, row.phone, row.email, row.notes].map((value) => el("td", { text: String(value ?? "") }))));
+    $("[data-preview-summary]")!.textContent = validRows.length
+      ? `${validRows.length} customer${validRows.length === 1 ? "" : "s"} ready to import${validRows.length > 25 ? " (showing the first 25)" : ""}.`
+      : "The file has problems. Fix them and check it again.";
+    const button = $<HTMLButtonElement>("[data-import]")!;
+    button.hidden = !validRows.length;
+    button.textContent = `Import ${validRows.length} customer${validRows.length === 1 ? "" : "s"}`;
+    $("[data-import-message]")!.textContent = "";
+    $("[data-preview-panel]")!.hidden = false;
+  };
+
+  $<HTMLFormElement>("[data-file-form]")!.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-file-message]")!;
+    const file = (event.target as HTMLFormElement).querySelector<HTMLInputElement>("[name=file]")!.files?.[0];
+    if (!file) { message.textContent = "Choose a CSV file first."; return; }
+    if (file.size > MAX_FILE_BYTES) { message.textContent = "That file is too large for one import (200 KB max, about 500 customers). Split it into smaller files."; return; }
+    if (!/\.csv$/i.test(file.name)) { message.textContent = "Choose a .csv file. In Excel or Google Sheets, use File → Download / Save as → CSV."; return; }
+    message.textContent = "Checking securely...";
+    try {
+      const csv = await file.text();
+      showPreview(await api("/v1/business/customers/import/preview", { method: "POST", body: { csv } }));
+      message.textContent = "";
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The file could not be checked.";
+    }
+  });
+
+  $<HTMLButtonElement>("[data-import]")!.addEventListener("click", async () => {
+    const button = $<HTMLButtonElement>("[data-import]")!;
+    const message = $("[data-import-message]")!;
+    if (!validRows.length || !window.confirm(`Import ${validRows.length} customers now?`)) return;
+    button.disabled = true;
+    message.textContent = "Importing securely...";
+    try {
+      const result = await api("/v1/business/customers/import", { method: "POST", body: { customers: validRows } });
+      const created = Array.isArray(result?.created) ? result.created.length : 0;
+      const skipped: any[] = Array.isArray(result?.skipped) ? result.skipped : [];
+      const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+      const duplicates = skipped.filter((item) => item.reason === "duplicate_phone").length;
+      const overLimit = skipped.filter((item) => item.reason === "limit_reached").length;
+      message.textContent = [`Imported ${created}.`, duplicates ? `${duplicates} skipped (phone already on file).` : "", overLimit ? `${overLimit} skipped (your plan's customer limit was reached).` : "", failed ? `${failed} could not be saved.` : ""].filter(Boolean).join(" ");
+      validRows = [];
+      button.hidden = true;
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The import could not be completed.";
+      button.disabled = false;
+    }
+  });
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      if (!can(identity.role, "customers.manage")) throw new Error("Your role can't import customers.");
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

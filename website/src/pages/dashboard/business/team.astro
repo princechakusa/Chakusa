@@ -1,5 +1,165 @@
 ---
-import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
 ---
-<DashboardLayout title="Team | Chakusa" description="View your protected business team." realm="business"><DashboardNav slot="sidebar" realm="business" active="team"/><section class="dashboard-loading" data-loading><span></span><p>Opening your secure team workspace...</p></section><section class="dashboard-auth-required" data-auth hidden><h1>Sign in required</h1><p>Your session is missing or has expired.</p><a href="/login">Return to sign in</a></section><div class="dashboard-content" data-content hidden><header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Access control</p><h1>Team</h1><p>Membership and role information comes directly from Chakusa's protected business API.</p></div></header><section class="dashboard-panel"><h2>Team summary</h2><div class="dashboard-records" data-team></div></section></div></DashboardLayout>
-<script>const load=async()=>{const loading=document.querySelector<HTMLElement>("[data-loading]")!;try{const response=await fetch("https://auth.chakusarecovery.com/v1/business/team",{credentials:"include"});if(response.status===401)throw new Error("auth");const data=await response.json();if(!response.ok)throw new Error("unavailable");const root=document.querySelector<HTMLElement>("[data-team]")!;const items=Array.isArray(data.members)?data.members:Array.isArray(data.items)?data.items:[];if(!items.length){root.innerHTML='<div class="dashboard-empty">Your owner membership is active. Invite management remains available in the Chakusa app.</div>';}else for(const item of items){const row=document.createElement("article");row.className="dashboard-record";const name=document.createElement("strong");name.textContent=item.user?.fullName||item.name||"Team member";const role=document.createElement("span");role.textContent=item.role||item.status||"Active";row.append(name,role);root.append(row);}loading.hidden=true;document.querySelector<HTMLElement>("[data-content]")!.hidden=false;}catch{loading.hidden=true;document.querySelector<HTMLElement>("[data-auth]")!.hidden=false;}};void load();</script>
+<DashboardLayout title="Team | Chakusa" description="Manage your business team, roles, and invitations." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="team" />
+  <PageStates loadingText="Opening your team..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow">Access control</p><h1>Team</h1><p data-seats>Roles decide what each person can see and change.</p></div>
+      <button class="dashboard-action dashboard-action--button" type="button" data-invite-toggle data-owner-only hidden>Invite someone</button>
+    </header>
+
+    <section class="dashboard-panel" data-invite-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>Invite a team member</h2><p>They get an email with a one-time link. Admins can manage most of the business; staff handle day-to-day work.</p></div><button type="button" data-invite-close>Close</button></div>
+      <form class="dashboard-form" data-invite-form novalidate>
+        <label>Email<input name="email" type="email" autocomplete="off" maxlength="254" required /></label>
+        <label>Role<select name="role"><option value="STAFF">Staff</option><option value="ADMIN">Admin</option></select></label>
+        <div class="dashboard-form__actions"><button type="submit">Send invitation</button></div>
+        <p class="setup-message" data-invite-message role="status"></p>
+      </form>
+      <div class="sales-doc__link-row" data-invite-link hidden><input type="text" readonly aria-label="Invitation link" data-invite-url /><button type="button" data-invite-copy>Copy link</button></div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Members</h2><p data-members-copy></p></div></div>
+      <div class="dashboard-records" data-members></div>
+      <p class="setup-message" data-members-message role="status"></p>
+    </section>
+
+    <section class="dashboard-panel" data-invitations-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>Invitations</h2><p>Pending invitations hold a seat until they are accepted, revoked, or expire.</p></div></div>
+      <div class="dashboard-records" data-invitations></div>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, itemsOf, label, dateTime, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+  import { safeHttpsUrl } from "../../../scripts/salesDocuments.js";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  let role: string | null = null;
+  let myUserId: string | null = null;
+
+  const act = async (button: HTMLButtonElement, work: () => Promise<unknown>, confirmText?: string) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    button.disabled = true;
+    try { await work(); await load(); $("[data-members-message]")!.textContent = ""; }
+    catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-members-message]")!.textContent = error instanceof Error ? error.message : "That could not be completed."; button.disabled = false; }
+  };
+
+  const renderMembers = (members: any[]) => {
+    const root = $("[data-members]")!;
+    root.replaceChildren();
+    const manageRoles = can(role, "team.roles.manage");
+    const manageMembers = can(role, "team.members.manage");
+    $("[data-members-copy]")!.textContent = manageRoles ? "As the owner you can change roles and remove members. Ownership transfer is available in the Chakusa app." : "Only the business owner can change roles or remove members.";
+    for (const member of members) {
+      const isOwner = member.role === "OWNER";
+      const isMe = myUserId !== null && member.userId === myUserId;
+      const row = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: String(member.name || member.email || "T").slice(0, 1).toUpperCase() }),
+        el("div", {}, el("strong", { text: `${member.name || "Team member"}${isMe ? " (you)" : ""}` }), el("span", { text: `${label(member.role)}${member.status !== "ACTIVE" ? ` · ${label(member.status)}` : ""}` }), el("small", { text: member.email || "" })),
+      );
+      if (!isOwner && !isMe && isUuid(member.id) && (manageRoles || manageMembers)) {
+        const actions = el("div", { className: "dashboard-record__actions" });
+        if (manageRoles && member.status === "ACTIVE") {
+          const target = member.role === "ADMIN" ? "STAFF" : "ADMIN";
+          const change = el("button", { text: `Make ${label(target)}`, attrs: { type: "button" } });
+          change.addEventListener("click", () => void act(change, () => api(`/v1/business/team/members/${member.id}`, { method: "PATCH", body: { role: target } }), `Change ${member.name || "this member"} to ${label(target)}?`));
+          actions.append(change);
+        }
+        if (manageMembers) {
+          if (member.status === "ACTIVE") {
+            const remove = el("button", { text: "Remove", attrs: { type: "button" } });
+            remove.addEventListener("click", () => void act(remove, () => api(`/v1/business/team/members/${member.id}`, { method: "DELETE" }), `Remove ${member.name || "this member"}? They lose access immediately.`));
+            actions.append(remove);
+          } else {
+            const restore = el("button", { text: "Reactivate", attrs: { type: "button" } });
+            restore.addEventListener("click", () => void act(restore, () => api(`/v1/business/team/members/${member.id}/reactivate`, { method: "POST", body: {} })));
+            actions.append(restore);
+          }
+        }
+        row.append(actions);
+      }
+      root.append(row);
+    }
+    if (!members.length) root.append(el("div", { className: "dashboard-empty", text: "No team members yet." }));
+  };
+
+  const renderInvitations = (invitations: any[]) => {
+    const root = $("[data-invitations]")!;
+    root.replaceChildren();
+    const shown = invitations.filter((invitation) => invitation.status === "PENDING" || invitation.status === "EXPIRED").slice(0, 50);
+    if (!shown.length) root.append(el("div", { className: "dashboard-empty", text: "No open invitations." }));
+    for (const invitation of shown) {
+      const row = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: "@" }),
+        el("div", {}, el("strong", { text: invitation.invitedEmail || "Invitation" }), el("span", { text: `${label(invitation.role)} · ${label(invitation.status)}` }), el("small", { text: invitation.expiresAt ? `Expires ${dateTime(invitation.expiresAt, { dateStyle: "medium", timeStyle: "short" })}` : "" })),
+      );
+      if (invitation.status === "PENDING" && isUuid(invitation.id)) {
+        const revoke = el("button", { text: "Revoke", attrs: { type: "button" } });
+        revoke.addEventListener("click", () => void act(revoke, () => api(`/v1/business/team/invitations/${invitation.id}`, { method: "DELETE" }), `Revoke the invitation for ${invitation.invitedEmail}?`));
+        row.append(el("div", { className: "dashboard-record__actions" }, revoke));
+      }
+      root.append(row);
+    }
+    $("[data-invitations-panel]")!.hidden = false;
+  };
+
+  const load = async () => {
+    const [members, summary] = await Promise.all([api("/v1/business/team"), api("/v1/business/team/summary").catch((error) => { if (error instanceof AuthRequired) throw error; return null; })]);
+    renderMembers(itemsOf(members));
+    const seats = summary?.seats;
+    if (seats && typeof seats.current === "number") $("[data-seats]")!.textContent = seats.limit === null ? `${seats.current} seat${seats.current === 1 ? "" : "s"} in use` : `${seats.current} of ${seats.limit} seats in use${seats.pendingReservations ? ` (including ${seats.pendingReservations} pending)` : ""}`;
+    if (can(role, "team.members.manage")) renderInvitations(itemsOf(await api("/v1/business/team/invitations")));
+  };
+
+  const inviteForm = $<HTMLFormElement>("[data-invite-form]")!;
+  inviteForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-invite-message]")!;
+    const email = (inviteForm.elements.namedItem("email") as HTMLInputElement).value.trim();
+    const inviteRole = (inviteForm.elements.namedItem("role") as HTMLSelectElement).value === "ADMIN" ? "ADMIN" : "STAFF";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) { message.textContent = "Enter a valid email address."; return; }
+    const submit = inviteForm.querySelector<HTMLButtonElement>("[type=submit]")!;
+    submit.disabled = true;
+    message.textContent = "Sending securely...";
+    try {
+      const result = await api("/v1/business/team/invitations", { method: "POST", body: { email, role: inviteRole } });
+      inviteForm.reset();
+      const url = safeHttpsUrl(result?.inviteUrl);
+      $<HTMLInputElement>("[data-invite-url]")!.value = url ?? "";
+      $("[data-invite-link]")!.hidden = !url;
+      message.textContent = result?.emailSent ? `Invitation emailed to ${email}. You can also share the link below; it works once.` : "The invitation was created but the email could not be sent. Share the link below with them directly; it works once.";
+      await load();
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The invitation could not be sent.";
+    } finally { submit.disabled = false; }
+  });
+  $("[data-invite-copy]")!.addEventListener("click", async () => {
+    const field = $<HTMLInputElement>("[data-invite-url]")!;
+    try { await navigator.clipboard.writeText(field.value); $("[data-invite-message]")!.textContent = "Link copied."; } catch { field.select(); }
+  });
+  $("[data-invite-toggle]")!.addEventListener("click", () => { $("[data-invite-panel]")!.hidden = false; $<HTMLInputElement>("[name=email]")!.focus(); });
+  $("[data-invite-close]")!.addEventListener("click", () => { $("[data-invite-panel]")!.hidden = true; $("[data-invite-link]")!.hidden = true; $<HTMLInputElement>("[data-invite-url]")!.value = ""; });
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      role = identity.role;
+      const user = identity.account?.user ?? identity.account ?? {};
+      myUserId = typeof user.id === "string" ? user.id : null;
+      if (can(role, "team.members.manage")) document.querySelectorAll<HTMLElement>("[data-owner-only]").forEach((node) => { node.hidden = false; });
+      await load();
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

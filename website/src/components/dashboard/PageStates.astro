@@ -1,0 +1,10 @@
+---
+// Standard loading / sign-in / error states used with pageStates() from
+// scripts/dashboardApi.ts. Page content goes in an element marked
+// data-page-content hidden.
+interface Props { loadingText?: string; backHref?: string }
+const { loadingText = "Opening this secure workspace...", backHref = "/dashboard/business" } = Astro.props;
+---
+<section class="dashboard-loading" data-page-loading><span></span><p>{loadingText}</p></section>
+<section class="dashboard-auth-required" data-page-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
+<section class="dashboard-auth-required" data-page-error hidden><h1>This page is unavailable</h1><p></p><a href={backHref}>Go back</a></section>

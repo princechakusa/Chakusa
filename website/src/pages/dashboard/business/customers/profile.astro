@@ -1,0 +1,137 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Customer | Chakusa" description="A protected customer profile: contact details, bookings, and history." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="customers" />
+  <PageStates loadingText="Opening this customer..." />
+  <div class="dashboard-content customer-page" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow"><a href="/dashboard/business/customers">Customers</a></p><h1 data-name>Customer</h1><p data-highlight></p></div>
+      <div class="dashboard-new-links" data-shortcuts></div>
+    </header>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>At a glance</h2></div></div>
+      <dl class="sales-doc__summary" data-facts></dl>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Contact details</h2><p data-contact-copy>Used for bookings, reminders, and messages.</p></div></div>
+      <form class="dashboard-form" data-contact-form novalidate>
+        <label>Name<input name="name" maxlength="200" required /></label>
+        <label>Phone<input name="phone" type="tel" autocomplete="off" maxlength="40" /></label>
+        <label>Email<input name="email" type="email" autocomplete="off" maxlength="254" /></label>
+        <label class="catalog__wide">Private notes<textarea name="notes" maxlength="5000"></textarea></label>
+        <div class="dashboard-form__actions" data-manage-only><button type="submit">Save changes</button></div>
+        <p class="setup-message" data-contact-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Bookings</h2><p data-bookings-count></p></div></div>
+      <div class="dashboard-records" data-bookings></div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>History</h2><p>Leads, messages, review requests, and reminders, newest first.</p></div></div>
+      <ol class="customer-page__timeline" data-timeline></ol>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, money, label, dateTime, el, pageStates, isUuid } from "../../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const id = new URLSearchParams(location.search).get("id");
+  const form = $<HTMLFormElement>("[data-contact-form]")!;
+  let currency = "USD";
+
+  const render = (profile: any, canManage: boolean) => {
+    const customer = profile.customer ?? {};
+    $("[data-name]")!.textContent = customer.name || "Customer";
+    $("[data-highlight]")!.textContent = typeof profile.assistantHighlight === "string" ? profile.assistantHighlight : typeof profile.assistantHighlight?.message === "string" ? profile.assistantHighlight.message : "";
+
+    const facts = $("[data-facts]")!;
+    facts.replaceChildren();
+    const upcoming = (profile.appointments ?? []).filter((a: any) => new Date(a.startsAt) > new Date() && !["CANCELED", "NO_SHOW"].includes(a.status));
+    for (const [term, value] of [
+      ["Stage", label(profile.lifecycleStage || "new")],
+      ["Lifetime value", money(profile.lifetimeValue ?? 0, currency)],
+      ["Bookings", String((profile.appointments ?? []).length)],
+      ["Upcoming", String(upcoming.length)],
+      ["Customer since", dateTime(customer.createdAt, { dateStyle: "medium" })],
+    ] as const) facts.append(el("dt", { text: term }), el("dd", { text: value || "—" }));
+
+    const set = (name: string, value: unknown) => { const input = form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null; if (input) { input.value = typeof value === "string" ? value : ""; input.readOnly = !canManage; } };
+    set("name", customer.name); set("phone", customer.phone); set("email", customer.email); set("notes", customer.notes);
+
+    const bookings = $("[data-bookings]")!;
+    bookings.replaceChildren();
+    const appointments: any[] = profile.appointments ?? [];
+    $("[data-bookings-count]")!.textContent = appointments.length ? `${appointments.length} booking${appointments.length === 1 ? "" : "s"}${appointments.length >= 100 ? " (latest 100)" : ""}` : "";
+    if (!appointments.length) bookings.append(el("div", { className: "dashboard-empty", text: "No bookings yet." }));
+    for (const appointment of appointments) {
+      bookings.append(el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: String(appointment.serviceName || "B").slice(0, 1).toUpperCase() }),
+        el("div", {},
+          el("strong", { text: appointment.serviceName || "Booking" }),
+          el("span", { text: `${dateTime(appointment.startsAt, { dateStyle: "medium", timeStyle: "short" })} · ${label(appointment.status)}` }),
+          el("small", { text: [appointment.assignedMember?.user?.fullName, appointment.price != null ? money(appointment.price, currency) : ""].filter(Boolean).join(" · ") }),
+        )));
+    }
+
+    const timeline = $("[data-timeline]")!;
+    timeline.replaceChildren();
+    const entries: any[] = Array.isArray(profile.communicationTimeline) ? profile.communicationTimeline.slice(0, 50) : [];
+    if (!entries.length) timeline.append(el("li", { text: "Nothing yet." }));
+    for (const entry of entries) {
+      timeline.append(el("li", {}, el("strong", { text: entry.title || label(entry.kind) }), el("span", { text: [entry.detail, dateTime(entry.at, { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · ") })));
+    }
+  };
+
+  (async () => {
+    try {
+      if (!id || !isUuid(id)) throw new Error("This customer link is not valid.");
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      currency = typeof identity.business?.currency === "string" ? identity.business.currency : "USD";
+      const canManage = can(identity.role, "customers.manage");
+      if (!canManage) { document.querySelectorAll<HTMLElement>("[data-manage-only]").forEach((node) => { node.hidden = true; }); $("[data-contact-copy]")!.textContent = "Only team members who can manage customers can edit these details."; }
+      const shortcuts = $("[data-shortcuts]")!;
+      const encoded = encodeURIComponent(id);
+      if (can(identity.role, "quotes.manage")) shortcuts.append(el("a", { className: "dashboard-action", text: "New quote", attrs: { href: `/dashboard/business/quotes/document?new=QUOTE&customerId=${encoded}` } }));
+      if (can(identity.role, "invoices.manage")) shortcuts.append(el("a", { className: "dashboard-action", text: "New invoice", attrs: { href: `/dashboard/business/invoices/document?new=1&customerId=${encoded}` } }));
+      const profile = await api(`/v1/business/customers/${id}`);
+      render(profile, canManage);
+      page.ready();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!canManage) return;
+        const message = $("[data-contact-message]")!;
+        const value = (name: string) => ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "").trim();
+        const body: Record<string, string> = { name: value("name") };
+        if (!body.name || body.name.length > 200) { message.textContent = "Enter a name (200 characters max)."; return; }
+        if (value("phone")) body.phone = value("phone");
+        if (value("email")) { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value("email"))) { message.textContent = "Enter a valid email address."; return; } body.email = value("email"); }
+        body.notes = value("notes");
+        const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+        submit.disabled = true;
+        message.textContent = "Saving securely...";
+        try {
+          await api(`/v1/business/customers/${id}`, { method: "PATCH", body });
+          render(await api(`/v1/business/customers/${id}`), canManage);
+          message.textContent = "Saved.";
+        } catch (error) {
+          if (error instanceof AuthRequired) return page.fail(error);
+          message.textContent = error instanceof Error ? error.message : "The changes could not be saved.";
+        } finally { submit.disabled = false; }
+      });
+    } catch (error) { page.fail(error); }
+  })();
+</script>

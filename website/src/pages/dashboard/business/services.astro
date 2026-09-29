@@ -1,0 +1,173 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Services | Chakusa" description="Manage your service catalogue: prices, durations, and who performs each service." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="services" />
+  <PageStates loadingText="Loading your service catalogue..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow">Catalogue</p><h1>Services</h1><p>Prices, durations, and buffers here drive bookings, quotes, and invoices.</p></div>
+      <button class="dashboard-action dashboard-action--button" type="button" data-new-service data-manage-only>Add service</button>
+    </header>
+
+    <section class="dashboard-panel" data-editor-panel hidden>
+      <div class="dashboard-section-heading"><div><h2 data-editor-heading>Add service</h2><p>Changes apply to new bookings. Existing bookings keep their original details.</p></div><button type="button" data-editor-close>Close</button></div>
+      <form class="dashboard-form" data-editor novalidate>
+        <label>Name<input name="name" maxlength="120" required /></label>
+        <label>Category<input name="category" maxlength="80" placeholder="e.g. Haircuts" /></label>
+        <label class="catalog__wide">Description<textarea name="description" maxlength="500"></textarea></label>
+        <label>Duration (minutes)<input name="durationMinutes" inputmode="numeric" value="60" maxlength="4" required /></label>
+        <label>Price<input name="price" inputmode="decimal" placeholder="Leave empty to price per job" maxlength="11" /></label>
+        <label>Preparation (minutes)<input name="preparationMinutes" inputmode="numeric" value="0" maxlength="3" /></label>
+        <label>Clean-up (minutes)<input name="cleanupMinutes" inputmode="numeric" value="0" maxlength="3" /></label>
+        <label>Deposit<input name="depositAmount" inputmode="decimal" placeholder="Optional" maxlength="11" /></label>
+        <label>Display order<input name="sortOrder" inputmode="numeric" value="0" maxlength="5" /></label>
+        <label class="dashboard-toggle"><input type="checkbox" name="active" checked /> Available</label>
+        <label class="dashboard-toggle"><input type="checkbox" name="publiclyBookable" checked /> Customers can book it online</label>
+        <fieldset class="catalog__wide catalog__members"><legend>Who performs this service</legend><div data-members></div><p class="catalog__hint">Leave everyone unticked if any team member can do it.</p></fieldset>
+        <div class="dashboard-form__actions"><button type="button" data-editor-close>Cancel</button><button type="submit">Save service</button></div>
+        <p class="setup-message" data-editor-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Your services</h2><p data-count>Loading...</p></div><label class="catalog__filter"><input type="checkbox" data-show-archived /> Show archived</label></div>
+      <div class="dashboard-records" data-list></div>
+      <p class="setup-message" data-list-message role="status"></p>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, itemsOf, money, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+  import { validateServiceForm, buildServicePayload } from "../../../scripts/serviceCatalog.js";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const form = $<HTMLFormElement>("[data-editor]")!;
+  let services: any[] = [];
+  let members: any[] = [];
+  let currency = "USD";
+  let canManage = false;
+  let editingId: string | null = null;
+
+  const minutes = (value: number) => (value >= 60 ? `${Math.floor(value / 60)} h${value % 60 ? ` ${value % 60} min` : ""}` : `${value} min`);
+
+  const renderMembers = (selected: string[]) => {
+    const root = $("[data-members]")!;
+    root.replaceChildren();
+    const active = members.filter((member) => member.status === "ACTIVE" && isUuid(member.id));
+    if (!active.length) { root.append(el("p", { className: "catalog__hint", text: "No active team members yet." })); return; }
+    for (const member of active) {
+      const box = el("input", { attrs: { type: "checkbox", name: "memberIds", value: member.id } });
+      box.checked = selected.includes(member.id);
+      root.append(el("label", { className: "dashboard-toggle" }, box, document.createTextNode(` ${member.name || member.email || "Team member"}`)));
+    }
+  };
+
+  const openEditor = (service: any | null) => {
+    editingId = service?.id && isUuid(service.id) ? service.id : null;
+    form.reset();
+    const set = (name: string, value: unknown) => { const input = form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null; if (input) input.value = value == null ? "" : String(value); };
+    const check = (name: string, value: boolean) => { const input = form.elements.namedItem(name) as HTMLInputElement | null; if (input) input.checked = value; };
+    if (service) {
+      set("name", service.name); set("category", service.category); set("description", service.description);
+      set("durationMinutes", service.durationMinutes); set("preparationMinutes", service.preparationMinutes ?? 0); set("cleanupMinutes", service.cleanupMinutes ?? 0);
+      set("price", service.price); set("depositAmount", service.depositAmount); set("sortOrder", service.sortOrder ?? 0);
+      check("active", service.active !== false); check("publiclyBookable", service.publiclyBookable !== false);
+    }
+    renderMembers(Array.isArray(service?.assignments) ? service.assignments.map((item: any) => item.businessMemberId) : []);
+    $("[data-editor-heading]")!.textContent = service ? `Edit ${service.name}` : "Add service";
+    $("[data-editor-message]")!.textContent = "";
+    $("[data-editor-panel]")!.hidden = false;
+    $("[data-editor-panel]")!.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const render = () => {
+    const list = $("[data-list]")!;
+    list.replaceChildren();
+    const showArchived = $<HTMLInputElement>("[data-show-archived]")!.checked;
+    const visible = services.filter((service) => showArchived || service.active !== false);
+    $("[data-count]")!.textContent = `${visible.length} service${visible.length === 1 ? "" : "s"}`;
+    if (!visible.length) { list.append(el("div", { className: "dashboard-empty", text: "No services yet. Add the services customers book." })); return; }
+    for (const service of visible) {
+      const facts = [minutes(Number(service.durationMinutes) || 0), service.price != null ? money(service.price, currency) : "Priced per job"];
+      if (service.depositAmount != null) facts.push(`${money(service.depositAmount, currency)} deposit`);
+      if (service.active === false) facts.push("Archived"); else if (service.publiclyBookable === false) facts.push("Not bookable online");
+      const row = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: String(service.name || "S").slice(0, 1).toUpperCase() }),
+        el("div", {}, el("strong", { text: service.name || "Service" }), el("span", { text: facts.join(" · ") }), el("small", { text: service.category || "Uncategorised" })),
+      );
+      if (canManage && isUuid(service.id)) {
+        const actions = el("div", { className: "dashboard-record__actions" });
+        const edit = el("button", { text: "Edit", attrs: { type: "button" } });
+        edit.addEventListener("click", () => openEditor(service));
+        actions.append(edit);
+        const toggle = el("button", { text: service.active === false ? "Restore" : "Archive", attrs: { type: "button" } });
+        toggle.addEventListener("click", async () => {
+          if (service.active !== false && !window.confirm(`Archive "${service.name}"? It stops being bookable but stays on past bookings.`)) return;
+          toggle.disabled = true;
+          try {
+            if (service.active === false) await api(`/v1/business/services/${service.id}`, { method: "PATCH", body: { active: true } });
+            else await api(`/v1/business/services/${service.id}`, { method: "DELETE" });
+            await load();
+          } catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-list-message]")!.textContent = error instanceof Error ? error.message : "That could not be completed."; toggle.disabled = false; }
+        });
+        actions.append(toggle);
+        row.append(actions);
+      }
+      list.append(row);
+    }
+  };
+
+  const load = async () => { services = itemsOf(await api("/v1/business/services")); render(); };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const value = (name: string) => ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "");
+    const checked = (name: string) => Boolean((form.elements.namedItem(name) as HTMLInputElement | null)?.checked);
+    const fields = {
+      name: value("name"), category: value("category"), description: value("description"),
+      durationMinutes: value("durationMinutes"), preparationMinutes: value("preparationMinutes"), cleanupMinutes: value("cleanupMinutes"),
+      price: value("price"), depositAmount: value("depositAmount"), sortOrder: value("sortOrder"),
+      active: checked("active"), publiclyBookable: checked("publiclyBookable"),
+      memberIds: [...form.querySelectorAll<HTMLInputElement>("[name=memberIds]:checked")].map((box) => box.value),
+    };
+    const message = $("[data-editor-message]")!;
+    const problem = validateServiceForm(fields);
+    if (problem) { message.textContent = problem; return; }
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+    submit.disabled = true;
+    message.textContent = "Saving securely...";
+    try {
+      const body = buildServicePayload(fields);
+      if (editingId) await api(`/v1/business/services/${editingId}`, { method: "PATCH", body });
+      else await api("/v1/business/services", { method: "POST", body });
+      $("[data-editor-panel]")!.hidden = true;
+      await load();
+      $("[data-list-message]")!.textContent = "Saved.";
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The service could not be saved.";
+    } finally { submit.disabled = false; }
+  });
+
+  document.querySelectorAll("[data-editor-close]").forEach((button) => button.addEventListener("click", () => { $("[data-editor-panel]")!.hidden = true; }));
+  $("[data-new-service]")!.addEventListener("click", () => openEditor(null));
+  $("[data-show-archived]")!.addEventListener("change", render);
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      currency = typeof identity.business?.currency === "string" ? identity.business.currency : "USD";
+      canManage = can(identity.role, "catalog.manage");
+      if (!canManage) document.querySelectorAll<HTMLElement>("[data-manage-only]").forEach((node) => { node.hidden = true; });
+      if (canManage && can(identity.role, "team.view")) { try { members = itemsOf(await api("/v1/business/team")); } catch (error) { if (error instanceof AuthRequired) throw error; } }
+      await load();
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

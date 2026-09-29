@@ -1,0 +1,112 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Your account | Chakusa" description="Manage your name, password, and account." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="account" />
+  <PageStates loadingText="Loading your account..." />
+  <div class="dashboard-content account-page" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Your account</p><h1>Account settings</h1><p data-account-email></p></div></header>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Your name</h2><p>Shown to your team and on activity you create.</p></div></div>
+      <form class="dashboard-form" data-profile-form novalidate>
+        <label>Full name<input name="fullName" autocomplete="name" maxlength="120" required /></label>
+        <div class="dashboard-form__actions"><button type="submit">Save name</button></div>
+        <p class="setup-message" data-profile-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2 data-password-heading>Change password</h2><p data-password-copy>Other devices signed in to this account will be signed out.</p></div></div>
+      <form class="dashboard-form" data-password-form novalidate>
+        <label data-current-password>Current password<input name="currentPassword" type="password" autocomplete="current-password" maxlength="256" /></label>
+        <label>New password<input name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required /></label>
+        <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" maxlength="256" required /></label>
+        <p class="account-page__hint">At least 12 characters with uppercase, lowercase, and a number.</p>
+        <div class="dashboard-form__actions"><button type="submit">Update password</button></div>
+        <p class="setup-message" data-password-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel account-page__danger">
+      <div class="dashboard-section-heading"><div><h2>Delete account</h2><p>Permanently deletes your Chakusa login. This cannot be undone.</p></div></div>
+      <p class="account-page__hint" data-delete-unavailable hidden>Your account signs in with Google or Apple only. Delete it from Account settings in the Chakusa app, where you can confirm with that provider, or set a password above first.</p>
+      <form class="dashboard-form" data-delete-form novalidate>
+        <label>Current password<input name="password" type="password" autocomplete="current-password" maxlength="256" required /></label>
+        <label>Type DELETE to confirm<input name="confirm" autocomplete="off" maxlength="6" required /></label>
+        <div class="dashboard-form__actions"><button type="submit" class="account-page__delete">Delete my account</button></div>
+        <p class="setup-message" data-delete-message role="status"></p>
+      </form>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, loadIdentity, pageStates } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const STRONG = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}/;
+
+  const guard = async (form: HTMLFormElement, messageSelector: string, work: () => Promise<string>) => {
+    const message = $(messageSelector)!;
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+    submit.disabled = true;
+    message.textContent = "Saving securely...";
+    try { message.textContent = await work(); }
+    catch (error) { if (error instanceof AuthRequired) return page.fail(error); message.textContent = error instanceof Error ? error.message : "That could not be completed."; }
+    finally { submit.disabled = false; }
+  };
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      const account = identity.account ?? {};
+      const user = account.user ?? account;
+      $("[data-account-email]")!.textContent = typeof user.email === "string" ? `Signed in as ${user.email}` : "";
+      ($("[data-profile-form]") as HTMLFormElement).querySelector<HTMLInputElement>("[name=fullName]")!.value = typeof user.fullName === "string" ? user.fullName : "";
+      const hasPassword = user.hasPassword !== false;
+      if (!hasPassword) {
+        $("[data-current-password]")!.hidden = true;
+        $("[data-password-heading]")!.textContent = "Set a password";
+        $("[data-password-copy]")!.textContent = "Add a password so you can also sign in with your email.";
+        $("[data-delete-form]")!.hidden = true;
+        $("[data-delete-unavailable]")!.hidden = false;
+      }
+      page.ready();
+
+      const profile = $<HTMLFormElement>("[data-profile-form]")!;
+      profile.addEventListener("submit", (event) => { event.preventDefault(); void guard(profile, "[data-profile-message]", async () => {
+        const fullName = profile.querySelector<HTMLInputElement>("[name=fullName]")!.value.trim();
+        if (!fullName || fullName.length > 120) throw new Error("Enter your full name (120 characters max).");
+        await api("/v1/business/account/profile", { method: "PATCH", body: { fullName } });
+        return "Saved.";
+      }); });
+
+      const password = $<HTMLFormElement>("[data-password-form]")!;
+      password.addEventListener("submit", (event) => { event.preventDefault(); void guard(password, "[data-password-message]", async () => {
+        const field = (name: string) => password.querySelector<HTMLInputElement>(`[name=${name}]`)!.value;
+        if (hasPassword && !field("currentPassword")) throw new Error("Enter your current password.");
+        if (!STRONG.test(field("newPassword")) || field("newPassword").length > 256) throw new Error("Use at least 12 characters with uppercase, lowercase, and a number.");
+        if (field("newPassword") !== field("confirmPassword")) throw new Error("The new passwords do not match.");
+        await api("/v1/business/account/password", { method: "POST", body: hasPassword ? { currentPassword: field("currentPassword"), newPassword: field("newPassword") } : { newPassword: field("newPassword") } });
+        password.reset();
+        return "Password updated. Other devices have been signed out.";
+      }); });
+
+      const remove = $<HTMLFormElement>("[data-delete-form]")!;
+      remove.addEventListener("submit", (event) => { event.preventDefault(); void guard(remove, "[data-delete-message]", async () => {
+        const field = (name: string) => remove.querySelector<HTMLInputElement>(`[name=${name}]`)!.value;
+        if (field("confirm") !== "DELETE") throw new Error("Type DELETE in capitals to confirm.");
+        if (!field("password")) throw new Error("Enter your current password.");
+        if (!window.confirm("Permanently delete your Chakusa account? This cannot be undone.")) return "";
+        await api("/v1/business/account/delete", { method: "POST", body: { password: field("password") } });
+        location.replace("/?account=deleted");
+        return "Account deleted.";
+      }); });
+    } catch (error) { page.fail(error); }
+  })();
+</script>

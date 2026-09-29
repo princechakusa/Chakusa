@@ -1,0 +1,91 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Invoice | Chakusa" description="View and pay an invoice securely." realm="client">
+  <DashboardNav slot="sidebar" realm="client" active="invoices" />
+  <PageStates loadingText="Opening your invoice..." backHref="/dashboard/client/invoices" />
+  <div class="dashboard-content sales-doc" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow"><a href="/dashboard/client/invoices">Invoices</a></p><h1 data-title>Invoice</h1><p data-business></p></div>
+      <span class="sales-doc__status" data-status hidden></span>
+    </header>
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Summary</h2></div></div>
+      <dl class="sales-doc__summary" data-summary></dl>
+    </section>
+    <section class="dashboard-panel" data-pay-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>Pay this invoice</h2><p>You'll pay on Stripe's secure checkout page. Chakusa never sees your card details.</p></div></div>
+      <div class="sales-doc__actions"><button type="button" data-pay>Pay now</button></div>
+      <p class="setup-message" data-pay-message role="status"></p>
+    </section>
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Line items</h2></div></div>
+      <div class="sales-doc__table-wrap"><table class="sales-doc__table"><thead><tr><th scope="col">Description</th><th scope="col">Qty</th><th scope="col">Unit price</th><th scope="col">Discount</th><th scope="col">Line total</th></tr></thead><tbody data-lines></tbody></table></div>
+      <div class="sales-doc__notes" data-notes></div>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, money, label, dateTime, el, pageStates, isUuid } from "../../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const id = new URLSearchParams(location.search).get("id");
+
+  /** Payment always happens on Stripe Checkout; never follow any other redirect. */
+  const stripeCheckoutUrl = (value: unknown): string | null => {
+    if (typeof value !== "string" || value.length > 2048) return null;
+    try { const url = new URL(value); return url.protocol === "https:" && url.hostname === "checkout.stripe.com" && !url.username && !url.password ? url.toString() : null; } catch { return null; }
+  };
+
+  (async () => {
+    try {
+      if (!id || !isUuid(id)) throw new Error("This invoice link is not valid.");
+      const invoice = await api(`/v1/client/invoices/${id}`);
+      const currency = invoice.currency || "USD";
+      $("[data-title]")!.textContent = `Invoice ${invoice.invoiceNumber ?? ""}`.trim();
+      $("[data-business]")!.textContent = invoice.business?.name ? `From ${invoice.business.name}` : "";
+      const status = $("[data-status]")!; status.textContent = label(invoice.payment?.state ?? invoice.status); status.dataset.status = String(invoice.status || "").toLowerCase(); status.hidden = false;
+      const totals = invoice.revision?.totals ?? {};
+      const summary = $("[data-summary]")!;
+      for (const [term, value] of [
+        ["Total", money(totals.total, currency)],
+        ["Paid", money(invoice.payment?.amountPaid ?? 0, currency)],
+        ["Outstanding", money(invoice.payment?.outstandingBalance ?? 0, currency)],
+        ["Issued", dateTime(invoice.issueDate, { dateStyle: "medium" })],
+        ["Due", dateTime(invoice.dueDate, { dateStyle: "medium" })],
+      ] as const) if (value) summary.append(el("dt", { text: term }), el("dd", { text: value }));
+      const lines = $("[data-lines]")!;
+      for (const line of invoice.revision?.lineItems ?? []) {
+        lines.append(el("tr", {}, ...[line.description, line.quantity, money(line.unitPrice, currency), money(line.discountAmount, currency), money(line.lineTotal, currency)].map((value) => el("td", { text: String(value ?? "") }))));
+      }
+      const notes = $("[data-notes]")!;
+      for (const [heading, value] of [["Notes", invoice.revision?.notes], ["Terms", invoice.revision?.terms]] as const) if (value) notes.append(el("h3", { text: heading }), el("p", { text: String(value) }));
+
+      const outstanding = Number(invoice.payment?.outstandingBalance ?? 0);
+      if (invoice.status === "SENT" && outstanding > 0) {
+        $("[data-pay-panel]")!.hidden = false;
+        const button = $<HTMLButtonElement>("[data-pay]")!;
+        button.textContent = `Pay ${money(outstanding, currency)}`;
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          $("[data-pay-message]")!.textContent = "Opening secure checkout...";
+          try {
+            const result = await api(`/v1/client/invoices/${id}/pay`, { method: "POST", body: {} });
+            const target = stripeCheckoutUrl(result?.checkoutUrl);
+            if (!target) throw new Error("Online payment isn't available for this invoice right now. Contact the business to pay.");
+            location.assign(target);
+          } catch (error) {
+            if (error instanceof AuthRequired) return page.fail(error);
+            $("[data-pay-message]")!.textContent = error instanceof Error ? error.message : "Payment could not be started.";
+            button.disabled = false;
+          }
+        });
+      }
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

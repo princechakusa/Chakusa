@@ -89,13 +89,17 @@ async function verifyTurnstile(token, expectedAction, request, env) {
   return result.success === true && result.action === expectedAction && ALLOWED_HOSTNAMES.has(result.hostname);
 }
 
-async function parseBody(request) {
+// Default 32 KB; a route may raise it (maxBytes) up to MAX_ROUTE_BODY_BYTES,
+// e.g. customer CSV import. The API applies its own schema limits too.
+const MAX_ROUTE_BODY_BYTES = 262_144;
+async function parseBody(request, limit = MAX_BODY_BYTES) {
+  const cap = Math.min(limit, MAX_ROUTE_BODY_BYTES);
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.toLowerCase().startsWith("application/json")) throw new Error("invalid_content_type");
   const length = Number(request.headers.get("content-length") || "0");
-  if (length > MAX_BODY_BYTES) throw new Error("body_too_large");
+  if (length > cap) throw new Error("body_too_large");
   const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) throw new Error("body_too_large");
+  if (new TextEncoder().encode(text).byteLength > cap) throw new Error("body_too_large");
   return JSON.parse(text);
 }
 
@@ -279,7 +283,7 @@ async function protectedMutation(request, env, origin, expectedRealm, path, meth
     if (!session || session.realm !== expectedRealm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
     result = await callApi(env, path, { method, body, accessToken: session.accessToken });
   }
-  if (!result.response.ok) return json({ error: "We could not save those changes. Check the details and try again." }, result.response.status >= 500 ? 503 : 400, origin, { cookies: session.cookies });
+  if (!result.response.ok) return json({ error: result.response.status >= 500 ? "We could not save those changes. Please try again." : upstreamErrorMessage(result.payload) || "We could not save those changes. Check the details and try again." }, result.response.status >= 500 ? 503 : 400, origin, { cookies: session.cookies });
   return json(result.payload, 200, origin, { cookies: session.cookies });
 }
 
@@ -287,6 +291,12 @@ const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA
 const protectedRoutes = [
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/customers$/, upstream: "/customers", query: ["search", "page", "pageSize"] },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/customers$/, upstream: "/customers" },
+  // Customer CSV import (OWNER/ADMIN/STAFF with customers.manage; the API
+  // enforces 500 rows/import and plan customer limits). Larger body cap only here.
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/customers\/import\/preview$/, upstream: "/customers/bulk-import/preview", maxBytes: 262_144 },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/customers\/import$/, upstream: "/customers/bulk-import", maxBytes: 262_144 },
+  { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/customers/(${UUID})$`), upstream: (match) => `/customers/${match[1]}` },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/customers/(${UUID})$`), upstream: (match) => `/customers/${match[1]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/leads$/, upstream: "/leads", query: ["status", "page", "pageSize"] },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/leads$/, upstream: "/leads" },
   { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/leads/(${UUID})$`), upstream: (match) => `/leads/${match[1]}` },
@@ -322,6 +332,12 @@ const protectedRoutes = [
   { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})/payments$`), upstream: (match) => `/invoices/${match[1]}/payments` },
   { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})/(send|reissue-link|void|payment-link)$`), upstream: (match) => `/invoices/${match[1]}/${match[2]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/services$/, upstream: "/services", query: ["active"] },
+  // Service catalogue writes. Backend enforces catalog.manage, tenancy, and
+  // validation (price/deposit/duration bounds, staff belong to this business).
+  // DELETE archives the service; it never deletes booking history.
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/services$/, upstream: "/services" },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/services/(${UUID})$`), upstream: (match) => `/services/${match[1]}` },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/services/(${UUID})$`), upstream: (match) => `/services/${match[1]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/messages$/, upstream: "/messages/conversations", query: ["status", "cursor", "limit"] },
   { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/messages/(${UUID})$`), upstream: (match) => `/messages/conversations/${match[1]}` },
   { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/messages/(${UUID})/read$`), upstream: (match) => `/messages/conversations/${match[1]}/read` },
@@ -334,6 +350,16 @@ const protectedRoutes = [
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/payments$/, upstream: "/payments/connect/status" },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/payments\/connect$/, upstream: "/payments/connect/link" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/team$/, upstream: "/team/members" },
+  // Team administration. The backend restricts every write to the OWNER
+  // (team.members.manage / team.roles.manage) and checks plan seats.
+  // Ownership transfer is intentionally NOT exposed on the web.
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/team\/summary$/, upstream: "/team/summary" },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/team/members/(${UUID})$`), upstream: (match) => `/team/members/${match[1]}` },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/team/members/(${UUID})$`), upstream: (match) => `/team/members/${match[1]}` },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/team/members/(${UUID})/reactivate$`), upstream: (match) => `/team/members/${match[1]}/reactivate` },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/team\/invitations$/, upstream: "/team/invitations" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/team\/invitations$/, upstream: "/team/invitations" },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/team/invitations/(${UUID})$`), upstream: (match) => `/team/invitations/${match[1]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/support$/, upstream: "/support-tickets" },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/support$/, upstream: "/support-tickets" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/ai-receptionist$/, upstream: "/ai/receptionist" },
@@ -344,12 +370,18 @@ const protectedRoutes = [
   { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/inventory/(${UUID})/movements$`), upstream: (match) => `/inventory/items/${match[1]}/movements` },
   { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/inventory/(${UUID})$`), upstream: (match) => `/inventory/items/${match[1]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/booking-links$/, upstream: "/business/booking-links" },
+  { method: "PATCH", realm: "business", pattern: /^\/v1\/business\/account\/profile$/, upstream: "/auth/profile" },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/bookings$/, upstream: "/customer/bookings", query: ["scope"] },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/businesses$/, upstream: "/customer/businesses" },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/profile$/, upstream: "/customer/profile" },
   { method: "PATCH", realm: "client", pattern: /^\/v1\/client\/profile$/, upstream: "/customer/profile" },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/notifications$/, upstream: "/customer/notifications", query: ["unreadOnly", "limit"] },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/invoices$/, upstream: "/customer/invoices" },
+  // Customer invoice detail + pay. The backend scopes both to the signed-in
+  // customer (404 for anything else) and "pay" only creates a Stripe Checkout
+  // Session for the outstanding balance.
+  { method: "GET", realm: "client", pattern: new RegExp(`^/v1/client/invoices/(${UUID})$`), upstream: (match) => `/customer/invoices/${match[1]}` },
+  { method: "POST", realm: "client", pattern: new RegExp(`^/v1/client/invoices/(${UUID})/pay$`), upstream: (match) => `/customer/invoices/${match[1]}/pay` },
   { method: "POST", realm: "client", pattern: new RegExp(`^/v1/client/bookings/(${UUID})/cancel$`), upstream: (match) => `/customer/bookings/${match[1]}/cancel` },
 ];
 
@@ -372,7 +404,7 @@ async function protectedProxy(request, env, origin, route) {
   if (!session || session.realm !== route.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
   let body;
   if (["POST", "PATCH"].includes(route.method)) {
-    try { body = await parseBody(request); } catch { return json({ error: "Invalid request." }, 400, origin); }
+    try { body = await parseBody(request, route.maxBytes); } catch (error) { return json({ error: error instanceof Error && error.message === "body_too_large" ? "That upload is too large." : "Invalid request." }, error instanceof Error && error.message === "body_too_large" ? 413 : 400, origin); }
   }
   let result = await callApi(env, route.path, { method: route.method, body, accessToken: session.accessToken });
   if (result.response.status === 401) {
@@ -381,10 +413,52 @@ async function protectedProxy(request, env, origin, route) {
     result = await callApi(env, route.path, { method: route.method, body, accessToken: session.accessToken });
   }
   if (!result.response.ok) {
-    const upstreamMessage = result.payload && typeof result.payload.message === "string" ? result.payload.message : null;
+    const upstreamMessage = upstreamErrorMessage(result.payload);
     return json({ error: result.response.status >= 500 ? "This dashboard service is temporarily unavailable." : upstreamMessage || "Check the details and try again." }, result.response.status >= 500 ? 503 : result.response.status, origin, { cookies: session.cookies });
   }
   return json(result.payload, result.response.status === 201 ? 201 : 200, origin, { cookies: session.cookies });
+}
+
+// The API's error shape is { error: { code, message } }. Its messages are
+// written for end users; 5xx bodies are never surfaced (see callers).
+function upstreamErrorMessage(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  const message = payload.error && typeof payload.error === "object" ? payload.error.message : payload.message;
+  return typeof message === "string" && message.length <= 300 ? message : null;
+}
+
+// Password change and account deletion re-verify the user's password on the
+// API. Unlike protectedProxy these never auto-retry a 401 caused by a wrong
+// password (that would double-spend the API's attempt limit): only an expired
+// access token is refreshed and retried once. A successful deletion clears
+// the session cookies in the same response.
+const ACCOUNT_ACTIONS = {
+  "/v1/business/account/password": { realm: "business", upstream: "/auth/change-password", clearsSession: false },
+  "/v1/business/account/delete": { realm: "business", upstream: "/auth/delete-account", clearsSession: true },
+  "/v1/client/account/close": { realm: "client", upstream: "/customer/profile", method: "DELETE", clearsSession: true },
+};
+
+async function accountAction(request, env, origin, action) {
+  let session;
+  try { session = await authorizedSession(request, env); } catch { session = null; }
+  if (!session || session.realm !== action.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
+  let body;
+  try { body = await parseBody(request); } catch { return json({ error: "Invalid request." }, 400, origin); }
+  const method = action.method || "POST";
+  const send = (token) => callApi(env, action.upstream, { method, body: method === "DELETE" ? undefined : body, accessToken: token });
+  let result = await send(session.accessToken);
+  const code = result.payload?.error?.code;
+  if (result.response.status === 401 && (code === "AUTH_TOKEN_INVALID" || code === "AUTH_TOKEN_EXPIRED")) {
+    try { session = await refreshSession(request, env); } catch { session = null; }
+    if (!session || session.realm !== action.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
+    result = await send(session.accessToken);
+  }
+  if (!result.response.ok) {
+    const status = result.response.status >= 500 ? 503 : result.response.status === 401 ? 400 : result.response.status;
+    const message = result.response.status >= 500 ? "Account settings are temporarily unavailable." : upstreamErrorMessage(result.payload) || "Check the details and try again.";
+    return json({ error: message }, status, origin, { cookies: session.cookies });
+  }
+  return json({ ok: true }, 200, origin, { cookies: action.clearsSession ? clearSessionCookies() : session.cookies });
 }
 
 async function logout(request, env, origin) {
@@ -393,7 +467,7 @@ async function logout(request, env, origin) {
   return json({ ok: true }, 200, origin, { cookies: clearSessionCookies() });
 }
 
-export const internals = { decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };
+export const internals = { upstreamErrorMessage, ACCOUNT_ACTIONS, decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };
 
 export default {
   async fetch(request, env) {
@@ -412,6 +486,7 @@ export default {
     if (url.pathname === "/v1/business" && request.method === "PATCH") return protectedMutation(request, env, origin, "business", "/business", "PATCH");
     if (url.pathname === "/v1/business/onboarding/complete" && request.method === "POST") return protectedMutation(request, env, origin, "business", "/business/onboarding/complete", "POST");
     if (url.pathname === "/v1/logout" && request.method === "POST") return logout(request, env, origin);
+    if (request.method === "POST" && Object.hasOwn(ACCOUNT_ACTIONS, url.pathname)) return accountAction(request, env, origin, ACCOUNT_ACTIONS[url.pathname]);
     const protectedRoute = matchProtectedRoute(url, request.method);
     if (protectedRoute) return protectedProxy(request, env, origin, protectedRoute);
     return json({ error: "Not found." }, 404, origin);

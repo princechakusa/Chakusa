@@ -34,13 +34,13 @@ const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], 
     if(kind==="reminders")return [item.customer?.name||item.serviceName||"Comeback reminder",clean(item.status||"due"),item.dueDate?date(item.dueDate):item.createdAt?date(item.createdAt):""];
     if(kind==="automation")return [item.name||"Workflow",clean(item.status||"draft"),item.description||""];
     if(kind==="inventory")return [item.name||"Stock item",`${item.currentStock??"0"} ${item.unit||"on hand"}${item.lowStock?" | low stock":""}`,item.lowStockThreshold!=null?`Reorder at ${item.lowStockThreshold}`:(item.sku?`SKU ${item.sku}`:"")];
-    if(kind==="reports")return [item.title||item.periodLabel||"Weekly report",item.status||"Business summary",item.createdAt?date(item.createdAt):""];
+    if(kind==="support")return [item.subject||"Support request",`${clean(item.status||"open")} | ${clean(item.category||"other")}`,item.createdAt?date(item.createdAt):""];if(kind==="reports")return [item.title||item.periodLabel||"Weekly report",item.status||"Business summary",item.createdAt?date(item.createdAt):""];
     return [item.name||item.title||item.email||"Workspace record",item.role||item.status||"Active",item.createdAt?date(item.createdAt):""];
   };
   // #22 — per-row state transitions. Each still passes through the gateway
   // allowlist + backend capability/validation; the `cap` here only decides
   // whether to render the button.
-  type RowAction={label:string;path:(id:string)=>string;body?:Record<string,unknown>;cap:string};
+  type RowAction={label:string;path:(id:string)=>string;body?:Record<string,unknown>;cap:string|null;when?:(item:any)=>boolean;confirm?:string};
   const ROW_ACTIONS:Record<string,RowAction[]>={
     leads:[
       {label:"Contacted",path:id=>`/v1/business/leads/${id}/mark-contacted`,cap:"leads.manage"},
@@ -55,8 +55,15 @@ const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], 
       {label:"Cancel",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"CANCELED"},cap:"appointments.manage"},
     ],
   };
+  // Client realm: the backend scopes every booking to the signed-in
+  // customer and re-checks the business's cancellation notice; `when` only
+  // hides the button once the API already reports canCancel=false.
+  const CLIENT_ROW_ACTIONS:Record<string,RowAction[]>={
+    bookings:[{label:"Cancel booking",path:id=>`/v1/client/bookings/${id}/cancel`,cap:null,when:item=>item.canCancel===true,confirm:"Cancel this booking? The business will be notified."}],
+  }
+
   let currentRole:string|null=null;
-  const runAction=async(action:RowAction,id:string,button:HTMLButtonElement)=>{
+  const runAction=async(action:RowAction,id:string,button:HTMLButtonElement)=>{if(action.confirm&&!window.confirm(action.confirm))return;
     button.disabled=true;const original=button.textContent;button.textContent="Saving…";
     try{
       const response=await fetch(`${gateway}${action.path(id)}`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(action.body??{})});
@@ -64,7 +71,7 @@ const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], 
       await load();
     }catch(error){button.disabled=false;button.textContent=original;button.title=error instanceof Error?error.message:"Failed";}
   };
-  const render=(payload:any)=>{if(!records||!moduleRoot)return;records.replaceChildren();const kind=moduleRoot.dataset.kind||"records";const items=itemsFrom(payload);if(count)count.textContent=`${items.length} record${items.length===1?"":"s"}`;if(!items.length){const empty=document.createElement("div");empty.className="dashboard-empty";empty.textContent=`No ${kind} yet. New activity will appear here.`;records.append(empty);return;}const actions=ROW_ACTIONS[kind]?.filter(a=>can(currentRole,a.cap))??[];for(const item of items){const values=details(item,kind);const article=document.createElement("article");article.className="dashboard-record";const mark=document.createElement("span");mark.className="dashboard-record__mark";mark.textContent=values[0].slice(0,1).toUpperCase();const copy=document.createElement("div");const strong=document.createElement("strong");strong.textContent=values[0];const meta=document.createElement("span");meta.textContent=values[1];const small=document.createElement("small");small.textContent=values[2];copy.append(strong,meta,small);article.append(mark,copy);const detailBase=moduleRoot.dataset.detailBase;if(detailBase&&typeof item.id==="string"&&UUID_RE.test(item.id)){const open=document.createElement("a");open.className="dashboard-record__open";open.href=`${detailBase}?id=${encodeURIComponent(item.id)}`;open.textContent="Open";open.setAttribute("aria-label",`Open ${values[0]}`);article.append(open);}if(actions.length&&typeof item.id==="string"){const bar=document.createElement("div");bar.className="dashboard-record__actions";for(const action of actions){const button=document.createElement("button");button.type="button";button.textContent=action.label;button.addEventListener("click",()=>void runAction(action,item.id,button));bar.append(button);}article.append(bar);}records.append(article);}};
+  const render=(payload:any)=>{if(!records||!moduleRoot)return;records.replaceChildren();const kind=moduleRoot.dataset.kind||"records";const items=itemsFrom(payload);if(count)count.textContent=`${items.length} record${items.length===1?"":"s"}`;if(!items.length){const empty=document.createElement("div");empty.className="dashboard-empty";empty.textContent=`No ${kind} yet. New activity will appear here.`;records.append(empty);return;}const realm=moduleRoot.dataset.realm;const actions=(realm==="client"?CLIENT_ROW_ACTIONS[kind]:ROW_ACTIONS[kind])?.filter(a=>a.cap===null||can(currentRole,a.cap))??[];for(const item of items){const values=details(item,kind);const article=document.createElement("article");article.className="dashboard-record";const mark=document.createElement("span");mark.className="dashboard-record__mark";mark.textContent=values[0].slice(0,1).toUpperCase();const copy=document.createElement("div");const strong=document.createElement("strong");strong.textContent=values[0];const meta=document.createElement("span");meta.textContent=values[1];const small=document.createElement("small");small.textContent=values[2];copy.append(strong,meta,small);article.append(mark,copy);if(moduleRoot.dataset.realm==="client"&&(kind==="businesses"||kind==="bookings")){const slug=(item.business||item)?.slug??(item.business||item)?.publicSlug;if(typeof slug==="string"&&/^[a-z0-9][a-z0-9-]{0,79}$/i.test(slug)){const book=document.createElement("a");book.className="dashboard-record__open";book.href=`/b/${encodeURIComponent(slug)}`;book.textContent="Book again";article.append(book);}}const detailBase=moduleRoot.dataset.detailBase;if(detailBase&&typeof item.id==="string"&&UUID_RE.test(item.id)){const open=document.createElement("a");open.className="dashboard-record__open";open.href=`${detailBase}?id=${encodeURIComponent(item.id)}`;open.textContent="Open";open.setAttribute("aria-label",`Open ${values[0]}`);article.append(open);}const rowActions=actions.filter(a=>!a.when||a.when(item));if(rowActions.length&&typeof item.id==="string"&&UUID_RE.test(item.id)){const bar=document.createElement("div");bar.className="dashboard-record__actions";for(const action of rowActions){const button=document.createElement("button");button.type="button";button.textContent=action.label;button.addEventListener("click",()=>void runAction(action,item.id,button));bar.append(button);}article.append(bar);}records.append(article);}};
   // #22 — hide the create control unless the signed-in member's role holds the
   // required capability. Backend/gateway authorization stays authoritative;
   // this is a usability hint only.

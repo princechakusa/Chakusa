@@ -1,0 +1,50 @@
+---
+// "Needs attention" on the business overview: the same deterministic action
+// queue the mobile app shows (missed calls to return, customers due back,
+// review opportunities, outstanding payments). Read-only; each row links to
+// the customer's profile. Rendered with textContent only.
+---
+<section class="dashboard-panel attention-panel" data-attention hidden>
+  <div class="dashboard-section-heading"><div><h2>Needs attention</h2><p data-attention-summary></p></div></div>
+  <div class="dashboard-records" data-attention-list></div>
+</section>
+<script>
+  import { api, itemsOf, money, dateTime, el, isUuid } from "../../scripts/dashboardApi";
+
+  const CATEGORY: Record<string, string> = {
+    missed_call_followup: "Missed call to return",
+    customer_due: "Due for a return visit",
+    review_opportunity: "Ask for a review",
+    payment_outstanding: "Payment outstanding",
+  };
+
+  (async () => {
+    const panel = document.querySelector<HTMLElement>("[data-attention]");
+    const list = document.querySelector<HTMLElement>("[data-attention-list]");
+    if (!panel || !list) return;
+    try {
+      const [payload, identity] = await Promise.all([api("/v1/business/attention?page=1&pageSize=5"), api("/v1/dashboard")]);
+      const currency = typeof identity?.business?.currency === "string" ? identity.business.currency : "USD";
+      const items = itemsOf(payload).slice(0, 12);
+      const total = Number(payload?.total ?? items.length);
+      document.querySelector("[data-attention-summary]")!.textContent = total ? `${total} item${total === 1 ? "" : "s"} across calls, returns, reviews, and payments` : "You're all caught up.";
+      if (!items.length) list.append(el("div", { className: "dashboard-empty", text: "Nothing needs your attention right now." }));
+      for (const item of items) {
+        const body = [
+          el("span", { className: "dashboard-record__mark", text: "!" }),
+          el("div", {},
+            el("strong", { text: item.customerName || "Customer" }),
+            el("span", { text: [CATEGORY[item.category] ?? "Follow up", item.amount != null ? money(item.amount, currency) : ""].filter(Boolean).join(" · ") }),
+            el("small", { text: [item.detail, dateTime(item.occurredAt, { dateStyle: "medium" })].filter(Boolean).join(" · ") })),
+        ];
+        list.append(typeof item.customerId === "string" && isUuid(item.customerId)
+          ? el("a", { className: "dashboard-record attention-panel__link", attrs: { href: `/dashboard/business/customers/profile?id=${encodeURIComponent(item.customerId)}` } }, ...body)
+          : el("article", { className: "dashboard-record" }, ...body));
+      }
+      panel.hidden = false;
+    } catch {
+      // The overview's main content handles sign-in and outages; this panel
+      // simply stays hidden if the queue can't load.
+    }
+  })();
+</script>

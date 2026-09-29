@@ -1,4 +1,65 @@
 ---
-import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";import DashboardCollection from "../../../components/dashboard/DashboardCollection.astro";
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
 ---
-<DashboardLayout title="Reports | Chakusa" description="View protected weekly business reports." realm="business"><DashboardNav slot="sidebar" realm="business" active="reports"/><DashboardCollection realm="business" eyebrow="Performance" title="Reports" intro="Keep weekly operating and recovery summaries together." endpoint="/v1/business/reports" kind="reports"/></DashboardLayout>
+<DashboardLayout title="Reports | Chakusa" description="Weekly business reports." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="reports" />
+  <PageStates loadingText="Loading your weekly reports..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Performance</p><h1>Weekly reports</h1><p>A summary of each week, generated every Monday. The latest 12 weeks are kept here.</p></div></header>
+    <div class="reports-page__list" data-reports></div>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, loadIdentity, itemsOf, money, dateTime, el, pageStates } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const METRICS: [string, string, "money" | "count" | "percent"][] = [
+    ["collectedRevenue", "Revenue collected", "money"],
+    ["revenueRecovered", "Revenue recovered", "money"],
+    ["outstandingRevenue", "Outstanding", "money"],
+    ["appointmentsCompleted", "Appointments completed", "count"],
+    ["appointmentsBooked", "New bookings", "count"],
+    ["newCustomers", "New customers", "count"],
+    ["customersReturned", "Returning customers", "count"],
+    ["newLeads", "New leads", "count"],
+    ["wonLeads", "Leads won", "count"],
+    ["customerMessagesSent", "Messages sent", "count"],
+    ["reviewsReceived", "Reviews received", "count"],
+    ["automationSuccessRate", "Automation success", "percent"],
+  ];
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      const currency = typeof identity.business?.currency === "string" ? identity.business.currency : "USD";
+      const reports = itemsOf(await api("/v1/business/reports"));
+      const root = document.querySelector<HTMLElement>("[data-reports]")!;
+      if (!reports.length) root.append(el("div", { className: "dashboard-empty", text: "Your first weekly report appears after your first full week on Chakusa." }));
+      for (const [index, report] of reports.entries()) {
+        const summary = report.summary && typeof report.summary === "object" ? report.summary : {};
+        const facts = el("dl", { className: "sales-doc__summary" });
+        for (const [key, name, kind] of METRICS) {
+          const value = summary[key];
+          if (value === undefined) continue;
+          const shown = value === null ? "—" : kind === "money" ? money(value, currency) : kind === "percent" ? `${Math.round(Number(value) * (Number(value) <= 1 ? 100 : 1))}%` : String(value);
+          facts.append(el("dt", { text: name }), el("dd", { text: shown }));
+        }
+        const notes = el("div", { className: "sales-doc__notes" });
+        if (typeof summary.topOpportunity === "string" && summary.topOpportunity) notes.append(el("h3", { text: "Top opportunity" }), el("p", { text: summary.topOpportunity }));
+        if (typeof summary.highestRisk === "string" && summary.highestRisk) notes.append(el("h3", { text: "Watch out for" }), el("p", { text: summary.highestRisk }));
+        const range = `${dateTime(report.periodStart, { dateStyle: "medium" })} – ${dateTime(new Date(new Date(report.periodEnd).getTime() - 86_400_000), { dateStyle: "medium" })}`;
+        const details = el("details", { className: "dashboard-panel reports-page__week" }, el("summary", {}, el("strong", { text: `Week of ${range}` }), el("span", { text: summary.collectedRevenue != null ? money(summary.collectedRevenue, currency) : "" })), facts, notes);
+        if (index === 0) details.open = true;
+        root.append(details);
+      }
+      page.ready();
+    } catch (error) {
+      if (error instanceof Error && /permission/i.test(error.message)) { page.fail(new Error("Weekly reports include revenue, so only owners and admins can see them.")); return; }
+      page.fail(error);
+    }
+  })();
+</script>

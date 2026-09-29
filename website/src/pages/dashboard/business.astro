@@ -1,6 +1,7 @@
 ---
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
 import DashboardNav from "../../components/dashboard/DashboardNav.astro";
+import AttentionPanel from "../../components/dashboard/AttentionPanel.astro";
 const title="Business dashboard | Chakusa";const description="Your private Chakusa business dashboard.";
 ---
 <DashboardLayout {title} {description} realm="business">
@@ -10,6 +11,7 @@ const title="Business dashboard | Chakusa";const description="Your private Chaku
   <div class="dashboard-content" data-dashboard-content hidden>
     <header class="dashboard-welcome"><div><p class="dashboard-eyebrow" data-business-name>Business workspace</p><h1><span data-greeting>Welcome</span>, <span data-owner-name>owner</span></h1><p>Here is the work that deserves your attention today.</p></div><a class="dashboard-action" href="/dashboard/business/setup">Business settings</a></header>
     <div class="dashboard-banner" data-setup-banner hidden><div><strong>Finish setting up your business</strong><span>Add your phone, opening hours, services, and review link.</span></div><a href="/dashboard/business/setup">Continue setup →</a></div>
+    <AttentionPanel />
     <div class="dashboard-legal" data-legal-warning hidden>Please review the current <a href="/terms">Terms</a>, <a href="/privacy">Privacy Policy</a>, and <a href="/ai-disclosure">AI Disclosure</a> in the Chakusa app.</div>
     <section class="dashboard-metrics" aria-label="Business summary"><article class="dashboard-metric"><span>Recovered revenue</span><strong data-revenue>0</strong><small>Won and collected work</small></article><article class="dashboard-metric"><span>Lead pipeline</span><strong data-leads>0</strong><small>All tracked opportunities</small></article><article class="dashboard-metric"><span>Customers</span><strong data-customers>0</strong><small>Connected customer records</small></article><article class="dashboard-metric"><span>Business health</span><strong data-health>New</strong><small>Operational score</small></article></section>
     <div class="dashboard-grid"><section class="dashboard-panel" id="activity"><h2>Recent activity</h2><div class="dashboard-list" data-activity-list></div></section><section class="dashboard-panel" id="recovery"><h2>Recovery snapshot</h2><div class="dashboard-list" data-recovery-list></div></section></div>

@@ -30,6 +30,9 @@ export async function createCampaign(businessId: string, actorUserId: string | n
   name: string; description?: string; kind?: string; multiplier?: number; bonusPoints?: number; rewardId?: string; startsAt: string; endsAt: string;
 }) {
   if (new Date(input.endsAt) <= new Date(input.startsAt)) throw ApiError.badRequest("endsAt must be after startsAt");
+  if (input.rewardId && !await prisma.reward.findFirst({ where: { id: input.rewardId, businessId }, select: { id: true } })) {
+    throw ApiError.badRequest("rewardId is not a reward of this business");
+  }
   return prisma.loyaltyCampaign.create({
     data: {
       businessId,
@@ -47,8 +50,11 @@ export async function createCampaign(businessId: string, actorUserId: string | n
 }
 
 export async function updateCampaign(businessId: string, id: string, patch: Partial<{ name: string; description: string | null; multiplier: number; bonusPoints: number; active: boolean; startsAt: string; endsAt: string }>) {
-  const existing = await prisma.loyaltyCampaign.findFirst({ where: { id, businessId }, select: { id: true } });
+  const existing = await prisma.loyaltyCampaign.findFirst({ where: { id, businessId }, select: { id: true, startsAt: true, endsAt: true } });
   if (!existing) throw ApiError.notFound("Campaign not found");
+  const startsAt = patch.startsAt !== undefined ? new Date(patch.startsAt) : existing.startsAt;
+  const endsAt = patch.endsAt !== undefined ? new Date(patch.endsAt) : existing.endsAt;
+  if (endsAt <= startsAt) throw ApiError.badRequest("endsAt must be after startsAt");
   return prisma.loyaltyCampaign.update({
     where: { id },
     data: {

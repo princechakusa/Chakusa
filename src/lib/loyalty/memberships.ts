@@ -29,12 +29,23 @@ export async function listMembershipPlans(businessId: string, activeOnly = false
   });
 }
 
+/** Every included service must belong to this business (no cross-tenant references). */
+async function assertServicesInBusiness(businessId: string, ids: unknown) {
+  if (ids === undefined || ids === null) return;
+  if (!Array.isArray(ids)) throw ApiError.badRequest("includedServiceIds must be a list");
+  const unique = [...new Set(ids)];
+  if (!unique.length) return;
+  const count = await prisma.serviceOffering.count({ where: { businessId, id: { in: unique as string[] } } });
+  if (count !== unique.length) throw ApiError.badRequest("includedServiceIds must all be services of this business");
+}
+
 export async function createMembershipPlan(businessId: string, actorUserId: string | null, input: {
   name: string; description?: string; billingInterval: BillingInterval; priceAmount: number; currency?: string;
   priorityBooking?: boolean; discountPercent?: number; includedServiceIds?: string[]; perks?: string[];
 }) {
   if (!INTERVALS.includes(input.billingInterval)) throw ApiError.badRequest("Unknown billing interval");
   if (input.discountPercent !== undefined && (input.discountPercent < 0 || input.discountPercent > 100)) throw ApiError.badRequest("discountPercent must be 0-100");
+  await assertServicesInBusiness(businessId, input.includedServiceIds);
   return prisma.membershipPlan.create({
     data: {
       businessId,
@@ -58,7 +69,7 @@ export async function updateMembershipPlan(businessId: string, id: string, patch
   const allowed = ["name", "description", "priceAmount", "currency", "priorityBooking", "discountPercent", "active"] as const;
   const data: Record<string, unknown> = {};
   for (const key of allowed) if (patch[key] !== undefined) data[key] = patch[key];
-  if (patch.includedServiceIds !== undefined) data.includedServiceIds = patch.includedServiceIds;
+  if (patch.includedServiceIds !== undefined) { await assertServicesInBusiness(businessId, patch.includedServiceIds); data.includedServiceIds = patch.includedServiceIds; }
   if (patch.perks !== undefined) data.perks = patch.perks;
   return prisma.membershipPlan.update({ where: { id }, data });
 }

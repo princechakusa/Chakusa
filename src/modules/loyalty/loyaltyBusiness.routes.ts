@@ -17,6 +17,45 @@ import { loyaltyBusinessAnalytics } from "./loyaltyAnalytics.js";
 const idParam = z.object({ id: z.string().uuid() });
 const manage = (request: Parameters<typeof requireCapability>[0]) => requireCapability(request, "loyalty.manage");
 
+// PATCH bodies are validated with the same bounds as create. Unknown keys
+// (e.g. the mobile editor re-sending `type`/`kind`/`billingInterval`) are
+// stripped, matching the service layer's field allowlists.
+const isoDateTime = z.string().datetime({ offset: true });
+const rewardPatchSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  pointsCost: z.number().int().min(0).max(1_000_000).optional(),
+  value: z.number().min(0).max(1_000_000).optional(),
+  minTierKey: z.string().trim().max(40).nullable().optional(),
+  autoGrant: z.boolean().optional(),
+  milestoneBookings: z.number().int().min(1).max(1000).nullable().optional(),
+  membersOnly: z.boolean().optional(),
+  active: z.boolean().optional(),
+  redemptionValidityDays: z.number().int().min(1).max(365).optional(),
+  startsAt: isoDateTime.nullable().optional(),
+  endsAt: isoDateTime.nullable().optional(),
+});
+const planPatchSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  priceAmount: z.number().min(0).max(1_000_000).optional(),
+  currency: z.string().trim().max(8).nullable().optional(),
+  priorityBooking: z.boolean().optional(),
+  discountPercent: z.number().min(0).max(100).optional(),
+  active: z.boolean().optional(),
+  includedServiceIds: z.array(z.string().uuid()).max(100).optional(),
+  perks: z.array(z.string().trim().max(120)).max(30).optional(),
+});
+const campaignPatchSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  multiplier: z.number().min(1).max(20).optional(),
+  bonusPoints: z.number().int().min(0).max(100000).optional(),
+  active: z.boolean().optional(),
+  startsAt: isoDateTime.optional(),
+  endsAt: isoDateTime.optional(),
+});
+
 export default async function loyaltyBusinessRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", fastify.requireBusiness);
@@ -65,7 +104,7 @@ export default async function loyaltyBusinessRoutes(fastify: FastifyInstance) {
   });
   fastify.patch<{ Params: { id: string } }>("/rewards/:id", async (request) => {
     manage(request);
-    return updateReward(request.businessId!, idParam.parse(request.params).id, request.body as Record<string, unknown>);
+    return updateReward(request.businessId!, idParam.parse(request.params).id, rewardPatchSchema.parse(request.body ?? {}));
   });
   fastify.delete<{ Params: { id: string } }>("/rewards/:id", async (request) => {
     manage(request);
@@ -112,7 +151,7 @@ export default async function loyaltyBusinessRoutes(fastify: FastifyInstance) {
   });
   fastify.patch<{ Params: { id: string } }>("/membership-plans/:id", async (request) => {
     manage(request);
-    return updateMembershipPlan(request.businessId!, idParam.parse(request.params).id, request.body as Record<string, unknown>);
+    return updateMembershipPlan(request.businessId!, idParam.parse(request.params).id, planPatchSchema.parse(request.body ?? {}));
   });
   fastify.delete<{ Params: { id: string } }>("/membership-plans/:id", async (request) => {
     manage(request);
@@ -137,7 +176,7 @@ export default async function loyaltyBusinessRoutes(fastify: FastifyInstance) {
   });
   fastify.patch<{ Params: { id: string } }>("/campaigns/:id", async (request) => {
     manage(request);
-    return updateCampaign(request.businessId!, idParam.parse(request.params).id, request.body as Record<string, unknown>);
+    return updateCampaign(request.businessId!, idParam.parse(request.params).id, campaignPatchSchema.parse(request.body ?? {}));
   });
   fastify.delete<{ Params: { id: string } }>("/campaigns/:id", async (request) => {
     manage(request);

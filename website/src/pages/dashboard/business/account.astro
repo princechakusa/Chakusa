@@ -30,6 +30,12 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
       </form>
     </section>
 
+    <section class="dashboard-panel" data-export-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>Download business data</h2><p>A complete copy of your business's records as a JSON file. It contains customer details, so store it securely.</p></div></div>
+      <div class="sales-doc__actions"><button type="button" data-export>Download data</button></div>
+      <p class="setup-message" data-export-message role="status"></p>
+    </section>
+
     <section class="dashboard-panel account-page__danger">
       <div class="dashboard-section-heading"><div><h2>Delete account</h2><p>Permanently deletes your Chakusa login. This cannot be undone.</p></div></div>
       <p class="account-page__hint" data-delete-unavailable hidden>Your account signs in with Google or Apple only. Delete it from Account settings in the Chakusa app, where you can confirm with that provider, or set a password above first.</p>
@@ -45,6 +51,7 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
 
 <script>
   import { api, AuthRequired, loadIdentity, pageStates } from "../../../scripts/dashboardApi";
+  import { can } from "../../../scripts/capabilities.js";
 
   const page = pageStates();
   const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
@@ -75,6 +82,28 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
         $("[data-password-copy]")!.textContent = "Add a password so you can also sign in with your email.";
         $("[data-delete-form]")!.hidden = true;
         $("[data-delete-unavailable]")!.hidden = false;
+      }
+      if (can(identity.role, "business.data.export")) {
+        $("[data-export-panel]")!.hidden = false;
+        $("[data-export]")!.addEventListener("click", async () => {
+          const button = $<HTMLButtonElement>("[data-export]")!;
+          const message = $("[data-export-message]")!;
+          button.disabled = true;
+          message.textContent = "Preparing your export...";
+          try {
+            const data = await api("/v1/business/export");
+            const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `chakusa-business-export-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            message.textContent = "Download started.";
+          } catch (error) { if (error instanceof AuthRequired) return page.fail(error); message.textContent = error instanceof Error ? error.message : "The export could not be created."; }
+          finally { button.disabled = false; }
+        });
       }
       page.ready();
 

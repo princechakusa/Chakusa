@@ -1,0 +1,163 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Commissions | Chakusa" description="Commission estimates and rules for your team." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="commissions" />
+  <PageStates loadingText="Loading commissions..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Team</p><h1>Commissions</h1><p data-disclaimer>Operational estimate for planning only. Not payroll, not a payout, and no tax or withholding is applied.</p></div></header>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Report</h2><p>Completed, priced appointments with an assigned team member.</p></div></div>
+      <form class="dashboard-form" data-report-form novalidate>
+        <label>From<input type="date" name="from" required /></label>
+        <label>To<input type="date" name="to" required /></label>
+        <div class="dashboard-form__actions"><button type="submit">Run report</button></div>
+        <p class="setup-message" data-report-message role="status"></p>
+      </form>
+      <div class="sales-doc__table-wrap"><table class="sales-doc__table"><thead><tr><th scope="col">Team member</th><th scope="col">Appointments</th><th scope="col">Service revenue</th><th scope="col">Commission</th></tr></thead><tbody data-report></tbody></table></div>
+      <p class="catalog__hint" data-report-notes></p>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Rules</h2><p data-rules-copy>A service-specific rule overrides the member's general rule.</p></div><button type="button" data-new-rule data-owner-only hidden>Add rule</button></div>
+      <form class="dashboard-form" data-rule-form novalidate hidden>
+        <label>Team member<select name="businessMemberId" required></select></label>
+        <label>Service<select name="serviceOfferingId"><option value="">All services</option></select></label>
+        <label>Type<select name="basis"><option value="PERCENT_OF_SERVICE_PRICE">Percent of service price</option><option value="FIXED_PER_APPOINTMENT">Fixed amount per appointment</option></select></label>
+        <label data-rate-field>Rate (%)<input name="ratePercent" inputmode="decimal" maxlength="7" /></label>
+        <label data-fixed-field hidden>Amount<input name="fixedAmount" inputmode="decimal" maxlength="11" /></label>
+        <label class="dashboard-toggle"><input type="checkbox" name="active" checked /> Active</label>
+        <div class="dashboard-form__actions"><button type="button" data-rule-cancel>Cancel</button><button type="submit">Save rule</button></div>
+        <p class="setup-message" data-rule-message role="status"></p>
+      </form>
+      <div class="dashboard-records" data-rules></div>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, itemsOf, money, label, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const reportForm = $<HTMLFormElement>("[data-report-form]")!;
+  const ruleForm = $<HTMLFormElement>("[data-rule-form]")!;
+  const DAY = /^\d{4}-\d{2}-\d{2}$/;
+  let currency = "USD";
+  let canManage = false;
+  const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  const runReport = async () => {
+    const from = (reportForm.elements.namedItem("from") as HTMLInputElement).value;
+    const to = (reportForm.elements.namedItem("to") as HTMLInputElement).value;
+    const message = $("[data-report-message]")!;
+    if (!DAY.test(from) || !DAY.test(to) || to < from) { message.textContent = "Choose a valid date range."; return; }
+    if (Date.parse(to) - Date.parse(from) > 366 * 86_400_000) { message.textContent = "The range can be at most one year."; return; }
+    message.textContent = "Calculating...";
+    const report = await api(`/v1/business/commissions/report?from=${from}&to=${to}`);
+    const body = $("[data-report]")!;
+    body.replaceChildren();
+    for (const member of report.members ?? []) {
+      const rows = member.currencies?.length ? member.currencies : [{ currency: report.currency, appointmentCount: 0, serviceRevenue: "0", commission: "0" }];
+      for (const totals of rows) body.append(el("tr", {}, ...[member.name, String(totals.appointmentCount), money(totals.serviceRevenue, totals.currency), money(totals.commission, totals.currency)].map((value) => el("td", { text: value }))));
+    }
+    if (!body.children.length) body.append(el("tr", {}, el("td", { text: "No team members yet.", attrs: { colspan: "4" } })));
+    const notes = [];
+    if (report.appointmentsWithoutRule) notes.push(`${report.appointmentsWithoutRule} appointment${report.appointmentsWithoutRule === 1 ? "" : "s"} had no matching rule.`);
+    if (report.currencyMismatches) notes.push(`${report.currencyMismatches} skipped for a currency mismatch.`);
+    $("[data-report-notes]")!.textContent = notes.join(" ");
+    if (typeof report.disclaimer === "string") $("[data-disclaimer]")!.textContent = report.disclaimer;
+    message.textContent = "";
+  };
+
+  const loadRules = async () => {
+    const rules = itemsOf(await api("/v1/business/commissions/rules"));
+    const root = $("[data-rules]")!;
+    root.replaceChildren();
+    if (!rules.length) root.append(el("div", { className: "dashboard-empty", text: "No commission rules yet." }));
+    for (const rule of rules) {
+      const rate = rule.basis === "PERCENT_OF_SERVICE_PRICE" ? `${Number(rule.ratePercent)}% of service price` : `${money(rule.fixedAmount, rule.fixedCurrency)} per appointment`;
+      const row = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: "%" }),
+        el("div", {}, el("strong", { text: rule.memberName || "Team member" }), el("span", { text: `${rate}${rule.active ? "" : " · Inactive"}` }), el("small", { text: rule.serviceName || "All services" })));
+      if (canManage && isUuid(rule.id)) {
+        const remove = el("button", { text: "Delete", attrs: { type: "button" } });
+        remove.addEventListener("click", async () => {
+          if (!window.confirm("Delete this commission rule?")) return;
+          remove.disabled = true;
+          try { await api(`/v1/business/commissions/rules/${rule.id}`, { method: "DELETE" }); await loadRules(); }
+          catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-rule-message]")!.textContent = error instanceof Error ? error.message : "Could not delete."; remove.disabled = false; }
+        });
+        row.append(el("div", { className: "dashboard-record__actions" }, remove));
+      }
+      root.append(row);
+    }
+  };
+
+  const syncBasis = () => {
+    const fixed = (ruleForm.elements.namedItem("basis") as HTMLSelectElement).value === "FIXED_PER_APPOINTMENT";
+    $("[data-rate-field]")!.hidden = fixed;
+    $("[data-fixed-field]")!.hidden = !fixed;
+  };
+  ruleForm.querySelector("[name=basis]")!.addEventListener("change", syncBasis);
+
+  ruleForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-rule-message]")!;
+    const value = (name: string) => ((ruleForm.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "").trim();
+    const memberId = value("businessMemberId");
+    if (!isUuid(memberId)) { message.textContent = "Choose a team member."; return; }
+    const serviceId = value("serviceOfferingId");
+    const basis = value("basis") === "FIXED_PER_APPOINTMENT" ? "FIXED_PER_APPOINTMENT" : "PERCENT_OF_SERVICE_PRICE";
+    const body: Record<string, unknown> = { businessMemberId: memberId, serviceOfferingId: isUuid(serviceId) ? serviceId : null, basis, active: (ruleForm.elements.namedItem("active") as HTMLInputElement).checked };
+    if (basis === "PERCENT_OF_SERVICE_PRICE") {
+      const rate = value("ratePercent");
+      if (!/^\d{1,3}(\.\d{1,3})?$/.test(rate) || Number(rate) > 100) { message.textContent = "Rate must be between 0 and 100."; return; }
+      body.ratePercent = Number(rate);
+    } else {
+      const amount = value("fixedAmount");
+      if (!/^\d{1,8}(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) { message.textContent = "Enter an amount above 0."; return; }
+      body.fixedAmount = Number(amount);
+      body.fixedCurrency = currency;
+    }
+    const submit = ruleForm.querySelector<HTMLButtonElement>("[type=submit]")!;
+    submit.disabled = true;
+    message.textContent = "Saving securely...";
+    try { await api("/v1/business/commissions/rules", { method: "PUT", body }); ruleForm.hidden = true; ruleForm.reset(); syncBasis(); message.textContent = ""; await loadRules(); }
+    catch (error) { if (error instanceof AuthRequired) return page.fail(error); message.textContent = error instanceof Error ? error.message : "The rule could not be saved."; }
+    finally { submit.disabled = false; }
+  });
+
+  reportForm.addEventListener("submit", (event) => { event.preventDefault(); runReport().catch((error) => { if (error instanceof AuthRequired) return page.fail(error); $("[data-report-message]")!.textContent = error instanceof Error ? error.message : "The report could not be run."; }); });
+  $("[data-new-rule]")!.addEventListener("click", () => { ruleForm.hidden = false; syncBasis(); });
+  $("[data-rule-cancel]")!.addEventListener("click", () => { ruleForm.hidden = true; });
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      if (!can(identity.role, "commissions.report.view")) throw new Error("Only owners and admins can see commissions.");
+      currency = typeof identity.business?.currency === "string" ? identity.business.currency : "USD";
+      canManage = can(identity.role, "commissions.rules.manage");
+      const now = new Date();
+      (reportForm.elements.namedItem("from") as HTMLInputElement).value = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+      (reportForm.elements.namedItem("to") as HTMLInputElement).value = iso(now);
+      if (canManage) {
+        document.querySelectorAll<HTMLElement>("[data-owner-only]").forEach((node) => { node.hidden = false; });
+        const [members, services] = await Promise.all([api("/v1/business/team"), api("/v1/business/services?active=true")]);
+        const memberSelect = ruleForm.querySelector<HTMLSelectElement>("[name=businessMemberId]")!;
+        for (const member of itemsOf(members)) if (member.status === "ACTIVE" && isUuid(member.id)) memberSelect.append(el("option", { text: `${member.name || member.email} (${label(member.role)})`, attrs: { value: member.id } }));
+        const serviceSelect = ruleForm.querySelector<HTMLSelectElement>("[name=serviceOfferingId]")!;
+        for (const service of itemsOf(services)) if (isUuid(service.id)) serviceSelect.append(el("option", { text: service.name, attrs: { value: service.id } }));
+      } else {
+        $("[data-rules-copy]")!.textContent = "Only the business owner can change commission rules.";
+      }
+      await Promise.all([runReport(), loadRules()]);
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

@@ -1,0 +1,76 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Rewards | Chakusa" description="Your loyalty points and rewards." realm="client">
+  <DashboardNav slot="sidebar" realm="client" active="rewards" />
+  <PageStates loadingText="Loading your rewards..." backHref="/dashboard/client" />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Loyalty</p><h1>Rewards</h1><p data-summary></p></div></header>
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Your reward codes</h2><p>Show the code at the business to use your reward.</p></div></div>
+      <div class="dashboard-records" data-codes></div>
+    </section>
+    <div data-accounts></div>
+    <p class="setup-message" data-message role="status"></p>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, label, dateTime, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+
+  const render = async () => {
+    const wallet = await api("/v1/client/loyalty/wallet");
+    $("[data-summary]")!.textContent = `${wallet.totalPoints ?? 0} points across ${wallet.accounts?.length ?? 0} business${wallet.accounts?.length === 1 ? "" : "es"}`;
+
+    const codes = $("[data-codes]")!;
+    codes.replaceChildren();
+    const open = (wallet.rewards?.list ?? []).filter((r: any) => r.status === "issued" || r.status === "reserved");
+    if (!open.length) codes.append(el("div", { className: "dashboard-empty", text: "No unused rewards. Redeem one below when you have enough points." }));
+    for (const redemption of open) {
+      codes.append(el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: "🎁" }),
+        el("div", {}, el("strong", { text: `${redemption.reward?.name || "Reward"} · ${redemption.code}` }), el("span", { text: redemption.business?.name || "" }), el("small", { text: redemption.expiresAt ? `Use by ${dateTime(redemption.expiresAt, { dateStyle: "medium" })}` : "" }))));
+    }
+
+    const root = $("[data-accounts]")!;
+    root.replaceChildren();
+    if (!wallet.accounts?.length) root.append(el("section", { className: "dashboard-panel" }, el("div", { className: "dashboard-empty", text: "You haven't joined any loyalty programmes yet. You join automatically when you book with a business that runs one." })));
+    for (const account of wallet.accounts ?? []) {
+      if (!isUuid(account.businessId)) continue;
+      const list = el("div", { className: "dashboard-records" });
+      const panel = el("section", { className: "dashboard-panel" },
+        el("div", { className: "dashboard-section-heading" }, el("div", {}, el("h2", { text: account.business?.name || "Business" }), el("p", { text: `${account.pointsBalance} points · ${account.tier?.name || label(account.tier?.key || "bronze")} tier` }))),
+        list);
+      root.append(panel);
+      const rewards: any[] = await api(`/v1/client/loyalty/accounts/${account.businessId}/rewards`).then((r) => (Array.isArray(r) ? r : r?.items ?? [])).catch((error) => { if (error instanceof AuthRequired) throw error; return []; });
+      if (!rewards.length) list.append(el("div", { className: "dashboard-empty", text: "No rewards available right now." }));
+      for (const reward of rewards) {
+        const why = reward.redeemable ? "" : !reward.tierEligible ? `Needs ${label(reward.minTierKey)} tier` : !reward.memberEligible ? "Members only" : reward.pointsShort ? `${reward.pointsShort} more points needed` : "";
+        const row = el("article", { className: "dashboard-record" },
+          el("span", { className: "dashboard-record__mark", text: "★" }),
+          el("div", {}, el("strong", { text: reward.name }), el("span", { text: `${reward.pointsCost} points${why ? ` · ${why}` : ""}` }), el("small", { text: reward.description || "" })));
+        if (reward.redeemable && isUuid(reward.id)) {
+          const redeem = el("button", { text: "Redeem", attrs: { type: "button" } });
+          redeem.addEventListener("click", async () => {
+            if (!window.confirm(`Spend ${reward.pointsCost} points on "${reward.name}"?`)) return;
+            redeem.disabled = true;
+            try {
+              const result = await api(`/v1/client/loyalty/accounts/${account.businessId}/rewards/${reward.id}/redeem`, { method: "POST", body: {} });
+              $("[data-message]")!.textContent = result?.code ? `Your code is ${result.code}. Show it at ${account.business?.name || "the business"}.` : "Reward redeemed.";
+              await render();
+            } catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-message]")!.textContent = error instanceof Error ? error.message : "The reward could not be redeemed."; redeem.disabled = false; }
+          });
+          row.append(el("div", { className: "dashboard-record__actions" }, redeem));
+        }
+        list.append(row);
+      }
+    }
+  };
+
+  (async () => { try { await render(); page.ready(); } catch (error) { page.fail(error); } })();
+</script>

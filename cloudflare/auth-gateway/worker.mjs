@@ -352,6 +352,33 @@ const protectedRoutes = [
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/attention$/, upstream: "/dashboard/attention", query: ["category", "page", "pageSize"] },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/insights$/, upstream: "/dashboard/insights" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/payments$/, upstream: "/payments/connect/status" },
+  // Read-only plan status (purchases stay in the App Store / Google Play).
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/subscription$/, upstream: "/subscription/status" },
+  // Full business data export (business.data.export: OWNER only).
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/export$/, upstream: "/business/export" },
+  // Loyalty management. Reads: any member; writes: loyalty.manage (OWNER/ADMIN).
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/loyalty\/program$/, upstream: "/loyalty/program" },
+  { method: "PUT", realm: "business", pattern: /^\/v1\/business\/loyalty\/program$/, upstream: "/loyalty/program" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/loyalty\/analytics$/, upstream: "/loyalty/analytics" },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/loyalty\/(rewards|membership-plans|campaigns)$/, upstream: (match) => `/loyalty/${match[1]}` },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/loyalty\/(rewards|membership-plans|campaigns)$/, upstream: (match) => `/loyalty/${match[1]}` },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/loyalty/(rewards|membership-plans|campaigns)/(${UUID})$`), upstream: (match) => `/loyalty/${match[1]}/${match[2]}` },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/loyalty/(rewards|membership-plans|campaigns)/(${UUID})$`), upstream: (match) => `/loyalty/${match[1]}/${match[2]}` },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/loyalty\/redemptions$/, upstream: "/loyalty/redemptions", query: ["status", "code"] },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/loyalty/redemptions/(${UUID})/(mark-redeemed|revoke)$`), upstream: (match) => `/loyalty/redemptions/${match[1]}/${match[2]}` },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/loyalty\/accounts$/, upstream: "/loyalty/accounts", query: ["page", "pageSize", "tierKey"] },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/loyalty/accounts/(${UUID})/adjust$`), upstream: (match) => `/loyalty/accounts/${match[1]}/adjust` },
+  // Commissions: report (commissions.report.view: OWNER/ADMIN) and rules
+  // (writes commissions.rules.manage: OWNER). Business-plan feature.
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/commissions\/report$/, upstream: "/commissions/report", query: ["from", "to"] },
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/commissions\/rules$/, upstream: "/commissions/rules" },
+  { method: "PUT", realm: "business", pattern: /^\/v1\/business\/commissions\/rules$/, upstream: "/commissions/rules" },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/commissions/rules/(${UUID})$`), upstream: (match) => `/commissions/rules/${match[1]}` },
+  // Private calendar feeds (business.calendarFeed.manage). The feed URL is
+  // returned once on creation; listing never returns tokens.
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/calendar-feeds$/, upstream: "/calendar/subscriptions" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/calendar-feeds$/, upstream: "/calendar/subscriptions" },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/calendar-feeds/(${UUID})/revoke$`), upstream: (match) => `/calendar/subscriptions/${match[1]}/revoke` },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/payments\/connect$/, upstream: "/payments/connect/link" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/team$/, upstream: "/team/members" },
   // Team administration. The backend restricts every write to the OWNER
@@ -381,6 +408,10 @@ const protectedRoutes = [
   { method: "PATCH", realm: "client", pattern: /^\/v1\/client\/profile$/, upstream: "/customer/profile" },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/notifications$/, upstream: "/customer/notifications", query: ["unreadOnly", "limit"] },
   { method: "GET", realm: "client", pattern: /^\/v1\/client\/invoices$/, upstream: "/customer/invoices" },
+  // Customer loyalty wallet + rewards (scoped to the signed-in customer).
+  { method: "GET", realm: "client", pattern: /^\/v1\/client\/loyalty\/wallet$/, upstream: "/customer/loyalty/wallet" },
+  { method: "GET", realm: "client", pattern: new RegExp(`^/v1/client/loyalty/accounts/(${UUID})/rewards$`), upstream: (match) => `/customer/loyalty/accounts/${match[1]}/rewards` },
+  { method: "POST", realm: "client", pattern: new RegExp(`^/v1/client/loyalty/accounts/(${UUID})/rewards/(${UUID})/redeem$`), upstream: (match) => `/customer/loyalty/accounts/${match[1]}/rewards/${match[2]}/redeem` },
   // Customer invoice detail + pay. The backend scopes both to the signed-in
   // customer (404 for anything else) and "pay" only creates a Stripe Checkout
   // Session for the outstanding balance.
@@ -407,7 +438,7 @@ async function protectedProxy(request, env, origin, route) {
   try { session = await authorizedSession(request, env); } catch { session = null; }
   if (!session || session.realm !== route.realm) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
   let body;
-  if (["POST", "PATCH"].includes(route.method)) {
+  if (["POST", "PATCH", "PUT"].includes(route.method)) {
     try { body = await parseBody(request, route.maxBytes); } catch (error) { return json({ error: error instanceof Error && error.message === "body_too_large" ? "That upload is too large." : "Invalid request." }, error instanceof Error && error.message === "body_too_large" ? 413 : 400, origin); }
   }
   let result = await callApi(env, route.path, { method: route.method, body, accessToken: session.accessToken });
@@ -480,7 +511,7 @@ export default {
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "Origin not allowed." }, 403, "");
     const fetchSite = request.headers.get("sec-fetch-site");
     if (fetchSite && fetchSite !== "same-site" && fetchSite !== "same-origin") return json({ error: "Request context not allowed." }, 403, origin);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...securityHeaders, ...corsHeaders(origin), "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...securityHeaders, ...corsHeaders(origin), "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
     if (url.pathname === "/v1/login" && request.method === "POST") return authenticate(request, env, origin, "login");
     if (url.pathname === "/v1/register" && request.method === "POST") return authenticate(request, env, origin, "register");
     if (url.pathname === "/v1/google" && request.method === "POST") return googleAuthenticate(request, env, origin);

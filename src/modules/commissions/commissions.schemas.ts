@@ -25,7 +25,9 @@ export const upsertCommissionRuleSchema = z
 
 export const commissionReportQuerySchema = z
   .object({ from: dateOnly, to: dateOnly })
-  .refine(v => v.to >= v.from, { path: ["to"], message: "to must be on or after from" });
+  .refine(v => v.to >= v.from, { path: ["to"], message: "to must be on or after from" })
+  // Bounded so one request can't scan years of appointments.
+  .refine(v => Date.parse(v.to) - Date.parse(v.from) <= 366 * 86_400_000, { path: ["to"], message: "The report range can be at most one year" });
 
 export type UpsertCommissionRuleInput = z.infer<typeof upsertCommissionRuleSchema>;
 export type CommissionReportQuery = z.infer<typeof commissionReportQuerySchema>;

@@ -392,3 +392,47 @@ test("message template routes map exactly and cannot be deleted", () => {
   assert.equal(route(`/v1/business/templates/${uuid}`, "PATCH").path, `/message-templates/${uuid}`);
   assert.equal(route(`/v1/business/templates/${uuid}`, "DELETE"), null);
 });
+
+test("commission and calendar-feed routes map exactly; PUT is proxied with a body", async () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/commissions/report?from=2026-09-01&to=2026-09-30&x=1", "GET").path, "/commissions/report?from=2026-09-01&to=2026-09-30");
+  assert.equal(route("/v1/business/commissions/rules", "PUT").path, "/commissions/rules");
+  assert.equal(route(`/v1/business/commissions/rules/${uuid}`, "DELETE").path, `/commissions/rules/${uuid}`);
+  assert.equal(route("/v1/business/commissions/rules", "POST"), null);
+  assert.equal(route("/v1/business/calendar-feeds", "POST").path, "/calendar/subscriptions");
+  assert.equal(route(`/v1/business/calendar-feeds/${uuid}/revoke`, "POST").path, `/calendar/subscriptions/${uuid}/revoke`);
+  assert.equal(route(`/v1/business/calendar-feeds/${uuid}`, "DELETE"), null);
+  const cookie = `__Host-chakusa_access=${internals.encodeAccessCookie("business", "access.jwt")}`;
+  const net = stubNetwork({ "PUT /commissions/rules": () => [200, { id: uuid }] });
+  try {
+    const body = { businessMemberId: uuid, basis: "PERCENT_OF_SERVICE_PRICE", ratePercent: 10 };
+    const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/commissions/rules", { method: "PUT", headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", "content-type": "application/json", cookie }, body: JSON.stringify(body) }), env);
+    assert.equal(response.status, 200);
+    assert.deepEqual(net.calls[0].body, body);
+  } finally { net.restore(); }
+});
+
+test("loyalty routes map exactly and reject unknown sections", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/loyalty/program", "PUT").path, "/loyalty/program");
+  assert.equal(route("/v1/business/loyalty/rewards", "POST").path, "/loyalty/rewards");
+  assert.equal(route(`/v1/business/loyalty/campaigns/${uuid}`, "PATCH").path, `/loyalty/campaigns/${uuid}`);
+  assert.equal(route(`/v1/business/loyalty/membership-plans/${uuid}`, "DELETE").path, `/loyalty/membership-plans/${uuid}`);
+  assert.equal(route("/v1/business/loyalty/redemptions?code=ABC&x=1", "GET").path, "/loyalty/redemptions?code=ABC");
+  assert.equal(route(`/v1/business/loyalty/redemptions/${uuid}/mark-redeemed`, "POST").path, `/loyalty/redemptions/${uuid}/mark-redeemed`);
+  assert.equal(route(`/v1/business/loyalty/accounts/${uuid}/adjust`, "POST").path, `/loyalty/accounts/${uuid}/adjust`);
+  assert.equal(route("/v1/business/loyalty/transactions", "GET"), null);
+  assert.equal(route(`/v1/business/loyalty/rewards/${uuid}/grant`, "POST"), null);
+  assert.equal(route("/v1/business/loyalty/program", "DELETE"), null);
+});
+
+test("client loyalty routes are client-realm, UUID-only", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/client/loyalty/wallet", "GET").realm, "client");
+  assert.equal(route(`/v1/client/loyalty/accounts/${uuid}/rewards/${uuid}/redeem`, "POST").path, `/customer/loyalty/accounts/${uuid}/rewards/${uuid}/redeem`);
+  assert.equal(route(`/v1/client/loyalty/accounts/${uuid}/rewards/x/redeem`, "POST"), null);
+  assert.equal(route(`/v1/client/loyalty/accounts/${uuid}/enrol`, "POST"), null);
+});

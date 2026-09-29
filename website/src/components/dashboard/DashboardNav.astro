@@ -13,6 +13,7 @@ const business: [string, string, string, string?][] = [
   ["messages", "/dashboard/business/messages", "Messages", "messaging.operate"],
   ["templates", "/dashboard/business/templates", "Templates", "messaging.operate"],
   ["reviews", "/dashboard/business/reviews", "Reviews", "reviews.manage"],
+  ["loyalty", "/dashboard/business/loyalty", "Loyalty"],
   ["services", "/dashboard/business/services", "Services", "catalog.manage"],
   ["quotes", "/dashboard/business/quotes", "Quotes", "quotes.manage"],
   ["invoices", "/dashboard/business/invoices", "Invoices", "invoices.manage"],
@@ -23,7 +24,9 @@ const business: [string, string, string, string?][] = [
   ["reports", "/dashboard/business/reports", "Reports", "financial.report.view"],
   ["payments", "/dashboard/business/payments", "Payments", "payments.view"],
   ["team", "/dashboard/business/team", "Team", "team.view"],
+  ["commissions", "/dashboard/business/commissions", "Commissions", "commissions.report.view"],
   ["setup", "/dashboard/business/setup", "Settings", "business.settings.manage"],
+  ["plan", "/dashboard/business/plan", "Plan & usage"],
   ["account", "/dashboard/business/account", "Your account"],
 ];
 const client: [string, string, string, string?][] = [
@@ -32,6 +35,7 @@ const client: [string, string, string, string?][] = [
   ["businesses", "/dashboard/client/businesses", "My businesses"],
   ["notifications", "/dashboard/client/notifications", "Notifications"],
   ["invoices", "/dashboard/client/invoices", "Invoices"],
+  ["rewards", "/dashboard/client/rewards", "Rewards"],
   ["account", "/dashboard/client/account", "Account"],
 ];
 const items = realm === "business" ? business : client;

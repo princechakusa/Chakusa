@@ -1,0 +1,291 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Loyalty | Chakusa" description="Run your loyalty programme: points, rewards, members, and campaigns." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="loyalty" />
+  <PageStates loadingText="Loading your loyalty programme..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Retention</p><h1>Loyalty</h1><p data-summary></p></div></header>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Redeem a reward</h2><p>Enter the code the customer shows you at the counter.</p></div></div>
+      <form class="dashboard-form" data-code-form novalidate>
+        <label>Reward code<input name="code" maxlength="40" autocomplete="off" required /></label>
+        <div class="dashboard-form__actions"><button type="submit">Look up</button></div>
+        <p class="setup-message" data-code-message role="status"></p>
+      </form>
+      <div class="dashboard-records" data-code-result></div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Programme settings</h2><p>How customers earn points.</p></div></div>
+      <form class="dashboard-form" data-program-form novalidate>
+        <label class="dashboard-toggle catalog__wide"><input type="checkbox" name="active" /> Loyalty programme is on</label>
+        <label>Points per 1 unit spent<input name="pointsPerCurrency" inputmode="decimal" maxlength="7" /></label>
+        <label>Bonus points per booking<input name="pointsPerBookingBonus" inputmode="numeric" maxlength="6" /></label>
+        <label>Points per review<input name="pointsPerReview" inputmode="numeric" maxlength="6" /></label>
+        <label>Points per referral<input name="pointsPerReferral" inputmode="numeric" maxlength="6" /></label>
+        <label>Welcome bonus<input name="welcomeBonus" inputmode="numeric" maxlength="6" /></label>
+        <label>Points expire after (days)<input name="pointExpiryDays" inputmode="numeric" maxlength="4" placeholder="Never" /></label>
+        <div class="dashboard-form__actions" data-manage-only><button type="submit">Save settings</button></div>
+        <p class="setup-message" data-program-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Rewards</h2><p>What customers can spend points on.</p></div><button type="button" data-new-reward data-manage-only>Add reward</button></div>
+      <form class="dashboard-form" data-reward-form novalidate hidden>
+        <label>Name<input name="name" maxlength="120" required /></label>
+        <label>Type<select name="type"><option value="free_service">Free service</option><option value="percent_discount">Percent discount</option><option value="fixed_discount">Fixed discount</option><option value="promo">Promotion</option><option value="birthday">Birthday</option><option value="milestone">Milestone</option></select></label>
+        <label>Points cost<input name="pointsCost" inputmode="numeric" maxlength="7" /></label>
+        <label>Value (discount amount or %)<input name="value" inputmode="decimal" maxlength="10" /></label>
+        <label class="catalog__wide">Description<textarea name="description" maxlength="1000"></textarea></label>
+        <div class="dashboard-form__actions"><button type="button" data-reward-cancel>Cancel</button><button type="submit">Save reward</button></div>
+        <p class="setup-message" data-reward-message role="status"></p>
+      </form>
+      <div class="dashboard-records" data-rewards></div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Members</h2><p data-members-copy>Highest lifetime points first.</p></div></div>
+      <div class="dashboard-records" data-members></div>
+      <p class="setup-message" data-members-message role="status"></p>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Campaigns</h2><p>Time-limited point boosts.</p></div><button type="button" data-new-campaign data-manage-only>Add campaign</button></div>
+      <form class="dashboard-form" data-campaign-form novalidate hidden>
+        <label>Name<input name="name" maxlength="120" required /></label>
+        <label>Kind<select name="kind"><option value="multiplier">Points multiplier</option><option value="bonus_points">Bonus points</option></select></label>
+        <label data-multiplier>Multiplier (×)<input name="multiplier" inputmode="decimal" value="2" maxlength="5" /></label>
+        <label data-bonus hidden>Bonus points<input name="bonusPoints" inputmode="numeric" maxlength="6" /></label>
+        <label>Starts<input type="date" name="startsAt" required /></label>
+        <label>Ends<input type="date" name="endsAt" required /></label>
+        <div class="dashboard-form__actions"><button type="button" data-campaign-cancel>Cancel</button><button type="submit">Save campaign</button></div>
+        <p class="setup-message" data-campaign-message role="status"></p>
+      </form>
+      <div class="dashboard-records" data-campaigns></div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Membership plans</h2><p>Paid memberships with perks. Customers join in the Chakusa app.</p></div><button type="button" data-new-plan data-manage-only>Add plan</button></div>
+      <form class="dashboard-form" data-plan-form novalidate hidden>
+        <label>Name<input name="name" maxlength="120" required /></label>
+        <label>Billing<select name="billingInterval"><option value="monthly">Monthly</option><option value="annual">Annual</option><option value="unlimited">One-off</option></select></label>
+        <label>Price<input name="priceAmount" inputmode="decimal" maxlength="11" required /></label>
+        <label>Discount on services (%)<input name="discountPercent" inputmode="decimal" maxlength="5" /></label>
+        <label class="dashboard-toggle"><input type="checkbox" name="priorityBooking" /> Priority booking</label>
+        <label class="catalog__wide">Description<textarea name="description" maxlength="1000"></textarea></label>
+        <div class="dashboard-form__actions"><button type="button" data-plan-cancel>Cancel</button><button type="submit">Save plan</button></div>
+        <p class="setup-message" data-plan-message role="status"></p>
+      </form>
+      <div class="dashboard-records" data-plans></div>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, itemsOf, money, label, dateTime, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  let canManage = false;
+  let currency = "USD";
+  const INT = /^\d{1,7}$/;
+  const DEC = /^\d{1,7}(\.\d{1,3})?$/;
+
+  const fail = (selector: string) => (error: unknown) => { if (error instanceof AuthRequired) return page.fail(error); $(selector)!.textContent = error instanceof Error ? error.message : "That could not be completed."; };
+  const field = (form: HTMLFormElement, name: string) => ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "").trim();
+  const checked = (form: HTMLFormElement, name: string) => Boolean((form.elements.namedItem(name) as HTMLInputElement | null)?.checked);
+  const record = (mark: string, title: string, line: string, small: string, ...actions: (HTMLButtonElement | null)[]) => {
+    const row = el("article", { className: "dashboard-record" }, el("span", { className: "dashboard-record__mark", text: mark }), el("div", {}, el("strong", { text: title }), el("span", { text: line }), el("small", { text: small })));
+    const present = actions.filter(Boolean) as HTMLButtonElement[];
+    if (present.length) row.append(el("div", { className: "dashboard-record__actions" }, ...present));
+    return row;
+  };
+  const button = (text: string, onClick: (self: HTMLButtonElement) => Promise<unknown>, message: string, confirmText?: string) => {
+    const node = el("button", { text, attrs: { type: "button" } });
+    node.addEventListener("click", async () => {
+      if (confirmText && !window.confirm(confirmText)) return;
+      node.disabled = true;
+      try { await onClick(node); } catch (error) { fail(message)(error); node.disabled = false; }
+    });
+    return node;
+  };
+
+  // ---- Summary & program --------------------------------------------------------
+  const loadSummary = async () => {
+    const stats = await api("/v1/business/loyalty/analytics");
+    $("[data-summary]")!.textContent = `${stats.programActive ? "Programme on" : "Programme off"} · ${stats.members ?? 0} member${stats.members === 1 ? "" : "s"} · ${stats.outstandingPoints ?? 0} points outstanding · ${stats.last30Days?.pointsEarned ?? 0} earned in the last 30 days`;
+  };
+  const programForm = $<HTMLFormElement>("[data-program-form]")!;
+  const loadProgram = async () => {
+    const program = await api("/v1/business/loyalty/program");
+    (programForm.elements.namedItem("active") as HTMLInputElement).checked = Boolean(program.active);
+    for (const name of ["pointsPerCurrency", "pointsPerBookingBonus", "pointsPerReview", "pointsPerReferral", "welcomeBonus", "pointExpiryDays"]) {
+      const input = programForm.elements.namedItem(name) as HTMLInputElement;
+      input.value = program[name] === null || program[name] === undefined ? "" : String(program[name]);
+      input.readOnly = !canManage;
+    }
+  };
+  programForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-program-message]")!;
+    const body: Record<string, unknown> = { active: checked(programForm, "active") };
+    const perCurrency = field(programForm, "pointsPerCurrency");
+    if (perCurrency) { if (!DEC.test(perCurrency) || Number(perCurrency) > 1000) { message.textContent = "Points per unit must be 0 to 1000."; return; } body.pointsPerCurrency = Number(perCurrency); }
+    for (const name of ["pointsPerBookingBonus", "pointsPerReview", "pointsPerReferral", "welcomeBonus"]) {
+      const value = field(programForm, name);
+      if (value) { if (!INT.test(value) || Number(value) > 100000) { message.textContent = "Point amounts must be whole numbers up to 100,000."; return; } body[name] = Number(value); }
+    }
+    const expiry = field(programForm, "pointExpiryDays");
+    if (expiry) { if (!INT.test(expiry) || Number(expiry) < 1 || Number(expiry) > 3650) { message.textContent = "Expiry must be 1 to 3650 days, or empty for never."; return; } body.pointExpiryDays = Number(expiry); } else body.pointExpiryDays = null;
+    message.textContent = "Saving securely...";
+    try { await api("/v1/business/loyalty/program", { method: "PUT", body }); message.textContent = "Saved."; await loadSummary(); } catch (error) { fail("[data-program-message]")(error); }
+  });
+
+  // ---- Redemption lookup ---------------------------------------------------------
+  const codeForm = $<HTMLFormElement>("[data-code-form]")!;
+  codeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const code = field(codeForm, "code").toUpperCase();
+    const result = $("[data-code-result]")!;
+    result.replaceChildren();
+    if (!/^[A-Z0-9-]{3,40}$/.test(code)) { $("[data-code-message]")!.textContent = "Enter the code exactly as shown."; return; }
+    $("[data-code-message]")!.textContent = "Looking up...";
+    try {
+      const found = itemsOf(await api(`/v1/business/loyalty/redemptions?code=${encodeURIComponent(code)}`));
+      $("[data-code-message]")!.textContent = found.length ? "" : "No reward matches that code.";
+      for (const redemption of found) {
+        const issued = redemption.status === "issued" || redemption.status === "ISSUED";
+        const redeem = canManage && issued && isUuid(redemption.id) ? button("Mark redeemed", async () => { await api(`/v1/business/loyalty/redemptions/${redemption.id}/mark-redeemed`, { method: "POST", body: {} }); $("[data-code-message]")!.textContent = "Redeemed."; result.replaceChildren(); }, "[data-code-message]", "Mark this reward as used?") : null;
+        result.append(record("🎁", redemption.reward?.name || "Reward", `${label(redemption.status)} · code ${redemption.code}`, redemption.expiresAt ? `Valid until ${dateTime(redemption.expiresAt, { dateStyle: "medium" })}` : "", redeem));
+      }
+    } catch (error) { fail("[data-code-message]")(error); }
+  });
+
+  // ---- Rewards --------------------------------------------------------------------
+  const rewardForm = $<HTMLFormElement>("[data-reward-form]")!;
+  let editingReward: string | null = null;
+  const loadRewards = async () => {
+    const root = $("[data-rewards]")!; root.replaceChildren();
+    const rewards = itemsOf(await api("/v1/business/loyalty/rewards"));
+    if (!rewards.length) root.append(el("div", { className: "dashboard-empty", text: "No rewards yet." }));
+    for (const reward of rewards) {
+      const edit = canManage && isUuid(reward.id) ? button("Edit", async (self) => { editingReward = reward.id; rewardForm.reset(); for (const name of ["name", "pointsCost", "value", "description"]) (rewardForm.elements.namedItem(name) as HTMLInputElement).value = reward[name] == null ? "" : String(reward[name]); (rewardForm.elements.namedItem("type") as HTMLSelectElement).value = reward.type; (rewardForm.elements.namedItem("type") as HTMLSelectElement).disabled = true; rewardForm.hidden = false; self.disabled = false; }, "[data-reward-message]") : null;
+      const toggle = canManage && isUuid(reward.id) ? button(reward.active ? "Deactivate" : "Activate", async () => { if (reward.active) await api(`/v1/business/loyalty/rewards/${reward.id}`, { method: "DELETE" }); else await api(`/v1/business/loyalty/rewards/${reward.id}`, { method: "PATCH", body: { active: true } }); await loadRewards(); }, "[data-reward-message]") : null;
+      root.append(record("★", reward.name || "Reward", `${label(reward.type)}${reward.pointsCost != null ? ` · ${reward.pointsCost} points` : ""}${reward.active ? "" : " · Inactive"}`, reward.description || "", edit, toggle));
+    }
+  };
+  $("[data-new-reward]")!.addEventListener("click", () => { editingReward = null; rewardForm.reset(); (rewardForm.elements.namedItem("type") as HTMLSelectElement).disabled = false; rewardForm.hidden = false; });
+  $("[data-reward-cancel]")!.addEventListener("click", () => { rewardForm.hidden = true; });
+  rewardForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-reward-message]")!;
+    const name = field(rewardForm, "name");
+    if (!name) { message.textContent = "Enter a name."; return; }
+    const body: Record<string, unknown> = { name, description: field(rewardForm, "description") || undefined };
+    const cost = field(rewardForm, "pointsCost"); if (cost) { if (!INT.test(cost) || Number(cost) > 1_000_000) { message.textContent = "Points cost must be a whole number."; return; } body.pointsCost = Number(cost); }
+    const value = field(rewardForm, "value"); if (value) { if (!DEC.test(value)) { message.textContent = "Value must be a number."; return; } body.value = Number(value); }
+    if (!editingReward) body.type = field(rewardForm, "type");
+    message.textContent = "Saving securely...";
+    try {
+      if (editingReward) await api(`/v1/business/loyalty/rewards/${editingReward}`, { method: "PATCH", body });
+      else await api("/v1/business/loyalty/rewards", { method: "POST", body });
+      rewardForm.hidden = true; message.textContent = ""; await loadRewards();
+    } catch (error) { fail("[data-reward-message]")(error); }
+  });
+
+  // ---- Members ----------------------------------------------------------------------
+  const loadMembers = async () => {
+    const root = $("[data-members]")!; root.replaceChildren();
+    const members = itemsOf(await api("/v1/business/loyalty/accounts?page=1&pageSize=50"));
+    if (!members.length) root.append(el("div", { className: "dashboard-empty", text: "No members yet. Customers join when they book or enrol in the app." }));
+    for (const member of members) {
+      const adjust = canManage && isUuid(member.customerProfileId) ? button("Adjust points", async (self) => {
+        const raw = window.prompt(`Points to add (use a minus sign to remove) for ${member.name || "this member"}:`);
+        if (raw === null) { self.disabled = false; return; }
+        if (!/^-?\d{1,7}$/.test(raw.trim()) || Number(raw) === 0) { $("[data-members-message]")!.textContent = "Enter a whole number other than 0."; self.disabled = false; return; }
+        const reason = window.prompt("Reason (visible in the member's history):")?.trim();
+        if (!reason) { $("[data-members-message]")!.textContent = "A reason is required."; self.disabled = false; return; }
+        await api(`/v1/business/loyalty/accounts/${member.customerProfileId}/adjust`, { method: "POST", body: { points: Number(raw), reason: reason.slice(0, 500) } });
+        $("[data-members-message]")!.textContent = "Points updated.";
+        await Promise.all([loadMembers(), loadSummary()]);
+      }, "[data-members-message]") : null;
+      root.append(record(String(member.name || "M").slice(0, 1).toUpperCase(), member.name || "Member", `${member.pointsBalance ?? 0} points · ${label(member.tierKey || "bronze")}`, `${member.lifetimePoints ?? 0} lifetime points`, adjust));
+    }
+  };
+
+  // ---- Campaigns -------------------------------------------------------------------
+  const campaignForm = $<HTMLFormElement>("[data-campaign-form]")!;
+  const syncKind = () => { const bonus = field(campaignForm, "kind") === "bonus_points"; $("[data-multiplier]")!.hidden = bonus; $("[data-bonus]")!.hidden = !bonus; };
+  campaignForm.querySelector("[name=kind]")!.addEventListener("change", syncKind);
+  const loadCampaigns = async () => {
+    const root = $("[data-campaigns]")!; root.replaceChildren();
+    const campaigns = itemsOf(await api("/v1/business/loyalty/campaigns"));
+    if (!campaigns.length) root.append(el("div", { className: "dashboard-empty", text: "No campaigns yet." }));
+    for (const campaign of campaigns) {
+      const toggle = canManage && isUuid(campaign.id) ? button(campaign.active ? "Turn off" : "Turn on", async () => { await api(`/v1/business/loyalty/campaigns/${campaign.id}`, { method: "PATCH", body: { active: !campaign.active } }); await loadCampaigns(); }, "[data-campaign-message]") : null;
+      const detail = campaign.kind === "bonus_points" ? `${campaign.bonusPoints} bonus points` : `${Number(campaign.multiplier)}× points`;
+      root.append(record("⚡", campaign.name || "Campaign", `${detail}${campaign.active ? "" : " · Off"}`, `${dateTime(campaign.startsAt, { dateStyle: "medium" })} – ${dateTime(campaign.endsAt, { dateStyle: "medium" })}`, toggle));
+    }
+  };
+  $("[data-new-campaign]")!.addEventListener("click", () => { campaignForm.reset(); syncKind(); campaignForm.hidden = false; });
+  $("[data-campaign-cancel]")!.addEventListener("click", () => { campaignForm.hidden = true; });
+  campaignForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-campaign-message]")!;
+    const name = field(campaignForm, "name");
+    const starts = field(campaignForm, "startsAt"), ends = field(campaignForm, "endsAt");
+    if (!name) { message.textContent = "Enter a name."; return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(starts) || !/^\d{4}-\d{2}-\d{2}$/.test(ends) || ends <= starts) { message.textContent = "Choose an end date after the start date."; return; }
+    const kind = field(campaignForm, "kind") === "bonus_points" ? "bonus_points" : "multiplier";
+    const body: Record<string, unknown> = { name, kind, startsAt: new Date(`${starts}T00:00:00`).toISOString(), endsAt: new Date(`${ends}T23:59:59`).toISOString() };
+    if (kind === "multiplier") { const m = field(campaignForm, "multiplier"); if (!DEC.test(m) || Number(m) < 1 || Number(m) > 20) { message.textContent = "Multiplier must be 1 to 20."; return; } body.multiplier = Number(m); }
+    else { const b = field(campaignForm, "bonusPoints"); if (!INT.test(b) || Number(b) > 100000) { message.textContent = "Bonus points must be a whole number up to 100,000."; return; } body.bonusPoints = Number(b); }
+    message.textContent = "Saving securely...";
+    try { await api("/v1/business/loyalty/campaigns", { method: "POST", body }); campaignForm.hidden = true; message.textContent = ""; await loadCampaigns(); } catch (error) { fail("[data-campaign-message]")(error); }
+  });
+
+  // ---- Membership plans -------------------------------------------------------------
+  const planForm = $<HTMLFormElement>("[data-plan-form]")!;
+  const loadPlans = async () => {
+    const root = $("[data-plans]")!; root.replaceChildren();
+    const plans = itemsOf(await api("/v1/business/loyalty/membership-plans"));
+    if (!plans.length) root.append(el("div", { className: "dashboard-empty", text: "No membership plans yet." }));
+    for (const plan of plans) {
+      const toggle = canManage && isUuid(plan.id) ? button(plan.active ? "Deactivate" : "Activate", async () => { if (plan.active) await api(`/v1/business/loyalty/membership-plans/${plan.id}`, { method: "DELETE" }); else await api(`/v1/business/loyalty/membership-plans/${plan.id}`, { method: "PATCH", body: { active: true } }); await loadPlans(); }, "[data-plan-message]", plan.active ? "Deactivate this plan? Existing members keep their membership." : undefined) : null;
+      root.append(record("◆", plan.name || "Plan", `${money(plan.priceAmount, plan.currency || currency)} · ${label(plan.billingInterval)}${plan.active ? "" : " · Inactive"}`, [Number(plan.discountPercent) ? `${Number(plan.discountPercent)}% off services` : "", plan.priorityBooking ? "Priority booking" : ""].filter(Boolean).join(" · "), toggle));
+    }
+  };
+  $("[data-new-plan]")!.addEventListener("click", () => { planForm.reset(); planForm.hidden = false; });
+  $("[data-plan-cancel]")!.addEventListener("click", () => { planForm.hidden = true; });
+  planForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-plan-message]")!;
+    const name = field(planForm, "name"); const price = field(planForm, "priceAmount"); const discount = field(planForm, "discountPercent");
+    if (!name) { message.textContent = "Enter a name."; return; }
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(price)) { message.textContent = "Enter a price like 30 or 29.99."; return; }
+    if (discount && (!DEC.test(discount) || Number(discount) > 100)) { message.textContent = "Discount must be 0 to 100."; return; }
+    const interval = field(planForm, "billingInterval");
+    const body: Record<string, unknown> = { name, billingInterval: ["monthly", "annual", "unlimited"].includes(interval) ? interval : "monthly", priceAmount: Number(price), currency, priorityBooking: checked(planForm, "priorityBooking"), description: field(planForm, "description") || undefined };
+    if (discount) body.discountPercent = Number(discount);
+    message.textContent = "Saving securely...";
+    try { await api("/v1/business/loyalty/membership-plans", { method: "POST", body }); planForm.hidden = true; message.textContent = ""; await loadPlans(); } catch (error) { fail("[data-plan-message]")(error); }
+  });
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      canManage = can(identity.role, "loyalty.manage");
+      currency = typeof identity.business?.currency === "string" ? identity.business.currency : "USD";
+      if (!canManage) { document.querySelectorAll<HTMLElement>("[data-manage-only]").forEach((node) => { node.hidden = true; }); $("[data-members-copy]")!.textContent = "Only owners and admins can change the programme or adjust points."; }
+      await Promise.all([loadSummary(), loadProgram(), loadRewards(), loadMembers(), loadCampaigns(), loadPlans()]);
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

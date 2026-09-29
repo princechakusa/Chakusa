@@ -18,11 +18,19 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
     <label class="catalog__filter calendar-page__filter"><input type="checkbox" data-hide-canceled checked /> Hide canceled and no-shows</label>
     <div class="calendar-page__week" data-week></div>
     <p class="setup-message" data-message role="status"></p>
+    <section class="dashboard-panel calendar-page__feeds" data-feeds-panel hidden>
+      <div class="dashboard-section-heading"><div><h2>Sync to your calendar</h2><p>A private link that Google Calendar, Apple Calendar, or Outlook can subscribe to. Anyone with the link can see your bookings, so keep it private and revoke it if it's shared by mistake.</p></div><button type="button" data-feed-create>Create link</button></div>
+      <div class="sales-doc__link-row" data-feed-link hidden><input type="text" readonly aria-label="Calendar feed link" data-feed-url /><button type="button" data-feed-copy>Copy link</button></div>
+      <p class="setup-message" data-feed-message role="status"></p>
+      <div class="dashboard-records" data-feeds></div>
+    </section>
   </div>
 </DashboardLayout>
 
 <script>
   import { api, AuthRequired, loadIdentity, itemsOf, label, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+  import { can } from "../../../scripts/capabilities.js";
+  import { safeHttpsUrl } from "../../../scripts/salesDocuments.js";
 
   const page = pageStates();
   const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
@@ -85,6 +93,39 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
     try { await load(); } catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-message]")!.textContent = error instanceof Error ? error.message : "The calendar could not be loaded."; }
   };
 
+  const loadFeeds = async () => {
+    const root = $("[data-feeds]")!;
+    root.replaceChildren();
+    const feeds = itemsOf(await api("/v1/business/calendar-feeds")).filter((feed) => !feed.revokedAt);
+    for (const feed of feeds) {
+      const revoke = el("button", { text: "Revoke", attrs: { type: "button" } });
+      revoke.addEventListener("click", async () => {
+        if (!window.confirm("Revoke this link? Calendars using it stop updating.")) return;
+        revoke.disabled = true;
+        try { await api(`/v1/business/calendar-feeds/${feed.id}/revoke`, { method: "POST", body: {} }); await loadFeeds(); }
+        catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-feed-message]")!.textContent = error instanceof Error ? error.message : "Could not revoke."; revoke.disabled = false; }
+      });
+      root.append(el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: "⟳" }),
+        el("div", {}, el("strong", { text: feed.label || "Calendar link" }), el("span", { text: `Created ${new Date(feed.createdAt).toLocaleDateString()}` }), el("small", { text: feed.lastAccessedAt ? `Last synced ${new Date(feed.lastAccessedAt).toLocaleString()}` : "Not synced yet" })),
+        isUuid(feed.id) ? el("div", { className: "dashboard-record__actions" }, revoke) : null));
+    }
+  };
+  $("[data-feed-create]")!.addEventListener("click", async () => {
+    const button = $<HTMLButtonElement>("[data-feed-create]")!;
+    button.disabled = true;
+    try {
+      const created = await api("/v1/business/calendar-feeds", { method: "POST", body: { label: "Web dashboard" } });
+      const url = safeHttpsUrl(created?.feedUrl);
+      $<HTMLInputElement>("[data-feed-url]")!.value = url ?? "";
+      $("[data-feed-link]")!.hidden = !url;
+      $("[data-feed-message]")!.textContent = url ? "Copy this link now; for your security it isn't shown again. In your calendar app choose \"Add calendar from URL\"." : "The link was created but can't be shown here.";
+      await loadFeeds();
+    } catch (error) { if (error instanceof AuthRequired) return page.fail(error); $("[data-feed-message]")!.textContent = error instanceof Error ? error.message : "Could not create the link."; }
+    finally { button.disabled = false; }
+  });
+  $("[data-feed-copy]")!.addEventListener("click", async () => { const field = $<HTMLInputElement>("[data-feed-url]")!; try { await navigator.clipboard.writeText(field.value); $("[data-feed-message]")!.textContent = "Link copied."; } catch { field.select(); } });
+
   document.querySelectorAll<HTMLButtonElement>("[data-shift]").forEach((button) => button.addEventListener("click", () => void move(Number(button.dataset.shift))));
   $("[data-today]")!.addEventListener("click", () => void move(null));
   $("[data-hide-canceled]")!.addEventListener("change", render);
@@ -94,6 +135,7 @@ import PageStates from "../../../components/dashboard/PageStates.astro";
       const identity = await loadIdentity();
       if (identity.realm !== "business") throw new AuthRequired();
       await load();
+      if (can(identity.role, "business.calendarFeed.manage")) { $("[data-feeds-panel]")!.hidden = false; await loadFeeds(); }
       page.ready();
     } catch (error) { page.fail(error); }
   })();

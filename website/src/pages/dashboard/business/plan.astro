@@ -1,0 +1,64 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Plan & usage | Chakusa" description="Your Chakusa plan, included features, and usage." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="plan" />
+  <PageStates loadingText="Loading your plan..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Subscription</p><h1 data-plan>Your plan</h1><p data-plan-status></p></div></header>
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Usage</h2><p>Monthly limits reset at the start of each month.</p></div></div>
+      <div class="plan-page__usage" data-usage></div>
+    </section>
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Included features</h2><p>Plans are purchased and changed in the Chakusa app through the App Store or Google Play.</p></div></div>
+      <ul class="plan-page__features" data-features></ul>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { api, AuthRequired, loadIdentity, label, dateTime, el, pageStates } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const FEATURES: [string, string][] = [
+    ["automation", "Automations"], ["outboundMessaging", "SMS & WhatsApp messaging"], ["teamManagement", "Team management"],
+    ["aiReceptionist", "AI Receptionist"], ["quotesEstimates", "Quotes & estimates"], ["invoicing", "Invoicing"],
+    ["financialManagement", "Financial management"], ["marketplaceDiscovery", "Marketplace listing"], ["accountingIntegrations", "Accounting integrations"],
+    ["advancedAnalytics", "Advanced analytics"], ["extendedHistory", "Extended history"], ["unlimitedTemplates", "Unlimited templates"],
+  ];
+  const USAGE: [string, string][] = [["leads", "Leads this month"], ["reviewRequests", "Review requests this month"], ["customers", "Customers"], ["openReminders", "Open reminders"]];
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      const status = await api("/v1/business/subscription");
+      document.querySelector("[data-plan]")!.textContent = `${label(status.plan || "FREE")} plan`;
+      const parts = [label(status.status || "ACTIVE")];
+      if (status.trialEndsAt) parts.push(`trial ends ${dateTime(status.trialEndsAt, { dateStyle: "medium" })}`);
+      if (status.currentPeriodEnd) parts.push(`${status.cancelAtPeriodEnd ? "ends" : "renews"} ${dateTime(status.currentPeriodEnd, { dateStyle: "medium" })}`);
+      if (status.provider) parts.push(`billed through ${status.provider === "APPLE" ? "the App Store" : status.provider === "GOOGLE" ? "Google Play" : label(status.provider)}`);
+      document.querySelector("[data-plan-status]")!.textContent = parts.join(" · ");
+
+      const usage = document.querySelector<HTMLElement>("[data-usage]")!;
+      for (const [key, name] of USAGE) {
+        const item = status.usage?.[key];
+        if (!item || typeof item.current !== "number") continue;
+        const limited = typeof item.limit === "number";
+        const meter = el("progress", { attrs: { max: String(limited ? item.limit : 1), "aria-label": name } });
+        meter.value = limited ? Math.min(item.current, item.limit) : 0;
+        usage.append(el("div", { className: "plan-page__meter" }, el("span", { text: name }), el("strong", { text: limited ? `${item.current} of ${item.limit}` : `${item.current} (no limit)` }), limited ? meter : null));
+      }
+
+      const features = document.querySelector<HTMLElement>("[data-features]")!;
+      for (const [key, name] of FEATURES) {
+        const on = status.features?.[key] === true;
+        features.append(el("li", { className: on ? "plan-page__on" : "plan-page__off", text: `${on ? "✓" : "–"} ${name}` }));
+      }
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

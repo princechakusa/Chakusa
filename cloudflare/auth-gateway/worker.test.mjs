@@ -191,3 +191,54 @@ test("an unreachable legal status fails closed without a session", async () => {
     assert.ok(net.calls.some((call) => call.key === "POST /customer/auth/logout"));
   } finally { net.restore(); }
 });
+
+// --- Quotes & invoices (web sales documents) ---------------------------------
+test("quote and invoice routes map to the exact backend paths", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const path = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method)?.path ?? null;
+  assert.equal(path("/v1/business/quotes", "POST"), "/quotes");
+  assert.equal(path(`/v1/business/quotes/${uuid}`, "GET"), `/quotes/${uuid}`);
+  assert.equal(path(`/v1/business/quotes/${uuid}`, "PATCH"), `/quotes/${uuid}`);
+  assert.equal(path(`/v1/business/quotes/${uuid}`, "DELETE"), `/quotes/${uuid}`);
+  for (const action of ["send", "resend", "revise", "cancel"]) assert.equal(path(`/v1/business/quotes/${uuid}/${action}`, "POST"), `/quotes/${uuid}/${action}`);
+  assert.equal(path("/v1/business/invoices", "POST"), "/invoices");
+  assert.equal(path(`/v1/business/invoices/from-quote/${uuid}`, "POST"), `/invoices/from-quote/${uuid}`);
+  assert.equal(path(`/v1/business/invoices/${uuid}`, "GET"), `/invoices/${uuid}`);
+  assert.equal(path(`/v1/business/invoices/${uuid}`, "PATCH"), `/invoices/${uuid}`);
+  assert.equal(path(`/v1/business/invoices/${uuid}`, "DELETE"), `/invoices/${uuid}`);
+  assert.equal(path(`/v1/business/invoices/${uuid}/payments`, "GET"), `/invoices/${uuid}/payments`);
+  for (const action of ["send", "reissue-link", "void", "payment-link"]) assert.equal(path(`/v1/business/invoices/${uuid}/${action}`, "POST"), `/invoices/${uuid}/${action}`);
+});
+
+test("sales document routes refuse refunds, unknown actions, bad ids and wrong methods", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  // Refunds move money out of the business: never reachable from the web.
+  assert.equal(route(`/v1/business/invoices/${uuid}/payments/${uuid}/refund`, "POST"), null);
+  assert.equal(route(`/v1/business/invoices/${uuid}/refund`, "POST"), null);
+  // Only the named lifecycle actions exist.
+  assert.equal(route(`/v1/business/quotes/${uuid}/accept`, "POST"), null);
+  assert.equal(route(`/v1/business/invoices/${uuid}/mark-paid`, "POST"), null);
+  // Non-UUID ids and traversal-shaped ids never match.
+  assert.equal(route("/v1/business/quotes/not-a-uuid", "GET"), null);
+  assert.equal(route(`/v1/business/quotes/${uuid}/../../admin`, "GET"), null);
+  assert.equal(route("/v1/business/invoices/from-quote/abc", "POST"), null);
+  // Lifecycle actions are POST-only; collections are not deletable.
+  assert.equal(route(`/v1/business/quotes/${uuid}/send`, "GET"), null);
+  assert.equal(route("/v1/business/quotes", "DELETE"), null);
+  assert.equal(route("/v1/business/invoices", "DELETE"), null);
+  // Business documents are never reachable in the client realm.
+  assert.equal(route(`/v1/business/invoices/${uuid}`, "GET").realm, "business");
+});
+
+test("delete requests are allowed by CORS preflight and still require a session", async () => {
+  const preflight = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/quotes/11111111-2222-4333-8444-555555555555", { method: "OPTIONS", headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site" } }), {});
+  assert.match(preflight.headers.get("access-control-allow-methods"), /DELETE/);
+  const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/quotes/11111111-2222-4333-8444-555555555555", { method: "DELETE", headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site" } }), {});
+  assert.equal(response.status, 401);
+});
+
+test("a cross-site delete is rejected before any session lookup", async () => {
+  const response = await worker.fetch(new Request("https://auth.chakusarecovery.com/v1/business/invoices/11111111-2222-4333-8444-555555555555", { method: "DELETE", headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" } }), {});
+  assert.equal(response.status, 403);
+});

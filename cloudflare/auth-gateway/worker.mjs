@@ -302,6 +302,25 @@ const protectedRoutes = [
   { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/feedback/(${UUID})/respond$`), upstream: (match) => `/feedback/${match[1]}/respond` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/quotes$/, upstream: "/quotes", query: ["documentType", "status", "page", "pageSize"] },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/invoices$/, upstream: "/invoices", query: ["status", "customerId", "page", "pageSize"] },
+  // Quotes & estimates: draft create/edit/delete + lifecycle. The backend
+  // enforces quotes.manage / quotes.cancel, the QUOTES_ESTIMATES entitlement,
+  // tenant scoping, optimistic concurrency, and computes every total.
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/quotes$/, upstream: "/quotes" },
+  { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/quotes/(${UUID})$`), upstream: (match) => `/quotes/${match[1]}` },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/quotes/(${UUID})$`), upstream: (match) => `/quotes/${match[1]}` },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/quotes/(${UUID})$`), upstream: (match) => `/quotes/${match[1]}` },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/quotes/(${UUID})/(send|resend|revise|cancel)$`), upstream: (match) => `/quotes/${match[1]}/${match[2]}` },
+  // Invoices: draft create/edit/delete + send/void/links. Refunds are
+  // deliberately NOT exposed on the web (money leaving the business stays a
+  // mobile OWNER/ADMIN action). Backend enforces invoices.manage /
+  // invoices.void, the INVOICING entitlement, and all money math.
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/invoices$/, upstream: "/invoices" },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/invoices/from-quote/(${UUID})$`), upstream: (match) => `/invoices/from-quote/${match[1]}` },
+  { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})$`), upstream: (match) => `/invoices/${match[1]}` },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})$`), upstream: (match) => `/invoices/${match[1]}` },
+  { method: "DELETE", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})$`), upstream: (match) => `/invoices/${match[1]}` },
+  { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})/payments$`), upstream: (match) => `/invoices/${match[1]}/payments` },
+  { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/invoices/(${UUID})/(send|reissue-link|void|payment-link)$`), upstream: (match) => `/invoices/${match[1]}/${match[2]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/services$/, upstream: "/services", query: ["active"] },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/messages$/, upstream: "/messages/conversations", query: ["status", "cursor", "limit"] },
   { method: "GET", realm: "business", pattern: new RegExp(`^/v1/business/messages/(${UUID})$`), upstream: (match) => `/messages/conversations/${match[1]}` },
@@ -383,7 +402,7 @@ export default {
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "Origin not allowed." }, 403, "");
     const fetchSite = request.headers.get("sec-fetch-site");
     if (fetchSite && fetchSite !== "same-site" && fetchSite !== "same-origin") return json({ error: "Request context not allowed." }, 403, origin);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...securityHeaders, ...corsHeaders(origin), "access-control-allow-methods": "GET, POST, PATCH, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...securityHeaders, ...corsHeaders(origin), "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
     if (url.pathname === "/v1/login" && request.method === "POST") return authenticate(request, env, origin, "login");
     if (url.pathname === "/v1/register" && request.method === "POST") return authenticate(request, env, origin, "register");
     if (url.pathname === "/v1/google" && request.method === "POST") return googleAuthenticate(request, env, origin);

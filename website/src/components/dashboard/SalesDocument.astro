@@ -1,0 +1,475 @@
+---
+// One page for a single quote/estimate or invoice: view, draft editing, and
+// lifecycle actions (send, resend/reissue link, revise, cancel, void, create
+// invoice from an accepted quote, payment link).
+//
+// Security model (see docs/progress for the stage report):
+// - The backend is the only authority. It re-checks the session, business
+//   tenancy, the quotes.* / invoices.* capability, the plan entitlement, input
+//   validation, optimistic concurrency, and computes every total. Nothing here
+//   decides money or permission; capability checks below only hide controls.
+// - Requests go only to the auth gateway's named allowlist routes (no generic
+//   proxy); ids are UUID-validated before they are placed in a path.
+// - All server data is rendered with textContent / form values, never HTML.
+// - One-time customer links are shown once in a read-only field, only when
+//   they are https URLs, and are never stored in the page URL or storage.
+interface Props { kind: "quote" | "invoice" }
+const { kind } = Astro.props;
+const quote = kind === "quote";
+---
+<section class="dashboard-loading" data-doc-loading><span></span><p>Opening this secure document...</p></section>
+<section class="dashboard-auth-required" data-doc-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
+<section class="dashboard-auth-required" data-doc-error hidden><h1>This document is unavailable</h1><p data-doc-error-text></p><a href={quote ? "/dashboard/business/quotes" : "/dashboard/business/invoices"}>Back to {quote ? "quotes" : "invoices"}</a></section>
+<div class="dashboard-content sales-doc" data-doc data-kind={kind} hidden>
+  <header class="dashboard-welcome">
+    <div>
+      <p class="dashboard-eyebrow"><a href={quote ? "/dashboard/business/quotes" : "/dashboard/business/invoices"}>{quote ? "Quotes & estimates" : "Invoices"}</a></p>
+      <h1 data-doc-title>{quote ? "New quote" : "New invoice"}</h1>
+      <p data-doc-subtitle></p>
+    </div>
+    <span class="sales-doc__status" data-doc-status hidden></span>
+  </header>
+
+  <section class="dashboard-panel sales-doc__link" data-link-panel hidden>
+    <div class="dashboard-section-heading"><div><h2 data-link-heading>Customer link</h2><p data-link-copy>Share this secure link with your customer. For your security it is shown only now. Issuing a new link turns this one off.</p></div></div>
+    <div class="sales-doc__link-row"><input type="text" readonly aria-label="Customer link" data-link-value /><button type="button" data-link-copy-button>Copy link</button></div>
+    <p class="setup-message" data-link-message role="status"></p>
+  </section>
+
+  <section class="dashboard-panel" data-summary-panel hidden>
+    <div class="dashboard-section-heading"><div><h2>Summary</h2><p>Totals are calculated by Chakusa on the server.</p></div></div>
+    <dl class="sales-doc__summary" data-summary></dl>
+  </section>
+
+  <section class="dashboard-panel" data-actions-panel hidden>
+    <div class="dashboard-section-heading"><div><h2>Actions</h2><p data-actions-copy></p></div></div>
+    <div class="sales-doc__actions" data-actions></div>
+    <p class="setup-message" data-actions-message role="status"></p>
+  </section>
+
+  <section class="dashboard-panel" data-view-panel hidden>
+    <div class="dashboard-section-heading"><div><h2>Line items</h2></div></div>
+    <div class="sales-doc__table-wrap"><table class="sales-doc__table"><thead><tr><th scope="col">Description</th><th scope="col">Qty</th><th scope="col">Unit price</th><th scope="col">Discount</th><th scope="col">Taxable</th><th scope="col">Line total</th></tr></thead><tbody data-view-lines></tbody></table></div>
+    <div class="sales-doc__notes" data-view-notes></div>
+  </section>
+
+  <section class="dashboard-panel" data-editor-panel hidden>
+    <div class="dashboard-section-heading"><div><h2 data-editor-heading>Details</h2><p data-editor-copy>Save as a draft first. Nothing reaches your customer until you send it.</p></div></div>
+    <form class="dashboard-form sales-doc__form" data-editor novalidate>
+      {quote && <label data-type-field>Document type<select name="documentType"><option value="QUOTE">Quote</option><option value="ESTIMATE">Estimate</option></select></label>}
+      <label>Customer<select name="customerId" data-customer-select><option value="">No customer yet</option></select></label>
+      {quote
+        ? <label>Valid until<input type="date" name="expiresAt" /></label>
+        : <><label>Issue date<input type="date" name="issueDate" /></label><label>Due date<input type="date" name="dueDate" /></label></>}
+      <label>Tax rate (%)<input type="text" inputmode="decimal" name="taxRatePercent" placeholder="0" maxlength="6" /></label>
+      <fieldset class="sales-doc__lines">
+        <legend>Line items</legend>
+        <div data-lines></div>
+        <button type="button" class="sales-doc__add" data-add-line>Add line item</button>
+      </fieldset>
+      <label class="sales-doc__wide">Notes for the customer<textarea name="notes" maxlength="5000"></textarea></label>
+      <label class="sales-doc__wide">Terms<textarea name="terms" maxlength="5000"></textarea></label>
+      <div class="dashboard-form__actions"><a class="sales-doc__cancel" data-editor-cancel href={quote ? "/dashboard/business/quotes" : "/dashboard/business/invoices"}>Cancel</a><button type="submit" data-editor-submit>Save draft</button></div>
+      <p class="setup-message" data-editor-message role="status"></p>
+    </form>
+  </section>
+
+  <section class="dashboard-panel" data-payments-panel hidden>
+    <div class="dashboard-section-heading"><div><h2>Payments</h2><p>Payment status comes from Stripe and is never set by hand.</p></div></div>
+    <div class="dashboard-records" data-payments></div>
+  </section>
+
+  <section class="dashboard-panel" data-history-panel hidden>
+    <div class="dashboard-section-heading"><div><h2>Revision history</h2><p>Every sent version is kept and cannot be changed.</p></div></div>
+    <ol class="sales-doc__history" data-history></ol>
+  </section>
+</div>
+
+<template data-line-template>
+  <div class="sales-doc__line" data-line>
+    <label class="sales-doc__line-desc">Description<input type="text" name="description" maxlength="500" required /></label>
+    <label>Qty<input type="text" inputmode="decimal" name="quantity" value="1" maxlength="10" required /></label>
+    <label>Unit price<input type="text" inputmode="decimal" name="unitPrice" placeholder="0.00" maxlength="12" required /></label>
+    <label>Discount<input type="text" inputmode="decimal" name="discountAmount" placeholder="0.00" maxlength="12" /></label>
+    <label class="sales-doc__line-tax"><input type="checkbox" name="taxable" checked /> Taxable</label>
+    <button type="button" class="sales-doc__remove" data-remove-line aria-label="Remove line item">Remove</button>
+  </div>
+</template>
+
+<script>
+  import { can } from "../../scripts/capabilities.js";
+  import { buildDocumentPayload, validateDocumentForm, deriveTaxRatePercent, safeHttpsUrl, isUuid, MAX_BODY_BYTES, MAX_LINES, type LineInput } from "../../scripts/salesDocuments.js";
+
+  const gateway = "https://auth.chakusarecovery.com";
+  const root = document.querySelector<HTMLElement>("[data-doc]")!;
+  const kind = root.dataset.kind === "quote" ? "quote" : "invoice";
+  const base = kind === "quote" ? "/v1/business/quotes" : "/v1/business/invoices";
+  const listPage = kind === "quote" ? "/dashboard/business/quotes" : "/dashboard/business/invoices";
+  const docPage = (k: "quote" | "invoice", id: string) => `/dashboard/business/${k === "quote" ? "quotes" : "invoices"}/document?id=${encodeURIComponent(id)}`;
+  const manageCap = kind === "quote" ? "quotes.manage" : "invoices.manage";
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const setText = (selector: string, value: string) => { const node = $(selector); if (node) node.textContent = value; };
+
+  class AuthRequired extends Error {}
+  const api = async (path: string, init: { method?: string; body?: unknown } = {}) => {
+    const response = await fetch(`${gateway}${path}`, {
+      method: init.method ?? "GET",
+      credentials: "include",
+      headers: init.body !== undefined ? { "content-type": "application/json" } : undefined,
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) throw new AuthRequired();
+    if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "That could not be completed. Please try again.");
+    return payload;
+  };
+
+  const params = new URLSearchParams(location.search);
+  const rawId = params.get("id");
+  const documentId = rawId && isUuid(rawId) ? rawId : null;
+  const newType = params.get("new");
+  const prefillCustomer = params.get("customerId");
+
+  let role: string | null = null;
+  let current: any = null;
+  let mode: "create" | "edit" | "revise" | "view" = "view";
+  let dirty = false;
+
+  const money = (value: unknown, currency: string) => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return "—";
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount); } catch { return amount.toFixed(2); }
+  };
+  const day = (value: unknown) => { if (!value) return ""; const date = new Date(String(value)); return Number.isNaN(date.valueOf()) ? "" : date.toLocaleDateString(); };
+  const isoDay = (value: unknown) => { if (!value) return ""; const date = new Date(String(value)); return Number.isNaN(date.valueOf()) ? "" : date.toISOString().slice(0, 10); };
+  const label = (value: unknown) => String(value ?? "").replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const fail = (error: unknown) => {
+    $("[data-doc-loading]")!.hidden = true;
+    root.hidden = true;
+    if (error instanceof AuthRequired) { $("[data-doc-auth]")!.hidden = false; return; }
+    setText("[data-doc-error-text]", error instanceof Error ? error.message : "This document could not be opened.");
+    $("[data-doc-error]")!.hidden = false;
+  };
+
+  // ---- Line item editor ------------------------------------------------------
+  const linesRoot = $("[data-lines]")!;
+  const template = $<HTMLTemplateElement>("[data-line-template]")!;
+  const addLine = (line?: Partial<LineInput>) => {
+    if (linesRoot.children.length >= MAX_LINES) { setText("[data-editor-message]", `A web document can have up to ${MAX_LINES} line items.`); return; }
+    const node = (template.content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement;
+    const field = (name: string) => node.querySelector<HTMLInputElement>(`[name=${name}]`)!;
+    if (line) {
+      field("description").value = line.description ?? "";
+      field("quantity").value = line.quantity ?? "1";
+      field("unitPrice").value = line.unitPrice ?? "";
+      field("discountAmount").value = line.discountAmount && Number(line.discountAmount) !== 0 ? line.discountAmount : "";
+      field("taxable").checked = line.taxable !== false;
+      if (line.serviceOfferingId && isUuid(line.serviceOfferingId)) node.dataset.serviceOfferingId = line.serviceOfferingId;
+    }
+    node.querySelector("[data-remove-line]")!.addEventListener("click", () => { node.remove(); dirty = true; });
+    linesRoot.append(node);
+  };
+  $("[data-add-line]")!.addEventListener("click", () => { addLine(); dirty = true; });
+  $("[data-editor]")!.addEventListener("input", () => { dirty = true; });
+
+  const readLines = (): LineInput[] => [...linesRoot.querySelectorAll<HTMLElement>("[data-line]")].map((node) => {
+    const value = (name: string) => node.querySelector<HTMLInputElement>(`[name=${name}]`)!.value;
+    return {
+      description: value("description"),
+      quantity: value("quantity"),
+      unitPrice: value("unitPrice"),
+      discountAmount: value("discountAmount"),
+      taxable: node.querySelector<HTMLInputElement>("[name=taxable]")!.checked,
+      serviceOfferingId: node.dataset.serviceOfferingId,
+    };
+  });
+
+  const loadCustomers = async () => {
+    const select = $<HTMLSelectElement>("[data-customer-select]")!;
+    try {
+      const payload = await api("/v1/business/customers?page=1&pageSize=100");
+      const items: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload?.data) ? payload.data : [];
+      for (const customer of items) {
+        if (typeof customer?.id !== "string" || !isUuid(customer.id)) continue;
+        const option = document.createElement("option");
+        option.value = customer.id;
+        option.textContent = [customer.name || "Unnamed customer", customer.phone || customer.email || ""].filter(Boolean).join(" · ");
+        select.append(option);
+      }
+    } catch (error) { if (error instanceof AuthRequired) throw error; /* The document still works without a customer list. */ }
+  };
+
+  const ensureCustomerOption = (customer: any) => {
+    if (!customer || typeof customer.id !== "string" || !isUuid(customer.id)) return;
+    const select = $<HTMLSelectElement>("[data-customer-select]")!;
+    if (![...select.options].some((option) => option.value === customer.id)) {
+      const option = document.createElement("option");
+      option.value = customer.id;
+      option.textContent = customer.name || "Current customer";
+      select.append(option);
+    }
+  };
+
+  const fillEditor = (doc: any) => {
+    const form = $<HTMLFormElement>("[data-editor]")!;
+    const input = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+    linesRoot.replaceChildren();
+    if (doc) {
+      ensureCustomerOption(doc.customer);
+      const customer = input("customerId"); if (customer) customer.value = doc.customer?.id ?? "";
+      const revision = doc.currentRevision ?? {};
+      const tax = input("taxRatePercent"); if (tax) tax.value = deriveTaxRatePercent(revision);
+      const notes = input("notes"); if (notes) notes.value = revision.notes ?? "";
+      const terms = input("terms"); if (terms) terms.value = revision.terms ?? "";
+      if (kind === "quote") { const expires = input("expiresAt"); if (expires) expires.value = isoDay(doc.expiresAt); }
+      else { const issue = input("issueDate"); if (issue) issue.value = isoDay(doc.issueDate); const due = input("dueDate"); if (due) due.value = isoDay(doc.dueDate); }
+      for (const line of revision.lineItems ?? []) addLine(line);
+    } else {
+      if (prefillCustomer && isUuid(prefillCustomer)) { const customer = input("customerId"); if (customer && [...(customer as HTMLSelectElement).options].some((o) => o.value === prefillCustomer)) customer.value = prefillCustomer; }
+      const type = input("documentType"); if (type) type.value = newType === "ESTIMATE" ? "ESTIMATE" : "QUOTE";
+    }
+    if (!linesRoot.children.length) addLine();
+    setText("[data-editor-message]", doc && deriveTaxRatePercent(doc.currentRevision) ? "Check the tax rate before saving: Chakusa stores the tax amount, so the rate shown was worked out from it." : "");
+    dirty = false;
+  };
+
+  // ---- Rendering ---------------------------------------------------------------
+  const renderSummary = (doc: any) => {
+    const list = $("[data-summary]")!;
+    list.replaceChildren();
+    const currency = doc.currency || "USD";
+    const totals = doc.currentRevision?.totals ?? {};
+    const rows: [string, string][] = [
+      ["Status", label(doc.status)],
+      ["Customer", doc.customer?.name || "Not set"],
+      ["Subtotal", money(totals.subtotal, currency)],
+      ["Discounts", money(totals.discountTotal, currency)],
+      ["Tax", money(totals.taxTotal, currency)],
+      ["Total", money(totals.total, currency)],
+    ];
+    if (kind === "quote" && doc.expiresAt) rows.push(["Valid until", day(doc.expiresAt)]);
+    if (kind === "invoice") {
+      if (doc.issueDate) rows.push(["Issued", day(doc.issueDate)]);
+      if (doc.dueDate) rows.push(["Due", day(doc.dueDate)]);
+      if (doc.payment) { rows.push(["Paid", money(doc.payment.amountPaid, currency)]); rows.push(["Outstanding", money(doc.payment.outstandingBalance, currency)]); rows.push(["Payment state", label(doc.payment.state)]); }
+    }
+    for (const [term, value] of rows) { const dt = document.createElement("dt"); dt.textContent = term; const dd = document.createElement("dd"); dd.textContent = value; list.append(dt, dd); }
+    $("[data-summary-panel]")!.hidden = false;
+  };
+
+  const renderLines = (doc: any) => {
+    const body = $("[data-view-lines]")!;
+    body.replaceChildren();
+    const currency = doc.currency || "USD";
+    for (const line of doc.currentRevision?.lineItems ?? []) {
+      const row = document.createElement("tr");
+      for (const value of [line.description, line.quantity, money(line.unitPrice, currency), money(line.discountAmount, currency), line.taxable ? "Yes" : "No", money(line.lineTotal, currency)]) {
+        const cell = document.createElement("td"); cell.textContent = String(value ?? ""); row.append(cell);
+      }
+      body.append(row);
+    }
+    const notes = $("[data-view-notes]")!;
+    notes.replaceChildren();
+    for (const [heading, value] of [["Notes", doc.currentRevision?.notes], ["Terms", doc.currentRevision?.terms]] as const) {
+      if (!value) continue;
+      const h = document.createElement("h3"); h.textContent = heading;
+      const p = document.createElement("p"); p.textContent = String(value);
+      notes.append(h, p);
+    }
+    $("[data-view-panel]")!.hidden = false;
+  };
+
+  const renderHistory = (doc: any) => {
+    const list = $("[data-history]")!;
+    list.replaceChildren();
+    const revisions: any[] = Array.isArray(doc.revisionHistory) ? doc.revisionHistory : [];
+    for (const revision of revisions) { const item = document.createElement("li"); item.textContent = `Version ${revision.revisionNumber} · ${money(revision.total, doc.currency || "USD")} · ${day(revision.createdAt)}`; list.append(item); }
+    $("[data-history-panel]")!.hidden = revisions.length < 2;
+  };
+
+  const renderPayments = async (doc: any) => {
+    if (kind !== "invoice" || doc.status === "DRAFT") return;
+    const root = $("[data-payments]")!;
+    root.replaceChildren();
+    try {
+      const payload = await api(`${base}/${doc.id}/payments`);
+      const items: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload?.payments) ? payload.payments : [];
+      if (!items.length) { const empty = document.createElement("div"); empty.className = "dashboard-empty"; empty.textContent = "No payments yet."; root.append(empty); }
+      for (const payment of items) {
+        const row = document.createElement("article"); row.className = "dashboard-record";
+        const copy = document.createElement("div");
+        const strong = document.createElement("strong"); strong.textContent = money(payment.amount, payment.currency || doc.currency || "USD");
+        const span = document.createElement("span"); span.textContent = label(payment.status);
+        const small = document.createElement("small"); small.textContent = day(payment.createdAt);
+        copy.append(strong, span, small); row.append(copy); root.append(row);
+      }
+      $("[data-payments-panel]")!.hidden = false;
+    } catch (error) { if (error instanceof AuthRequired) fail(error); }
+  };
+
+  const showLink = (heading: string, url: unknown) => {
+    const safe = safeHttpsUrl(url);
+    setText("[data-link-heading]", heading);
+    const field = $<HTMLInputElement>("[data-link-value]")!;
+    field.value = safe ?? "";
+    $("[data-link-copy-button]")!.hidden = !safe;
+    setText("[data-link-message]", safe ? "" : "The customer link could not be displayed here. Use \"Issue new customer link\" to try again.");
+    $("[data-link-panel]")!.hidden = false;
+    $("[data-link-panel]")!.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  $("[data-link-copy-button]")!.addEventListener("click", async () => {
+    const field = $<HTMLInputElement>("[data-link-value]")!;
+    try { await navigator.clipboard.writeText(field.value); setText("[data-link-message]", "Copied."); }
+    catch { field.select(); setText("[data-link-message]", "Select the link and copy it."); }
+  });
+
+  // ---- Actions -----------------------------------------------------------------
+  type Action = { label: string; cap: string; danger?: boolean; confirm?: string; run: () => Promise<void> };
+  const actionsFor = (doc: any): Action[] => {
+    const id = doc.id;
+    const revisionId = doc.currentRevision?.id;
+    const reload = () => open(id);
+    if (kind === "quote") {
+      if (doc.status === "DRAFT") return [
+        { label: "Send to customer", cap: "quotes.manage", run: async () => { const result = await api(`${base}/${id}/send`, { method: "POST", body: revisionId ? { expectedCurrentRevisionId: revisionId } : {} }); await reload(); showLink("Customer link", result.acceptanceUrl); } },
+        { label: "Delete draft", cap: "quotes.manage", danger: true, confirm: "Delete this draft? This cannot be undone.", run: async () => { await api(`${base}/${id}`, { method: "DELETE" }); location.assign(listPage); } },
+      ];
+      if (doc.status === "SENT") return [
+        { label: "Issue new customer link", cap: "quotes.manage", confirm: "Issue a new link? The previous link will stop working.", run: async () => { const result = await api(`${base}/${id}/resend`, { method: "POST", body: {} }); await reload(); showLink("New customer link", result.acceptanceUrl); } },
+        { label: "Revise quote", cap: "quotes.cancel", run: async () => { startEditor("revise"); } },
+        { label: "Cancel quote", cap: "quotes.cancel", danger: true, confirm: "Cancel this quote? The customer link will stop working.", run: async () => { await api(`${base}/${id}/cancel`, { method: "POST", body: {} }); await reload(); } },
+      ];
+      if (doc.status === "ACCEPTED") return [
+        { label: "Create invoice", cap: "invoices.manage", run: async () => { const invoice = await api(`/v1/business/invoices/from-quote/${id}`, { method: "POST", body: {} }); const invoiceId = invoice?.id ?? invoice?.invoice?.id; if (typeof invoiceId === "string" && isUuid(invoiceId)) location.assign(docPage("invoice", invoiceId)); else location.assign("/dashboard/business/invoices"); } },
+      ];
+      return [];
+    }
+    const outstanding = Number(doc.payment?.outstandingBalance ?? 0);
+    if (doc.status === "DRAFT") return [
+      { label: "Send to customer", cap: "invoices.manage", run: async () => { const result = await api(`${base}/${id}/send`, { method: "POST", body: {} }); await reload(); showLink("Customer link", result.accessUrl); } },
+      { label: "Delete draft", cap: "invoices.manage", danger: true, confirm: "Delete this draft? This cannot be undone.", run: async () => { await api(`${base}/${id}`, { method: "DELETE" }); location.assign(listPage); } },
+    ];
+    if (doc.status === "SENT") return [
+      { label: "Issue new customer link", cap: "invoices.manage", confirm: "Issue a new link? The previous link will stop working.", run: async () => { const result = await api(`${base}/${id}/reissue-link`, { method: "POST", body: {} }); await reload(); showLink("New customer link", result.accessUrl); } },
+      ...(outstanding > 0 ? [{ label: "Create payment link", cap: "invoices.manage", run: async () => { const result = await api(`${base}/${id}/payment-link`, { method: "POST", body: {} }); await reload(); showLink("Payment link", result.checkoutUrl); } }] : []),
+      { label: "Void invoice", cap: "invoices.void", danger: true, confirm: "Void this invoice? This is permanent and the customer link will stop working.", run: async () => { await api(`${base}/${id}/void`, { method: "POST", body: {} }); await reload(); } },
+    ];
+    return [];
+  };
+
+  const renderActions = (doc: any) => {
+    const root = $("[data-actions]")!;
+    root.replaceChildren();
+    const available = actionsFor(doc).filter((action) => can(role, action.cap));
+    for (const action of available) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = action.label;
+      if (action.danger) button.className = "sales-doc__danger";
+      button.addEventListener("click", async () => {
+        if (dirty && mode !== "view") { setText("[data-actions-message]", "Save your changes before doing this."); return; }
+        if (action.confirm && !window.confirm(action.confirm)) return;
+        for (const other of root.querySelectorAll("button")) (other as HTMLButtonElement).disabled = true;
+        setText("[data-actions-message]", "Working securely...");
+        try { await action.run(); setText("[data-actions-message]", ""); }
+        catch (error) { if (error instanceof AuthRequired) { fail(error); return; } setText("[data-actions-message]", error instanceof Error ? error.message : "That could not be completed."); }
+        finally { for (const other of root.querySelectorAll("button")) (other as HTMLButtonElement).disabled = false; }
+      });
+      root.append(button);
+    }
+    setText("[data-actions-copy]", doc.status === "VOID" ? "This invoice is void. It is kept for your records." : doc.status === "CANCELED" ? "This quote was canceled." : available.length ? "" : "No actions are available for your role at this stage.");
+    $("[data-actions-panel]")!.hidden = false;
+  };
+
+  const startEditor = (next: "create" | "edit" | "revise") => {
+    mode = next;
+    fillEditor(next === "create" ? null : current);
+    const typeField = $("[data-type-field]"); if (typeField) typeField.hidden = next !== "create";
+    setText("[data-editor-heading]", next === "revise" ? "Revise quote" : next === "create" ? "Details" : "Edit draft");
+    setText("[data-editor-copy]", next === "revise" ? "Saving creates a new version and a new customer link. The previous link stops working." : "Save as a draft first. Nothing reaches your customer until you send it.");
+    setText("[data-editor-submit]", next === "revise" ? "Save new version" : "Save draft");
+    const cancel = $<HTMLAnchorElement>("[data-editor-cancel]")!;
+    if (next === "revise") { cancel.href = "#"; cancel.onclick = (event) => { event.preventDefault(); mode = "view"; dirty = false; $("[data-editor-panel]")!.hidden = true; }; }
+    $("[data-editor-panel]")!.hidden = false;
+    if (next === "revise") $("[data-editor-panel]")!.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const renderDocument = (doc: any) => {
+    current = doc;
+    const number = kind === "quote" ? `${label(doc.documentType || "Quote")} ${doc.documentNumber ?? ""}` : `Invoice ${doc.invoiceNumber ?? ""}`;
+    setText("[data-doc-title]", number.trim());
+    setText("[data-doc-subtitle]", doc.customer?.name ? `For ${doc.customer.name}` : "No customer selected yet.");
+    const status = $("[data-doc-status]")!; status.textContent = label(doc.status); status.dataset.status = String(doc.status || "").toLowerCase(); status.hidden = false;
+    renderSummary(doc);
+    renderActions(doc);
+    renderHistory(doc);
+    const editable = doc.status === "DRAFT" && can(role, manageCap);
+    if (editable) { $("[data-view-panel]")!.hidden = true; startEditor("edit"); }
+    else { mode = "view"; $("[data-editor-panel]")!.hidden = true; renderLines(doc); }
+    void renderPayments(doc);
+  };
+
+  const open = async (id: string) => {
+    const doc = await api(`${base}/${id}`);
+    renderDocument(doc);
+    $("[data-doc-loading]")!.hidden = true;
+    root.hidden = false;
+  };
+
+  // ---- Save --------------------------------------------------------------------
+  $<HTMLFormElement>("[data-editor]")!.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const submit = $<HTMLButtonElement>("[data-editor-submit]")!;
+    const value = (name: string) => ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "");
+    const fields = {
+      documentType: value("documentType"), customerId: value("customerId"), taxRatePercent: value("taxRatePercent"),
+      notes: value("notes"), terms: value("terms"), expiresAt: value("expiresAt"), issueDate: value("issueDate"), dueDate: value("dueDate"),
+      lines: readLines(),
+    };
+    const problem = validateDocumentForm(kind, fields);
+    if (problem) { setText("[data-editor-message]", problem); return; }
+    const payload = buildDocumentPayload(kind, mode === "create" ? "create" : "update", fields, mode === "create" ? undefined : current?.currentRevision?.id, mode === "create" ? {} : current?.origins ?? {});
+    if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > MAX_BODY_BYTES) { setText("[data-editor-message]", "This document is too large for the web editor. Shorten the notes, terms, or line items."); return; }
+    submit.disabled = true;
+    setText("[data-editor-message]", "Saving securely...");
+    try {
+      if (mode === "create") {
+        const created = await api(base, { method: "POST", body: payload });
+        const id = created?.id ?? created?.quote?.id ?? created?.invoice?.id;
+        dirty = false;
+        if (typeof id === "string" && isUuid(id)) location.replace(docPage(kind, id)); else location.assign(listPage);
+        return;
+      }
+      const revising = mode === "revise";
+      const result = await api(revising ? `${base}/${current.id}/revise` : `${base}/${current.id}`, { method: revising ? "POST" : "PATCH", body: payload });
+      dirty = false;
+      await open(current.id);
+      if (revising) showLink("New customer link", result?.acceptanceUrl);
+      else setText("[data-editor-message]", "Saved.");
+    } catch (error) {
+      if (error instanceof AuthRequired) { fail(error); return; }
+      setText("[data-editor-message]", error instanceof Error ? error.message : "The document could not be saved.");
+    } finally { submit.disabled = false; }
+  });
+
+  window.addEventListener("beforeunload", (event) => { if (dirty && mode !== "view") { event.preventDefault(); } });
+
+  // ---- Start -------------------------------------------------------------------
+  const start = async () => {
+    try {
+      const identity = await fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.status === 401 ? Promise.reject(new AuthRequired()) : r.ok ? r.json() : Promise.reject(new Error("Your dashboard is temporarily unavailable. Please try again shortly."))));
+      role = typeof identity?.account?.role === "string" ? identity.account.role : null;
+      if (!can(role, manageCap)) throw new Error(`Your role cannot manage ${kind === "quote" ? "quotes" : "invoices"}. Ask the business owner for access.`);
+      await loadCustomers();
+      if (documentId) { await open(documentId); return; }
+      if (rawId) throw new Error("This link is not valid.");
+      if (newType === null) { location.replace(listPage); return; }
+      startEditor("create");
+      $("[data-doc-loading]")!.hidden = true;
+      root.hidden = false;
+    } catch (error) { fail(error); }
+  };
+  void start();
+</script>

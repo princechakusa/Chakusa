@@ -1,0 +1,9 @@
+---
+import DashboardLayout from "../../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../../components/dashboard/DashboardNav.astro";
+import SalesDocument from "../../../../components/dashboard/SalesDocument.astro";
+---
+<DashboardLayout title="Invoice | Chakusa" description="Create, send, and manage a protected invoice." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="invoices" />
+  <SalesDocument kind="invoice" />
+</DashboardLayout>

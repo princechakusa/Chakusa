@@ -97,8 +97,8 @@ describe("business location + nearby discovery", () => {
     expect(res.statusCode).toBe(200);
     const items = res.json().items as Array<{ name: string; distanceKm: number | null; city: string | null }>;
     expect(items.map((item) => item.name)).toEqual(["Avondale Barbers", "Borrowdale Spa"]);
-    expect(items[0].distanceKm).toBe(displayDistanceKm(haversineKm(HARARE, AVONDALE)));
-    expect(items[0].distanceKm!).toBeLessThan(items[1].distanceKm!);
+    expect(items[0]!.distanceKm).toBe(displayDistanceKm(haversineKm(HARARE, AVONDALE)));
+    expect(items[0]!.distanceKm!).toBeLessThan(items[1]!.distanceKm!);
     expect(res.json().nextCursor).toBeNull();
 
     // A corner of the bounding box that is outside the circle is excluded.

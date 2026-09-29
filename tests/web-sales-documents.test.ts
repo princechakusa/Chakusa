@@ -86,7 +86,7 @@ describe("editing never silently drops data", () => {
   it("keeps a service-catalogue link only when it is a UUID", () => {
     const withService = buildDocumentPayload("quote", "create", fields({ lines: [line({ serviceOfferingId: CUSTOMER }), line({ serviceOfferingId: "nope" })] }));
     const items = withService.lineItems as Record<string, unknown>[];
-    expect(items[0].serviceOfferingId).toBe(CUSTOMER);
+    expect(items[0]!.serviceOfferingId).toBe(CUSTOMER);
     expect(items[1]).not.toHaveProperty("serviceOfferingId");
   });
 });

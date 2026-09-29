@@ -6,6 +6,7 @@ import { createInvitationSchema, changeMemberRoleSchema, transferOwnershipSchema
 import { createInvitation, listInvitations, revokeInvitation } from "./teamInvitations.service.js";
 import { listMembers, changeMemberRole, removeMember, reactivateMember, getSeatSummary, transferOwnership } from "./teamMembers.service.js";
 import { sendTeamInvitationEmail, type TeamInvitationEmailSender } from "./teamInvitationEmail.js";
+import { buildTeamInviteUrl } from "./teamInviteLinks.js";
 
 export interface TeamRoutesOptions {
   /** Test-only injection — see subscription.routes.ts's SubscriptionRoutesOptions for the same pattern. Defaults to the real Resend-backed sender. */
@@ -114,6 +115,9 @@ export default async function teamRoutes(fastify: FastifyInstance, options: Team
         // copy/share the invite link manually if email delivery fails or
         // isn't configured (see teamInvitationEmail.ts).
         token,
+        // The same one-time link the email carries, assembled server-side so
+        // web/mobile clients never build it themselves.
+        inviteUrl: buildTeamInviteUrl(token),
         emailSent,
       });
     },

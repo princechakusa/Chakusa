@@ -1,5 +1,18 @@
 import { config } from "../../lib/config.js";
 import { buildTeamInviteUrl } from "./teamInviteLinks.js";
+import { escapeHtml, singleLine } from "../../lib/html.js";
+
+/**
+ * Business and inviter names are chosen by account holders, so they are
+ * escaped before entering the HTML body and flattened to one line for the
+ * subject: an owner must never be able to inject markup or links into an
+ * email Chakusa sends to a third party.
+ */
+export function renderTeamInvitationEmail(businessName: string, inviterName: string, inviteUrl: string) {
+  const subject = singleLine(`${inviterName} invited you to join ${businessName} on Chakusa`).slice(0, 200);
+  const html = `<p>${escapeHtml(inviterName)} invited you to join <strong>${escapeHtml(businessName)}</strong> on Chakusa.</p><p><a href="${escapeHtml(inviteUrl)}">Accept invitation</a></p><p>This link expires soon and can only be used once.</p>`;
+  return { subject, html };
+}
 
 /**
  * Business Phase 1.2: the shape team.routes.ts depends on (and injects a
@@ -35,7 +48,7 @@ export const sendTeamInvitationEmail: TeamInvitationEmailSender = async (email, 
     return false;
   }
 
-  const inviteUrl = buildTeamInviteUrl(token);
+  const { subject, html } = renderTeamInvitationEmail(businessName, inviterName, buildTeamInviteUrl(token));
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -46,8 +59,8 @@ export const sendTeamInvitationEmail: TeamInvitationEmailSender = async (email, 
       body: JSON.stringify({
         from: config.EMAIL_FROM,
         to: [email],
-        subject: `${inviterName} invited you to join ${businessName} on Chakusa`,
-        html: `<p>${inviterName} invited you to join <strong>${businessName}</strong> on Chakusa.</p><p><a href="${inviteUrl}">Accept invitation</a></p><p>This link expires soon and can only be used once.</p>`,
+        subject,
+        html,
       }),
     });
     return response.ok;

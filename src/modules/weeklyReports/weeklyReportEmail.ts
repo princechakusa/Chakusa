@@ -1,7 +1,7 @@
 import { config } from "../../lib/config.js";
 import type { WeeklyReportSummary } from "./weeklyReports.service.js";
 
-function escapeHtml(value: string) { return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]!)); }
+import { escapeHtml } from "../../lib/html.js";
 
 /** Optional Resend delivery. The durable in-app report remains authoritative. */
 export async function sendWeeklyOwnerReportEmail(email: string, businessName: string, weekKey: string, summary: WeeklyReportSummary) {

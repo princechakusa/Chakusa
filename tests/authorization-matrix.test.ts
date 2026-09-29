@@ -54,6 +54,7 @@ describe("authorization matrix", () => {
       ["GET", "/accounting/connections"],
       ["POST", "/calendar/subscriptions", {}],
       ["GET", "/business/export"],
+      ["GET", "/weekly-reports"],
     ];
     for (const [method, url, payload] of cases) {
       const res = await app.inject({ method: method as never, url, headers: s, payload: payload as never });
@@ -65,6 +66,8 @@ describe("authorization matrix", () => {
     const b = await business("owner2@authz.example.com");
     const a = authHeader(b.admin);
 
+    // Financial reporting stays open to ADMIN.
+    expect((await app.inject({ method: "GET", url: "/weekly-reports", headers: a })).statusCode).toBe(200);
     // OWNER-only -> 403 for ADMIN
     expect((await app.inject({ method: "PATCH", url: "/business", headers: a, payload: { name: "X" } })).statusCode).toBe(403);
     expect((await app.inject({ method: "POST", url: "/team/invitations", headers: a, payload: { email: "z@z.com", role: "STAFF" } })).statusCode).toBe(403);

@@ -13,8 +13,8 @@ const templateTypeEnum = z.enum([
 
 export const createTemplateSchema = z.object({
   templateType: templateTypeEnum,
-  name: z.string().min(1),
-  body: z.string().min(1),
+  name: z.string().trim().min(1).max(120),
+  body: z.string().trim().min(1).max(2_000),
   tone: z.enum(["friendly", "professional", "casual"]).default("friendly"),
   isDefault: z.boolean().default(false),
 });

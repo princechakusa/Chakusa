@@ -343,6 +343,10 @@ const protectedRoutes = [
   { method: "POST", realm: "business", pattern: new RegExp(`^/v1/business/messages/(${UUID})/read$`), upstream: (match) => `/messages/conversations/${match[1]}/read` },
   { method: "POST", realm: "business", pattern: /^\/v1\/business\/messages\/send$/, upstream: "/messages/send" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/automations$/, upstream: "/automation/workflows" },
+  // Message templates (reads: any member; writes: messaging.config.manage).
+  { method: "GET", realm: "business", pattern: /^\/v1\/business\/templates$/, upstream: "/message-templates" },
+  { method: "POST", realm: "business", pattern: /^\/v1\/business\/templates$/, upstream: "/message-templates" },
+  { method: "PATCH", realm: "business", pattern: new RegExp(`^/v1/business/templates/(${UUID})$`), upstream: (match) => `/message-templates/${match[1]}` },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/reminders$/, upstream: "/reminders" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/reports$/, upstream: "/weekly-reports" },
   { method: "GET", realm: "business", pattern: /^\/v1\/business\/attention$/, upstream: "/dashboard/attention", query: ["category", "page", "pageSize"] },

@@ -1048,8 +1048,10 @@ describe("Business Phase 1.2: seat usage summary and invite delivery outcome", (
     const owner = await businessOwner(app, "phase12-delivery-19@example.com");
     const response = await invite(app, owner, "phase12-no-leak-19@example.com", "STAFF");
     const body = response.json();
-    expect(Object.keys(body).sort()).toEqual(["email", "emailSent", "expiresAt", "id", "role", "status", "token"].sort());
+    expect(Object.keys(body).sort()).toEqual(["email", "emailSent", "expiresAt", "id", "inviteUrl", "role", "status", "token"].sort());
     expect(JSON.stringify(body)).not.toMatch(/resend|message[_-]?id|api[_-]?key/i);
+    // inviteUrl is the same one-time link the email carries: it embeds only the token already returned above.
+    expect(body.inviteUrl).toMatch(new RegExp(`/team-invite/${body.token}$`));
   });
 
   it("20. duplicate-invite behavior is unchanged regardless of delivery outcome", async () => {

@@ -1,0 +1,126 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
+---
+<DashboardLayout title="Message templates | Chakusa" description="Edit the messages Chakusa sends for you." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="templates" />
+  <PageStates loadingText="Loading your message templates..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow">Messaging</p><h1>Message templates</h1><p>The words Chakusa uses for confirmations, reminders, review requests, and follow-ups. Use <code>{"{{customer_name}}"}</code> and <code>{"{{business_name}}"}</code> to personalise.</p></div>
+      <button class="dashboard-action dashboard-action--button" type="button" data-new data-manage-only>New template</button>
+    </header>
+
+    <section class="dashboard-panel" data-editor-panel hidden>
+      <div class="dashboard-section-heading"><div><h2 data-editor-heading>New template</h2><p>Keep SMS messages short; long messages cost more to send.</p></div><button type="button" data-close>Close</button></div>
+      <form class="dashboard-form" data-editor novalidate>
+        <label data-type-field>Used for<select name="templateType">
+          <option value="booking_confirmation">Booking confirmation</option><option value="comeback_reminder">Come-back reminder</option><option value="review_request">Review request</option><option value="private_feedback">Private feedback</option><option value="missed_call">Missed call</option><option value="lead_follow_up">Lead follow-up</option><option value="public_profile_inquiry">Profile enquiry</option><option value="custom">Custom</option>
+        </select></label>
+        <label>Name<input name="name" maxlength="120" required /></label>
+        <label>Tone<select name="tone"><option value="friendly">Friendly</option><option value="professional">Professional</option><option value="casual">Casual</option></select></label>
+        <label class="dashboard-toggle"><input type="checkbox" name="isDefault" /> Use as the default for this purpose</label>
+        <label class="catalog__wide">Message<textarea name="body" maxlength="2000" required></textarea></label>
+        <p class="catalog__hint catalog__wide" data-length></p>
+        <div class="dashboard-form__actions"><button type="button" data-close>Cancel</button><button type="submit">Save template</button></div>
+        <p class="setup-message" data-editor-message role="status"></p>
+      </form>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Templates</h2><p data-count></p></div></div>
+      <div class="dashboard-records" data-list></div>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, AuthRequired, loadIdentity, itemsOf, label, el, pageStates, isUuid } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  const form = $<HTMLFormElement>("[data-editor]")!;
+  const TYPES = new Set(["missed_call", "booking_confirmation", "review_request", "private_feedback", "comeback_reminder", "custom", "public_profile_inquiry", "lead_follow_up"]);
+  let canManage = false;
+  let editingId: string | null = null;
+  let templates: any[] = [];
+
+  const updateLength = () => {
+    const body = (form.elements.namedItem("body") as HTMLTextAreaElement).value;
+    const segments = body.length <= 160 ? 1 : Math.ceil(body.length / 153);
+    $("[data-length]")!.textContent = `${body.length} characters · about ${segments} SMS segment${segments === 1 ? "" : "s"} before personalisation`;
+  };
+  form.querySelector<HTMLTextAreaElement>("[name=body]")!.addEventListener("input", updateLength);
+
+  const open = (template: any | null) => {
+    editingId = template && isUuid(template.id) ? template.id : null;
+    form.reset();
+    const set = (name: string, value: unknown) => { const field = form.elements.namedItem(name) as HTMLInputElement | null; if (field && typeof value === "string") field.value = value; };
+    if (template) { set("templateType", template.templateType); set("name", template.name); set("tone", template.tone); set("body", template.body); (form.elements.namedItem("isDefault") as HTMLInputElement).checked = Boolean(template.isDefault); }
+    $("[data-type-field]")!.hidden = Boolean(template);
+    $("[data-editor-heading]")!.textContent = template ? `Edit ${template.name}` : "New template";
+    $("[data-editor-message]")!.textContent = "";
+    updateLength();
+    $("[data-editor-panel]")!.hidden = false;
+    $("[data-editor-panel]")!.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const render = () => {
+    const list = $("[data-list]")!;
+    list.replaceChildren();
+    $("[data-count]")!.textContent = `${templates.length} template${templates.length === 1 ? "" : "s"}`;
+    if (!templates.length) list.append(el("div", { className: "dashboard-empty", text: "No templates yet. Chakusa uses its built-in wording until you add your own." }));
+    for (const template of templates) {
+      const row = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: template.isDefault ? "★" : "T" }),
+        el("div", {}, el("strong", { text: template.name || "Template" }), el("span", { text: `${label(template.templateType)} · ${label(template.tone)}${template.isDefault ? " · Default" : ""}` }), el("small", { text: String(template.body || "").slice(0, 140) })),
+      );
+      if (canManage && isUuid(template.id)) {
+        const edit = el("button", { text: "Edit", attrs: { type: "button" } });
+        edit.addEventListener("click", () => open(template));
+        row.append(el("div", { className: "dashboard-record__actions" }, edit));
+      }
+      list.append(row);
+    }
+  };
+
+  const load = async () => { templates = itemsOf(await api("/v1/business/templates")); render(); };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = $("[data-editor-message]")!;
+    const value = (name: string) => ((form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "").trim();
+    const body: Record<string, unknown> = { name: value("name"), body: value("body"), tone: ["friendly", "professional", "casual"].includes(value("tone")) ? value("tone") : "friendly", isDefault: (form.elements.namedItem("isDefault") as HTMLInputElement).checked };
+    if (!body.name || String(body.name).length > 120) { message.textContent = "Enter a name (120 characters max)."; return; }
+    if (!body.body || String(body.body).length > 2000) { message.textContent = "Enter the message (2,000 characters max)."; return; }
+    if (!editingId) { const type = value("templateType"); if (!TYPES.has(type)) { message.textContent = "Choose what the template is used for."; return; } body.templateType = type; }
+    const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+    submit.disabled = true;
+    message.textContent = "Saving securely...";
+    try {
+      if (editingId) await api(`/v1/business/templates/${editingId}`, { method: "PATCH", body });
+      else await api("/v1/business/templates", { method: "POST", body });
+      $("[data-editor-panel]")!.hidden = true;
+      await load();
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The template could not be saved.";
+    } finally { submit.disabled = false; }
+  });
+
+  document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => { $("[data-editor-panel]")!.hidden = true; }));
+  $("[data-new]")!.addEventListener("click", () => open(null));
+
+  (async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      canManage = can(identity.role, "messaging.config.manage");
+      if (!canManage) document.querySelectorAll<HTMLElement>("[data-manage-only]").forEach((node) => { node.hidden = true; });
+      await load();
+      page.ready();
+    } catch (error) { page.fail(error); }
+  })();
+</script>

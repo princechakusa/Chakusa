@@ -19,6 +19,10 @@ export async function completeBusinessOnboarding(businessId: string) {
   ].filter(Boolean);
 
   if (missing.length) throw ApiError.badRequest(`Finish setup before continuing: ${missing.join(", ")}`);
-  await syncServiceOfferingsFromLegacyNames(businessId, services);
+  // The legacy name list seeds the service catalogue only on FIRST completion.
+  // After that the catalogue (/services) is the source of truth: re-saving the
+  // setup wizard must never archive, reactivate, or reorder services that were
+  // managed there.
+  if (!business.onboardingCompletedAt) await syncServiceOfferingsFromLegacyNames(businessId, services);
   return prisma.business.update({ where: { id: businessId }, data: { onboardingCompletedAt: new Date() } });
 }

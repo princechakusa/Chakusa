@@ -383,3 +383,12 @@ test("customer CSV import routes allow a larger body only on those two routes", 
     assert.equal(accepted.status, 200);
   } finally { net.restore(); }
 });
+
+test("message template routes map exactly and cannot be deleted", () => {
+  const uuid = "11111111-2222-4333-8444-555555555555";
+  const route = (url, method) => internals.matchProtectedRoute(new URL(`https://a${url}`), method);
+  assert.equal(route("/v1/business/templates", "GET").path, "/message-templates");
+  assert.equal(route("/v1/business/templates", "POST").path, "/message-templates");
+  assert.equal(route(`/v1/business/templates/${uuid}`, "PATCH").path, `/message-templates/${uuid}`);
+  assert.equal(route(`/v1/business/templates/${uuid}`, "DELETE"), null);
+});

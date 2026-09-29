@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+// Length caps bound what any client (mobile, web, import) can store per
+// customer; they are generous enough for every real value.
 export const createCustomerSchema = z.object({
-  name: z.string().min(1),
-  phone: z.string().optional(),
-  email: z.string().email().optional(),
-  notes: z.string().optional(),
+  name: z.string().trim().min(1).max(200),
+  phone: z.string().trim().max(40).optional(),
+  email: z.string().trim().max(254).email().optional(),
+  notes: z.string().max(5_000).optional(),
   birthday: z.coerce.date().optional(),
   anniversary: z.coerce.date().optional(),
   customFields: z.record(z.string(), z.unknown()).optional(),
@@ -23,10 +25,10 @@ export const bulkImportCustomersSchema = z.object({
   customers: z
     .array(
       z.object({
-        name: z.string().trim().min(1),
-        phone: z.string().trim().optional(),
-        email: z.string().trim().email().optional().or(z.literal("").transform(() => undefined)),
-        notes: z.string().trim().optional(),
+        name: z.string().trim().min(1).max(200),
+        phone: z.string().trim().max(40).optional(),
+        email: z.string().trim().max(254).email().optional().or(z.literal("").transform(() => undefined)),
+        notes: z.string().trim().max(5_000).optional(),
       }),
     )
     .min(1)

@@ -1,5 +1,104 @@
 ---
-import DashboardLayout from "../../../layouts/DashboardLayout.astro";import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
 ---
-<DashboardLayout title="Payments | Chakusa" description="Protected payment readiness and Stripe connection status." realm="business"><DashboardNav slot="sidebar" realm="business" active="payments"/><section class="dashboard-loading" data-loading><span></span><p>Checking payment readiness securely...</p></section><section class="dashboard-auth-required" data-auth hidden><h1>Sign in required</h1><p>Your session is missing or has expired.</p><a href="/login">Return to sign in</a></section><div class="dashboard-content" data-content hidden><header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Financial controls</p><h1>Payments</h1><p>Stripe payment infrastructure is isolated behind authenticated business and owner checks.</p></div></header><section class="payment-readiness"><article><span>Release state</span><strong data-release>Coming later</strong><p data-release-copy>Money movement stays disabled until Chakusa completes its payment release review.</p></article><article><span>Stripe account</span><strong data-connect-state>Not connected</strong><p data-connect-copy>No Stripe account is connected to this workspace.</p></article><article><span>Protection</span><strong>Cloudflare and API roles</strong><p>Browser tokens are HttpOnly. Business ownership and record tenancy are checked again by the API.</p></article></section><section class="dashboard-panel"><h2>Activation controls</h2><p class="dashboard-panel-copy">When payments are enabled, only a signed-in owner can begin Stripe onboarding. Refunds and appointment payment links are not exposed by this web dashboard before the payment launch.</p><button class="dashboard-action dashboard-action--button" type="button" data-connect hidden>Connect Stripe securely</button><p class="setup-message" data-message role="status"></p></section></div></DashboardLayout>
-<script>const load=async()=>{const loading=document.querySelector<HTMLElement>("[data-loading]")!;try{const response=await fetch("https://auth.chakusarecovery.com/v1/business/payments",{credentials:"include"});if(response.status===401)throw new Error("auth");const data=await response.json();if(!response.ok)throw new Error(data.error||"unavailable");document.querySelector<HTMLElement>("[data-release]")!.textContent=data.enabled?"Enabled":"Coming later";document.querySelector<HTMLElement>("[data-release-copy]")!.textContent=data.enabled?"Payment onboarding is available for this environment.":"Payment code is present, but money movement is deliberately disabled in production.";document.querySelector<HTMLElement>("[data-connect-state]")!.textContent=data.connected?"Connected":"Not connected";document.querySelector<HTMLElement>("[data-connect-copy]")!.textContent=data.chargesEnabled&&data.payoutsEnabled?"Charges and payouts are ready.":data.connected?"Stripe onboarding is not yet complete.":"No Stripe account is connected to this workspace.";if(data.enabled&&!data.connected)document.querySelector<HTMLButtonElement>("[data-connect]")!.hidden=false;loading.hidden=true;document.querySelector<HTMLElement>("[data-content]")!.hidden=false;}catch{loading.hidden=true;document.querySelector<HTMLElement>("[data-auth]")!.hidden=false;}};document.querySelector<HTMLButtonElement>("[data-connect]")?.addEventListener("click",async()=>{const message=document.querySelector<HTMLElement>("[data-message]")!;message.textContent="Opening protected Stripe onboarding...";const response=await fetch("https://auth.chakusarecovery.com/v1/business/payments/connect",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});const data=await response.json();if(response.ok&&typeof data.url==="string")location.assign(data.url);else message.textContent=data.error||"Stripe onboarding is unavailable.";});void load();</script>
+<DashboardLayout title="Payments | Chakusa" description="Get paid online with Stripe." realm="business">
+  <DashboardNav slot="sidebar" realm="business" active="payments" />
+  <PageStates loadingText="Checking your payment setup..." />
+  <div class="dashboard-content catalog" data-page-content hidden>
+    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Money</p><h1>Payments</h1><p>Take card payments for invoices and deposits through Stripe. Money goes straight to your bank account.</p></div></header>
+
+    <section class="overview__metrics payments__metrics" data-money></section>
+
+    <section class="dashboard-panel payments__status">
+      <div class="payments__badge" data-status-badge></div>
+      <div>
+        <h2 data-status-title>Checking...</h2>
+        <p data-status-copy></p>
+        <ul class="state-card__benefits payments__steps" data-steps hidden>
+          <li>Connect a Stripe account (about 5 minutes)</li>
+          <li>Stripe verifies your business and bank details</li>
+          <li>Customers can then pay invoices and deposits by card</li>
+        </ul>
+        <div class="sales-doc__actions"><button class="dashboard-action dashboard-action--button" type="button" data-connect hidden>Connect Stripe</button></div>
+        <p class="setup-message" data-message role="status"></p>
+      </div>
+    </section>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>How it works</h2></div></div>
+      <ul class="suggestions">
+        <li class="suggestions__item">Chakusa never stores card numbers. Payments are processed by Stripe.</li>
+        <li class="suggestions__item">Payment status on invoices updates automatically when Stripe confirms a payment.</li>
+        <li class="suggestions__item">Refunds are issued from the Chakusa app by the owner or an admin.</li>
+      </ul>
+    </section>
+  </div>
+</DashboardLayout>
+
+<script>
+  import { can } from "../../../scripts/capabilities.js";
+  import { api, loadIdentity, pageStates, money, el, AuthRequired } from "../../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+  /** Only follow Stripe's own onboarding pages. */
+  const stripeUrl = (value: unknown) => {
+    if (typeof value !== "string") return null;
+    try { const url = new URL(value); return url.protocol === "https:" && /(^|\.)stripe\.com$/.test(url.hostname) ? url.toString() : null; } catch { return null; }
+  };
+
+  const load = async () => {
+    try {
+      const [identity, status] = await Promise.all([loadIdentity(), api("/v1/business/payments")]);
+      const currency = identity.business?.currency || "USD";
+      const revenue = identity.dashboard?.recoveredRevenue ?? {};
+      $("[data-money]")!.replaceChildren(
+        el("article", { className: "overview__metric" }, el("span", { text: "Collected from bookings" }), el("strong", { text: money(revenue.appointmentCollected ?? 0, currency) }), el("small", { text: "Recorded payments" })),
+        el("article", { className: "overview__metric" }, el("span", { text: "Outstanding" }), el("strong", { text: money(Number(revenue.outstanding ?? 0) + Number(revenue.appointmentOutstanding ?? 0), currency) }), el("small", { text: "Owed to you" })),
+      );
+      const ready = status.connected && status.chargesEnabled && status.payoutsEnabled;
+      const badge = $("[data-status-badge]")!;
+      badge.dataset.state = ready ? "ready" : status.connected ? "pending" : "off";
+      badge.textContent = ready ? "✓" : status.connected ? "…" : "$";
+      if (!status.enabled) {
+        $("[data-status-title]")!.textContent = "Online payments are coming soon";
+        $("[data-status-copy]")!.textContent = "Card payments aren't switched on for Chakusa yet. You can still record payments you take in person, and we'll let you know as soon as online payments open.";
+      } else if (ready) {
+        $("[data-status-title]")!.textContent = "You're ready to take payments";
+        $("[data-status-copy]")!.textContent = "Your Stripe account is connected and verified. Customers can pay invoices and deposits by card.";
+      } else if (status.connected) {
+        $("[data-status-title]")!.textContent = "Finish your Stripe setup";
+        $("[data-status-copy]")!.textContent = "Stripe still needs some details before you can take payments. Continue where you left off.";
+        if (can(identity.role, "payments.manage")) { $("[data-connect]")!.textContent = "Continue Stripe setup"; $("[data-connect]")!.hidden = false; }
+      } else {
+        $("[data-status-title]")!.textContent = "Get paid online";
+        $("[data-status-copy]")!.textContent = "Connect Stripe so customers can pay by card.";
+        $("[data-steps]")!.hidden = false;
+        if (can(identity.role, "payments.manage")) $("[data-connect]")!.hidden = false;
+        else $("[data-message]")!.textContent = "Only the business owner can connect Stripe.";
+      }
+      page.ready();
+    } catch (error) { page.fail(error, () => void load()); }
+  };
+
+  $("[data-connect]")!.addEventListener("click", async () => {
+    const button = $<HTMLButtonElement>("[data-connect]")!;
+    const message = $("[data-message]")!;
+    button.disabled = true;
+    message.textContent = "Opening Stripe...";
+    try {
+      const data = await api("/v1/business/payments/connect", { method: "POST", body: {} });
+      const target = stripeUrl(data?.url);
+      if (!target) throw new Error("Stripe setup isn't available right now. Please try again later.");
+      location.assign(target);
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "Stripe setup isn't available right now.";
+      button.disabled = false;
+    }
+  });
+
+  void load();
+</script>

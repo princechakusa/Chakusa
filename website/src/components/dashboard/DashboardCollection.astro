@@ -1,96 +1,207 @@
 ---
+// Generic list page: fetch a collection through a named gateway route,
+// render rows with textContent only, optional inline create form, per-row
+// actions, detail links, search, and the shared page states (sign-in,
+// plan-locked, no access, retry).
+import PageStates from "./PageStates.astro";
 interface Field { name: string; label: string; type?: "text" | "email" | "number" | "datetime-local" | "textarea"; required?: boolean; placeholder?: string; options?: string[] }
-interface Props { realm: "business" | "client"; eyebrow: string; title: string; intro: string; endpoint: string; kind: string; createLabel?: string; fields?: Field[]; manageCapability?: string; newLinks?: { label: string; href: string }[]; detailBase?: string }
-const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], manageCapability, newLinks = [], detailBase } = Astro.props;
+interface Props {
+  realm: "business" | "client"; eyebrow: string; title: string; intro: string; endpoint: string; kind: string;
+  createLabel?: string; fields?: Field[]; manageCapability?: string;
+  newLinks?: { label: string; href: string }[]; detailBase?: string;
+  emptyTitle?: string; emptyText?: string;
+}
+const { realm, eyebrow, title, intro, endpoint, kind, createLabel, fields = [], manageCapability, newLinks = [], detailBase, emptyTitle, emptyText } = Astro.props;
+const primaryIsLink = !createLabel && newLinks.length > 0;
 ---
-<section class="dashboard-loading" data-module-loading><span></span><p>Opening this secure workspace...</p></section>
-<section class="dashboard-auth-required" data-module-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
-<div class="dashboard-content dashboard-module" data-module hidden data-endpoint={endpoint} data-kind={kind} data-realm={realm} data-manage-capability={manageCapability} data-detail-base={detailBase}>
-  <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">{eyebrow}</p><h1>{title}</h1><p>{intro}</p></div>{newLinks.length > 0 && <div class="dashboard-new-links">{newLinks.map(link => <a class="dashboard-action" data-create-link href={link.href}>{link.label}</a>)}</div>}{createLabel && <button class="dashboard-action dashboard-action--button" type="button" data-create-toggle>{createLabel}</button>}</header>
-  {createLabel && <section class="dashboard-panel dashboard-create" data-create-panel hidden><div class="dashboard-section-heading"><div><h2>{createLabel}</h2><p>Saved directly to your protected Chakusa workspace.</p></div><button type="button" data-create-close aria-label="Close form">Close</button></div><form class="dashboard-form" data-create-form>{fields.map(field => <label>{field.label}{field.options ? <select name={field.name} required={field.required}>{field.options.map(value => <option value={value}>{value}</option>)}</select> : field.type === "textarea" ? <textarea name={field.name} required={field.required} placeholder={field.placeholder}></textarea> : <input name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder}/>}</label>)}<div class="dashboard-form__actions"><button type="button" data-create-close>Cancel</button><button type="submit">Save</button></div><p class="setup-message" data-create-message role="status"></p></form></section>}
-  <section class="dashboard-panel"><div class="dashboard-section-heading"><div><h2>All {title.toLowerCase()}</h2><p data-module-count>Loading records...</p></div><button type="button" data-refresh>Refresh</button></div><div class="dashboard-records" data-records></div></section>
+<PageStates realm={realm} backHref={realm === "business" ? "/dashboard/business" : "/dashboard/client"} loadingText={`Loading ${title.toLowerCase()}...`} />
+<div class="dashboard-content dashboard-module" data-page-content hidden data-endpoint={endpoint} data-kind={kind} data-realm={realm} data-manage-capability={manageCapability} data-detail-base={detailBase}>
+  <header class="dashboard-welcome">
+    <div><p class="dashboard-eyebrow">{eyebrow}</p><h1>{title}</h1><p>{intro}</p></div>
+    <div class="page-actions">
+      {newLinks.map((link, index) => <a class={primaryIsLink && index === 0 ? "dashboard-action" : "dashboard-action dashboard-action--secondary"} data-create-link href={link.href}>{link.label}</a>)}
+      {createLabel && <button class="dashboard-action dashboard-action--button" type="button" data-create-toggle>{createLabel}</button>}
+    </div>
+  </header>
+  {createLabel && <section class="dashboard-panel dashboard-create" data-create-panel hidden><div class="dashboard-section-heading"><div><h2>{createLabel}</h2><p>Saved straight to your workspace.</p></div><button type="button" data-create-close aria-label="Close form">Close</button></div><form class="dashboard-form" data-create-form novalidate>{fields.map(field => <label>{field.label}{field.options ? <select name={field.name} required={field.required}>{field.options.map(value => <option value={value}>{value.replaceAll("_", " ").replace(/^\w/, (c) => c.toUpperCase())}</option>)}</select> : field.type === "textarea" ? <textarea name={field.name} required={field.required} placeholder={field.placeholder}></textarea> : <input name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder}/>}</label>)}<div class="dashboard-form__actions"><button type="button" data-create-close>Cancel</button><button type="submit">Save</button></div><p class="setup-message" data-create-message role="status"></p></form></section>}
+  <section class="dashboard-panel">
+    <div class="dashboard-section-heading">
+      <div><h2>All {title.toLowerCase()}</h2><p data-module-count>Loading...</p></div>
+      <div class="list-tools"><input type="search" class="list-search" placeholder="Search" aria-label={`Search ${title.toLowerCase()}`} data-search /><button type="button" data-refresh>Refresh</button></div>
+    </div>
+    <div class="dashboard-records" data-records></div>
+    <div class="empty-state" data-empty hidden>
+      <div class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v4H4Zm0 6h16v10H4Zm4 3v2h8v-2Z"/></svg></div>
+      <h3>{emptyTitle ?? `No ${title.toLowerCase()} yet`}</h3>
+      <p>{emptyText ?? "New activity will appear here."}</p>
+      {createLabel ? <button class="dashboard-action dashboard-action--button" type="button" data-create-toggle data-empty-action>{createLabel}</button> : newLinks[0] ? <a class="dashboard-action" data-create-link href={newLinks[0].href}>{newLinks[0].label}</a> : null}
+    </div>
+  </section>
 </div>
 <script>
   import { can } from "../../scripts/capabilities.js";
-  const gateway="https://auth.chakusarecovery.com";
-  const moduleRoot=document.querySelector<HTMLElement>("[data-module]");
-  const loading=document.querySelector<HTMLElement>("[data-module-loading]");
-  const auth=document.querySelector<HTMLElement>("[data-module-auth]");
-  const records=document.querySelector<HTMLElement>("[data-records]");
-  const count=document.querySelector<HTMLElement>("[data-module-count]");
-  const clean=(value:unknown)=>String(value??"").replaceAll("_"," ").toLowerCase().replace(/\b\w/g,letter=>letter.toUpperCase());
-  const date=(value:unknown)=>{if(!value)return "";const parsed=new Date(String(value));return Number.isNaN(parsed.valueOf())?"":parsed.toLocaleString();};
-  const amount=(value:unknown,currency:unknown)=>{const n=Number(value);if(!Number.isFinite(n))return "";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:typeof currency==="string"&&/^[A-Z]{3}$/.test(currency)?currency:"USD"}).format(n)}catch{return n.toFixed(2)}};const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;const itemsFrom=(payload:any):any[]=>Array.isArray(payload)?payload:Array.isArray(payload?.items)?payload.items:Array.isArray(payload?.data)?payload.data:[];
-  const details=(item:any,kind:string)=>{
-    if(kind==="customers")return [item.name||"Unnamed customer",item.phone||item.email||"No contact details",item.createdAt?`Added ${date(item.createdAt)}`:""];
-    if(kind==="leads")return [item.serviceRequested||item.customer?.name||"New opportunity",`${clean(item.status||"new")} | ${clean(item.urgency||"medium")} priority`,item.estimatedValue!=null?`Estimated value ${item.estimatedValue}`:item.notes||""];
-    if(kind==="bookings")return [item.serviceName||"Service booking",item.customer?.name||item.business?.name||"Customer",`${date(item.startsAt)} | ${clean(item.status||"scheduled")}`];
-    if(kind==="reviews")return [item.customer?.name||item.serviceName||"Review request",clean(item.status||"pending"),item.createdAt?date(item.createdAt):""];
-    if(kind==="quotes")return [`${clean(item.documentType||"Quote")} ${item.documentNumber||""}`.trim(),`${clean(item.status||"draft")}${item.customer?.name?` | ${item.customer.name}`:""}`,item.totals?.total!=null?amount(item.totals.total,item.currency):item.createdAt?date(item.createdAt):""];
-    if(kind==="invoices")return [`Invoice ${item.invoiceNumber||item.documentNumber||""}`.trim(),`${clean(item.status||"draft")}${(item.business?.name||item.customer?.name)?` | ${item.business?.name||item.customer?.name}`:""}`,item.totals?.total!=null?amount(item.totals.total,item.currency):item.total!=null?amount(item.total,item.currency):item.dueDate?`Due ${date(item.dueDate)}`:date(item.createdAt)];
-    if(kind==="businesses"){const business=item.business||item;return [business?.name||"Business",business?.industry||"Service provider",item.favourite?"Saved business":"Connected business"];}
-    if(kind==="notifications")return [item.title||clean(item.type||"Update"),item.message||item.body||"Account update",date(item.createdAt)];
-    if(kind==="messages")return [item.customer?.name||item.title||item.contactName||"Conversation",clean(item.status||"open"),item.lastMessageAt?date(item.lastMessageAt):item.updatedAt?date(item.updatedAt):""];
-    if(kind==="reminders")return [item.customer?.name||item.serviceName||"Comeback reminder",clean(item.status||"due"),item.dueDate?date(item.dueDate):item.createdAt?date(item.createdAt):""];
-    if(kind==="automation")return [item.name||"Workflow",clean(item.status||"draft"),item.description||""];
-    if(kind==="inventory")return [item.name||"Stock item",`${item.currentStock??"0"} ${item.unit||"on hand"}${item.lowStock?" | low stock":""}`,item.lowStockThreshold!=null?`Reorder at ${item.lowStockThreshold}`:(item.sku?`SKU ${item.sku}`:"")];
-    if(kind==="support")return [item.subject||"Support request",`${clean(item.status||"open")} | ${clean(item.category||"other")}`,item.createdAt?date(item.createdAt):""];if(kind==="reports")return [item.title||item.periodLabel||"Weekly report",item.status||"Business summary",item.createdAt?date(item.createdAt):""];
-    return [item.name||item.title||item.email||"Workspace record",item.role||item.status||"Active",item.createdAt?date(item.createdAt):""];
-  };
-  // #22 — per-row state transitions. Each still passes through the gateway
-  // allowlist + backend capability/validation; the `cap` here only decides
-  // whether to render the button.
-  type RowAction={label:string;path:(id:string)=>string;body?:Record<string,unknown>;cap:string|null;when?:(item:any)=>boolean;confirm?:string};
-  const ROW_ACTIONS:Record<string,RowAction[]>={
-    leads:[
-      {label:"Contacted",path:id=>`/v1/business/leads/${id}/mark-contacted`,cap:"leads.manage"},
-      {label:"Booked",path:id=>`/v1/business/leads/${id}/mark-booked`,cap:"leads.manage"},
-      {label:"Won",path:id=>`/v1/business/leads/${id}/mark-won`,cap:"leads.manage"},
-      {label:"Lost",path:id=>`/v1/business/leads/${id}/mark-lost`,cap:"leads.manage"},
-    ],
-    bookings:[
-      {label:"Confirm",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"CONFIRMED"},cap:"appointments.manage"},
-      {label:"Complete",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"COMPLETED"},cap:"appointments.manage"},
-      {label:"No-show",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"NO_SHOW"},cap:"appointments.manage"},
-      {label:"Cancel",path:id=>`/v1/business/appointments/${id}/status`,body:{status:"CANCELED"},cap:"appointments.manage"},
-    ],
-  };
-  // Client realm: the backend scopes every booking to the signed-in
-  // customer and re-checks the business's cancellation notice; `when` only
-  // hides the button once the API already reports canCancel=false.
-  const CLIENT_ROW_ACTIONS:Record<string,RowAction[]>={
-    bookings:[{label:"Cancel booking",path:id=>`/v1/client/bookings/${id}/cancel`,cap:null,when:item=>item.canCancel===true,confirm:"Cancel this booking? The business will be notified."}],
-  }
+  import { api, loadIdentity, pageStates, itemsOf, money, relativeTime, el, isUuid, AuthRequired } from "../../scripts/dashboardApi";
 
-  let currentRole:string|null=null;
-  const runAction=async(action:RowAction,id:string,button:HTMLButtonElement)=>{if(action.confirm&&!window.confirm(action.confirm))return;
-    button.disabled=true;const original=button.textContent;button.textContent="Saving…";
-    try{
-      const response=await fetch(`${gateway}${action.path(id)}`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(action.body??{})});
-      if(!response.ok){const payload=await response.json().catch(()=>({}));throw new Error(typeof payload.error==="string"?payload.error:"That action could not be completed.");}
+  const page = pageStates();
+  const moduleRoot = document.querySelector<HTMLElement>("[data-page-content]")!;
+  const records = document.querySelector<HTMLElement>("[data-records]")!;
+  const count = document.querySelector<HTMLElement>("[data-module-count]")!;
+  const search = document.querySelector<HTMLInputElement>("[data-search]")!;
+  const kind = moduleRoot.dataset.kind || "records";
+  const realm = moduleRoot.dataset.realm;
+  const clean = (value: unknown) => String(value ?? "").replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const when = (value: unknown) => { const text = relativeTime(value); return text; };
+
+  // [title, subtitle, meta] for each kind. Values are always rendered as text.
+  const details = (item: any): [string, string, string] => {
+    switch (kind) {
+      case "customers": return [item.name || "Unnamed customer", item.phone || item.email || "No contact details", item.createdAt ? `Added ${when(item.createdAt)}` : ""];
+      case "leads": return [item.serviceRequested || item.customer?.name || "New opportunity", `${clean(item.status || "new")} · ${clean(item.urgency || "medium")} priority`, item.estimatedValue != null ? `Est. ${money(item.estimatedValue)}` : item.notes || ""];
+      case "bookings": return [item.serviceName || "Service booking", item.customer?.name || item.business?.name || "Customer", `${new Date(item.startsAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · ${clean(item.status || "scheduled")}`];
+      case "reviews": return [item.customer?.name || item.serviceName || "Review request", clean(item.status || "pending"), item.createdAt ? when(item.createdAt) : ""];
+      case "quotes": return [`${clean(item.documentType || "Quote")} ${item.documentNumber || ""}`.trim(), `${clean(item.status || "draft")}${item.customer?.name ? ` · ${item.customer.name}` : ""}`, item.totals?.total != null ? money(item.totals.total, item.currency) : when(item.createdAt)];
+      case "invoices": return [`Invoice ${item.invoiceNumber || item.documentNumber || ""}`.trim(), `${clean(item.payment?.state || item.status || "draft")}${(item.business?.name || item.customer?.name) ? ` · ${item.business?.name || item.customer?.name}` : ""}`, item.totals?.total != null ? money(item.totals.total, item.currency) : item.total != null ? money(item.total, item.currency) : item.dueDate ? `Due ${new Date(item.dueDate).toLocaleDateString()}` : when(item.createdAt)];
+      case "businesses": { const business = item.business || item; return [business?.name || "Business", business?.industry ? clean(business.industry) : "Service provider", item.favourite ? "Saved business" : "Connected business"]; }
+      case "notifications": return [item.title || clean(item.type || "Update"), item.message || item.body || "Account update", when(item.createdAt)];
+      case "reminders": return [item.customer?.name || item.serviceName || "Come-back reminder", clean(item.status || "due"), item.dueDate ? `Due ${new Date(item.dueDate).toLocaleDateString()}` : when(item.createdAt)];
+      case "automation": return [item.name || "Workflow", clean(item.status || "draft"), item.description || ""];
+      case "inventory": return [item.name || "Stock item", `${item.currentStock ?? "0"} ${item.unit || "on hand"}${item.lowStock ? " · low stock" : ""}`, item.lowStockThreshold != null ? `Reorder at ${item.lowStockThreshold}` : item.sku ? `SKU ${item.sku}` : ""];
+      case "support": return [item.subject || "Support request", `${clean(item.status || "open")} · ${clean(item.category || "other")}`, when(item.createdAt)];
+      default: return [item.name || item.title || item.email || "Record", item.role || item.status || "Active", when(item.createdAt)];
+    }
+  };
+
+  // Per-row state transitions. The gateway + API enforce capability and
+  // validation; `cap` here only decides whether the button is shown.
+  type RowAction = { label: string; path: (id: string) => string; body?: Record<string, unknown>; cap: string | null; when?: (item: any) => boolean; confirm?: string };
+  const ROW_ACTIONS: Record<string, RowAction[]> = {
+    leads: [
+      { label: "Contacted", path: (id) => `/v1/business/leads/${id}/mark-contacted`, cap: "leads.manage", when: (i) => i.status === "new" },
+      { label: "Booked", path: (id) => `/v1/business/leads/${id}/mark-booked`, cap: "leads.manage", when: (i) => ["new", "contacted"].includes(i.status) },
+      { label: "Won", path: (id) => `/v1/business/leads/${id}/mark-won`, cap: "leads.manage", when: (i) => !["won", "lost"].includes(i.status) },
+      { label: "Lost", path: (id) => `/v1/business/leads/${id}/mark-lost`, cap: "leads.manage", when: (i) => !["won", "lost"].includes(i.status), confirm: "Mark this lead as lost?" },
+    ],
+    bookings: [
+      { label: "Confirm", path: (id) => `/v1/business/appointments/${id}/status`, body: { status: "CONFIRMED" }, cap: "appointments.manage", when: (i) => i.status === "SCHEDULED" },
+      { label: "Complete", path: (id) => `/v1/business/appointments/${id}/status`, body: { status: "COMPLETED" }, cap: "appointments.manage", when: (i) => i.status === "CONFIRMED" },
+      { label: "No-show", path: (id) => `/v1/business/appointments/${id}/status`, body: { status: "NO_SHOW" }, cap: "appointments.manage", when: (i) => ["SCHEDULED", "CONFIRMED"].includes(i.status) && new Date(i.startsAt) <= new Date(), confirm: "Record this booking as a no-show?" },
+      { label: "Cancel", path: (id) => `/v1/business/appointments/${id}/status`, body: { status: "CANCELED" }, cap: "appointments.manage", when: (i) => ["SCHEDULED", "CONFIRMED"].includes(i.status), confirm: "Cancel this booking? The customer will be notified." },
+    ],
+  };
+  // Client realm: the API scopes every booking to the signed-in customer and
+  // re-checks the business's cancellation notice.
+  const CLIENT_ROW_ACTIONS: Record<string, RowAction[]> = {
+    bookings: [{ label: "Cancel booking", path: (id) => `/v1/client/bookings/${id}/cancel`, cap: null, when: (item) => item.canCancel === true, confirm: "Cancel this booking? The business will be notified." }],
+  };
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/i;
+
+  let currentRole: string | null = null;
+  let items: any[] = [];
+
+  const runAction = async (action: RowAction, id: string, button: HTMLButtonElement) => {
+    if (action.confirm && !window.confirm(action.confirm)) return;
+    button.disabled = true;
+    const original = button.textContent;
+    button.textContent = "Saving…";
+    try { await api(action.path(id), { method: "POST", body: action.body ?? {} }); await load(); }
+    catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      button.disabled = false; button.textContent = original;
+      count.textContent = error instanceof Error ? error.message : "That action could not be completed.";
+    }
+  };
+
+  const render = () => {
+    records.replaceChildren();
+    const query = search.value.trim().toLowerCase();
+    const shown = query ? items.filter((item) => details(item).join(" ").toLowerCase().includes(query)) : items;
+    count.textContent = query ? `${shown.length} of ${items.length}` : `${items.length} ${items.length === 1 ? "record" : "records"}`;
+    document.querySelector<HTMLElement>("[data-empty]")!.hidden = items.length > 0;
+    search.hidden = items.length < 6;
+    if (items.length && !shown.length) records.append(el("div", { className: "dashboard-empty", text: "Nothing matches your search." }));
+    const actions = (realm === "client" ? CLIENT_ROW_ACTIONS[kind] : ROW_ACTIONS[kind])?.filter((a) => a.cap === null || can(currentRole, a.cap)) ?? [];
+    for (const item of shown) {
+      const [title, subtitle, meta] = details(item);
+      const article = el("article", { className: "dashboard-record" },
+        el("span", { className: "dashboard-record__mark", text: (title || "?").slice(0, 1).toUpperCase() }),
+        el("div", {}, el("strong", { text: title }), el("span", { text: subtitle }), el("small", { text: meta })));
+      if (realm === "client" && (kind === "businesses" || kind === "bookings")) {
+        const slug = (item.business || item)?.slug ?? (item.business || item)?.publicSlug;
+        if (typeof slug === "string" && SLUG_RE.test(slug)) article.append(el("a", { className: "dashboard-record__open", text: "Book again", attrs: { href: `/b/${encodeURIComponent(slug)}` } }));
+      }
+      const detailBase = moduleRoot.dataset.detailBase;
+      if (detailBase && typeof item.id === "string" && UUID_RE.test(item.id)) {
+        article.append(el("a", { className: "dashboard-record__open", text: "Open", attrs: { href: `${detailBase}?id=${encodeURIComponent(item.id)}`, "aria-label": `Open ${title}` } }));
+      }
+      const rowActions = actions.filter((a) => !a.when || a.when(item));
+      if (rowActions.length && typeof item.id === "string" && UUID_RE.test(item.id)) {
+        const bar = el("div", { className: "dashboard-record__actions" });
+        for (const action of rowActions) {
+          const button = el("button", { text: action.label, attrs: { type: "button" } });
+          button.addEventListener("click", () => void runAction(action, item.id, button));
+          bar.append(button);
+        }
+        article.append(bar);
+      }
+      records.append(article);
+    }
+  };
+
+  const applyCapability = () => {
+    const cap = moduleRoot.dataset.manageCapability;
+    if (!cap || can(currentRole, cap)) return;
+    for (const node of document.querySelectorAll<HTMLElement>("[data-create-toggle],[data-create-panel],[data-create-link]")) node.hidden = true;
+  };
+
+  const load = async () => {
+    try {
+      const [payload, identity] = await Promise.all([
+        api(moduleRoot.dataset.endpoint!),
+        realm === "business" ? loadIdentity().catch((error) => { if (error instanceof AuthRequired) throw error; return null; }) : Promise.resolve(null),
+      ]);
+      currentRole = identity?.role ?? null;
+      applyCapability();
+      items = itemsOf(payload);
+      render();
+      page.ready();
+    } catch (error) { page.fail(error, () => void load()); }
+  };
+
+  const openCreate = () => { const panel = document.querySelector<HTMLElement>("[data-create-panel]"); if (panel) { panel.hidden = false; panel.scrollIntoView({ behavior: "smooth", block: "start" }); panel.querySelector<HTMLElement>("input,select,textarea")?.focus(); } };
+  document.querySelectorAll<HTMLElement>("[data-create-toggle]").forEach((button) => button.addEventListener("click", openCreate));
+  document.querySelectorAll<HTMLElement>("[data-create-close]").forEach((button) => button.addEventListener("click", () => { const panel = document.querySelector<HTMLElement>("[data-create-panel]"); if (panel) panel.hidden = true; }));
+  document.querySelector<HTMLElement>("[data-refresh]")?.addEventListener("click", () => void load());
+  search.addEventListener("input", render);
+
+  const createForm = document.querySelector<HTMLFormElement>("[data-create-form]");
+  createForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = createForm.querySelector<HTMLButtonElement>("[type=submit]")!;
+    const message = createForm.querySelector<HTMLElement>("[data-create-message]")!;
+    const missing = [...createForm.querySelectorAll<HTMLInputElement>("[required]")].find((input) => !input.value.trim());
+    if (missing) { message.textContent = "Fill in the required fields."; missing.focus(); return; }
+    const body: Record<string, unknown> = {};
+    const NUMS = new Set(["estimatedValue", "price", "lowStockThreshold", "openingQuantity", "quantity"]);
+    for (const [key, value] of new FormData(createForm)) {
+      if (value === "") continue;
+      if (key === "startsAt" || key === "endsAt") body[key] = new Date(String(value)).toISOString();
+      else if (NUMS.has(key)) body[key] = Number(value);
+      else if (value === "on") body[key] = true;
+      else body[key] = typeof value === "string" ? value.trim() : value;
+    }
+    submit.disabled = true;
+    message.textContent = "Saving securely...";
+    try {
+      await api(moduleRoot.dataset.endpoint!.split("?")[0]!, { method: "POST", body });
+      createForm.reset();
+      message.textContent = "Saved.";
       await load();
-    }catch(error){button.disabled=false;button.textContent=original;button.title=error instanceof Error?error.message:"Failed";}
-  };
-  const render=(payload:any)=>{if(!records||!moduleRoot)return;records.replaceChildren();const kind=moduleRoot.dataset.kind||"records";const items=itemsFrom(payload);if(count)count.textContent=`${items.length} record${items.length===1?"":"s"}`;if(!items.length){const empty=document.createElement("div");empty.className="dashboard-empty";empty.textContent=`No ${kind} yet. New activity will appear here.`;records.append(empty);return;}const realm=moduleRoot.dataset.realm;const actions=(realm==="client"?CLIENT_ROW_ACTIONS[kind]:ROW_ACTIONS[kind])?.filter(a=>a.cap===null||can(currentRole,a.cap))??[];for(const item of items){const values=details(item,kind);const article=document.createElement("article");article.className="dashboard-record";const mark=document.createElement("span");mark.className="dashboard-record__mark";mark.textContent=values[0].slice(0,1).toUpperCase();const copy=document.createElement("div");const strong=document.createElement("strong");strong.textContent=values[0];const meta=document.createElement("span");meta.textContent=values[1];const small=document.createElement("small");small.textContent=values[2];copy.append(strong,meta,small);article.append(mark,copy);if(moduleRoot.dataset.realm==="client"&&(kind==="businesses"||kind==="bookings")){const slug=(item.business||item)?.slug??(item.business||item)?.publicSlug;if(typeof slug==="string"&&/^[a-z0-9][a-z0-9-]{0,79}$/i.test(slug)){const book=document.createElement("a");book.className="dashboard-record__open";book.href=`/b/${encodeURIComponent(slug)}`;book.textContent="Book again";article.append(book);}}const detailBase=moduleRoot.dataset.detailBase;if(detailBase&&typeof item.id==="string"&&UUID_RE.test(item.id)){const open=document.createElement("a");open.className="dashboard-record__open";open.href=`${detailBase}?id=${encodeURIComponent(item.id)}`;open.textContent="Open";open.setAttribute("aria-label",`Open ${values[0]}`);article.append(open);}const rowActions=actions.filter(a=>!a.when||a.when(item));if(rowActions.length&&typeof item.id==="string"&&UUID_RE.test(item.id)){const bar=document.createElement("div");bar.className="dashboard-record__actions";for(const action of rowActions){const button=document.createElement("button");button.type="button";button.textContent=action.label;button.addEventListener("click",()=>void runAction(action,item.id,button));bar.append(button);}article.append(bar);}records.append(article);}};
-  // #22 — hide the create control unless the signed-in member's role holds the
-  // required capability. Backend/gateway authorization stays authoritative;
-  // this is a usability hint only.
-  const applyCapability=(role:unknown)=>{
-    const cap=moduleRoot?.dataset.manageCapability;
-    if(!cap||can(typeof role==="string"?role:null,cap))return;
-    for(const node of document.querySelectorAll<HTMLElement>("[data-create-toggle],[data-create-panel],[data-create-form],[data-create-link]")) node.hidden=true;
-  };
-  const load=async()=>{if(!moduleRoot)return;try{
-    const [response,identity]=await Promise.all([
-      fetch(`${gateway}${moduleRoot.dataset.endpoint}`,{credentials:"include"}),
-      fetch(`${gateway}/v1/dashboard`,{credentials:"include"}).then(r=>r.ok?r.json():null).catch(()=>null),
-    ]);
-    currentRole=typeof identity?.account?.role==="string"?identity.account.role:null;
-    applyCapability(currentRole);
-    if(response.status===401)throw new Error("auth");const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(typeof payload.error==="string"?payload.error:"Unable to load this workspace.");render(payload);loading!.hidden=true;moduleRoot.hidden=false;}catch(error){loading!.hidden=true;if(error instanceof Error&&error.message==="auth")auth!.hidden=false;else{auth!.hidden=false;const copy=auth!.querySelector("p");if(copy)copy.textContent=error instanceof Error?error.message:"Unable to load this workspace.";}}};
-  document.querySelectorAll<HTMLElement>("[data-create-close]").forEach(button=>button.addEventListener("click",()=>{const panel=document.querySelector<HTMLElement>("[data-create-panel]");if(panel)panel.hidden=true;}));
-  document.querySelector<HTMLElement>("[data-create-toggle]")?.addEventListener("click",()=>{const panel=document.querySelector<HTMLElement>("[data-create-panel]");if(panel){panel.hidden=false;panel.scrollIntoView({behavior:"smooth",block:"start"});}});
-  document.querySelector<HTMLElement>("[data-refresh]")?.addEventListener("click",()=>void load());
-  const createForm=document.querySelector<HTMLFormElement>("[data-create-form]");createForm?.addEventListener("submit",async event=>{event.preventDefault();if(!moduleRoot)return;const form=createForm;const submit=form.querySelector<HTMLButtonElement>("[type=submit]");const message=form.querySelector<HTMLElement>("[data-create-message]");const body:Record<string,unknown>={};const NUMS=new Set(["estimatedValue","price","lowStockThreshold","openingQuantity","quantity"]);for(const [key,value] of new FormData(form)){if(value==="")continue;if(key==="startsAt"||key==="endsAt")body[key]=new Date(String(value)).toISOString();else if(NUMS.has(key))body[key]=Number(value);else if(value==="on")body[key]=true;else body[key]=value;}if(submit)submit.disabled=true;if(message)message.textContent="Saving securely...";try{const response=await fetch(`${gateway}${moduleRoot.dataset.endpoint}`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(typeof payload.error==="string"?payload.error:"The record could not be saved.");form.reset();if(message)message.textContent="Saved.";await load();}catch(error){if(message)message.textContent=error instanceof Error?error.message:"The record could not be saved.";}finally{if(submit)submit.disabled=false;}});
+    } catch (error) {
+      if (error instanceof AuthRequired) return page.fail(error);
+      message.textContent = error instanceof Error ? error.message : "The record could not be saved.";
+    } finally { submit.disabled = false; }
+  });
+
   void load();
 </script>

@@ -1,12 +1,12 @@
 ---
 import DashboardLayout from "../../../layouts/DashboardLayout.astro";
 import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../../components/dashboard/PageStates.astro";
 ---
 <DashboardLayout title="Messages | Chakusa" description="Read customer conversations and reply securely." realm="business">
   <DashboardNav slot="sidebar" realm="business" active="messages" />
-  <section class="dashboard-loading" data-loading><span></span><p>Opening your conversations…</p></section>
-  <section class="dashboard-auth-required" data-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
-  <div class="dashboard-content" data-content hidden>
+  <PageStates loadingText="Opening your conversations..." />
+  <div class="dashboard-content" data-page-content hidden>
     <header class="dashboard-welcome"><div><p class="dashboard-eyebrow">Conversations</p><h1>Messages</h1><p>Every reply is sent through your protected Chakusa workspace and the same consent checks as the app.</p></div></header>
     <div class="msg-shell">
       <aside class="dashboard-panel msg-list" aria-label="Conversation list">
@@ -27,6 +27,8 @@ import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
   </div>
 </DashboardLayout>
 <script>
+  import { api, loadIdentity, pageStates, itemsOf } from "../../../scripts/dashboardApi";
+  const page = pageStates();
   import { can } from "../../../scripts/capabilities.js";
   const gateway = "https://auth.chakusarecovery.com";
   const $ = <T extends HTMLElement>(s: string) => document.querySelector<T>(s);
@@ -69,21 +71,16 @@ import DashboardNav from "../../../components/dashboard/DashboardNav.astro";
       button.append(name, preview);
       button.addEventListener("click", () => void openThread(c.id));
       return button;
-    }) : [Object.assign(document.createElement("div"), { className: "dashboard-empty", textContent: "No conversations yet." })]));
+    }) : [Object.assign(document.createElement("div"), { className: "dashboard-empty", textContent: "No conversations yet. When customers message your business, their conversations appear here and you can reply." })]));
   };
 
   const load = async () => {
-    const [listRes, identity] = await Promise.all([
-      fetch(`${gateway}/v1/business/messages?limit=100`, { credentials: "include" }),
-      fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]);
-    $("[data-loading]")!.hidden = true;
-    if (listRes.status === 401) { $("[data-auth]")!.hidden = false; return; }
-    canReply = can(identity?.account?.role ?? null, "messaging.operate");
-    const payload = await listRes.json().catch(() => []);
-    if (!listRes.ok) { $("[data-auth]")!.hidden = false; return; }
-    renderList(Array.isArray(payload) ? payload : []);
-    $("[data-content]")!.hidden = false;
+    try {
+      const [list, identity] = await Promise.all([api("/v1/business/messages?limit=100"), loadIdentity()]);
+      canReply = can(identity.role, "messaging.operate");
+      renderList(itemsOf(list));
+      page.ready();
+    } catch (error) { page.fail(error, () => void load()); }
   };
   $("[data-list-refresh]")?.addEventListener("click", () => void load());
   $("[data-thread-close]")?.addEventListener("click", () => { threadEl!.hidden = true; active = null; });

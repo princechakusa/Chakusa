@@ -436,3 +436,52 @@ test("client loyalty routes are client-realm, UUID-only", () => {
   assert.equal(route(`/v1/client/loyalty/accounts/${uuid}/rewards/x/redeem`, "POST"), null);
   assert.equal(route(`/v1/client/loyalty/accounts/${uuid}/enrol`, "POST"), null);
 });
+
+// --- Session gate + error hints ------------------------------------------------
+function jwtWithExp(secondsFromNow) {
+  const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${b64({ alg: "none" })}.${b64({ exp: Math.floor(Date.now() / 1000) + secondsFromNow })}.sig`;
+}
+const sessionRequest2 = (cookie) => new Request("https://auth.chakusarecovery.com/v1/session", { headers: { origin: "https://chakusarecovery.com", "sec-fetch-site": "same-site", cookie } });
+
+test("session check does not refresh while the access token has time left", async () => {
+  const net = stubNetwork({});
+  try {
+    const cookie = `__Host-chakusa_access=${internals.encodeAccessCookie("business", jwtWithExp(600))}; __Host-chakusa_refresh=${internals.encodeRefreshCookie("business", "refresh.token")}`;
+    const response = await worker.fetch(sessionRequest2(cookie), env);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.refreshed, false);
+    assert.ok(body.expiresIn > 500 && body.expiresIn <= 600);
+    assert.equal(net.calls.length, 0);
+    assert.equal(response.headers.get("set-cookie"), null);
+  } finally { net.restore(); }
+});
+
+test("session check refreshes once when the access token is missing or about to expire", async () => {
+  for (const access of [null, jwtWithExp(30)]) {
+    const net = stubNetwork({ "POST /auth/refresh": () => [200, { accessToken: jwtWithExp(900), refreshToken: "new.refresh", expiresIn: 900 }] });
+    try {
+      const cookie = `${access ? `__Host-chakusa_access=${internals.encodeAccessCookie("business", access)}; ` : ""}__Host-chakusa_refresh=${internals.encodeRefreshCookie("business", "refresh.token")}`;
+      const response = await worker.fetch(sessionRequest2(cookie), env);
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).refreshed, true);
+      assert.equal(net.calls.filter((c) => c.key === "POST /auth/refresh").length, 1);
+      assert.ok(response.headers.get("set-cookie"));
+    } finally { net.restore(); }
+  }
+});
+
+test("session check with no session clears cookies and returns 401", async () => {
+  const net = stubNetwork({});
+  try {
+    const response = await worker.fetch(sessionRequest2(""), env);
+    assert.equal(response.status, 401);
+  } finally { net.restore(); }
+});
+
+test("error hints pass only strictly-shaped codes and plans", () => {
+  assert.deepEqual(internals.upstreamErrorHints({ error: { code: "FEATURE_NOT_AVAILABLE", message: "x", details: { feature: "INVOICING", requiredPlan: "BUSINESS", secret: "s" } } }), { code: "FEATURE_NOT_AVAILABLE", requiredPlan: "BUSINESS", feature: "INVOICING" });
+  assert.deepEqual(internals.upstreamErrorHints({ error: { code: "<script>", details: { requiredPlan: "ENTERPRISE" } } }), {});
+  assert.deepEqual(internals.upstreamErrorHints(null), {});
+});

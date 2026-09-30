@@ -1,24 +1,172 @@
 ---
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
 import DashboardNav from "../../components/dashboard/DashboardNav.astro";
+import PageStates from "../../components/dashboard/PageStates.astro";
 import AttentionPanel from "../../components/dashboard/AttentionPanel.astro";
-const title="Business dashboard | Chakusa";const description="Your private Chakusa business dashboard.";
 ---
-<DashboardLayout {title} {description} realm="business">
+<DashboardLayout title="Overview | Chakusa" description="Your Chakusa business at a glance." realm="business">
   <DashboardNav slot="sidebar" realm="business" active="overview" />
-  <section class="dashboard-loading" data-loading><span></span><p>Opening your secure business dashboard...</p></section>
-  <section class="dashboard-auth-required" data-auth-required hidden><h1>Sign in required</h1><p>Your business session is missing or has expired. Sign in again to continue.</p><a href="/login">Return to sign in</a></section>
-  <div class="dashboard-content" data-dashboard-content hidden>
-    <header class="dashboard-welcome"><div><p class="dashboard-eyebrow" data-business-name>Business workspace</p><h1><span data-greeting>Welcome</span>, <span data-owner-name>owner</span></h1><p>Here is the work that deserves your attention today.</p></div><a class="dashboard-action" href="/dashboard/business/setup" data-nav-cap="business.settings.manage">Business settings</a></header>
-    <div class="dashboard-banner" data-setup-banner hidden><div><strong>Finish setting up your business</strong><span>Add your phone, opening hours, services, and review link.</span></div><a href="/dashboard/business/setup" data-nav-cap="business.settings.manage">Continue setup →</a></div>
+  <PageStates loadingText="Opening your business dashboard..." />
+  <div class="dashboard-content overview" data-page-content hidden>
+    <header class="dashboard-welcome">
+      <div><p class="dashboard-eyebrow" data-business-name>Your business</p><h1 data-greeting>Welcome back</h1><p data-subtitle>Here's what needs you today.</p></div>
+      <div class="page-actions" data-quick-actions></div>
+    </header>
+
+    <div class="dashboard-legal" data-legal-warning hidden>Please review the updated <a href="/terms">Terms</a>, <a href="/privacy">Privacy Policy</a> and <a href="/ai-disclosure">AI Disclosure</a>.</div>
+
+    <section class="dashboard-panel checklist" data-checklist hidden>
+      <div class="dashboard-section-heading"><div><h2>Get set up</h2><p data-checklist-progress></p></div><button type="button" data-checklist-hide>Hide</button></div>
+      <div class="checklist__bar" aria-hidden="true"><span data-checklist-bar></span></div>
+      <ol class="checklist__items" data-checklist-items></ol>
+    </section>
+
+    <section class="overview__metrics" aria-label="Business summary" data-metrics></section>
+
+    <div class="overview__grid">
+      <section class="dashboard-panel">
+        <div class="dashboard-section-heading"><div><h2>Today</h2><p data-today-summary></p></div><a class="section-link" href="/dashboard/business/calendar">Open calendar</a></div>
+        <div class="dashboard-records" data-today></div>
+      </section>
+      <section class="dashboard-panel" data-suggestions-panel hidden>
+        <div class="dashboard-section-heading"><div><h2>Suggestions</h2><p>What Chakusa would do next.</p></div></div>
+        <ul class="suggestions" data-suggestions></ul>
+      </section>
+    </div>
+
     <AttentionPanel />
-    <div class="dashboard-legal" data-legal-warning hidden>Please review the current <a href="/terms">Terms</a>, <a href="/privacy">Privacy Policy</a>, and <a href="/ai-disclosure">AI Disclosure</a> in the Chakusa app.</div>
-    <section class="dashboard-metrics" aria-label="Business summary"><article class="dashboard-metric"><span>Recovered revenue</span><strong data-revenue>0</strong><small>Won and collected work</small></article><article class="dashboard-metric"><span>Lead pipeline</span><strong data-leads>0</strong><small>All tracked opportunities</small></article><article class="dashboard-metric"><span>Customers</span><strong data-customers>0</strong><small>Connected customer records</small></article><article class="dashboard-metric"><span>Business health</span><strong data-health>New</strong><small>Operational score</small></article></section>
-    <div class="dashboard-grid"><section class="dashboard-panel" id="activity"><h2>Recent activity</h2><div class="dashboard-list" data-activity-list></div></section><section class="dashboard-panel" id="recovery"><h2>Recovery snapshot</h2><div class="dashboard-list" data-recovery-list></div></section></div>
+
+    <section class="dashboard-panel">
+      <div class="dashboard-section-heading"><div><h2>Recent activity</h2></div></div>
+      <ol class="activity" data-activity></ol>
+    </section>
   </div>
 </DashboardLayout>
+
 <script>
-  const text=(selector:string,value:unknown)=>{const node=document.querySelector<HTMLElement>(selector);if(node)node.textContent=String(value??"");};const money=(value:unknown,currency="USD")=>new Intl.NumberFormat(undefined,{style:"currency",currency,maximumFractionDigits:0}).format(Number(value)||0);
-  const row=(mark:string,title:string,detail:string)=>{const item=document.createElement("div");item.className="dashboard-row";const icon=document.createElement("span");icon.className="dashboard-row__mark";icon.textContent=mark;const copy=document.createElement("div");copy.className="dashboard-row__copy";const strong=document.createElement("strong");strong.textContent=title;const small=document.createElement("span");small.textContent=detail;copy.append(strong,small);item.append(icon,copy);return item;};const empty=(message:string)=>{const node=document.createElement("div");node.className="dashboard-empty";node.textContent=message;return node;};
-  const load=async()=>{try{const response=await fetch("https://auth.chakusarecovery.com/v1/dashboard",{credentials:"include"});if(response.status===401)throw new Error("unauthorized");const data=await response.json();if(!response.ok||data.realm!=="business")throw new Error("unavailable");const account=data.account||{};const business=data.business||{};const dash=data.dashboard||{};const hour=new Date().getHours();text("[data-greeting]",hour<12?"Good morning":hour<18?"Good afternoon":"Good evening");text("[data-owner-name]",account.user?.fullName?.split(" ")[0]||"owner");text("[data-business-name]",business.name||"Business workspace");text("[data-revenue]",money(dash.recoveredRevenue?.total,business.currency||"USD"));text("[data-leads]",dash.leads?.total||0);text("[data-customers]",dash.customerIntelligence?.totalCustomers||0);text("[data-health]",dash.businessHealth?.score==null?"New":`${dash.businessHealth.score}/100`);if(!business.onboardingCompletedAt)document.querySelector<HTMLElement>("[data-setup-banner]")!.hidden=false;const activity=document.querySelector<HTMLElement>("[data-activity-list]");const recent=Array.isArray(dash.recentActivity)?dash.recentActivity:[];if(activity){if(!recent.length)activity.append(empty("Business activity will appear here as you use Chakusa."));else recent.slice(0,6).forEach((item:any)=>activity.append(row("↗",String(item.type||"Activity").replaceAll("_"," "),item.createdAt?new Date(item.createdAt).toLocaleString():"Recent")));}const recovery=document.querySelector<HTMLElement>("[data-recovery-list]");if(recovery){recovery.append(row("☎","New leads",String(dash.leads?.new||0)));recovery.append(row("★","Reviews received",String(dash.reviews?.reviewsReceived||0)));recovery.append(row("↻","Customers due",String(dash.customersDue||0)));recovery.append(row("$","Outstanding",money(dash.recoveredRevenue?.outstanding,business.currency||"USD")));}const pending=data.legal?.pending;if(Array.isArray(pending)&&pending.length)document.querySelector<HTMLElement>("[data-legal-warning]")!.hidden=false;document.querySelector<HTMLElement>("[data-loading]")!.hidden=true;document.querySelector<HTMLElement>("[data-dashboard-content]")!.hidden=false;}catch{document.querySelector<HTMLElement>("[data-loading]")!.hidden=true;document.querySelector<HTMLElement>("[data-auth-required]")!.hidden=false;}};void load();
+  import { can } from "../../scripts/capabilities.js";
+  import { api, loadIdentity, pageStates, itemsOf, money, label, relativeTime, el, isUuid, AuthRequired } from "../../scripts/dashboardApi";
+
+  const page = pageStates();
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
+
+  const ACTIVITY: Record<string, string> = {
+    CUSTOMER_CREATED: "New customer added", CUSTOMER_UPDATED: "Customer details updated",
+    LEAD_CREATED: "New lead", LEAD_CONTACTED: "Lead contacted", LEAD_BOOKED: "Lead booked", LEAD_WON: "Lead won", LEAD_LOST: "Lead lost",
+    APPOINTMENT_CREATED: "Booking created", APPOINTMENT_UPDATED: "Booking updated",
+    REVIEW_REQUEST_CREATED: "Review request created", REVIEW_REQUEST_SENT: "Review request sent", REVIEW_OPENED: "Review link opened", REVIEW_RECEIVED: "Review received",
+    FEEDBACK_RECEIVED: "Private feedback received", FEEDBACK_STATUS_UPDATED: "Feedback updated",
+    REMINDER_CREATED: "Come-back reminder scheduled", REMINDER_SENT: "Come-back reminder sent",
+    TEAM_MEMBER_INVITED: "Team member invited", TEAM_MEMBER_JOINED: "Team member joined", TEAM_MEMBER_ROLE_CHANGED: "Team role changed", TEAM_MEMBER_REMOVED: "Team member removed",
+    SENT: "Document sent", CREATED: "Document created", VOIDED: "Invoice voided", REVISED: "Quote revised", CANCELED: "Canceled", EXPIRED: "Expired", CONVERTED_FROM_QUOTE: "Invoice created from quote",
+  };
+
+  const greeting = () => { const hour = new Date().getHours(); return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"; };
+
+  const metric = (name: string, value: string, note: string, href?: string) => {
+    const card = el(href ? "a" : "article", { className: "overview__metric", ...(href ? { attrs: { href } } : {}) }, el("span", { text: name }), el("strong", { text: value }), el("small", { text: note }));
+    return card;
+  };
+
+  const renderChecklist = (business: any, dash: any, role: string | null, services: number | null) => {
+    if (!can(role, "business.settings.manage")) return;
+    try { if (localStorage.getItem("chakusa.checklist.hidden") === "1") return; } catch { /* storage unavailable */ }
+    const hours = business?.workingHours && typeof business.workingHours === "object" && Object.keys(business.workingHours).length > 0;
+    const steps: [boolean, string, string, string][] = [
+      [Boolean(business?.phone) && Boolean(hours), "Add your phone number and opening hours", "Customers see these when they book.", "/dashboard/business/setup"],
+      [(services ?? dash?.activation?.activePublicServices ?? 0) > 0, "Add your services and prices", "Bookings, quotes and invoices use your catalogue.", "/dashboard/business/services"],
+      [(dash?.customerIntelligence?.totalCustomers ?? 0) > 0, "Add or import your customers", "Bring your existing list over in one go.", "/dashboard/business/customers/import"],
+      [(dash?.activation?.appointmentsBooked ?? 0) > 0, "Take your first booking", "Add one yourself or share your booking link.", "/dashboard/business/bookings"],
+      [Boolean(business?.googleReviewLink), "Connect your Google review link", "So happy customers can review you in one tap.", "/dashboard/business/setup"],
+    ];
+    const done = steps.filter(([complete]) => complete).length;
+    if (done === steps.length) return;
+    $("[data-checklist-progress]")!.textContent = `${done} of ${steps.length} done`;
+    $("[data-checklist-bar]")!.dataset.progress = String(Math.round((done / steps.length) * 100));
+    $("[data-checklist-bar]")!.style.width = `${Math.round((done / steps.length) * 100)}%`;
+    const list = $("[data-checklist-items]")!;
+    for (const [complete, title, hint, href] of steps) {
+      list.append(el("li", { className: complete ? "is-done" : "" },
+        el("span", { className: "checklist__tick", attrs: { "aria-hidden": "true" } }),
+        el("div", {}, el("strong", { text: title }), el("small", { text: complete ? "Done" : hint })),
+        complete ? null : el("a", { className: "dashboard-record__open", text: "Start", attrs: { href } })));
+    }
+    $("[data-checklist]")!.hidden = false;
+  };
+
+  const renderToday = async (currency: string) => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const root = $("[data-today]")!;
+    try {
+      const items = itemsOf(await api(`/v1/business/appointments?from=${encodeURIComponent(start.toISOString())}&to=${encodeURIComponent(end.toISOString())}`))
+        .filter((item) => !["CANCELED", "NO_SHOW"].includes(item.status))
+        .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+      $("[data-today-summary]")!.textContent = items.length ? `${items.length} booking${items.length === 1 ? "" : "s"} today` : "";
+      if (!items.length) { root.append(el("div", { className: "dashboard-empty", text: "Nothing booked today." })); return; }
+      for (const item of items.slice(0, 8)) {
+        const customerId = item.customer?.id;
+        const row = el("article", { className: `dashboard-record${new Date(item.endsAt || item.startsAt) < new Date() ? " is-past" : ""}` },
+          el("span", { className: "overview__time", text: new Date(item.startsAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) }),
+          el("div", {}, el("strong", { text: item.serviceName || "Booking" }), el("span", { text: [item.customer?.name, item.assignedMember?.user?.fullName].filter(Boolean).join(" · ") || "No customer" }), el("small", { text: [label(item.status), item.price != null ? money(item.price, currency) : ""].filter(Boolean).join(" · ") })));
+        if (typeof customerId === "string" && isUuid(customerId)) row.append(el("a", { className: "dashboard-record__open", text: "Customer", attrs: { href: `/dashboard/business/customers/profile?id=${encodeURIComponent(customerId)}` } }));
+        root.append(row);
+      }
+    } catch (error) {
+      if (error instanceof AuthRequired) throw error;
+      root.append(el("div", { className: "dashboard-empty", text: "Today's schedule couldn't load. It will appear on refresh." }));
+    }
+  };
+
+  const load = async () => {
+    try {
+      const identity = await loadIdentity();
+      if (identity.realm !== "business") throw new AuthRequired();
+      const dash = identity.dashboard ?? {};
+      const business = identity.business ?? {};
+      const currency = typeof business.currency === "string" ? business.currency : "USD";
+      const user = identity.account?.user ?? {};
+      const first = String(user.fullName || "").trim().split(/\s+/)[0];
+      $("[data-greeting]")!.textContent = first ? `${greeting()}, ${first}` : greeting();
+      if (business.name) $("[data-business-name]")!.textContent = business.name;
+      const health = dash.businessHealth?.score;
+      $("[data-subtitle]")!.textContent = typeof health === "number" ? `Business health ${health}/100 · here's what needs you today.` : "Here's what needs you today.";
+
+      const actions = $("[data-quick-actions]")!;
+      if (can(identity.role, "appointments.manage")) actions.append(el("a", { className: "dashboard-action dashboard-action--secondary", text: "New booking", attrs: { href: "/dashboard/business/bookings" } }));
+      if (can(identity.role, "customers.manage")) actions.append(el("a", { className: "dashboard-action", text: "Add customer", attrs: { href: "/dashboard/business/customers" } }));
+
+      const revenue = dash.recoveredRevenue ?? {};
+      const outstanding = Number(revenue.outstanding ?? 0) + Number(revenue.appointmentOutstanding ?? 0);
+      const metrics = $("[data-metrics]")!;
+      metrics.append(
+        metric("Revenue recovered", money(revenue.total ?? 0, currency), revenue.appointmentCollected != null ? `${money(revenue.appointmentCollected, currency)} collected from bookings` : "Won and collected work", can(identity.role, "financial.report.view") ? "/dashboard/business/reports" : undefined),
+        metric("Outstanding", money(outstanding, currency), outstanding > 0 ? "Owed to you" : "Nothing owed", "/dashboard/business/payments"),
+        metric("Leads", String(dash.leads?.total ?? 0), `${dash.leads?.new ?? 0} new · ${Math.round((dash.leads?.conversionRate ?? 0) * 100)}% won`, "/dashboard/business/leads"),
+        metric("Customers", String(dash.customerIntelligence?.totalCustomers ?? 0), dash.customersDue ? `${dash.customersDue} due to come back` : "All caught up", "/dashboard/business/customers"),
+      );
+
+      const suggestions = Array.isArray(dash.recommendations) ? dash.recommendations.slice(0, 4) : [];
+      if (suggestions.length) {
+        const list = $("[data-suggestions]")!;
+        for (const suggestion of suggestions) list.append(el("li", { className: `suggestions__item is-${String(suggestion.severity || "info").toLowerCase()}`, text: String(suggestion.message || "") }));
+        $("[data-suggestions-panel]")!.hidden = false;
+      }
+
+      const activity = $("[data-activity]")!;
+      const events = Array.isArray(dash.recentActivity) ? dash.recentActivity.slice(0, 10) : [];
+      if (!events.length) activity.append(el("li", { className: "activity__empty", text: "Activity from bookings, customers and messages will show here." }));
+      for (const event of events) activity.append(el("li", {}, el("strong", { text: ACTIVITY[event.eventType] ?? label(event.eventType || "Update") }), el("span", { text: relativeTime(event.createdAt) })));
+
+      $("[data-legal-warning]")!.hidden = !(Array.isArray(identity.legal?.pending) && identity.legal.pending.length > 0);
+
+      const services = can(identity.role, "catalog.manage") ? await api("/v1/business/services?active=true").then((r) => itemsOf(r).length).catch(() => null) : null;
+      renderChecklist(business, dash, identity.role, services);
+      await renderToday(currency);
+      page.ready();
+    } catch (error) { page.fail(error, () => void load()); }
+  };
+
+  $("[data-checklist-hide]")!.addEventListener("click", () => { $("[data-checklist]")!.hidden = true; try { localStorage.setItem("chakusa.checklist.hidden", "1"); } catch { /* storage unavailable */ } });
+  void load();
 </script>

@@ -100,11 +100,11 @@ export class ApiError extends Error {
     });
   }
 
-  static featureNotAvailable(feature: string, label: string, plan: string) {
-    return new ApiError(403, "FEATURE_NOT_AVAILABLE", `${label} is available on the Pro plan`, {
+  static featureNotAvailable(feature: string, label: string, plan: string, requiredPlan: "PRO" | "BUSINESS" = "PRO") {
+    return new ApiError(403, "FEATURE_NOT_AVAILABLE", `${label} is available on the ${requiredPlan === "BUSINESS" ? "Business" : "Pro"} plan`, {
       feature,
       plan,
-      requiredPlan: "PRO",
+      requiredPlan,
     });
   }
 

@@ -154,7 +154,8 @@ export function assertFeatureAvailable(plan: Plan, statusOrFeature: Subscription
   const feature = maybeFeature ?? (statusOrFeature as Feature);
   const entitled = maybeFeature ? hasFeature(plan, statusOrFeature as SubscriptionStatus, maybeFeature) : hasFeature(plan, statusOrFeature as Feature);
   if (entitled) return;
-  throw ApiError.featureNotAvailable(feature, FEATURE_LABELS[feature], plan);
+  // The cheapest plan that includes the feature (Business-only features name Business).
+  throw ApiError.featureNotAvailable(feature, FEATURE_LABELS[feature], plan, PRO_FEATURES.has(feature) ? "PRO" : "BUSINESS");
 }
 
 // ---------------------------------------------------------------------------

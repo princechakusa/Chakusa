@@ -1,10 +1,37 @@
 ---
-// Standard loading / sign-in / error states used with pageStates() from
-// scripts/dashboardApi.ts. Page content goes in an element marked
-// data-page-content hidden.
-interface Props { loadingText?: string; backHref?: string }
-const { loadingText = "Opening this secure workspace...", backHref = "/dashboard/business" } = Astro.props;
+// Standard states used with pageStates() from scripts/dashboardApi.ts:
+// loading, signed out, plan-locked feature, role without access, and a
+// retryable error. Page content goes in an element marked data-page-content.
+interface Props { loadingText?: string; backHref?: string; realm?: "business" | "client" }
+const { loadingText = "Opening this secure workspace...", backHref = "/dashboard/business", realm = "business" } = Astro.props;
 ---
-<section class="dashboard-loading" data-page-loading><span></span><p>{loadingText}</p></section>
-<section class="dashboard-auth-required" data-page-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
-<section class="dashboard-auth-required" data-page-error hidden><h1>This page is unavailable</h1><p></p><a href={backHref}>Go back</a></section>
+<section class="dashboard-loading" data-page-loading aria-live="polite"><span></span><p>{loadingText}</p></section>
+<section class="state-card" data-page-auth hidden>
+  <div class="state-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3Z"/></svg></div>
+  <h1>Please sign in again</h1>
+  <p>Your secure session has ended. Sign in to pick up where you left off.</p>
+  <div class="state-card__actions"><a class="state-card__primary" href="/login">Sign in</a></div>
+</section>
+{realm === "business" && (
+  <section class="state-card state-card--locked" data-page-locked hidden>
+    <div class="state-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.9 6.2 6.8.7-5.1 4.6 1.5 6.7L12 16.8 5.9 20.2l1.5-6.7L2.3 8.9l6.8-.7Z"/></svg></div>
+    <p class="state-card__eyebrow">Upgrade to unlock</p>
+    <h1 data-locked-title>This feature is on a paid plan</h1>
+    <p data-locked-pitch></p>
+    <ul class="state-card__benefits" data-locked-benefits></ul>
+    <div class="state-card__actions"><a class="state-card__primary" href="/dashboard/business/plan">Compare plans</a><a class="state-card__secondary" href="/dashboard/business">Back to overview</a></div>
+    <small>Plans are purchased in the Chakusa app through the App Store or Google Play. Your data is kept and everything unlocks as soon as you upgrade.</small>
+  </section>
+)}
+<section class="state-card" data-page-denied hidden>
+  <div class="state-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5Zm0 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm-3 9c0-1.7 1.3-3 3-3s3 1.3 3 3Z"/></svg></div>
+  <h1>You don't have access to this</h1>
+  <p></p>
+  <div class="state-card__actions"><a class="state-card__secondary" href={backHref}>Go back</a></div>
+</section>
+<section class="state-card" data-page-error hidden>
+  <div class="state-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"/></svg></div>
+  <h1>Something went wrong</h1>
+  <p></p>
+  <div class="state-card__actions"><button type="button" class="state-card__primary" data-retry hidden>Try again</button><a class="state-card__secondary" href={backHref}>Go back</a></div>
+</section>

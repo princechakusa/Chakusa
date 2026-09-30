@@ -9,24 +9,56 @@ import chakusaAppIcon from "../assets/chakusa-app-icon.png";
 interface Props { title: string; description: string; realm: "client" | "business" }
 const { title, description, realm } = Astro.props;
 ---
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#f8f9fb"/><meta name="robots" content="noindex,nofollow"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://auth.chakusarecovery.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; upgrade-insecure-requests"/><meta name="referrer" content="no-referrer"/><link rel="icon" href={chakusaAppIcon.src} type="image/png"/><SeoHead {title} {description}/><title>{title}</title></head>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#f8f9fb"/><meta name="robots" content="noindex,nofollow"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://auth.chakusarecovery.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; upgrade-insecure-requests"/><meta name="referrer" content="no-referrer"/><link rel="icon" href={chakusaAppIcon.src} type="image/png"/><SeoHead {title} {description}/><title>{title}</title><script is:inline src="/scripts/session-gate.js"></script></head>
 <body class="dashboard-body" data-dashboard-realm={realm}>
   <a class="skip-link" href="#dashboard-main">Skip to dashboard</a>
-  <header class="dashboard-topbar"><a class="dashboard-brand" href="/" aria-label="Chakusa home"><img src={chakusaAppIcon.src} alt="" width="34" height="34"/><strong>CHAKUSA</strong></a><div class="dashboard-security"><span></span> Secure session</div><button class="dashboard-signout" type="button" data-signout>Sign out</button></header>
-  <div class="dashboard-frame"><aside class="dashboard-sidebar"><slot name="sidebar"/><div class="dashboard-sidebar__foot"><small>Signed in through</small><strong>Cloudflare protected access</strong></div></aside><main id="dashboard-main" class="dashboard-main"><slot/></main></div>
+  <header class="dashboard-topbar">
+    <a class="dashboard-brand" href={realm === "business" ? "/dashboard/business" : "/dashboard/client"} aria-label="Chakusa dashboard home"><img src={chakusaAppIcon.src} alt="" width="34" height="34"/><strong>CHAKUSA</strong></a>
+    <div class="topbar-context" data-topbar-context hidden><strong data-topbar-business></strong><span class="topbar-plan" data-topbar-plan hidden></span></div>
+    <div class="topbar-user">
+      <div class="topbar-user__who" data-topbar-user hidden><strong data-topbar-name></strong><small data-topbar-role></small></div>
+      <button class="dashboard-signout" type="button" data-signout>Sign out</button>
+    </div>
+  </header>
+  <div class="dashboard-frame"><aside class="dashboard-sidebar"><slot name="sidebar"/></aside><main id="dashboard-main" class="dashboard-main"><slot/></main></div>
   <script>
     import { can } from "../scripts/capabilities.js";
-    document.querySelector<HTMLButtonElement>("[data-signout]")?.addEventListener("click",async()=>{const button=document.querySelector<HTMLButtonElement>("[data-signout]");if(button)button.disabled=true;try{await fetch("https://auth.chakusarecovery.com/v1/logout",{method:"POST",credentials:"include"});}finally{location.replace("/login");}});
-    // #22 — usability nav gating. Hides sidebar links whose capability the
-    // signed-in member's role does not hold. The gateway + API still enforce
-    // access on every request regardless of what the nav shows.
-    if(document.body.dataset.dashboardRealm==="business"){
-      fetch("https://auth.chakusarecovery.com/v1/dashboard",{credentials:"include"})
-        .then(r=>r.ok?r.json():null).catch(()=>null)
-        .then(data=>{const role=data?.account?.role??null;if(!role)return;
-          for(const link of document.querySelectorAll<HTMLElement>("[data-nav-cap]")){
-            const cap=link.dataset.navCap;if(cap&&!can(role,cap))link.hidden=true;
-          }});
-    }
+    import { loadIdentity, loadPlan } from "../scripts/dashboardApi";
+    document.querySelector<HTMLButtonElement>("[data-signout]")?.addEventListener("click", async () => {
+      const button = document.querySelector<HTMLButtonElement>("[data-signout]");
+      if (button) button.disabled = true;
+      try { await fetch("https://auth.chakusarecovery.com/v1/logout", { method: "POST", credentials: "include" }); } finally { location.replace("/login"); }
+    });
+    // Usability only: hide links the member's role can't use and badge
+    // features the plan doesn't include. The gateway + API enforce access.
+    const text = (selector: string, value: string) => { const node = document.querySelector<HTMLElement>(selector); if (node) node.textContent = value; };
+    (async () => {
+      const identity = await loadIdentity().catch(() => null);
+      if (!identity) return;
+      const user = identity.account?.user ?? identity.account ?? {};
+      if (typeof user.fullName === "string" || typeof user.email === "string") {
+        text("[data-topbar-name]", user.fullName || user.email);
+        text("[data-topbar-role]", identity.role ? identity.role.charAt(0) + identity.role.slice(1).toLowerCase() : "Client");
+        document.querySelector<HTMLElement>("[data-topbar-user]")!.hidden = false;
+      }
+      if (document.body.dataset.dashboardRealm !== "business") return;
+      if (typeof identity.business?.name === "string") { text("[data-topbar-business]", identity.business.name); document.querySelector<HTMLElement>("[data-topbar-context]")!.hidden = false; }
+      for (const link of document.querySelectorAll<HTMLElement>("[data-nav-cap]")) {
+        const cap = link.dataset.navCap;
+        if (cap && !can(identity.role, cap)) link.hidden = true;
+      }
+      const plan = await loadPlan();
+      if (!plan) return;
+      const planName = String(plan.plan || "FREE");
+      const chip = document.querySelector<HTMLElement>("[data-topbar-plan]");
+      if (chip) { chip.textContent = `${planName.charAt(0)}${planName.slice(1).toLowerCase()} plan`; chip.dataset.plan = planName.toLowerCase(); chip.hidden = false; }
+      const PRO_FEATURES = new Set(["automation", "outboundMessaging"]);
+      for (const link of document.querySelectorAll<HTMLElement>("[data-nav-feature]")) {
+        const feature = link.dataset.navFeature!;
+        if (plan.features?.[feature] !== false) continue;
+        const badge = link.querySelector<HTMLElement>("[data-nav-badge]");
+        if (badge) { badge.textContent = PRO_FEATURES.has(feature) ? "Pro" : "Business"; badge.hidden = false; }
+      }
+    })();
   </script>
 </body></html>

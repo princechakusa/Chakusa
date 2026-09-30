@@ -16,10 +16,9 @@
 interface Props { kind: "quote" | "invoice" }
 const { kind } = Astro.props;
 const quote = kind === "quote";
+import PageStates from "./PageStates.astro";
 ---
-<section class="dashboard-loading" data-doc-loading><span></span><p>Opening this secure document...</p></section>
-<section class="dashboard-auth-required" data-doc-auth hidden><h1>Sign in required</h1><p>Your secure session is missing or has expired.</p><a href="/login">Return to sign in</a></section>
-<section class="dashboard-auth-required" data-doc-error hidden><h1>This document is unavailable</h1><p data-doc-error-text></p><a href={quote ? "/dashboard/business/quotes" : "/dashboard/business/invoices"}>Back to {quote ? "quotes" : "invoices"}</a></section>
+<PageStates loadingText="Opening this document..." backHref={quote ? "/dashboard/business/quotes" : "/dashboard/business/invoices"} />
 <div class="dashboard-content sales-doc" data-doc data-kind={kind} hidden>
   <header class="dashboard-welcome">
     <div>
@@ -98,6 +97,7 @@ const quote = kind === "quote";
 
 <script>
   import { can } from "../../scripts/capabilities.js";
+  import { api, AuthRequired, AccessDenied, pageStates } from "../../scripts/dashboardApi";
   import { buildDocumentPayload, validateDocumentForm, deriveTaxRatePercent, safeHttpsUrl, isUuid, MAX_BODY_BYTES, MAX_LINES, type LineInput } from "../../scripts/salesDocuments.js";
 
   const gateway = "https://auth.chakusarecovery.com";
@@ -110,19 +110,7 @@ const quote = kind === "quote";
   const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
   const setText = (selector: string, value: string) => { const node = $(selector); if (node) node.textContent = value; };
 
-  class AuthRequired extends Error {}
-  const api = async (path: string, init: { method?: string; body?: unknown } = {}) => {
-    const response = await fetch(`${gateway}${path}`, {
-      method: init.method ?? "GET",
-      credentials: "include",
-      headers: init.body !== undefined ? { "content-type": "application/json" } : undefined,
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (response.status === 401) throw new AuthRequired();
-    if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "That could not be completed. Please try again.");
-    return payload;
-  };
+  const pageState = pageStates();
 
   const params = new URLSearchParams(location.search);
   const rawId = params.get("id");
@@ -145,11 +133,8 @@ const quote = kind === "quote";
   const label = (value: unknown) => String(value ?? "").replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   const fail = (error: unknown) => {
-    $("[data-doc-loading]")!.hidden = true;
     root.hidden = true;
-    if (error instanceof AuthRequired) { $("[data-doc-auth]")!.hidden = false; return; }
-    setText("[data-doc-error-text]", error instanceof Error ? error.message : "This document could not be opened.");
-    $("[data-doc-error]")!.hidden = false;
+    pageState.fail(error, () => location.reload());
   };
 
   // ---- Line item editor ------------------------------------------------------
@@ -413,7 +398,7 @@ const quote = kind === "quote";
   const open = async (id: string) => {
     const doc = await api(`${base}/${id}`);
     renderDocument(doc);
-    $("[data-doc-loading]")!.hidden = true;
+    document.querySelector<HTMLElement>("[data-page-loading]")!.hidden = true;
     root.hidden = false;
   };
 
@@ -461,13 +446,13 @@ const quote = kind === "quote";
     try {
       const identity = await fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.status === 401 ? Promise.reject(new AuthRequired()) : r.ok ? r.json() : Promise.reject(new Error("Your dashboard is temporarily unavailable. Please try again shortly."))));
       role = typeof identity?.account?.role === "string" ? identity.account.role : null;
-      if (!can(role, manageCap)) throw new Error(`Your role cannot manage ${kind === "quote" ? "quotes" : "invoices"}. Ask the business owner for access.`);
+      if (!can(role, manageCap)) throw new AccessDenied(`Your role cannot manage ${kind === "quote" ? "quotes" : "invoices"}.`, 403);
       await loadCustomers();
       if (documentId) { await open(documentId); return; }
       if (rawId) throw new Error("This link is not valid.");
       if (newType === null) { location.replace(listPage); return; }
       startEditor("create");
-      $("[data-doc-loading]")!.hidden = true;
+      document.querySelector<HTMLElement>("[data-page-loading]")!.hidden = true;
       root.hidden = false;
     } catch (error) { fail(error); }
   };

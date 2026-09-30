@@ -60,6 +60,7 @@ export interface SubscriptionStatusResponse {
     financialManagement: boolean;
     marketplaceDiscovery: boolean;
     accountingIntegrations: boolean;
+    inventory: boolean;
   };
   usage: {
     leads: MonthlyUsage;
@@ -161,6 +162,7 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
       financialManagement: hasFeature(plan, "FINANCIAL_MANAGEMENT"),
       marketplaceDiscovery: hasFeature(plan, "MARKETPLACE_DISCOVERY"),
       accountingIntegrations: hasFeature(plan, "ACCOUNTING_INTEGRATIONS"),
+      inventory: hasFeature(plan, "INVENTORY"),
     },
     usage: {
       leads: { current: leadsCurrent, limit: limits.leadsPerMonth, period: "month", resetsAt },

@@ -15,6 +15,8 @@ interface Mock { calls: { method: string; path: string; body: any }[] }
 async function mockGateway(page: Page, role: "OWNER" | "ADMIN" | "STAFF" | null, routes: Record<string, Handler>, realm: "business" | "client" = "business"): Promise<Mock> {
   const mock: Mock = { calls: [] };
   const base: Record<string, Handler> = {
+    "GET /v1/session": () => ({ realm, refreshed: false, expiresIn: 800 }),
+    "GET /v1/business/subscription": () => ({ plan: "BUSINESS", status: "ACTIVE", features: { invoicing: true, quotesEstimates: true, inventory: true, automation: true, aiReceptionist: true, teamManagement: true } }),
     "GET /v1/dashboard": () => realm === "client"
       ? { realm: "client", account: { user: { id: UUID(9), email: "c@example.com" } }, dashboard: {}, legal: { pending: [] } }
       : { realm: "business", account: { role, user: { id: UUID(1), email: "owner@example.com", fullName: "Olivia Owner", hasPassword: true } }, business: { name: "Test Salon", currency: "USD", onboardingCompletedAt: "2026-01-01T00:00:00Z" }, dashboard: { businessHealth: { score: 80 }, recentActivity: [] }, legal: { pending: [] } },
@@ -134,7 +136,7 @@ test.describe("business dashboard", () => {
   test("an invalid document id never reaches the gateway", async ({ page }) => {
     const mock = await mockGateway(page, "OWNER", { "GET /v1/business/customers": () => ({ items: [] }) });
     await page.goto("/dashboard/business/invoices/document/?id=../../admin");
-    await expect(page.locator("[data-doc-error]")).toBeVisible();
+    await expect(page.locator("[data-page-error]")).toBeVisible();
     expect(mock.calls.some((c) => c.path.includes("admin"))).toBe(false);
   });
 
@@ -260,5 +262,55 @@ test.describe("client dashboard", () => {
     await expect(page.getByRole("button", { name: "Cancel booking" })).toHaveCount(1);
     await expect(page.locator('a[href="/b/test-salon"]')).toHaveCount(1);
     await expect(page.locator('a[href*="bad"]')).toHaveCount(0);
+  });
+});
+
+test.describe("plan-aware states and session safety", () => {
+  test("a feature outside the plan shows the upgrade screen, never 'sign in'", async ({ page }) => {
+    await mockGateway(page, "OWNER", {
+      "GET /v1/business/subscription": () => ({ plan: "FREE", status: "ACTIVE", features: { invoicing: false, quotesEstimates: false, automation: false } }),
+      "GET /v1/business/invoices": () => [403, { error: "Invoicing is available on the Business plan", code: "FEATURE_NOT_AVAILABLE", requiredPlan: "BUSINESS", feature: "INVOICING" }],
+    });
+    await page.goto("/dashboard/business/invoices/");
+    await expect(page.getByRole("heading", { name: "Invoicing is part of the Business plan" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Compare plans" })).toBeVisible();
+    await expect(page.getByText("Please sign in again")).toBeHidden();
+    await expect(page.locator('.dashboard-sidebar a[href="/dashboard/business/invoices"] [data-nav-badge]')).toHaveText("Business");
+    await expect(page.locator('.dashboard-sidebar a[href="/dashboard/business/automation"] [data-nav-badge]')).toHaveText("Pro");
+    await expect(page.locator("[data-topbar-plan]")).toHaveText("Free plan");
+  });
+
+  test("a real sign-out shows the sign-in screen", async ({ page }) => {
+    await mockGateway(page, "OWNER", { "GET /v1/business/customers": () => [401, { error: "Your session has expired." }] });
+    await page.goto("/dashboard/business/customers/");
+    await expect(page.getByRole("heading", { name: "Please sign in again" })).toBeVisible();
+  });
+
+  test("an outage offers a retry that recovers", async ({ page }) => {
+    let calls = 0;
+    await mockGateway(page, "OWNER", { "GET /v1/business/leads": () => (++calls === 1 ? [503, { error: "This dashboard service is temporarily unavailable." }] : { items: [] }) });
+    await page.goto("/dashboard/business/leads/");
+    await expect(page.getByRole("heading", { name: "Something went wrong" })).toBeVisible();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { name: "No leads yet" })).toBeVisible();
+  });
+
+  test("the session is checked once, before any other gateway request", async ({ page }) => {
+    const order: string[] = [];
+    const mock = await mockGateway(page, "OWNER", { "GET /v1/business/attention": () => ({ items: [] }), "GET /v1/business/appointments": () => [], "GET /v1/business/services": () => [] });
+    page.on("request", (request) => { if (request.url().startsWith("https://auth.chakusarecovery.com/")) order.push(new URL(request.url()).pathname); });
+    await page.goto("/dashboard/business/");
+    await expect(page.locator("[data-greeting]")).toContainText("Olivia");
+    const sessionCalls = mock.calls.filter((c) => c.path === "/v1/session").length;
+    expect(sessionCalls).toBe(1);
+    expect(order[0]).toBe("/v1/session");
+    expect(order.filter((path) => path !== "/v1/session").length).toBeGreaterThan(2);
+  });
+
+  test("empty lists explain what to do next", async ({ page }) => {
+    await mockGateway(page, "OWNER", { "GET /v1/business/customers": () => ({ items: [] }) });
+    await page.goto("/dashboard/business/customers/");
+    await expect(page.getByRole("heading", { name: "No customers yet" })).toBeVisible();
+    await expect(page.locator("[data-empty] [data-create-toggle]")).toBeVisible();
   });
 });

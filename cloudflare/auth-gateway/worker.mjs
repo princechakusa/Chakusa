@@ -246,6 +246,31 @@ async function authorizedSession(request, env) {
   return refreshSession(request, env);
 }
 
+// Seconds left on an access JWT, read from its (unverified) payload purely
+// for timing. The API still verifies every token; this never grants access.
+function accessSecondsLeft(accessToken) {
+  try {
+    const part = accessToken.split(".")[1];
+    const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp - Math.floor(Date.now() / 1000) : 0;
+  } catch { return 0; }
+}
+
+// GET /v1/session: the single place the dashboard renews a session. The
+// API revokes the whole token family when a refresh token is presented
+// twice, so the browser calls this once (serialised across tabs) before any
+// other gateway request; it refreshes only when the access token is missing
+// or within 90 s of expiry, so parallel page requests never race a refresh.
+async function sessionCheck(request, env, origin) {
+  const access = decodeAccessCookie(readCookie(request.headers.get("cookie"), ACCESS_COOKIE));
+  const left = access ? accessSecondsLeft(access.accessToken) : 0;
+  if (access && left > 90) return json({ realm: access.realm, refreshed: false, expiresIn: left }, 200, origin);
+  let session;
+  try { session = await refreshSession(request, env); } catch { session = null; }
+  if (!session) return json({ error: "Your session has expired." }, 401, origin, { cookies: clearSessionCookies() });
+  return json({ realm: session.realm, refreshed: true, expiresIn: Math.min(accessSecondsLeft(session.accessToken), 900) }, 200, origin, { cookies: session.cookies });
+}
+
 async function dashboardBundle(request, env, origin) {
   let session;
   try { session = await authorizedSession(request, env); } catch { session = null; }
@@ -449,13 +474,28 @@ async function protectedProxy(request, env, origin, route) {
   }
   if (!result.response.ok) {
     const upstreamMessage = upstreamErrorMessage(result.payload);
-    return json({ error: result.response.status >= 500 ? "This dashboard service is temporarily unavailable." : upstreamMessage || "Check the details and try again." }, result.response.status >= 500 ? 503 : result.response.status, origin, { cookies: session.cookies });
+    const hints = result.response.status >= 500 ? {} : upstreamErrorHints(result.payload);
+    return json({ error: result.response.status >= 500 ? "This dashboard service is temporarily unavailable." : upstreamMessage || "Check the details and try again.", ...hints }, result.response.status >= 500 ? 503 : result.response.status, origin, { cookies: session.cookies });
   }
   return json(result.payload, result.response.status === 201 ? 201 : 200, origin, { cookies: session.cookies });
 }
 
 // The API's error shape is { error: { code, message } }. Its messages are
 // written for end users; 5xx bodies are never surfaced (see callers).
+// Machine-readable error hints the dashboard needs to show the right state
+// (e.g. FEATURE_NOT_AVAILABLE -> "upgrade" rather than "sign in"). Only
+// strictly-shaped values pass through; details never leak anything else.
+function upstreamErrorHints(payload) {
+  const error = payload && typeof payload === "object" && payload.error && typeof payload.error === "object" ? payload.error : null;
+  if (!error) return {};
+  const hints = {};
+  if (typeof error.code === "string" && /^[A-Z_]{3,60}$/.test(error.code)) hints.code = error.code;
+  const details = error.details && typeof error.details === "object" ? error.details : {};
+  if (details.requiredPlan === "PRO" || details.requiredPlan === "BUSINESS") hints.requiredPlan = details.requiredPlan;
+  if (typeof details.feature === "string" && /^[A-Z_]{3,60}$/.test(details.feature)) hints.feature = details.feature;
+  return hints;
+}
+
 function upstreamErrorMessage(payload) {
   if (!payload || typeof payload !== "object") return null;
   const message = payload.error && typeof payload.error === "object" ? payload.error.message : payload.message;
@@ -502,7 +542,7 @@ async function logout(request, env, origin) {
   return json({ ok: true }, 200, origin, { cookies: clearSessionCookies() });
 }
 
-export const internals = { upstreamErrorMessage, ACCOUNT_ACTIONS, decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };
+export const internals = { upstreamErrorHints, accessSecondsLeft, upstreamErrorMessage, ACCOUNT_ACTIONS, decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };
 
 export default {
   async fetch(request, env) {
@@ -517,6 +557,7 @@ export default {
     if (url.pathname === "/v1/google" && request.method === "POST") return googleAuthenticate(request, env, origin);
     if (url.pathname === "/v1/forgot-password" && request.method === "POST") return passwordRecovery(request, env, origin, "forgot-password");
     if (url.pathname === "/v1/reset-password" && request.method === "POST") return passwordRecovery(request, env, origin, "reset-password");
+    if (url.pathname === "/v1/session" && request.method === "GET") return sessionCheck(request, env, origin);
     if (url.pathname === "/v1/dashboard" && request.method === "GET") return dashboardBundle(request, env, origin);
     if (url.pathname === "/v1/business" && request.method === "PATCH") return protectedMutation(request, env, origin, "business", "/business", "PATCH");
     if (url.pathname === "/v1/business/onboarding/complete" && request.method === "POST") return protectedMutation(request, env, origin, "business", "/business/onboarding/complete", "POST");

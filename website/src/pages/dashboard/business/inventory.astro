@@ -5,7 +5,7 @@ import DashboardCollection from "../../../components/dashboard/DashboardCollecti
 ---
 <DashboardLayout title="Inventory | Chakusa" description="Track stock levels and the audited movement ledger." realm="business">
   <DashboardNav slot="sidebar" realm="business" active="inventory" />
-  <DashboardCollection
+  <DashboardCollection emptyTitle="No stock items yet" emptyText="Add the products and supplies you want to track, and Chakusa will warn you before you run low."
     realm="business"
     eyebrow="Stock"
     title="Inventory"

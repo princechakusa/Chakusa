@@ -1,21 +1,7 @@
-name: Deploy website to GitHub Pages
+name: Build website for Cloudflare Pages
 
-# Builds and deploys the static marketing site (chakusarecovery.com) to
-# GitHub Pages, plus a small auth-free export of the mobile app's public-link
-# screens (/b, /r, /q, /i, /team-invite - see mobile/src/domain/publicRoutes.ts)
-# published over this static host's 404.html, since GitHub Pages preserves
-# the original URL when it falls back to 404.html. That lets those links
-# render for real instead of a bare 404; any other unrecognized path (e.g. a
-# typo) gets that same bundle's own "page not found" state (see
-# mobile/App.tsx's PUBLIC_LINKS_ONLY_BUILD) instead of website/'s own
-# src/pages/404.astro, which this overwrites only in the deployed artifact
-# (still used as-is by `npm run dev` / `npm run preview`). No API tokens
-# needed: GitHub Pages deploys are authorized via the built-in GITHUB_TOKEN
-# and this repo's own Pages permissions, not an external credential.
-#
-# One-time manual step required before this can succeed: in this repo's
-# Settings -> Pages -> "Build and deployment" -> Source, select
-# "GitHub Actions" (not a branch).
+# Cloudflare Pages builds and deploys automatically from the private repository.
+# This workflow validates the same website and preserves its public-link fallback.
 on:
   push:
     branches: [master]
@@ -29,8 +15,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -110,18 +94,8 @@ jobs:
           cp mobile/dist-public-links/favicon.ico website/dist/favicon.ico
           cp mobile/dist-public-links/index.html website/dist/404.html
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: website
           path: website/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4

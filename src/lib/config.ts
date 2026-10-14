@@ -197,6 +197,11 @@ export const envSchema = z.object({
   // staging deployment can never accidentally treat as-yet-untested config
   // as production-authoritative.
   APPLE_STORE_ENVIRONMENT: z.enum(["SANDBOX", "PRODUCTION"]).default("SANDBOX"),
+  // Owner-granted complimentary plans, e.g. "owner@example.com:BUSINESS".
+  // Comma-separated email:PLAN pairs, applied at startup to businesses the
+  // email owns. Never overrides an App Store / Google Play subscription and
+  // never lowers a plan. See src/lib/billing/complimentaryPlans.ts.
+  COMPLIMENTARY_PLAN_GRANTS: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
   // Comma-separated base64-DER Apple root CA certificate(s) this deployment
   // trusts to anchor signed-transaction/notification verification — see
   // src/lib/billing/jws.ts's doc comment for why this is a required

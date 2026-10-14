@@ -4,6 +4,7 @@ import { prisma } from "./lib/prisma.js";
 import { initSentry, captureUnexpectedError, flushSentry } from "./lib/sentry.js";
 import { ensureDefaultLegalDocuments } from "./modules/legal/defaultLegalDocuments.js";
 import { ensureBootstrapAIModel } from "./lib/ai/bootstrapModel.js";
+import { applyComplimentaryPlans } from "./lib/billing/complimentaryPlans.js";
 
 // Initialized before anything else so a failure during buildApp() itself
 // (e.g. assertValidAppleRootCertificates throwing at boot) is still
@@ -65,6 +66,15 @@ async function main() {
     if (model) app.log.info(model, "registered bootstrap AI model");
   } catch (err) {
     app.log.error(err, "could not register bootstrap AI model");
+    captureUnexpectedError(err);
+  }
+
+  // Owner-granted complimentary plans (COMPLIMENTARY_PLAN_GRANTS).
+  try {
+    const applied = await applyComplimentaryPlans(config.COMPLIMENTARY_PLAN_GRANTS);
+    if (applied.length) app.log.info({ applied }, "applied complimentary plans");
+  } catch (err) {
+    app.log.error(err, "could not apply complimentary plans");
     captureUnexpectedError(err);
   }
 

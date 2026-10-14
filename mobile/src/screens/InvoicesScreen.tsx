@@ -60,6 +60,7 @@ export function InvoicesScreen({ navigation }: Props) {
   const header = (
     <M3Header
       businessName="Invoices"
+      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
       hasNotifications={overdueCount > 0}

@@ -32,7 +32,7 @@ interface AppConfigDefinition {
 }
 
 export const APP_CONFIG_DEFINITIONS = [
-  { key: "app.automation_enabled", kind: "boolean", default: false, label: "Automation screens", description: "Show automation in the business app. The backend's automation_enabled switch and plan entitlements still decide what can run." },
+  { key: "app.automation_enabled", kind: "boolean", default: true, label: "Automation screens", description: "Show automation in the business app. The backend's automation_enabled switch and plan entitlements still decide what can run." },
   { key: "app.billing_enabled", kind: "boolean", default: true, label: "In-app purchases", description: "Show App Store / Google Play subscription purchase. Store product IDs still come from the build." },
   { key: "app.email_auth_enabled", kind: "boolean", default: false, label: "Email sign-in", description: "Offer email + password sign-in and password reset. Only enable once outbound email is configured." },
   { key: "app.google_sign_in_enabled", kind: "boolean", default: true, label: "Google sign-in", description: "Offer Google sign-in. Can only hide it; a build without Google configured never shows it." },

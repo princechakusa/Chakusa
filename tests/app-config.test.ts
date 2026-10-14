@@ -31,7 +31,7 @@ describe("runtime app config", () => {
     const body = res.json();
     expect(body.schemaVersion).toBe(1);
     // Matches today's production builds: automation hidden, email auth off.
-    expect(body.features).toEqual({ automation: false, billing: true, emailAuth: false, googleSignIn: true, appleSignIn: true });
+    expect(body.features).toEqual({ automation: true, billing: true, emailAuth: false, googleSignIn: true, appleSignIn: true });
     expect(body.links.privacyUrl).toBe("https://chakusarecovery.com/privacy");
     expect(body.app).toEqual({ minSupportedVersion: null, notice: null, maintenance: false });
     expect(body.company).toMatchObject({ copyrightHolder: "Chakusa", copyrightStartYear: 2026, legalName: null });
@@ -40,11 +40,11 @@ describe("runtime app config", () => {
 
   it("lets a settings manager change a value, audited in the same transaction, and the apps see it", async () => {
     const a = await admin("SUPER_ADMIN");
-    const res = await app.inject({ method: "PATCH", url: "/admin/app-config", headers: headers(a.token, a.csrf), payload: { key: "app.automation_enabled", value: true } });
+    const res = await app.inject({ method: "PATCH", url: "/admin/app-config", headers: headers(a.token, a.csrf), payload: { key: "app.automation_enabled", value: false } });
     expect(res.statusCode).toBe(200);
-    expect((await app.inject({ method: "GET", url: "/app-config" })).json().features.automation).toBe(true);
+    expect((await app.inject({ method: "GET", url: "/app-config" })).json().features.automation).toBe(false);
     const audit = await prisma.adminAuditLog.findFirst({ where: { action: "APP_CONFIG_UPDATED", targetId: "app.automation_enabled" } });
-    expect(audit).toMatchObject({ adminEmail: a.email, oldValue: { value: false }, newValue: { value: true, reset: false } });
+    expect(audit).toMatchObject({ adminEmail: a.email, oldValue: { value: true }, newValue: { value: false, reset: false } });
   });
 
   it("resets a value to its default with null", async () => {

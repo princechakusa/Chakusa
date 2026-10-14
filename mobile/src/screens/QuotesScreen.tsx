@@ -72,6 +72,7 @@ export function QuotesScreen({ navigation }: Props) {
   const header = (
     <M3Header
       businessName="Quotes & Estimates"
+      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })}
       hasNotifications={draftCount > 0}

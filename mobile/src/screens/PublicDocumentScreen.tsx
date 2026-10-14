@@ -61,7 +61,7 @@ export function PublicDocumentScreen({ page }: { page: PublicPage }) {
   return <SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.scroll}><View style={styles.document}>
     <Text style={styles.brand}>CHAKUSA</Text>
     {!staticConfig && view.kind === 'loading' ? <View style={styles.centered}><ActivityIndicator color={colors.primary} accessibilityLabel="Loading document" /></View> : null}
-    {!staticConfig && view.kind === 'not-found' ? <View style={styles.centered}><Text style={styles.body}>This document hasn't been published yet.</Text></View> : null}
+    {!staticConfig && view.kind === 'not-found' ? <View style={styles.centered}><Text style={styles.body}>{page === 'privacy' ? 'Our Privacy Policy' : 'Our Terms of Service'} is published on the Chakusa website.</Text><Link href={page === 'privacy' ? PRIVACY_URL : TERMS_URL} label={page === 'privacy' ? 'Read the Privacy Policy' : 'Read the Terms of Service'} primary /></View> : null}
     {!staticConfig && view.kind === 'network-error' ? <View style={styles.centered}><Text style={styles.body}>We couldn't load this page. Check your connection and try again.</Text><Link href="#" label="Try again" onPressOverride={() => void load()} primary /></View> : null}
     {staticConfig || loaded ? <>
       <Text accessibilityRole="header" style={styles.title}>{heading}</Text>

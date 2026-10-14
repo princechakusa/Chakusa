@@ -1,15 +1,23 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ErrorState, LoadingState, Screen } from '../../components/ui';
-import type { LegalDocumentDto } from '../../apiTypes';
+import type { LegalDocumentDto, LegalDocumentType } from '../../apiTypes';
+import { APPROVED_PUBLIC_DESTINATIONS } from '../../domain/trustSettings';
 import { authColors, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { legalApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLegalDocument'>;
+
+const WEBSITE_LEGAL_URLS: Partial<Record<LegalDocumentType, string>> = {
+  TERMS_OF_SERVICE: APPROVED_PUBLIC_DESTINATIONS.terms,
+  PRIVACY_POLICY: APPROVED_PUBLIC_DESTINATIONS.privacy,
+  COOKIE_POLICY: APPROVED_PUBLIC_DESTINATIONS.cookies,
+  AI_DISCLOSURE: APPROVED_PUBLIC_DESTINATIONS.aiDisclosure,
+};
 
 // PROGRAM 2 LOOP 7: read-only legal document viewer. Uses the public
 // `/legal/documents/:type` route - no account required - so it works from
@@ -23,19 +31,36 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
   const [doc, setDoc] = useState<LegalDocumentDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const load = () => {
     setLoading(true);
     setError(null);
+    setNotFound(false);
     legalApi.document(type)
       .then(setDoc)
-      .catch((caught) => setError(caught instanceof ApiError ? caught.message : 'Could not load this document.'))
+      .catch((caught) => {
+        if (caught instanceof ApiError && caught.status === 404) setNotFound(true);
+        setError(caught instanceof ApiError ? caught.message : 'Could not load this document.');
+      })
       .finally(() => setLoading(false));
   };
 
   useEffect(load, [type]);
 
   if (loading) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
+  // Not published through the Legal Platform yet: the same document is public on the website.
+  const websiteUrl = WEBSITE_LEGAL_URLS[type];
+  if (notFound && websiteUrl) {
+    return (
+      <Screen backgroundColor={authColors.bg}>
+        <Text style={styles.body}>This document is published on the Chakusa website.</Text>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(websiteUrl)} style={styles.link}>
+          <Text style={styles.linkText}>Open on chakusarecovery.com</Text>
+        </Pressable>
+      </Screen>
+    );
+  }
   if (error || !doc) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
@@ -58,4 +83,6 @@ const styles = StyleSheet.create({
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
   summary: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
   body: { ...authType.body },
+  link: { marginTop: authSpace.md, paddingVertical: authSpace.sm, paddingHorizontal: authSpace.md, borderRadius: 999, backgroundColor: authColors.coral, alignSelf: 'flex-start' },
+  linkText: { color: authColors.onCoral, fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });

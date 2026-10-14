@@ -16,12 +16,12 @@ const description = "How Chakusa's AI features actually work, what they can and 
 // gaps front and center, unchanged from the prior draft: the
 // customer-facing assistant has no consent gate today, and admins can
 // read raw, unredacted AI transcripts (docs/PRIVACY_ENGINEERING_FOLLOWUPS.md).
-const lastUpdated = "Draft dated 2026-09-01";
+const lastUpdated = "2026-10-14";
 
 const hero = {
   title: "How Chakusa uses AI",
   lede: "Where AI shows up, exactly which actions it can take, what it cannot do, and an honest account of what's still a gap; not a disclosure written to sound resolved.",
-  status: "Engineering draft; not attorney-reviewed",
+  status: "In effect",
   lastUpdated,
 };
 
@@ -61,7 +61,7 @@ const cannotDo = [
 ---
 <LegalLayout {title} {description} current="ai-disclosure" {hero}>
   <LegalDisclaimer slot="hero-disclaimer">
-    Grounded in a full audit of <code>src/lib/ai/*</code> as of 2026-09-01. See <a href="https://github.com/princechakusa/Chakusa/blob/master/docs/PRIVACY_ENGINEERING_FOLLOWUPS.md" target="_blank" rel="noopener">the two open engineering gaps</a> this page describes below rather than papering over: no consent gate on the customer-facing assistant, and unredacted admin visibility into AI transcripts.
+    Grounded in a full audit of <code>src/lib/ai/*</code> as of 2026-09-01. See the two open engineering gaps this page describes below rather than papering over: no consent gate on the customer-facing assistant, and unredacted admin visibility into AI transcripts.
   </LegalDisclaimer>
 
   <div class="aid__body"><div class="aid__shell aid__grid">

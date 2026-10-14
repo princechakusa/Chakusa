@@ -1,7 +1,6 @@
 ---
 import LegalLayout from "../components/legal/LegalLayout.astro";
 import LegalToc from "../components/legal/LegalToc.astro";
-import LegalDisclaimer from "../components/legal/LegalDisclaimer.astro";
 import LegalContactPanel from "../components/legal/LegalContactPanel.astro";
 
 const title = "Terms of Service | Chakusa";
@@ -12,7 +11,7 @@ const hero = {
   eyebrow: "Platform agreement",
   title: "Chakusa Terms of Service",
   lede: "The agreement governing how businesses and customers use Chakusa's marketplace, bookings, messaging, and business tools.",
-  status: "Engineering draft; not attorney-reviewed",
+  status: "In effect",
   lastUpdated,
 };
 
@@ -40,9 +39,6 @@ const clauses: Array<[string, string]> = [
 const toc: Array<[string, string]> = clauses.map(([clauseTitle], index) => [`term-${index + 1}`, `${index + 1}. ${clauseTitle}`]);
 ---
 <LegalLayout {title} {description} current="terms" {hero}>
-  <LegalDisclaimer slot="hero-disclaimer">
-    This page reflects the product's current terms as implemented. It has not been reviewed by a licensed attorney and shouldn't be relied on to establish legal enforceability.
-  </LegalDisclaimer>
 
   <div class="terms__body"><div class="terms__shell terms__grid">
     <aside class="terms__toc-col">

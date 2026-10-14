@@ -2,6 +2,8 @@ import { buildApp } from "./app.js";
 import { config } from "./lib/config.js";
 import { prisma } from "./lib/prisma.js";
 import { initSentry, captureUnexpectedError, flushSentry } from "./lib/sentry.js";
+import { ensureDefaultLegalDocuments } from "./modules/legal/defaultLegalDocuments.js";
+import { ensureBootstrapAIModel } from "./lib/ai/bootstrapModel.js";
 
 // Initialized before anything else so a failure during buildApp() itself
 // (e.g. assertValidAppleRootCertificates throwing at boot) is still
@@ -44,6 +46,26 @@ async function main() {
     captureUnexpectedError(err);
     await flushSentry();
     process.exit(1);
+  }
+
+  // Publish v1 of any Legal Platform document that has no version yet, so the
+  // apps never show "not published". Never edits an existing version, and a
+  // failure here is logged rather than taking the API down.
+  try {
+    const published = await ensureDefaultLegalDocuments(prisma);
+    if (published.length) app.log.info({ published }, "published default legal documents");
+  } catch (err) {
+    app.log.error(err, "could not ensure default legal documents");
+    captureUnexpectedError(err);
+  }
+
+  // Env-only AI setup: register OPENAI_DEFAULT_MODEL when no model is active yet.
+  try {
+    const model = await ensureBootstrapAIModel();
+    if (model) app.log.info(model, "registered bootstrap AI model");
+  } catch (err) {
+    app.log.error(err, "could not register bootstrap AI model");
+    captureUnexpectedError(err);
   }
 
   // Deployment platforms (Render, etc.) send SIGTERM before killing a

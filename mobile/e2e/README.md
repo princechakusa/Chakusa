@@ -38,6 +38,8 @@ $env:DIRECT_URL = $env:DATABASE_URL
 npx prisma migrate deploy
 $env:CHAKUSA_LOCAL_TEST_DATABASE_URL = $env:DATABASE_URL
 npx tsx scripts/seed-legal-documents.ts --confirm-seed-local
+# Email sign-in and automation default to off in /app-config, which overrides the build; turn them on
+npx tsx scripts/seed-e2e-app-config.ts --confirm-seed-local
 
 # 2. API in test mode, allowing the Expo web origin
 $env:NODE_ENV = "test"; $env:CORS_ALLOWED_ORIGINS = "http://localhost:8081"

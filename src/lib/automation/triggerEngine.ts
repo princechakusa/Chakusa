@@ -5,6 +5,7 @@ import { registerSubscriber, type DomainEvent } from "./domainEventBus.js";
 import { startWorkflowExecution } from "./workflowRuntime.js";
 import type { WorkflowDefinition } from "./workflowContracts.js";
 import { isTimeTriggered, nextWorkflowTriggerAt, workflowLocalDay } from "./workflowScheduling.js";
+import { utc } from "../sqlTime.js";
 
 const EVENT_TRIGGER_MAP: Record<string, string> = { CustomerCreated: "CUSTOMER_CREATED", CustomerUpdated: "CUSTOMER_UPDATED", LeadCreated: "LEAD_CREATED", LeadUpdated: "LEAD_UPDATED", AppointmentBooked: "APPOINTMENT_BOOKED", AppointmentUpdated: "APPOINTMENT_UPDATED", AppointmentCancelled: "APPOINTMENT_CANCELLED", AppointmentCompleted: "APPOINTMENT_COMPLETED", PaymentReceived: "PAYMENT_RECEIVED", PaymentRefunded: "PAYMENT_REFUNDED", ReviewSubmitted: "REVIEW_SUBMITTED" };
 
@@ -43,7 +44,7 @@ export async function initializeWorkflowSchedules() {
 
 export async function scheduleTimeTriggers(now = new Date(), batchSize = 100) {
   const owner = randomUUID(); const leaseUntil = new Date(now.getTime() + 60_000);
-  const claimed = await prisma.$transaction(async (tx) => tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`WITH candidates AS (SELECT id FROM workflows WHERE status='PUBLISHED' AND schedule_enabled=true AND next_trigger_at <= ${now} AND (schedule_lease_expires_at IS NULL OR schedule_lease_expires_at < ${now}) ORDER BY next_trigger_at,id FOR UPDATE SKIP LOCKED LIMIT ${batchSize}) UPDATE workflows w SET schedule_lease_owner=${owner},schedule_lease_expires_at=${leaseUntil} FROM candidates c WHERE w.id=c.id RETURNING w.id`));
+  const claimed = await prisma.$transaction(async (tx) => tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`WITH candidates AS (SELECT id FROM workflows WHERE status='PUBLISHED' AND schedule_enabled=true AND next_trigger_at <= ${utc(now)} AND (schedule_lease_expires_at IS NULL OR schedule_lease_expires_at < ${utc(now)}) ORDER BY next_trigger_at,id FOR UPDATE SKIP LOCKED LIMIT ${batchSize}) UPDATE workflows w SET schedule_lease_owner=${owner},schedule_lease_expires_at=${utc(leaseUntil)} FROM candidates c WHERE w.id=c.id RETURNING w.id`));
   const workflows = await prisma.workflow.findMany({ where: { id: { in: claimed.map((row) => row.id) }, scheduleLeaseOwner: owner }, include: { versions: { where: { publishedAt: { not: null } }, orderBy: { version: "desc" }, take: 1 } } });
   let scheduled = 0; let firstError: unknown;
   for (const workflow of workflows) {

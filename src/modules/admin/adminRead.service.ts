@@ -14,6 +14,7 @@ import type {
   AdminSupportListQuery,
   AdminUserListQuery,
 } from "./adminRead.schemas.js";
+import { utc } from "../../lib/sqlTime.js";
 
 const pageEnvelope = <T>(items: T[], total: number, page: number, pageSize: number) => ({ items, total, page, pageSize });
 const pageArgs = (page: number, pageSize: number) => ({ skip: (page - 1) * pageSize, take: pageSize });
@@ -69,7 +70,7 @@ export async function getAdminDashboard(query: AdminDashboardQuery) {
     prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
       SELECT COUNT(DISTINCT business_id) AS count
       FROM activity_events
-      WHERE created_at >= ${windowStart}
+      WHERE created_at >= ${utc(windowStart)}
     `),
     prisma.customer.count(),
     prisma.lead.count(),
@@ -221,9 +222,9 @@ export async function getAdminBetaAnalytics() {
         COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM weekly_owner_reports w WHERE w.business_id = b.id)) AS weekly_reports
       FROM businesses b
     `),
-    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${day}`),
-    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${week}`),
-    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${month}`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${utc(day)}`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${utc(week)}`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(DISTINCT business_id) AS count FROM activity_events WHERE created_at >= ${utc(month)}`),
     prisma.$queryRaw<{ trialing: bigint; active: bigint; expired: bigint; canceled: bigint; grace: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'TRIALING') AS trialing, COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active, COUNT(*) FILTER (WHERE status = 'EXPIRED') AS expired, COUNT(*) FILTER (WHERE status = 'CANCELED') AS canceled, COUNT(*) FILTER (WHERE status = 'GRACE_PERIOD') AS grace FROM subscriptions`),
     prisma.subscriptionEvent.groupBy({ by: ["type"], _count: { _all: true } }),
   ]);

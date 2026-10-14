@@ -340,10 +340,18 @@ describe("P0 backend integrity + scale correction pass", () => {
     ]);
 
     const statuses = [bookedResp.statusCode, lostResp.statusCode];
-    expect(statuses.filter((s) => s === 200)).toHaveLength(1);
-
     const finalLead = await prisma.lead.findUniqueOrThrow({ where: { id: lead.id } });
-    expect(["booked", "lost"]).toContain(finalLead.status);
+    // booked -> lost is itself a valid transition, so if the two requests
+    // happen to run one after the other both legitimately apply, and the
+    // only valid order ends in "lost". If they truly overlap, the atomic
+    // claim guard must reject the loser with 409, never a silent overwrite.
+    if (statuses.every((s) => s === 200)) {
+      expect(finalLead.status).toBe("lost");
+      expect(finalLead.bookedAt).not.toBeNull();
+    } else {
+      expect([...statuses].sort()).toEqual([200, 409]);
+      expect(finalLead.status).toBe(bookedResp.statusCode === 200 ? "booked" : "lost");
+    }
   });
 
   it("20. tenant isolation: Business A cannot transition Business B's lead", async () => {

@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { sendPushToUser } from "../../lib/push/pushService.js";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
 import { sendWeeklyOwnerReportEmail } from "./weeklyReportEmail.js";
+import { utc } from "../../lib/sqlTime.js";
 
 const DAY_MS = 86_400_000;
 export interface WeeklyReportSummary { appointmentsCompleted: number; appointmentsBooked: number; collectedRevenue: number; revenueRecovered: number; customersReturned: number; outstandingRevenue: number; automationSuccessRate: number | null; topOpportunity: string | null; highestRisk: string | null; newCustomers: number; newLeads: number; wonLeads: number; customerMessagesSent: number; reviewsReceived: number; }
@@ -22,9 +23,9 @@ export async function buildWeeklyReportSummary(businessId: string, periodStart: 
     prisma.appointment.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.appointment.aggregate({ where: { businessId, status: { not: "CANCELED" }, updatedAt: { gte: periodStart, lt: periodEnd } }, _sum: { paidAmount: true } }),
     prisma.lead.aggregate({ where: { businessId, status: "won", wonAt: { gte: periodStart, lt: periodEnd }, estimatedValue: { not: null } }, _sum: { estimatedValue: true } }),
-    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS count FROM (SELECT customer_id FROM leads WHERE business_id = ${businessId} AND status = 'won' AND customer_id IS NOT NULL AND won_at >= ${periodStart} AND won_at < ${periodEnd} GROUP BY customer_id HAVING COUNT(*) >= 2) returning_customers`),
+    prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS count FROM (SELECT customer_id FROM leads WHERE business_id = ${businessId} AND status = 'won' AND customer_id IS NOT NULL AND won_at >= ${utc(periodStart)} AND won_at < ${utc(periodEnd)} GROUP BY customer_id HAVING COUNT(*) >= 2) returning_customers`),
     prisma.$queryRaw<{ outstanding: string | null }[]>(Prisma.sql`SELECT SUM(GREATEST(estimated_value - COALESCE(paid_amount, 0), 0)) AS outstanding FROM leads WHERE business_id = ${businessId} AND status = 'won' AND payment_status != 'paid' AND estimated_value IS NOT NULL`),
-    prisma.$queryRaw<{ completed: bigint; terminal: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed, COUNT(*) FILTER (WHERE status IN ('COMPLETED','FAILED','CANCELLED')) AS terminal FROM automation_runs WHERE business_id = ${businessId} AND updated_at >= ${periodStart} AND updated_at < ${periodEnd}`),
+    prisma.$queryRaw<{ completed: bigint; terminal: bigint }[]>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed, COUNT(*) FILTER (WHERE status IN ('COMPLETED','FAILED','CANCELLED')) AS terminal FROM automation_runs WHERE business_id = ${businessId} AND updated_at >= ${utc(periodStart)} AND updated_at < ${utc(periodEnd)}`),
     prisma.customer.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.lead.count({ where: { businessId, createdAt: { gte: periodStart, lt: periodEnd } } }),
     prisma.lead.count({ where: { businessId, status: "won", wonAt: { gte: periodStart, lt: periodEnd } } }),

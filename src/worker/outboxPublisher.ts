@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { utc } from "../lib/sqlTime.js";
 const LEASE_MS = 60_000; const MAX_ATTEMPTS = 10;
 
 export async function publishOutboxBatch(batchSize = 50) {
   const owner = randomUUID(); const now = new Date(); const leaseUntil = new Date(now.getTime() + LEASE_MS);
   const claimed = await prisma.$transaction(async (tx) => tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    WITH candidates AS (SELECT o.id FROM outbox_events o WHERE o.status IN ('PENDING','FAILED') AND o.retry_count < ${MAX_ATTEMPTS} AND o.next_attempt_at <= ${now} AND (o.lease_expires_at IS NULL OR o.lease_expires_at < ${now}) AND NOT EXISTS (SELECT 1 FROM outbox_events earlier WHERE earlier.business_id=o.business_id AND earlier.aggregate_type=o.aggregate_type AND earlier.aggregate_id=o.aggregate_id AND (earlier.created_at,earlier.id)<(o.created_at,o.id) AND earlier.status NOT IN ('PUBLISHED','DEAD')) ORDER BY o.created_at,o.id FOR UPDATE SKIP LOCKED LIMIT ${batchSize})
-    UPDATE outbox_events o SET status='PROCESSING',lease_owner=${owner},lease_expires_at=${leaseUntil},last_attempt_at=${now},retry_count=o.retry_count+1 FROM candidates c WHERE o.id=c.id RETURNING o.id
+    WITH candidates AS (SELECT o.id FROM outbox_events o WHERE o.status IN ('PENDING','FAILED') AND o.retry_count < ${MAX_ATTEMPTS} AND o.next_attempt_at <= ${utc(now)} AND (o.lease_expires_at IS NULL OR o.lease_expires_at < ${utc(now)}) AND NOT EXISTS (SELECT 1 FROM outbox_events earlier WHERE earlier.business_id=o.business_id AND earlier.aggregate_type=o.aggregate_type AND earlier.aggregate_id=o.aggregate_id AND (earlier.created_at,earlier.id)<(o.created_at,o.id) AND earlier.status NOT IN ('PUBLISHED','DEAD')) ORDER BY o.created_at,o.id FOR UPDATE SKIP LOCKED LIMIT ${batchSize})
+    UPDATE outbox_events o SET status='PROCESSING',lease_owner=${owner},lease_expires_at=${utc(leaseUntil)},last_attempt_at=${utc(now)},retry_count=o.retry_count+1 FROM candidates c WHERE o.id=c.id RETURNING o.id
   `));
   let published = 0;
   for (const row of claimed) try {

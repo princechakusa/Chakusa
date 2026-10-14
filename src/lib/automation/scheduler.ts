@@ -6,6 +6,7 @@ import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { createAutomationRun } from "../../modules/automation/automation.service.js";
 import { buildCustomerRetentionDedupeKey, buildLeadCreatedDedupeKey, buildLeadFollowUpDedupeKey, buildReviewRequestFollowUpDedupeKey } from "./dedupeKey.js";
 import type { Lead, LeadStatus } from "@prisma/client";
+import { utc } from "../sqlTime.js";
 
 /**
  * Called synchronously from leads.service.ts's createLead, immediately
@@ -163,7 +164,7 @@ export async function sweepCustomerRetention(now: Date = new Date()): Promise<vo
         FROM leads
         WHERE business_id = ${rule.businessId} AND customer_id IS NOT NULL
         GROUP BY customer_id
-        HAVING MAX(created_at) <= ${cutoff} AND COUNT(*) FILTER (WHERE status = 'won') > 0
+        HAVING MAX(created_at) <= ${utc(cutoff)} AND COUNT(*) FILTER (WHERE status = 'won') > 0
         LIMIT ${SWEEP_BATCH_LIMIT}
       `);
 

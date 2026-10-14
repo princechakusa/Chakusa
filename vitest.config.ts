@@ -4,6 +4,11 @@ import { randomBytes } from "node:crypto";
 process.env.NODE_ENV = "test";
 // DATABASE_URL and DIRECT_URL must be supplied by the invoking process.
 // The test database safety guard rejects missing, remote, and non-test targets.
+// A developer machine may export a real Resend key (e.g. as a Windows user
+// variable). Tests must never send real email, so drop it; tests that cover
+// email delivery set their own fake config explicitly.
+delete process.env.RESEND_API_KEY;
+delete process.env.EMAIL_FROM;
 process.env.JWT_SECRET ??= randomBytes(32).toString("hex");
 process.env.PROVIDER_TOKEN_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 // Fixed, non-functional test credentials so GOOGLE_AUTH_ENABLED /

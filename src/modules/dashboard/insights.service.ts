@@ -14,6 +14,7 @@ import {
   type ServiceAggregateRow,
 } from "../../lib/businessInsights.js";
 import { classifyCustomerLifecycleStage, tallyLifecycleStages } from "../../lib/customerLifecycle.js";
+import { utc } from "../../lib/sqlTime.js";
 
 const TREND_MONTHS = 6;
 /** Scale safety net on the two per-customer raw queries below — final ranking/top-5 selection still happens in businessInsights.ts's pure functions, this just bounds how many candidate rows ever leave Postgres. */
@@ -71,7 +72,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
 
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', created_at) AS month, COUNT(*) AS value
-      FROM leads WHERE business_id = ${businessId} AND created_at >= ${windowStart}
+      FROM leads WHERE business_id = ${businessId} AND created_at >= ${utc(windowStart)}
       GROUP BY 1
     `),
     // Bucketed by created_at (not won_at) — this pairs with newLeadsRows to
@@ -79,12 +80,12 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     // the same definition buildMonthlyTrend's conversionRate documents.
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', created_at) AS month, COUNT(*) AS value
-      FROM leads WHERE business_id = ${businessId} AND created_at >= ${windowStart} AND status = 'won'
+      FROM leads WHERE business_id = ${businessId} AND created_at >= ${utc(windowStart)} AND status = 'won'
       GROUP BY 1
     `),
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', created_at) AS month, COUNT(*) AS value
-      FROM customers WHERE business_id = ${businessId} AND created_at >= ${windowStart}
+      FROM customers WHERE business_id = ${businessId} AND created_at >= ${utc(windowStart)}
       GROUP BY 1
     `),
     // A customer "becomes returning" in the month their 2nd (or later) won
@@ -96,7 +97,7 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
         WHERE business_id = ${businessId} AND status = 'won' AND customer_id IS NOT NULL AND won_at IS NOT NULL
       )
       SELECT date_trunc('month', won_at) AS month, COUNT(DISTINCT customer_id) AS value
-      FROM ranked WHERE rn >= 2 AND won_at >= ${windowStart}
+      FROM ranked WHERE rn >= 2 AND won_at >= ${utc(windowStart)}
       GROUP BY 1
     `),
     // Bucketed by won_at (the month the deal actually closed) — distinct
@@ -104,13 +105,13 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     // first created.
     prisma.$queryRaw<{ month: Date; value: string | null }[]>(Prisma.sql`
       SELECT date_trunc('month', won_at) AS month, SUM(estimated_value) AS value
-      FROM leads WHERE business_id = ${businessId} AND won_at >= ${windowStart} AND status = 'won' AND estimated_value IS NOT NULL
+      FROM leads WHERE business_id = ${businessId} AND won_at >= ${utc(windowStart)} AND status = 'won' AND estimated_value IS NOT NULL
       GROUP BY 1
     `),
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', created_at) AS month, COUNT(*) AS value
       FROM review_requests
-      WHERE business_id = ${businessId} AND created_at >= ${windowStart} AND status IN ('sent','opened','reviewed','feedback_received')
+      WHERE business_id = ${businessId} AND created_at >= ${utc(windowStart)} AND status IN ('sent','opened','reviewed','feedback_received')
       GROUP BY 1
     `),
     // No dedicated "reviewedAt" column exists on ReviewRequest — updated_at
@@ -119,13 +120,13 @@ export async function getBusinessInsights(businessId: string, precomputedSummary
     // than silently assumed.
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', updated_at) AS month, COUNT(*) AS value
-      FROM review_requests WHERE business_id = ${businessId} AND updated_at >= ${windowStart} AND status = 'reviewed'
+      FROM review_requests WHERE business_id = ${businessId} AND updated_at >= ${utc(windowStart)} AND status = 'reviewed'
       GROUP BY 1
     `),
     // Same updated_at proxy as above — Reminder has no dedicated completedAt column either.
     prisma.$queryRaw<{ month: Date; value: bigint }[]>(Prisma.sql`
       SELECT date_trunc('month', updated_at) AS month, COUNT(*) AS value
-      FROM reminders WHERE business_id = ${businessId} AND updated_at >= ${windowStart} AND status = 'completed'
+      FROM reminders WHERE business_id = ${businessId} AND updated_at >= ${utc(windowStart)} AND status = 'completed'
       GROUP BY 1
     `),
 

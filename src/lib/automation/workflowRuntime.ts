@@ -7,6 +7,7 @@ import { delayUntil, type DelaySpec } from "./delayEngine.js";
 import type { WorkflowDefinition, WorkflowNode } from "./workflowContracts.js";
 import { validateWorkflow } from "./workflowValidation.js";
 import { getAutomationFoundationStatus } from "../../modules/automation/automationFoundation.js";
+import { utc } from "../sqlTime.js";
 
 const LEASE_MS = 60_000; const MAX_ATTEMPTS = 20;
 const ACTION_HEARTBEAT_MS = Math.max(1_000, Math.floor(LEASE_MS / 3));
@@ -17,7 +18,7 @@ export async function startWorkflowExecution(input: { workflowId: string; versio
   await prisma.workflowExecutionEvent.upsert({ where: { id: `started:${execution.id}` }, create: { id: `started:${execution.id}`, executionId: execution.id, businessId: execution.businessId, type: "STARTED" }, update: {} }); return execution;
 }
 
-export async function claimWorkflowExecutions(batchSize = 25) { const owner = randomUUID(); const now = new Date(); const leaseUntil = new Date(now.getTime() + LEASE_MS); const rows = await prisma.$transaction(async (tx) => tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`WITH candidates AS (SELECT id FROM workflow_executions WHERE status IN ('PENDING','FAILED') AND completed_at IS NULL AND retry_count < ${MAX_ATTEMPTS} AND next_attempt_at <= ${now} AND (lease_expires_at IS NULL OR lease_expires_at < ${now}) ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT ${batchSize}) UPDATE workflow_executions w SET status='RUNNING',lease_owner=${owner},lease_expires_at=${leaseUntil},started_at=COALESCE(started_at,${now}),attempts=w.attempts+1 FROM candidates c WHERE w.id=c.id RETURNING w.id`)); return { owner, ids: rows.map((row) => row.id) }; }
+export async function claimWorkflowExecutions(batchSize = 25) { const owner = randomUUID(); const now = new Date(); const leaseUntil = new Date(now.getTime() + LEASE_MS); const rows = await prisma.$transaction(async (tx) => tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`WITH candidates AS (SELECT id FROM workflow_executions WHERE status IN ('PENDING','FAILED') AND completed_at IS NULL AND retry_count < ${MAX_ATTEMPTS} AND next_attempt_at <= ${utc(now)} AND (lease_expires_at IS NULL OR lease_expires_at < ${utc(now)}) ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT ${batchSize}) UPDATE workflow_executions w SET status='RUNNING',lease_owner=${owner},lease_expires_at=${utc(leaseUntil)},started_at=COALESCE(started_at,${utc(now)}),attempts=w.attempts+1 FROM candidates c WHERE w.id=c.id RETURNING w.id`)); return { owner, ids: rows.map((row) => row.id) }; }
 
 function nextNode(definition: WorkflowDefinition, node: WorkflowNode, branch?: boolean) { const id = branch === undefined ? node.next?.[0] : node.next?.[branch ? 0 : 1]; return id ? definition.nodes.find((item) => item.id === id) : undefined; }
 export async function executeClaimedWorkflow(executionId: string, owner: string) {

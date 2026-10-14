@@ -409,3 +409,21 @@ Routing. The owner must:
    then submit. These are legal attestations on the owner's behalf.
 4. Messaging to unverified numbers needs an upgraded (paid) Twilio account.
    That is a separate owner decision.
+
+## OA-11 — Android upload-key password lost (2026-10-14) — OPEN, owner decision
+
+The upload keystore `C:\Users\Dev Prince\.chakusa\android\chakusa-upload.p12`
+(alias `chakusa-upload`, created 2026-09-22) still exists, but none of the
+owner's known passwords open it, so no signed AAB can be built. The
+2026-09-23 AAB was signed with this key: upload-certificate SHA-1
+`3B:07:CF:9F:66:A7:FA:45:AF:CE:AB:13:42:85:F3:1B:98:A2:C6:4B`.
+
+Check Play Console → Chakusa → Test and release → App integrity:
+- **No app or no upload yet:** generate a new upload key, store its password
+  in a password manager this time, then build versionCode 2.
+- **An upload exists with the SHA-1 above:** request "Upload key reset" there.
+  Generate the new key first and upload its certificate (.pem) with the
+  request. Google usually approves within 1–2 days.
+Either way, update the Google Sign-In Android OAuth client SHA-1 afterwards.
+App versions are already bumped: iOS build 6 (sent to TestFlight), Android
+versionCode 2.

@@ -9,8 +9,9 @@ const stubOpenAI = { id: "openai", invoke: async () => ({ text: "ok" }) } as nev
 
 describe("env-only AI model bootstrap", () => {
   const originalModel = config.OPENAI_DEFAULT_MODEL;
+  const originalGemini = config.GEMINI_DEFAULT_MODEL;
   beforeEach(async () => { await resetDatabase(); clearAIProviders(); });
-  afterEach(async () => { config.OPENAI_DEFAULT_MODEL = originalModel; clearAIProviders(); await resetDatabase(); });
+  afterEach(async () => { config.OPENAI_DEFAULT_MODEL = originalModel; config.GEMINI_DEFAULT_MODEL = originalGemini; clearAIProviders(); await resetDatabase(); });
   afterAll(async () => { await prisma.$disconnect(); });
 
   it("does nothing without the openai adapter or a default model", async () => {
@@ -31,6 +32,14 @@ describe("env-only AI model bootstrap", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ provider: "openai", model: "google/gemma-4-31b-it:free", status: "ACTIVE" });
     expect(rows[0]!.capabilities).toContain("conversation");
+  });
+
+  it("prefers Gemini when both providers are configured", async () => {
+    registerAIProvider(stubOpenAI);
+    registerAIProvider({ id: "gemini", invoke: async () => ({ text: "ok" }) } as never);
+    config.OPENAI_DEFAULT_MODEL = "google/gemma-4-31b-it:free";
+    config.GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
+    expect(await ensureBootstrapAIModel()).toEqual({ provider: "gemini", model: "gemini-2.5-flash" });
   });
 
   it("never overrides a model already managed from the admin console", async () => {

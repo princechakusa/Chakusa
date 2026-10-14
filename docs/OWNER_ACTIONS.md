@@ -383,7 +383,13 @@ only the owner can make:
    text (`app.json`, `expo-location`) now lists all three uses. Reflect
    them in Apple App Privacy and Play Data safety.
 
-## OA-10 — Twilio toll-free verification resubmission (2026-10-14) — OPEN
+## OA-10 — Twilio toll-free verification resubmission (2026-10-14) — SUBMITTED, awaiting Twilio review
+
+**Resubmitted 2026-10-14** (inside the priority-review window) with the owner's
+Terms/STI-PA attestation. Console status: "verification in progress". Twilio
+emails the outcome to support@chakusarecovery.com (forwards to the owner).
+Still open: item 4 below (account upgrade), plus releasing a new app build so
+customers see the consent checkbox.
 
 Twilio rejected verification for +1 844 604 1271 with errors 30482 (generic
 email) and 30513 (opt-in not shown). The product fix has shipped (see

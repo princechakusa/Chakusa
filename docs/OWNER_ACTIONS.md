@@ -444,7 +444,10 @@ setting or credential that only the owner can create.
    model is active yet (`src/lib/ai/bootstrapModel.ts`). Free models allow
    about 50 requests a day. Adding $10 of OpenRouter credit raises that to
    about 1,000 a day while staying on the free models.
-2. **Google Sign-In on iPhone.** Google Cloud Console → project "Chakusa"
+2. **Google Sign-In on iPhone — RESOLVED 2026-10-15.** Created "Chakusa iOS"
+   (`1004047431327-bi3d48hqkhasgtvk46q3adrtglmtnt04`) in project
+   chakusa-507914. eas.json and app.json are updated, and the consent screen
+   is already In production. Ships in the next iOS build. Original steps: Google Cloud Console → project "Chakusa"
    (1004047431327) → Credentials → Create OAuth client → **iOS**, bundle ID
    `com.chakusa.mobile`. Give the new client ID to engineering, which will
    update `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `iosUrlScheme`, then rebuild

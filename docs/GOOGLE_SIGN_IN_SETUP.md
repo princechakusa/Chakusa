@@ -16,7 +16,9 @@ Google Sign-In uses the native Google SDK. The mobile app sends a Google ID toke
 > certainly created under a different Google login at some point. Android +
 > Web sign-in was re-registered under a project this account controls
 > ("Chakusa", project number `1004047431327`) and confirmed working
-> end-to-end on a real device (see `docs/progress/`). **iOS is not yet
+> end-to-end on a real device (see `docs/progress/`). **iOS was redone on
+> 2026-10-15**: client "Chakusa iOS" (`1004047431327-bi3d48hq...`) in the same
+> project, and the publishing status is already "In production". Earlier note: **iOS is not yet
 > redone** — the iOS client ID below is still the old, dead one; create a
 > real iOS OAuth client in the same "Chakusa" project before the next iOS
 > build attempts Google Sign-In (steps unchanged, just use that project).
@@ -49,13 +51,13 @@ Multiple trusted backend audiences may be comma-separated in `GOOGLE_OAUTH_CLIEN
 3. Add the iOS client ID to the EAS or mobile build environment:
 
 ```text
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=1004047431327-bi3d48hqkhasgtvk46q3adrtglmtnt04.apps.googleusercontent.com
 ```
 
 4. Reverse that client ID and configure this iOS URL scheme in `mobile/app.json`:
 
 ```text
-com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m
+com.googleusercontent.apps.1004047431327-bi3d48hqkhasgtvk46q3adrtglmtnt04
 ```
 
 The reversed client ID is the iOS callback URL scheme. Keep the existing `chakusa` scheme; it is used for Chakusa deep links such as password reset.

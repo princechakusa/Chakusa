@@ -44,7 +44,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.618618639466-03el8vtndca92oqjrcqv2f8uv7tqm41m"
+          "iosUrlScheme": "com.googleusercontent.apps.1004047431327-bi3d48hqkhasgtvk46q3adrtglmtnt04"
         }
       ],
       "./plugins/withCallDetection",

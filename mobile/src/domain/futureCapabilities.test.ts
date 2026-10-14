@@ -22,11 +22,20 @@ describe('isCapabilityUnlocked', () => {
 
 describe('capabilityStatusCopy', () => {
   it('never claims a locked capability is included', () => {
-    expect(capabilityStatusCopy(allLocked, 'invoicing')).toBe('Not yet available - coming to Chakusa');
+    expect(capabilityStatusCopy(allLocked, 'invoicing')).toBe('Available on Chakusa Business');
   });
 
   it('reports an unlocked capability as included', () => {
     expect(capabilityStatusCopy(allUnlocked, 'invoicing')).toBe('Included on your plan');
+  });
+});
+
+describe('FUTURE_CAPABILITIES', () => {
+  it('points every capability at a real screen, with no "coming soon" copy', () => {
+    for (const capability of FUTURE_CAPABILITIES) {
+      expect(capability.route).toBeTruthy();
+      expect(capability.description.toLowerCase()).not.toContain('coming');
+    }
   });
 });
 

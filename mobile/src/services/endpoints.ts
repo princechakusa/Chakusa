@@ -277,6 +277,10 @@ export interface AiReceptionistViewDto {
   hours: { resolved: boolean; open: boolean; reason: string; timezone: string; localTime: string; nextOpen: { label: string; atIso: string } | null };
   status: { entitled: boolean; platformEnabled: boolean; policyMode: string; effective: boolean; currentlyEligible: boolean; ineligibleReason: string | null };
 }
+export const accountingApi = {
+  exportLink: (from: string, to: string) => api.post<{ path: string; expiresAt: string }>('/accounting/export-link', { from, to }),
+};
+
 export const aiReceptionistApi = {
   get: () => api.get<AiReceptionistViewDto>('/ai/receptionist'),
   patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled' | 'mode'>>) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),

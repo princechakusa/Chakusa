@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { Chip, Icon, M3Header, M3Screen } from '../experience/businessKit';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
@@ -59,18 +59,19 @@ export function ProScreen() {
     </View> : null}
     <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic lead follow-up and customer win-back SMS once Pro is active{Platform.OS === 'android' ? ', including missed-call recovery' : ''}.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
     {subscription ? <View style={styles.card}>
-      <Text style={styles.cardTitle}>Coming to Chakusa</Text>
-      <Text style={styles.body}>Capabilities we're building next. Nothing to set up yet.</Text>
+      <Text style={styles.cardTitle}>Included in Chakusa</Text>
+      <Text style={styles.body}>Tools that are ready to use today. Tap one to open it.</Text>
       {FUTURE_CAPABILITIES.map((capability) => {
         const unlocked = isCapabilityUnlocked(subscription.features, capability.key);
-        return <View key={capability.key} style={styles.feature}>
-          <Icon name={unlocked ? "check_circle" : "schedule"} size={20} color={unlocked ? m3.primary : m3.onSurfaceVariant} />
+        return <Pressable key={capability.key} accessibilityRole="button" accessibilityLabel={`${capability.label}. ${capabilityStatusCopy(subscription.features, capability.key)}`} onPress={() => navigation.navigate(capability.route)} style={({ pressed }) => [styles.feature, pressed && styles.featurePressed]}>
+          <Icon name={unlocked ? "check_circle" : "lock"} size={20} color={unlocked ? m3.primary : m3.onSurfaceVariant} />
           <View style={styles.featureCopy}>
             <Text style={styles.featureText}>{capability.label}</Text>
             <Text style={styles.featureDetail}>{capability.description}</Text>
             <Text style={styles.featureStatus}>{capabilityStatusCopy(subscription.features, capability.key)}</Text>
           </View>
-        </View>;
+          <Icon name="chevron_right" size={20} color={m3.onSurfaceVariant} />
+        </Pressable>;
       })}
     </View> : null}
     <Text style={styles.footnote}>The localized price and introductory offer shown by your App Store or Google Play account are the purchase authority.</Text>
@@ -87,6 +88,7 @@ const styles = StyleSheet.create({
   planChoices: { gap: m3Space.xs },
   cardTitle: { ...m3Type.titleMd, color: m3.onSurface },
   feature: { flexDirection: "row", alignItems: "flex-start", gap: m3Space.xs },
+  featurePressed: { opacity: 0.6 },
   featureText: { ...m3Type.bodyMd, color: m3.onSurface, flex: 1 },
   featureCopy: { flex: 1, gap: 2 },
   featureDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },

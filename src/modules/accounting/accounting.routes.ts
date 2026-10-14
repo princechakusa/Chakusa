@@ -8,6 +8,7 @@ import {
   disconnectAccountingConnection,
   listAccountingConnections,
 } from "./accountingConnections.service.js";
+import { buildAccountingExportCsv, createAccountingExportToken, verifyAccountingExportToken } from "./accountingExport.service.js";
 
 // PROGRAM 3 / Accounting Integrations A1. Connecting an external books
 // system moves money data off-platform - "integrations.manage" capability
@@ -23,9 +24,41 @@ const callbackBodySchema = z.object({
   redirectUri: z.string().url(),
 });
 
+const exportRangeSchema = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }) });
+
 export default async function accountingRoutes(fastify: FastifyInstance) {
-  fastify.addHook("preHandler", fastify.authenticate);
-  fastify.addHook("preHandler", fastify.requireBusiness);
+  // Accounting export download. Public on purpose: the browser that opens it
+  // has no Bearer token. The short-lived HMAC link minted below is the only
+  // authority, and it binds the business and the period.
+  fastify.get<{ Querystring: { token?: string } }>("/export.csv", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const { token } = z.object({ token: z.string().min(1).max(2048) }).parse(request.query);
+    const { businessId, from, to } = verifyAccountingExportToken(token);
+    const csv = await buildAccountingExportCsv(businessId, from, to);
+    const name = `chakusa-accounting-${from.toISOString().slice(0, 10)}-to-${to.toISOString().slice(0, 10)}.csv`;
+    reply
+      .header("content-type", "text/csv; charset=utf-8")
+      .header("content-disposition", `attachment; filename="${name}"`)
+      .header("cache-control", "no-store")
+      .send(csv);
+  });
+
+  fastify.register(async (authed) => {
+    authed.addHook("preHandler", fastify.authenticate);
+    authed.addHook("preHandler", fastify.requireBusiness);
+
+    authed.post("/export-link", async (request, reply) => {
+      requireCapability(request, "financial.report.view");
+      assertFeatureAvailable(request.plan!, "ACCOUNTING_INTEGRATIONS");
+      const { from, to } = exportRangeSchema.parse(request.body);
+      const { token, expiresAt } = createAccountingExportToken(request.businessId!, new Date(from), new Date(to));
+      reply.send({ path: `/accounting/export.csv?token=${encodeURIComponent(token)}`, expiresAt });
+    });
+
+    registerConnectionRoutes(authed);
+  });
+}
+
+function registerConnectionRoutes(fastify: FastifyInstance) {
 
   fastify.get("/connections", async (request, reply) => {
     requireCapability(request, "integrations.manage");

@@ -54,6 +54,8 @@ export function BookingFlowScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [notes, setNotes] = useState('');
+  // Appointment-text opt-in: explicit and unticked by default (Twilio toll-free verification).
+  const [smsConsent, setSmsConsent] = useState(false);
 
   useEffect(() => {
     bookingApi.services(slug)
@@ -105,6 +107,7 @@ export function BookingFlowScreen({ route, navigation }: Props) {
         assignedMemberId: draft.staffId && draft.staffId !== 'any' ? draft.staffId : undefined,
         startsAt: draft.startsAt,
         notes: notes.trim() || undefined,
+        smsConsent,
       });
       navigation.replace('BookingDetail', { bookingId: result.appointment.id });
     } catch (caught) {
@@ -213,6 +216,23 @@ export function BookingFlowScreen({ route, navigation }: Props) {
             {draft.staffId === 'any' || !draft.staffId ? 'With: anyone available' : `With: ${staff.find((m) => m.id === draft.staffId)?.name ?? 'selected staff'}`}
           </Text>
         </View>
+      ) : null}
+
+      {step === 'confirm' && selectedService ? (
+        <Pressable
+          testID="sms-consent"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: smsConsent }}
+          aria-checked={smsConsent}
+          accessibilityLabel="Text me appointment confirmations and reminders"
+          onPress={() => setSmsConsent((value) => !value)}
+          style={styles.consentRow}
+        >
+          <Ionicons name={smsConsent ? 'checkbox' : 'square-outline'} size={22} color={smsConsent ? authColors.coral : authColors.inkFaint} />
+          <Text style={styles.consentText}>
+            Text me about this appointment. I agree to receive appointment text messages (confirmations, reminders and updates) from {services?.businessName ?? 'this business'} via Chakusa at the phone number on my account. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking. See chakusarecovery.com/sms.
+          </Text>
+        </Pressable>
       ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -327,6 +347,8 @@ const styles = StyleSheet.create({
   summary: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs, ...authShadow.card },
   summaryTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
   summaryLine: { ...authType.body, fontSize: 13 },
+  consentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: authSpace.sm, paddingVertical: authSpace.xs },
+  consentText: { ...authType.body, flex: 1, fontSize: 12, lineHeight: 18, color: authColors.inkSoft },
   error: { ...authType.body, fontSize: 12, color: authColors.danger },
   primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
   primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },

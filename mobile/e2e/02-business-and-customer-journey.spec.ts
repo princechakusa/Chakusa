@@ -356,6 +356,12 @@ test.describe('Business and customer, end to end', () => {
     await times.first().click();
     const confirm = page.getByRole('button', { name: /^(Confirm|Book|Request)/ }).filter({ visible: true }).last();
     await expect(confirm).toBeEnabled();
+    // Appointment-text consent starts unticked and is the customer's own choice (Twilio toll-free verification).
+    const smsConsent = page.getByTestId('sms-consent').filter({ visible: true });
+    await expect(smsConsent).toHaveAttribute('aria-checked', 'false');
+    await expect(smsConsent).toContainText('Reply STOP to opt out, HELP for help');
+    await smsConsent.click();
+    await expect(smsConsent).toHaveAttribute('aria-checked', 'true');
     await linger(page);
     await confirm.click();
     // The new booking opens straight into its detail screen.

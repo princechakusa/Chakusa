@@ -5,6 +5,7 @@ import { authHeader, createTestApp, registerAccount, resetDatabase } from "./hel
 import { sendAppointmentConfirmation, sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../src/modules/appointments/appointmentReminders.js";
 import type { PushProvider } from "../src/lib/push/pushProvider.js";
 import type { MessagingProvider, OutboundMessage } from "../src/lib/messaging/messagingProvider.js";
+import { recordSmsConsent, smsConsentDeclined } from "../src/lib/messaging/smsConsent.js";
 
 describe("appointments", () => {
   let app: FastifyInstance;
@@ -83,6 +84,26 @@ describe("appointments", () => {
     const calls: string[][] = []; const provider: PushProvider = { isValidToken: () => true, sendToDevice: async token => ({ token, accepted: true, invalidToken: false }), sendToDevices: async tokens => { calls.push(tokens); return tokens.map(token => ({ token, accepted: true, invalidToken: false })); } };
     expect(await sendDueAppointmentReminders(provider, 10, now)).toBe(1);
     expect(await sendDueAppointmentReminders(provider, 10, now)).toBe(0);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("never texts a customer who declined appointment texts, and honours a later opt-in", async () => {
+    const account = await fixture("sms-consent@example.com");
+    await prisma.subscription.update({ where: { businessId: account.businessId }, data: { plan: "PRO", status: "ACTIVE" } });
+    await prisma.customer.update({ where: { id: account.customer.id }, data: { phone: "+15551234568", phoneE164: "+15551234568" } });
+    const appointment = await prisma.appointment.create({ data: { businessId: account.businessId, customerId: account.customer.id, createdByUserId: account.userId, serviceName: "Haircut", startsAt: new Date("2026-09-01T09:00:00.000Z"), endsAt: new Date("2026-09-01T10:00:00.000Z") } });
+    const calls: OutboundMessage[] = []; const provider: MessagingProvider = { id: "fake", supportsChannel: () => true, send: async message => { calls.push(message); return { accepted: true, providerMessageId: `consent-${calls.length}`, permanentFailure: false }; }, parseDeliveryWebhook: () => null, parseInboundWebhook: () => null, verifyWebhookSignature: () => false };
+    expect(await smsConsentDeclined(account.businessId, account.customer.id)).toBe(false);
+    await recordSmsConsent({ businessId: account.businessId, customerId: account.customer.id, businessName: "Consent Co", granted: false, source: "test" });
+    expect(await smsConsentDeclined(account.businessId, account.customer.id)).toBe(true);
+    expect(await sendAppointmentConfirmation(appointment.id, provider)).toBe(false);
+    expect(calls).toHaveLength(0);
+    const declined = await prisma.customerConsentEvent.findFirstOrThrow({ where: { businessId: account.businessId, customerId: account.customer.id } });
+    expect(declined).toMatchObject({ channel: "SMS", purpose: "APPOINTMENT_TEXTS", granted: false });
+    expect((declined.evidence as { disclosure: string }).disclosure).toContain("Reply STOP to opt out");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await recordSmsConsent({ businessId: account.businessId, customerId: account.customer.id, businessName: "Consent Co", granted: true, source: "test" });
+    expect(await sendAppointmentConfirmation(appointment.id, provider)).toBe(true);
     expect(calls).toHaveLength(1);
   });
 

@@ -382,3 +382,24 @@ only the owner can make:
    publicly on its profile, as its address already is. The iOS permission
    text (`app.json`, `expo-location`) now lists all three uses. Reflect
    them in Apple App Privacy and Play Data safety.
+
+## OA-10 — Twilio toll-free verification resubmission (2026-10-14) — OPEN
+
+Twilio rejected verification for +1 844 604 1271 with errors 30482 (generic
+email) and 30513 (opt-in not shown). The product fix has shipped (see
+`docs/progress/2026-10-14-twilio-toll-free-sms-consent.md`). Company addresses
+@chakusarecovery.com now forward to the owner's Gmail through Cloudflare Email
+Routing. The owner must:
+
+1. Give the real business street address (and postcode, or none) and a
+   contact phone number that is not the toll-free number.
+2. Review the corrected form:
+   - Business email: `prince@chakusarecovery.com`.
+   - Notification email: `support@chakusarecovery.com`.
+   - Opt-in proof URL: `https://chakusarecovery.com/sms`.
+   - "Age gated" unticked.
+   - Sample message includes the business name and STOP.
+3. Personally tick the Twilio Terms and the STI-PA traceback certification,
+   then submit. These are legal attestations on the owner's behalf.
+4. Messaging to unverified numbers needs an upgraded (paid) Twilio account.
+   That is a separate owner decision.

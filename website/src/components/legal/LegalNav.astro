@@ -1,6 +1,6 @@
 ---
 export interface Props {
-  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies";
+  current: "trust" | "privacy" | "terms" | "ai-disclosure" | "cookies" | "sms";
 }
 
 const { current } = Astro.props;
@@ -11,6 +11,7 @@ const routes: Array<{ id: Props["current"]; href: string; label: string }> = [
   { id: "terms", href: "/terms", label: "Terms of Service" },
   { id: "ai-disclosure", href: "/ai-disclosure", label: "AI Disclosure" },
   { id: "cookies", href: "/cookies", label: "Cookie Policy" },
+  { id: "sms", href: "/sms", label: "SMS Terms" },
 ];
 ---
 <nav class="legal-nav" aria-label="Legal and trust documents">

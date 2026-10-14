@@ -8,6 +8,8 @@ import { messagingBudgetAvailable } from "./messagingBudget.js";
 import { sendOutboundMessage } from "./messagingService.js";
 import type { MessagingProvider } from "./messagingProvider.js";
 import { getMessagingProvider } from "./providerRegistry.js";
+import { smsConsentDeclined } from "./smsConsent.js";
+import { UTC_NOW } from "../sqlTime.js";
 
 export type PlatformChannel = "sms" | "whatsapp";
 export type MessagePurpose = "SERVICE" | "TRANSACTIONAL" | "MARKETING";
@@ -51,6 +53,7 @@ export async function enqueueMessage(request: MessagingRequest, plan: Plan, stat
   });
   const legacyBlocked = await prisma.customerOptOut.findFirst({ where: { businessId: request.businessId, phone: destination, channel: { in: [channel === "sms" ? "SMS" : "WHATSAPP", "ALL"] } } });
   if (blocked || legacyBlocked) throw ApiError.forbidden("This customer has opted out of this messaging channel");
+  if (channel === "sms" && await smsConsentDeclined(request.businessId, customer.id)) throw ApiError.forbidden("This customer declined text messages from this business");
   if (purpose === "MARKETING") {
     const preference = await prisma.customerCommunicationPreference.findUnique({ where: { businessId_customerId: { businessId: request.businessId, customerId: customer.id } } });
     if (preference && !preference.marketingConsent) throw ApiError.forbidden("Marketing consent is not active for this customer");
@@ -105,8 +108,8 @@ export async function processMessageDispatches(provider?: MessagingProvider, lim
   const claimed = await prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM message_dispatches
-      WHERE status IN ('PENDING','RETRY') AND next_attempt_at <= NOW()
-        AND (lease_expires_at IS NULL OR lease_expires_at < NOW())
+      WHERE status IN ('PENDING','RETRY') AND next_attempt_at <= ${UTC_NOW}
+        AND (lease_expires_at IS NULL OR lease_expires_at < ${UTC_NOW})
       ORDER BY next_attempt_at ASC FOR UPDATE SKIP LOCKED LIMIT ${limit}`;
     if (!rows.length) return [];
     const ids = rows.map((row) => row.id);

@@ -103,7 +103,7 @@ export const bookingApi = {
   services: (slug: string) => customerHttp.get<BookableServicesDto>(`/customer/bookings/businesses/${encodeURIComponent(slug)}/services`),
   availability: (slug: string, serviceOfferingId: string, from: string, to: string, memberId?: string) =>
     customerHttp.get<BookingAvailabilityDto>(`/customer/bookings/businesses/${encodeURIComponent(slug)}/availability${query({ serviceOfferingId, from, to, memberId })}`),
-  create: (body: { slug: string; serviceOfferingId: string; assignedMemberId?: string; startsAt: string; notes?: string }) =>
+  create: (body: { slug: string; serviceOfferingId: string; assignedMemberId?: string; startsAt: string; notes?: string; smsConsent?: boolean }) =>
     customerHttp.post<CreateBookingResponseDto>('/customer/bookings', body),
   list: (scope: BookingScope = 'all') => customerHttp.get<CustomerBookingDto[]>(`/customer/bookings${query({ scope })}`),
   get: (id: string) => customerHttp.get<CustomerBookingDto>(`/customer/bookings/${id}`),

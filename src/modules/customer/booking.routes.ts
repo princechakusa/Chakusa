@@ -42,6 +42,8 @@ export default async function customerBookingRoutes(fastify: FastifyInstance) {
       assignedMemberId: z.string().uuid().optional(),
       startsAt: dateTime,
       notes: z.string().trim().max(1000).optional(),
+      // Explicit, unticked-by-default opt-in to appointment texts (Twilio toll-free verification).
+      smsConsent: z.boolean().optional(),
     }).parse(request.body);
     reply.status(201).send(await createCustomerBooking(request.customer!.profileId, body));
   });

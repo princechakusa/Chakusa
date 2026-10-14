@@ -7,6 +7,8 @@ import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import type { MessageType } from "@prisma/client";
 import { messagingBudgetAvailable } from "../../lib/messaging/messagingBudget.js";
+import { smsConsentDeclined } from "../../lib/messaging/smsConsent.js";
+import { utc } from "../../lib/sqlTime.js";
 
 type AppointmentMessageKind = "confirmation" | "reminder" | "same_day" | "rescheduled" | "canceled" | "follow_up" | "payment_reminder" | "no_show";
 const fields: Record<AppointmentMessageKind, "confirmationSentAt" | "customerReminderSentAt" | "sameDayReminderSentAt" | "rescheduleConfirmationSentAt" | "cancellationConfirmationSentAt" | "followUpSentAt" | "paymentReminderSentAt" | "noShowFollowUpSentAt"> = { confirmation: "confirmationSentAt", reminder: "customerReminderSentAt", same_day: "sameDayReminderSentAt", rescheduled: "rescheduleConfirmationSentAt", canceled: "cancellationConfirmationSentAt", follow_up: "followUpSentAt", payment_reminder: "paymentReminderSentAt", no_show: "noShowFollowUpSentAt" };
@@ -24,6 +26,8 @@ export async function sendCustomerAppointmentMessage(appointmentId: string, kind
   if (appointment[field]) return false;
   const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });
   if (optedOut) return false;
+  // A customer who declined appointment texts at booking gets none.
+  if (await smsConsentDeclined(appointment.businessId, appointment.customer.id)) return false;
   const claimedAt = new Date();
   const claimed = await prisma.appointment.updateMany({ where: { id: appointment.id, [field]: null }, data: { [field]: claimedAt } });
   if (claimed.count !== 1) return false;
@@ -31,7 +35,7 @@ export async function sendCustomerAppointmentMessage(appointmentId: string, kind
   const outstanding = Math.max(0, (appointment.price?.toNumber() ?? 0) - appointment.paidAmount.toNumber());
   const paymentLink = appointment.paymentTransactions[0]?.checkoutUrl;
   if (kind === "payment_reminder" && (!paymentLink || outstanding <= 0)) return false;
-  const body = kind === "confirmation" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is booked for ${when}.` : kind === "same_day" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is today at ${when}.` : kind === "rescheduled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment was moved to ${when}.` : kind === "canceled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment for ${when} was canceled.` : kind === "follow_up" ? `${appointment.business.name}: thank you for your visit. We hope you enjoyed your ${appointment.serviceName} appointment.` : kind === "payment_reminder" ? `${appointment.business.name}: ${outstanding.toFixed(2)} ${appointment.business.currency ?? "USD"} remains for your ${appointment.serviceName}. Pay securely: ${paymentLink}` : kind === "no_show" ? `${appointment.business.name}: we missed you at your ${appointment.serviceName} appointment on ${when}. If you would like to reschedule, we are happy to help. Reply here or call us.` : `${appointment.business.name}: reminder that your ${appointment.serviceName} appointment is at ${when}.`;
+  const body = kind === "confirmation" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is booked for ${when}. Reply STOP to opt out.` : kind === "same_day" ? `${appointment.business.name}: your ${appointment.serviceName} appointment is today at ${when}.` : kind === "rescheduled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment was moved to ${when}.` : kind === "canceled" ? `${appointment.business.name}: your ${appointment.serviceName} appointment for ${when} was canceled.` : kind === "follow_up" ? `${appointment.business.name}: thank you for your visit. We hope you enjoyed your ${appointment.serviceName} appointment.` : kind === "payment_reminder" ? `${appointment.business.name}: ${outstanding.toFixed(2)} ${appointment.business.currency ?? "USD"} remains for your ${appointment.serviceName}. Pay securely: ${paymentLink}` : kind === "no_show" ? `${appointment.business.name}: we missed you at your ${appointment.serviceName} appointment on ${when}. If you would like to reschedule, we are happy to help. Reply here or call us.` : `${appointment.business.name}: reminder that your ${appointment.serviceName} appointment is at ${when}.`;
   try {
     const result = await sendOutboundMessage({ to: appointment.customer.phoneE164, channel: "sms", body, countryCode: parsePhoneNumber(appointment.customer.phoneE164).country ?? "ZZ", idempotencyKey: `appointment:${kind}:${appointment.id}` }, provider);
     await prisma.message.create({ data: { businessId: appointment.businessId, customerId: appointment.customer.id, messageType: messageTypes[kind], channel: "sms", body, status: result.accepted ? "sent" : "failed", sentAt: result.accepted ? new Date() : null, provider: provider?.id ?? "twilio", providerMessageId: result.providerMessageId } });
@@ -59,6 +63,7 @@ export async function sendAppointmentArrivalMessage(appointmentId: string, state
   if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
   const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });
   if (optedOut) return false;
+  if (await smsConsentDeclined(appointment.businessId, appointment.customer.id)) return false;
   const name = appointment.business.name;
   const service = appointment.serviceName;
   const body = state === "ON_MY_WAY" ? `${name}: your ${service} provider is on the way.` : state === "RUNNING_LATE" ? `${name}: your ${service} provider is running late and will be with you as soon as possible.` : `${name}: your ${service} provider has arrived.`;
@@ -127,8 +132,8 @@ export async function sendDueAppointmentReminders(provider?: PushProvider, batch
     SELECT a.id FROM appointments a
     INNER JOIN businesses b ON b.id = a.business_id
     WHERE b.platform_status = 'ACTIVE' AND a.reminder_minutes IS NOT NULL AND a.reminder_sent_at IS NULL
-      AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.starts_at > ${now}
-      AND a.starts_at <= ${now} + a.reminder_minutes * INTERVAL '1 minute'
+      AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.starts_at > ${utc(now)}
+      AND a.starts_at <= ${utc(now)} + a.reminder_minutes * INTERVAL '1 minute'
     ORDER BY a.starts_at ASC LIMIT ${batchSize}
   `;
   let sent = 0;

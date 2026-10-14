@@ -8,6 +8,7 @@ import { findOrCreateCustomerByPhone } from "../../modules/customers/customers.s
 import { linkCustomerToBusiness, recordCustomerActivity, findMatchingBusinessCustomers } from "../customer/customerContext.js";
 import { notifyCustomer } from "../customer/customerNotifications.js";
 import { accrueForBookingCreated } from "../loyalty/accrual.js";
+import { recordSmsConsent } from "../messaging/smsConsent.js";
 
 // PROGRAM 2 LOOP 3: the authenticated-customer booking experience. Every
 // scheduling decision, conflict check, outbox event and reminder is the
@@ -137,7 +138,7 @@ function receiptFor(appointment: { id: string; serviceName: string; startsAt: Da
   };
 }
 
-export async function createCustomerBooking(customerProfileId: string, input: { slug: string; serviceOfferingId: string; assignedMemberId?: string; startsAt: string; notes?: string }) {
+export async function createCustomerBooking(customerProfileId: string, input: { slug: string; serviceOfferingId: string; assignedMemberId?: string; startsAt: string; notes?: string; smsConsent?: boolean }) {
   const business = await resolveBookableBusiness(input.slug);
   const service = await prisma.serviceOffering.findFirst({
     where: { id: input.serviceOfferingId, businessId: business.id, active: true, publiclyBookable: true },
@@ -181,6 +182,19 @@ export async function createCustomerBooking(customerProfileId: string, input: { 
     linkCustomerToBusiness({ customerProfileId, businessId: business.id, businessCustomerId }),
     recordCustomerActivity({ customerProfileId, businessId: business.id, type: "BOOKING_CREATED", entityType: "appointment", entityId: appointment.id, metadata: { serviceName: service.name, startsAt: startsAt.toISOString() } }),
   ]);
+
+  // Record the customer's text-message choice before any confirmation SMS, so
+  // a decline suppresses it. Older app builds send nothing: no row, no change.
+  if (input.smsConsent !== undefined) {
+    await recordSmsConsent({
+      businessId: business.id,
+      customerId: businessCustomerId,
+      businessName: business.name,
+      granted: input.smsConsent,
+      source: "customer_app_booking",
+      evidence: { appointmentId: appointment.id, customerProfileId },
+    });
+  }
 
   await notifyCustomer({
     customerProfileId,

@@ -101,6 +101,25 @@ describe("Customer Booking & Calendar Platform (Program 2, Loop 3)", () => {
       expect(body.receipt).not.toHaveProperty("paymentLink");
     });
 
+    it("records the customer's SMS consent choice per business, and nothing when the app sends none", async () => {
+      const biz = await bookableBusiness(app, "Consent Salon");
+      const yes = await registerCustomer(app);
+      const yesRes = await app.inject({ method: "POST", url: "/customer/bookings", headers: auth(yes.token), payload: { slug: biz.slug, serviceOfferingId: biz.serviceId, startsAt: futureSlot(7, 9), smsConsent: true } });
+      expect(yesRes.statusCode).toBe(201);
+      const no = await registerCustomer(app);
+      const noRes = await app.inject({ method: "POST", url: "/customer/bookings", headers: auth(no.token), payload: { slug: biz.slug, serviceOfferingId: biz.serviceId, startsAt: futureSlot(7, 11), smsConsent: false } });
+      expect(noRes.statusCode).toBe(201);
+      const legacy = await registerCustomer(app);
+      expect((await book(app, legacy.token, biz, futureSlot(7, 13))).statusCode).toBe(201);
+      const events = await prisma.customerConsentEvent.findMany({ where: { businessId: biz.businessId }, orderBy: { occurredAt: "asc" } });
+      expect(events.map((event) => [event.channel, event.purpose, event.granted, event.source])).toEqual([
+        ["SMS", "APPOINTMENT_TEXTS", true, "customer_app_booking"],
+        ["SMS", "APPOINTMENT_TEXTS", false, "customer_app_booking"],
+      ]);
+      expect((events[0]!.evidence as { appointmentId: string }).appointmentId).toBe(yesRes.json().appointment.id);
+      expect((events[0]!.evidence as { disclosure: string }).disclosure).toContain("from Consent Salon via Chakusa");
+    });
+
     it("auto-assigns an available staff member when none is chosen", async () => {
       const biz = await bookableBusiness(app, "AutoStaff Salon");
       const customer = await registerCustomer(app);

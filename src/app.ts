@@ -70,6 +70,8 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import calendarRoutes, { publicCalendarRoutes } from "./modules/calendar/calendar.routes.js";
 import { readAutomationHealth } from "./lib/automation/automationHealth.js";
 import { registerBuiltInAIProviders } from "./lib/ai/registerProviders.js";
+import { listAIProviderIds } from "./lib/ai/aiGateway.js";
+import { FAKE_AI_PROVIDER_ID } from "./lib/ai/fakeAIProvider.js";
 import { loadPlatformProviderSecretOverrides } from "./lib/platformProviderSecrets.js";
 import { defaultTwilioProvider } from "./lib/messaging/twilioProvider.js";
 import { circuitBreakerSnapshot } from "./lib/ai/ops/circuitBreaker.js";
@@ -262,15 +264,18 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // pre-rollout state); it does report an open breaker so ops can alert.
   app.get('/health/ai', async (_request, reply) => {
     try {
-      const [setting, flag] = await Promise.all([
+      const [setting, flag, activeModels] = await Promise.all([
         prisma.platformSetting.findFirst({ where: { key: 'ai_enabled' }, select: { value: true } }),
         prisma.featureFlag.findFirst({ where: { key: 'kill_switch.ai', scope: 'PLATFORM', enabled: true }, select: { id: true } }),
+        prisma.aIModelRegistry.findMany({ where: { status: 'ACTIVE' }, select: { provider: true, model: true } }),
       ]);
       const killSwitchEngaged = setting?.value === false || Boolean(flag);
       const breakers = circuitBreakerSnapshot();
       const openBreakers = breakers.filter((b) => b.circuit === 'OPEN');
       if (openBreakers.length) reply.code(503);
-      return { status: openBreakers.length ? 'degraded' : 'ok', aiKillSwitchEngaged: killSwitchEngaged, providers: breakers, openBreakers: openBreakers.map((b) => `${b.provider}/${b.model ?? '*'}`) };
+      // Provider ids and model names only: never keys.
+      const configuredProviders = listAIProviderIds().filter((id) => id !== FAKE_AI_PROVIDER_ID);
+      return { status: openBreakers.length ? 'degraded' : 'ok', aiKillSwitchEngaged: killSwitchEngaged, configured: configuredProviders.length > 0 && activeModels.some((m) => configuredProviders.includes(m.provider)), configuredProviders, activeModels: activeModels.map((m) => `${m.provider}/${m.model}`), providers: breakers, openBreakers: openBreakers.map((b) => `${b.provider}/${b.model ?? '*'}`) };
     } catch {
       reply.code(503);
       return { status: 'unavailable' };

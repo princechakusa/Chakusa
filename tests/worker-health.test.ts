@@ -34,6 +34,10 @@ describe('worker production health', () => {
     expect(base.statusCode).toBe(200);
     expect(base.json()).toMatchObject({ status: 'ok', aiKillSwitchEngaged: false });
     expect(Array.isArray(base.json().providers)).toBe(true);
+    // The test fake never counts as a configured provider, and no key is ever exposed.
+    expect(base.json()).toMatchObject({ configured: false, configuredProviders: [], activeModels: [] });
+    await prisma.aIModelRegistry.create({ data: { provider: 'gemini', model: 'gemini-3.5-flash-lite', version: '1', capabilities: ['conversation'], approvedUseCases: [], status: 'ACTIVE' } });
+    expect((await app.inject({ method: 'GET', url: '/health/ai' })).json().activeModels).toEqual(['gemini/gemini-3.5-flash-lite']);
 
     await prisma.platformSetting.create({ data: { key: 'ai_enabled', value: false } });
     const killed = await app.inject({ method: 'GET', url: '/health/ai' });

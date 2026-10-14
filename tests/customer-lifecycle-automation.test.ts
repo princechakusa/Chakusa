@@ -589,7 +589,12 @@ describe("customer lifecycle automation engine (Stage 8)", () => {
       const { provider } = makeFakeProvider();
       const handle = startAutomationWorker({ intervalMs: 50, lifecycleIntervalMs: 50, provider });
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Poll instead of a fixed sleep: on a loaded machine two 50 ms timers can
+      // take longer than any fixed wait to run both the sweep and the poll.
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && !(await prisma.automationRun.findFirst({ where: { businessId } }))) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
       handle.stop();
 
       // The lifecycle sweep should have scheduled a run, and the main poll

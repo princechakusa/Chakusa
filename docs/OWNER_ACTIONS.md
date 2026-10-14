@@ -427,3 +427,34 @@ Check Play Console → Chakusa → Test and release → App integrity:
 Either way, update the Google Sign-In Android OAuth client SHA-1 afterwards.
 App versions are already bumped: iOS build 6 (sent to TestFlight), Android
 versionCode 2.
+
+## OA-12 — Production switches for AI, Google Sign-In (iOS) and missed calls (2026-10-14) — OPEN
+
+Code for all of these shipped on 2026-10-14. Each item below is a console
+setting or credential that only the owner can create.
+
+1. **AI (OpenRouter, free models).** OpenRouter → Keys → create a key. Then
+   in Render → chakusa-api → Environment set:
+   - `OPENAI_API_KEY` = the OpenRouter key
+   - `OPENAI_BASE_URL` = `https://openrouter.ai/api/v1`
+   - `OPENAI_DEFAULT_MODEL` = `google/gemma-4-31b-it:free`
+     (alternative: `nvidia/nemotron-3-super-120b-a12b:free`)
+
+   Save to redeploy. On startup the API registers that model, because no
+   model is active yet (`src/lib/ai/bootstrapModel.ts`). Free models allow
+   about 50 requests a day. Adding $10 of OpenRouter credit raises that to
+   about 1,000 a day while staying on the free models.
+2. **Google Sign-In on iPhone.** Google Cloud Console → project "Chakusa"
+   (1004047431327) → Credentials → Create OAuth client → **iOS**, bundle ID
+   `com.chakusa.mobile`. Give the new client ID to engineering, which will
+   update `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `iosUrlScheme`, then rebuild
+   iOS. Also confirm OAuth consent screen → Publishing status = **In
+   production**; otherwise only test users can sign in.
+3. **Missed-call texts.** Detection runs on Android only, because iOS gives
+   apps no access to calls. It also needs:
+   - an Android build (blocked by OA-11)
+   - Twilio verification approved (OA-10) and the account upgraded from trial
+   - Render: `TWILIO_ENABLED=true` plus the account SID, auth token and
+     `TWILIO_FROM_NUMBER=+18446041271`
+   - Pro plan and the automation rule switched on in the app (automation
+     screens now default to on)

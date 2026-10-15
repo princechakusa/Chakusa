@@ -144,6 +144,10 @@ export async function createLeadFromMissedCall(
   });
   if (openLead) {
     const refreshed = await prisma.lead.update({ where: { id: openLead.id }, data: { missedCallTime: new Date(input.occurredAt) } });
+    // Schedules only what hasn't been scheduled for this lead yet (the
+    // per-rule, per-lead dedupe key makes it a no-op otherwise) — e.g. the
+    // first call arrived before automation was switched on.
+    await scheduleMissedCallFollowUp(businessId, refreshed);
     return withResponseTime(refreshed);
   }
 

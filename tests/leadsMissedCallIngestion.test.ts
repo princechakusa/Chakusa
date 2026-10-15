@@ -162,6 +162,24 @@ describe("missed-call ingestion (POST /leads/missed-call)", () => {
     expect(runs.map((run) => run.automationRuleId).sort()).toEqual([sms.id, whatsapp.id].sort());
   });
 
+  it("5c. a repeat call to a lead that predates the automation gets its follow-up then, once", async () => {
+    const { token, businessId } = await registerAccount(app);
+    await setPlan(businessId, "PRO");
+    await setSubscriptionStatus(businessId, "ACTIVE");
+    const call = (clientEventId: string) => app.inject({ method: "POST", url: "/leads/missed-call", headers: authHeader(token), payload: { phone: "+263771234567", occurredAt: new Date().toISOString(), clientEventId } });
+
+    await call("before-automation");
+    expect(await prisma.automationRun.count({ where: { businessId } })).toBe(0);
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", { name: "WhatsApp", enabled: true, triggerType: "LEAD_CREATED", channel: "WHATSAPP", delaySeconds: 0, config: {} });
+    await call("after-automation-1");
+    await call("after-automation-2");
+
+    const runs = await prisma.automationRun.findMany({ where: { businessId } });
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.automationRuleId).toBe(rule.id);
+    expect(await prisma.lead.count({ where: { businessId } })).toBe(1);
+  });
+
   it("6. rejects a missing phone or clientEventId with a validation error", async () => {
     const { token } = await registerAccount(app);
 

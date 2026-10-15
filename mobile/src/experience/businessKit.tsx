@@ -204,8 +204,12 @@ export function M3Card({
     </View>
   );
   if (!onPress) return body;
+  // The wrapper takes the card's outer layout (flex/size/margins) so a
+  // tappable card sizes exactly like a static one, e.g. flex: 1 in a row.
+  const { flex, flexGrow, flexShrink, flexBasis, alignSelf, width, minWidth, maxWidth, margin, marginHorizontal, marginVertical, marginTop, marginBottom, marginLeft, marginRight } = StyleSheet.flatten(style) ?? {};
+  const outer = { flex, flexGrow, flexShrink, flexBasis, alignSelf, width, minWidth, maxWidth, margin, marginHorizontal, marginVertical, marginTop, marginBottom, marginLeft, marginRight };
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [outer, pressed && styles.pressed]}>
       {body}
     </Pressable>
   );

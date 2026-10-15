@@ -39,32 +39,31 @@ export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead)
     if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) return;
 
     // At most one rule per channel exists (unique businessId+trigger+channel).
-    // A missed caller gets exactly one follow-up: WhatsApp when the business
-    // has chosen it, otherwise SMS.
+    // Each enabled channel (SMS and/or WhatsApp) sends its own follow-up, so
+    // a business can reach callers on both. Repeat calls never add more:
+    // they join the open lead (createLeadFromMissedCall).
     const rules = await prisma.automationRule.findMany({
       where: { businessId, triggerType: "LEAD_CREATED", enabled: true, channel: { in: ["WHATSAPP", "SMS"] } },
     });
-    const rule = rules.find((candidate) => candidate.channel === "WHATSAPP") ?? rules[0];
-    if (!rule) return;
 
-    const dedupeKey = buildLeadCreatedDedupeKey(rule.id, lead.id);
-    const scheduledFor = new Date(Date.now() + rule.delaySeconds * 1000);
-
-    await createAutomationRun(businessId, {
-      automationRuleId: rule.id,
-      customerId: lead.customerId,
-      leadId: lead.id,
-      dedupeKey,
-      scheduledFor,
-    });
-  } catch (error) {
-    if (error instanceof ApiError && error.code === "CONFLICT") {
-      // A run for this exact (rule, lead) already exists — the unique
-      // constraint on (businessId, dedupeKey) is what actually prevents
-      // the duplicate; this is the expected, idempotent outcome of the
-      // same event being processed more than once, not a failure.
-      return;
+    for (const rule of rules) {
+      try {
+        await createAutomationRun(businessId, {
+          automationRuleId: rule.id,
+          customerId: lead.customerId,
+          leadId: lead.id,
+          dedupeKey: buildLeadCreatedDedupeKey(rule.id, lead.id),
+          scheduledFor: new Date(Date.now() + rule.delaySeconds * 1000),
+        });
+      } catch (error) {
+        // A run for this exact (rule, lead) already exists — the unique
+        // constraint on (businessId, dedupeKey) is what actually prevents
+        // the duplicate; this is the expected, idempotent outcome of the
+        // same event being processed more than once, not a failure.
+        if (!(error instanceof ApiError && error.code === "CONFLICT")) throw error;
+      }
     }
+  } catch (error) {
     console.error("[automation] failed to schedule missed-call follow-up", error);
   }
 }

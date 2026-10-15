@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppointmentDto } from '../apiTypes';
 import { endOfDay, startOfDay } from '../domain/calendar';
@@ -63,9 +63,13 @@ export function DashboardScreen() {
     [loadAppointments, loadDashboard, loadLeads, loadReminders, loadReviews],
   );
 
-  useEffect(() => {
-    void refreshAll();
-  }, [refreshAll]);
+  // Reload whenever the dashboard is shown again, so bookings, leads and
+  // reviews changed on other screens are reflected immediately.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshAll();
+    }, [refreshAll]),
+  );
 
   const upcoming = useMemo(
     () =>
@@ -309,7 +313,7 @@ export function DashboardScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => navigation.navigate('LeadDetail', { leadId: newLeads[0].id })}
+                    onPress={() => navigation.navigate('AppointmentEditor', { customerId: newLeads[0].customerId ?? undefined, leadId: newLeads[0].id })}
                     style={styles.attnPrimaryBtn}
                   >
                     <Text style={styles.attnPrimaryText}>Convert to Booking</Text>

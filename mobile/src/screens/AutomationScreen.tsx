@@ -4,13 +4,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AutomationChannel, AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
-import { AppHeader, ChannelPicker, ErrorState, InfoRow, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
+import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { LifecycleAutomationCards } from '../components/LifecycleAutomationCards';
-import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, automationStatusCopy, channelLabel, delayLabel, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
+import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, channelLabel, delayLabel, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
 import { EngineItem, recoveryEngineStatus } from '../domain/recoveryEngineStatus';
 import { ApiError } from '../services/api';
-import { ensureMissedCallAutomationRule } from '../services/automationSetup';
+import { setMissedCallChannel } from '../services/automationSetup';
 import { enableCallDetection, enableContactCoverage, getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
 import { automationApi } from '../services/endpoints';
 import { getPushPermissionStatus, registerCurrentDeviceForPush } from '../services/pushNotifications';
@@ -40,10 +40,9 @@ export function AutomationScreen({ navigation }: Props) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [mutation, setMutation] = useState<'create'|'delay'|'channel'|'toggle'|null>(null);
+  const [mutation, setMutation] = useState<'delay'|'toggle'|null>(null);
   const [lifecycleMutation, setLifecycleMutation] = useState<string | null>(null);
   const [selectedDelay, setSelectedDelay] = useState<number | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<AutomationChannel>('SMS');
   const [notice, setNotice] = useState<string | null>(null);
   const [callDetectionAvail, setCallDetectionAvail] = useState<CallDetectionAvailability>('unsupported');
   const [hasContactsPermission, setHasContactsPermission] = useState(false);
@@ -55,8 +54,11 @@ export function AutomationScreen({ navigation }: Props) {
   const screenActive = useRef(false);
 
   const availability = automationAvailability(plan, status, features?.automation ?? null, AUTOMATION_ENABLED);
-  const rule = missedCallRules(rules)[0] ?? null;
-  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: rule?.enabled ?? false, pushGranted });
+  const missedRules = missedCallRules(rules);
+  const whatsappRule = missedRules.find(item => item.channel === 'WHATSAPP') ?? null;
+  const smsRule = missedRules.find(item => item.channel === 'SMS') ?? null;
+  const rule = whatsappRule ?? smsRule;
+  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: missedRules.some(item => item.enabled), pushGranted });
 
   const loadRules = useCallback(async () => {
     if (rulesInFlight.current) return rulesInFlight.current;
@@ -110,26 +112,18 @@ export function AutomationScreen({ navigation }: Props) {
   const refreshAll = useCallback(async () => { await Promise.all([loadRules(), refreshHistory(), refreshPlan(), refreshEngineSignals()]); }, [loadRules, refreshHistory, refreshPlan, refreshEngineSignals]);
   useFocusEffect(useCallback(() => { screenActive.current = true; void refreshAll(); return () => { screenActive.current = false; }; }, [refreshAll]));
   useEffect(() => { if (rule && selectedDelay === null) setSelectedDelay(rule.delaySeconds); }, [rule, selectedDelay]);
-  useEffect(() => { if (rule) setSelectedChannel(rule.channel); }, [rule]);
   useEffect(() => { const listener = AppState.addEventListener('change', next => { if (next === 'active' && screenActive.current) void refreshAll(); }); return () => listener.remove(); }, [refreshAll]);
 
   const pullToRefresh = async () => { setRefreshing(true); try { await refreshAll(); } finally { setRefreshing(false); } };
-  const mutate = async (kind: 'create'|'delay'|'channel'|'toggle', operation: () => Promise<unknown>) => {
+  const mutate = async (kind: 'delay'|'toggle', operation: () => Promise<unknown>) => {
     if (mutation) return;
     setMutation(kind); setRuleError(null); setNotice(null);
     try { await operation(); await refreshAll(); }
     catch (caught) { if (!handleEntitlementError(caught)) setRuleError(caught instanceof ApiError && caught.kind === 'network' ? 'Couldn’t reach Chakusa. Your automation setting was not changed.' : 'Chakusa couldn’t update this automation. Please refresh and try again.'); }
     finally { setMutation(null); }
   };
-  const create = () => mutate('create', async () => {
-    if (selectedDelay === null) return;
-    const { rules: latest, alreadyExisted } = await ensureMissedCallAutomationRule(selectedDelay, selectedChannel);
-    setRules(latest);
-    if (alreadyExisted) setNotice('Your missed-call automation already exists.');
-  });
-  const toggle = (enabled: boolean) => { if (!rule || availability !== 'available') return; void mutate('toggle', () => enabled ? automationApi.enableRule(rule.id) : automationApi.disableRule(rule.id)); };
-  const saveDelay = () => { if (!rule || selectedDelay === null || selectedDelay === rule.delaySeconds || availability !== 'available') return; void mutate('delay', () => automationApi.updateRule(rule.id, { delaySeconds: selectedDelay })); };
-  const saveChannel = () => { if (!rule || selectedChannel === rule.channel || availability !== 'available') return; void mutate('channel', () => automationApi.updateRule(rule.id, { channel: selectedChannel })); };
+  const saveDelay = () => { if (!rule || selectedDelay === null || availability !== 'available') return; void mutate('delay', () => Promise.all(missedRules.filter(item => item.delaySeconds !== selectedDelay).map(item => automationApi.updateRule(item.id, { delaySeconds: selectedDelay })))); };
+  const setChannel = (channel: AutomationChannel, enabled: boolean) => { if (availability !== 'available') return; void mutate('toggle', () => setMissedCallChannel(channel, enabled, selectedDelay ?? 0)); };
   const mutateLifecycle = (key: string, operation: () => Promise<unknown>) => {
     if (lifecycleMutation || mutation) return;
     setLifecycleMutation(key); setRuleError(null); setNotice(null);
@@ -186,8 +180,17 @@ export function AutomationScreen({ navigation }: Props) {
     {rulesLoaded && availability === 'free-locked' ? <Locked title="Automation is included with Chakusa Pro" body="Your manual missed-call follow-up tools remain available on Free." action="View Pro" onPress={() => navigation.navigate('Pro')} /> : null}
     {rulesLoaded && availability === 'subscription-unavailable' ? <Locked title="Automation is unavailable" body={status === 'EXPIRED' ? 'Your Pro subscription has expired. Existing rule data is preserved, but automation cannot run.' : status === 'CANCELED' ? 'Your Pro subscription is canceled. Existing rule data is preserved, but automation cannot run.' : 'Your current subscription does not include automation.'} action="View plan" onPress={() => navigation.navigate('Pro')} /> : null}
     {rulesLoaded && availability === 'service-unavailable' ? <Locked title="Automation is preparing for launch" body="Automation history remains available, but automatic messages are not running in production yet." action="View plan" onPress={() => navigation.navigate('Pro')} /> : null}
-    {rulesLoaded && availability === 'available' && !rule ? <View style={styles.card}><Text style={styles.heading}>Set up missed-call follow-up</Text><Text style={styles.body}>Choose how and when Chakusa should follow up. The rule is created off, so you can review it before enabling real messages.</Text><Text style={styles.label}>Channel</Text><ChannelPicker value={selectedChannel} disabled={Boolean(mutation)} onChange={setSelectedChannel} /><Text style={styles.label}>Delay</Text><DelayPicker value={selectedDelay} disabled={Boolean(mutation)} onChange={setSelectedDelay} /><PrimaryButton fullWidth disabled={selectedDelay === null || Boolean(mutation)} label={mutation === 'create' ? 'Setting up…' : 'Set up follow-up'} onPress={() => void create()} /></View> : null}
-    {rulesLoaded && rule && availability !== 'service-unavailable' ? <><View style={styles.card}><View style={styles.statusRow}><View style={styles.copy}><Text style={styles.heading}>Automatic {channelLabel(rule.channel)} follow-up</Text><StatusBadge label={automationStatusCopy(rule.enabled)} /></View><Switch accessibilityLabel="Automatic missed-call follow-up" accessibilityHint="Turns real automatic customer messages on or off" accessibilityState={{ disabled: availability !== 'available' || Boolean(mutation) }} disabled={availability !== 'available' || Boolean(mutation)} value={rule.enabled} onValueChange={toggle} trackColor={{ false: colors.border, true: colors.success }} thumbColor={colors.surface} /></View><InfoRow label="When" value="New missed-call lead" /><InfoRow label="Channel" value={channelLabel(rule.channel)} /><InfoRow label="Delay" value={delayLabel(rule.delaySeconds)} /></View><View style={styles.card}><Text style={styles.heading}>Channel</Text><ChannelPicker value={selectedChannel} disabled={availability !== 'available' || Boolean(mutation)} onChange={setSelectedChannel} /><PrimaryButton fullWidth disabled={availability !== 'available' || selectedChannel === rule.channel || Boolean(mutation)} label={mutation === 'channel' ? 'Saving…' : 'Save channel'} onPress={saveChannel} /></View><View style={styles.card}><Text style={styles.heading}>Delay</Text><DelayPicker value={selectedDelay} disabled={availability !== 'available' || Boolean(mutation)} onChange={setSelectedDelay} /><PrimaryButton fullWidth disabled={availability !== 'available' || selectedDelay === null || selectedDelay === rule.delaySeconds || Boolean(mutation)} label={mutation === 'delay' ? 'Saving…' : 'Save delay'} onPress={saveDelay} /></View></> : null}
+    {rulesLoaded && availability !== 'service-unavailable' && (availability === 'available' || rule) ? <View style={styles.card}>
+      <Text style={styles.heading}>Missed-call follow-up</Text>
+      <Text style={styles.body}>When a call is missed, Chakusa messages the caller automatically. Turn on WhatsApp, SMS or both; each sends one message per missed-call lead.</Text>
+      {([['WHATSAPP', whatsappRule], ['SMS', smsRule]] as const).map(([channel, channelRule]) => <View key={channel} style={styles.statusRow}>
+        <View style={styles.copy}><Text style={styles.engineLabel}>{channelLabel(channel)}</Text><Text style={styles.body}>{channelRule?.enabled ? `On · ${delayLabel(channelRule.delaySeconds)}` : 'Off'}</Text></View>
+        <Switch accessibilityLabel={`Automatic ${channelLabel(channel)} missed-call follow-up`} accessibilityHint="Turns real automatic customer messages on or off" accessibilityState={{ disabled: availability !== 'available' || Boolean(mutation) }} disabled={availability !== 'available' || Boolean(mutation)} value={channelRule?.enabled ?? false} onValueChange={enabled => setChannel(channel, enabled)} trackColor={{ false: colors.border, true: colors.success }} thumbColor={colors.surface} />
+      </View>)}
+      <Text style={styles.label}>Delay</Text>
+      <DelayPicker value={selectedDelay} disabled={availability !== 'available' || Boolean(mutation)} onChange={setSelectedDelay} />
+      {rule ? <PrimaryButton fullWidth disabled={availability !== 'available' || selectedDelay === null || missedRules.every(item => item.delaySeconds === selectedDelay) || Boolean(mutation)} label={mutation === 'delay' ? 'Saving…' : 'Save delay'} onPress={saveDelay} /> : null}
+    </View> : null}
     {rulesLoaded ? <LifecycleAutomationCards rules={rules} availability={availability} reminderDays={business?.reminderDays} working={lifecycleMutation} onWork={mutateLifecycle} /> : null}
     {rulesLoaded ? <View style={styles.card}><Text style={styles.heading}>Message</Text><Text style={styles.body}>Chakusa uses the matching lead, review request, or comeback template for each automation. Review your templates before enabling real messages.</Text><SecondaryButton fullWidth label="View message templates" onPress={() => navigation.navigate('Templates')} /></View> : null}
     {status === 'GRACE_PERIOD' && availability === 'available' ? <Text style={styles.notice}>Automation remains available during your current payment grace period.</Text> : null}

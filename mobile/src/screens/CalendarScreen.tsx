@@ -26,7 +26,7 @@ const ARRIVAL_LABEL: Record<'ON_MY_WAY' | 'RUNNING_LATE' | 'ARRIVED', string> = 
   ARRIVED: 'Arrived',
 };
 const STATUS_CHIP: Record<AppointmentStatus, { label: string; tone: 'secondary' | 'neutral' | 'error' | 'primaryFixed' }> = {
-  SCHEDULED: { label: 'Confirmed', tone: 'neutral' },
+  SCHEDULED: { label: 'Pending', tone: 'neutral' },
   CONFIRMED: { label: 'Confirmed', tone: 'secondary' },
   COMPLETED: { label: 'Done', tone: 'neutral' },
   CANCELED: { label: 'Canceled', tone: 'error' },

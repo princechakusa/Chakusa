@@ -1,6 +1,6 @@
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
@@ -61,7 +61,9 @@ export function LeadsScreen() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => { void loadLeads(filter === 'all' ? undefined : filter); }, [filter, loadLeads]);
+  // On filter change and whenever the list is shown again (a lead may have
+  // been booked or updated elsewhere).
+  useFocusEffect(useCallback(() => { void loadLeads(filter === 'all' ? undefined : filter); }, [filter, loadLeads]));
   useEffect(() => { if (!state.customers.loaded) void loadCustomers(); }, [loadCustomers, state.customers.loaded]);
   useEffect(() => {
     const presetId = route.params?.presetCustomerId;

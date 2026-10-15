@@ -8,12 +8,23 @@ import { combineLocalDateTime, localDateKey, localTime } from '../domain/calenda
 import { appointmentCommunicationEvents } from '../domain/appointmentCommunication';
 import { useProviderLocationShare } from '../hooks/useProviderLocationShare';
 import { ApiError } from '../services/api';
-import { appointmentsApi, customersApi, servicesApi, teamApi } from '../services/endpoints';
+import { appointmentsApi, customersApi, leadsApi, servicesApi, teamApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
 import { m3, m3Radius, m3Shadow, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { RootStackParamList } from '../types';
 import { formatDateTime, formatMoney, titleCase } from '../utils/format';
+
+/** Best effort: the appointment is the source of truth; a lead already past these states is left as is. */
+async function advanceLeadToBooked(leadId: string) {
+  try {
+    const lead = await leadsApi.get(leadId);
+    if (lead.status === 'new') await leadsApi.transition(leadId, 'contacted');
+    if (lead.status === 'new' || lead.status === 'contacted') await leadsApi.transition(leadId, 'booked');
+  } catch {
+    /* the booking itself succeeded */
+  }
+}
 
 export function AppointmentEditorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -34,7 +45,7 @@ export function AppointmentEditorScreen() {
   const [customers, setCustomers] = useState<CustomerDto[]>([]);
   const [members, setMembers] = useState<TeamMemberDto[]>([]);
   const [offerings, setOfferings] = useState<ServiceOfferingDto[]>([]);
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(route.params?.customerId ?? '');
   const [memberId, setMemberId] = useState('');
   const [serviceOfferingId, setServiceOfferingId] = useState('');
   const [service, setService] = useState(business?.defaultServices?.[0] ?? '');
@@ -121,7 +132,13 @@ export function AppointmentEditorScreen() {
     };
     try {
       if (id) await appointmentsApi.patch(id, body);
-      else await appointmentsApi.create(body);
+      else {
+        await appointmentsApi.create(body);
+        // Booked from a lead: move it along the pipeline (new -> contacted ->
+        // booked). This also stops a still-pending automatic follow-up.
+        const leadId = route.params?.leadId;
+        if (leadId) await advanceLeadToBooked(leadId);
+      }
       navigation.goBack();
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Unable to save appointment.');

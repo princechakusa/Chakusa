@@ -21,3 +21,24 @@ export async function ensureMissedCallAutomationRule(delaySeconds: number, chann
   }
   return { rules: await automationApi.listRules(), alreadyExisted: false };
 }
+
+/**
+ * Turns the missed-call follow-up on or off for one channel. SMS and WhatsApp
+ * are independent rules (one per channel); a channel being switched on for
+ * the first time gets its rule created already enabled, at `delaySeconds`.
+ */
+export async function setMissedCallChannel(channel: AutomationChannel, enabled: boolean, delaySeconds: number) {
+  const findRule = (rules: Awaited<ReturnType<typeof automationApi.listRules>>) => missedCallRules(rules).find(rule => rule.channel === channel);
+  let existing = findRule(await automationApi.listRules());
+  if (!existing && enabled) {
+    try {
+      await automationApi.createRule({ name: `Missed-call ${channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} follow-up`, enabled: true, triggerType: 'LEAD_CREATED', channel, delaySeconds, config: {} });
+      return;
+    } catch (caught) {
+      if (!isDuplicateAutomationRuleConflict(caught instanceof ApiError ? caught : {})) throw caught;
+      existing = findRule(await automationApi.listRules());
+    }
+  }
+  if (!existing || existing.enabled === enabled) return;
+  await (enabled ? automationApi.enableRule(existing.id) : automationApi.disableRule(existing.id));
+}

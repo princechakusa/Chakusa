@@ -227,6 +227,15 @@ export function LeadDetailCorrectScreen({ route, navigation }: Props) {
       {actions.length ? (
         <View style={styles.gap8}>
           <SectionTitle title="Next step" />
+          {lead.status === 'new' || lead.status === 'contacted' ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('AppointmentEditor', { customerId: lead.customerId ?? undefined, leadId: lead.id })}
+              style={styles.primaryBtn}
+            >
+              <Text style={styles.primaryBtnText}>Book appointment</Text>
+            </Pressable>
+          ) : null}
           <View style={styles.actionsRow}>
             {actions.map((status) => (
               <Pressable

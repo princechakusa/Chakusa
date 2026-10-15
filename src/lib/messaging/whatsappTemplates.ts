@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { greetingName } from "../templateEngine.js";
 import type { OutboundMessage } from "./messagingProvider.js";
 
 // The shared Chakusa WhatsApp sender's Meta-approved templates. WhatsApp
@@ -18,7 +19,7 @@ function clean(value: string | null | undefined, fallback: string): string {
 }
 
 export function firstName(name: string | null | undefined): string {
-  return clean(name, "there").split(" ")[0] ?? "there";
+  return greetingName(clean(name, "there")).split(" ")[0] ?? "there";
 }
 
 /** {{1}} = business name. */

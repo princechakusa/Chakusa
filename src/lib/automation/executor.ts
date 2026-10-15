@@ -369,6 +369,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
             status: "failed",
             provider: "twilio",
             providerMessageId: result.providerMessageId,
+            providerErrorCode: result.errorCode ?? null,
           },
         }),
         prisma.automationRun.updateMany({

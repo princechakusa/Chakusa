@@ -9,7 +9,9 @@ import { emitAIEvent } from "./ops/aiMetrics.js";
 export { assertSafeAIInput } from "./safety.js";
 
 export type AITask = "classification" | "conversation" | "scheduling" | "extraction";
-export interface AIProvider { id: string; invoke(input: { model: string; task: AITask; prompt: string; context: unknown; tools: Array<{ name: string; schema: object }> }): Promise<{ output: unknown; confidence?: number; usage?: { inputTokens?: number; outputTokens?: number; reasoningTokens?: number }; toolRequests?: Array<{ name: string; arguments: unknown }> }> }
+export interface AIProvider { id: string; invoke(input: { model: string; task: AITask; prompt: string; context: unknown; tools: AIToolDeclaration[] }): Promise<{ output: unknown; confidence?: number; usage?: { inputTokens?: number; outputTokens?: number; reasoningTokens?: number }; toolRequests?: Array<{ name: string; arguments: unknown }> }> }
+/** A tool the model may request. Requests are only proposals: the Tool Broker and Policy Engine decide. */
+export interface AIToolDeclaration { name: string; description?: string; schema: object }
 const providers = new Map<string, AIProvider>();
 export function registerAIProvider(provider: AIProvider) { providers.set(provider.id, provider); }
 export function clearAIProviders() { providers.clear(); }
@@ -26,7 +28,7 @@ export function listAIProviderIds() { return [...providers.keys()]; }
 // LOOP 5 hardening: the Policy Engine INVOCATION check is now unconditional —
 // there is no bypass parameter. Nothing can reach a provider without a
 // policy decision on record.
-export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; runId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string; channel?: string }) {
+export async function routeAI(input: { businessId: string; task: AITask; prompt: string; context: unknown; customerId?: string; conversationId?: string; workflowExecutionId?: string; runId?: string; correlationId?: string; causationId?: string; promptVersionId: string; requiredCapability?: string; channel?: string; tools?: AIToolDeclaration[] }) {
   assertSafeAIInput(input.prompt);
   await assertPolicyAllows({
     businessId: input.businessId,
@@ -56,7 +58,7 @@ export async function routeAI(input: { businessId: string; task: AITask; prompt:
   const started = Date.now();
   const checksum = createHash("sha256").update(input.prompt).digest("hex");
   try {
-    const result = await provider.invoke({ model: selected.model, task: input.task, prompt: input.prompt, context: input.context, tools: [] });
+    const result = await provider.invoke({ model: selected.model, task: input.task, prompt: input.prompt, context: input.context, tools: input.tools ?? [] });
     const latencyMs = Date.now() - started;
     const ledger = await prisma.aIInvocationLedger.create({ data: { businessId: input.businessId, customerId: input.customerId, conversationId: input.conversationId, workflowExecutionId: input.workflowExecutionId, provider: selected.provider, model: selected.model, modelVersion: selected.version, promptVersion: promptVersion.id, promptChecksum: checksum, inputTokens: result.usage?.inputTokens, outputTokens: result.usage?.outputTokens, reasoningTokens: result.usage?.reasoningTokens, latencyMs, correlationId: input.correlationId, causationId: input.causationId, confidence: result.confidence, safetyResult: "PASSED", outcome: "COMPLETED", toolRequests: (result.toolRequests ?? []) as never } });
     await recordProviderResult({ provider: selected.provider, model: selected.model, ok: true, latencyMs });

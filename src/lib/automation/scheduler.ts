@@ -38,9 +38,13 @@ export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead)
     });
     if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) return;
 
-    const rule = await prisma.automationRule.findFirst({
-      where: { businessId, triggerType: "LEAD_CREATED", enabled: true, channel: "SMS" },
+    // At most one rule per channel exists (unique businessId+trigger+channel).
+    // A missed caller gets exactly one follow-up: WhatsApp when the business
+    // has chosen it, otherwise SMS.
+    const rules = await prisma.automationRule.findMany({
+      where: { businessId, triggerType: "LEAD_CREATED", enabled: true, channel: { in: ["WHATSAPP", "SMS"] } },
     });
+    const rule = rules.find((candidate) => candidate.channel === "WHATSAPP") ?? rules[0];
     if (!rule) return;
 
     const dedupeKey = buildLeadCreatedDedupeKey(rule.id, lead.id);

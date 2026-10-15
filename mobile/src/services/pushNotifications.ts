@@ -55,7 +55,8 @@ async function registerCurrentDevice() {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
       importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default',
+      // No `sound`: a channel already plays the system default, and
+      // expo-notifications treats the string 'default' as a missing custom file.
       vibrationPattern: [0, 250, 250, 250],
     });
   }

@@ -9,6 +9,7 @@ import { buildLeadCreatedDedupeKey } from "../src/lib/automation/dedupeKey.js";
 import { claimDueAutomationRuns, executeAutomationRun, processDueAutomationRuns, MAX_SEND_ATTEMPTS } from "../src/lib/automation/executor.js";
 import type { MessagingProvider, OutboundMessage, SendResult } from "../src/lib/messaging/messagingProvider.js";
 import type { AutomationRun } from "@prisma/client";
+import { config } from "../src/lib/config.js";
 
 function makeFakeProvider(sendImpl?: (message: OutboundMessage) => Promise<SendResult>) {
   const calls: OutboundMessage[] = [];
@@ -454,6 +455,34 @@ describe("automation execution engine (Phase 4)", () => {
 
     const message = await prisma.message.findFirstOrThrow({ where: { businessId } });
     expect(message.messageType).toBe("public_profile_inquiry");
+  });
+
+  it("17c. a WhatsApp missed-call rule sends the approved template, threaded into the customer's conversation", async () => {
+    const { businessId } = await registerAccount(app);
+    await setPlan(businessId, "PRO");
+    await setSubscriptionStatus(businessId, "ACTIVE");
+    const rule = await createAutomationRule(businessId, "PRO", "ACTIVE", { name: "WhatsApp recovery", enabled: true, triggerType: "LEAD_CREATED", channel: "WHATSAPP", delaySeconds: 0, config: {} });
+    const customer = await makeCustomer(businessId);
+    const lead = await makeMissedCallLead(businessId, customer.id);
+    await scheduleMissedCallFollowUp(businessId, lead);
+    const previous = config.TWILIO_WHATSAPP_MISSED_CALL_CONTENT_SID;
+    config.TWILIO_WHATSAPP_MISSED_CALL_CONTENT_SID = "HX0123456789abcdef0123456789abcdef";
+    const { provider, calls } = makeFakeProvider();
+    try {
+      await processDueAutomationRuns(provider, 10);
+    } finally {
+      config.TWILIO_WHATSAPP_MISSED_CALL_CONTENT_SID = previous;
+    }
+
+    const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ channel: "whatsapp", to: "+263771234567", template: { contentSid: "HX0123456789abcdef0123456789abcdef", variables: { "1": business.name } } });
+    const message = await prisma.message.findFirstOrThrow({ where: { businessId, automationRun: { automationRuleId: rule.id } } });
+    expect(message).toMatchObject({ channel: "whatsapp", direction: "OUTBOUND", actorType: "SYSTEM", status: "sent" });
+    expect(message.conversationId).not.toBeNull();
+    const conversation = await prisma.conversation.findUniqueOrThrow({ where: { id: message.conversationId! } });
+    expect(conversation.customerId).toBe(customer.id);
+    expect(conversation.lastOutboundAt).not.toBeNull();
   });
 
   it("18. completes the AutomationRun on a successful send", async () => {

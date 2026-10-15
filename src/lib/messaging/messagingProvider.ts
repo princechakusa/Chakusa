@@ -41,6 +41,13 @@ export interface OutboundMessage {
    * rather than dispatching a duplicate message.
    */
   idempotencyKey: string;
+  /**
+   * WhatsApp only: a provider-approved template to send instead of `body`.
+   * Required by WhatsApp for business-initiated messages outside the
+   * customer's 24-hour reply window. `body` is still the human-readable
+   * record of what was sent. Ignored for SMS.
+   */
+  template?: { contentSid: string; variables: Record<string, string> };
 }
 
 export interface SendResult {

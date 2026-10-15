@@ -10,6 +10,7 @@ import {
 } from "../../lib/ai/agent/receptionistSettings.js";
 import { isCustomerAgentEnabled } from "../../lib/ai/agent/customerAgent.js";
 import { resolveActivePolicy } from "../../lib/ai/policyEngine.js";
+import { setPolicyMode } from "../../lib/ai/policyAdmin.js";
 
 const patchSchema = z
   .object({
@@ -17,6 +18,9 @@ const patchSchema = z
     smsEnabled: z.boolean().optional(),
     whatsappEnabled: z.boolean().optional(),
     mode: z.enum(["ALWAYS", "AFTER_HOURS_ONLY"]).optional(),
+    // AI policy autonomy. Changed through the Policy Engine's own audited
+    // draft -> activate path (setPolicyMode), never stored here.
+    autonomy: z.enum(["DRAFT", "APPROVAL", "AUTONOMOUS"]).optional(),
   })
   .refine(v => Object.keys(v).length > 0, { message: "No fields to update" });
 
@@ -70,7 +74,10 @@ export default async function aiReceptionistRoutes(fastify: FastifyInstance) {
   fastify.patch("/", async (request, reply) => {
     requireCapability(request, "automation.manage");
     assertFeatureAvailable(request.plan!, request.status!, "AI_RECEPTIONIST");
-    const input = patchSchema.parse(request.body);
-    reply.send(await updateReceptionistSettings(request.businessId!, request.user.userId, input));
+    const { autonomy, ...settingsInput } = patchSchema.parse(request.body);
+    if (autonomy) await setPolicyMode({ businessId: request.businessId!, mode: autonomy, actorUserId: request.user.userId });
+    reply.send(Object.keys(settingsInput).length
+      ? await updateReceptionistSettings(request.businessId!, request.user.userId, settingsInput)
+      : await getReceptionistSettings(request.businessId!));
   });
 }

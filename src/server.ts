@@ -3,7 +3,9 @@ import { config } from "./lib/config.js";
 import { prisma } from "./lib/prisma.js";
 import { initSentry, captureUnexpectedError, flushSentry } from "./lib/sentry.js";
 import { ensureDefaultLegalDocuments } from "./modules/legal/defaultLegalDocuments.js";
-import { ensureBootstrapAIModel } from "./lib/ai/bootstrapModel.js";
+import { ensureBootstrapAIModel, ensureCustomerAgentPlatformFlag } from "./lib/ai/bootstrapModel.js";
+import { ensurePlatformPrompts } from "./lib/ai/platformPrompts.js";
+import { startAutomationWorker, type AutomationWorkerHandle } from "./worker/automationWorker.js";
 import { applyComplimentaryPlans } from "./lib/billing/complimentaryPlans.js";
 
 // Initialized before anything else so a failure during buildApp() itself
@@ -69,6 +71,17 @@ async function main() {
     captureUnexpectedError(err);
   }
 
+  // AI receptionist prerequisites: the published platform prompts routeAI
+  // requires, and the env-driven platform switch (AI_CUSTOMER_AGENT_ENABLED).
+  try {
+    const prompts = await ensurePlatformPrompts(prisma);
+    if (prompts.length) app.log.info({ prompts }, "published platform AI prompts");
+    if (await ensureCustomerAgentPlatformFlag()) app.log.info("enabled platform AI customer agent flag");
+  } catch (err) {
+    app.log.error(err, "could not ensure AI receptionist prerequisites");
+    captureUnexpectedError(err);
+  }
+
   // Owner-granted complimentary plans (COMPLIMENTARY_PLAN_GRANTS).
   try {
     const applied = await applyComplimentaryPlans(config.COMPLIMENTARY_PLAN_GRANTS);
@@ -76,6 +89,16 @@ async function main() {
   } catch (err) {
     app.log.error(err, "could not apply complimentary plans");
     captureUnexpectedError(err);
+  }
+
+  // Single-instance deployments with no separate worker service run the
+  // automation worker loop in this process (RUN_WORKER_IN_API). Without a
+  // worker nothing scheduled ever sends: missed-call follow-ups, reminders,
+  // review requests, queued AI replies.
+  let worker: AutomationWorkerHandle | null = null;
+  if (config.RUN_WORKER_IN_API) {
+    worker = startAutomationWorker({ onError: (error) => { app.log.error(error, "in-process automation worker cycle failed"); captureUnexpectedError(error); } });
+    app.log.info("started in-process automation worker");
   }
 
   // Deployment platforms (Render, etc.) send SIGTERM before killing a
@@ -87,8 +110,8 @@ async function main() {
   // not something in-flight requests depend on.
   const shutdown = (signal: string) => {
     app.log.info(`received ${signal}, shutting down`);
-    app
-      .close()
+    Promise.resolve(worker?.stop())
+      .then(() => app.close())
       .then(() => prisma.$disconnect())
       .then(() => process.exit(0))
       .catch((err) => {

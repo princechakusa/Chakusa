@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { MessageType, Plan, SubscriptionStatus } from "@prisma/client";
+import type { MessageType, Plan, Prisma, SubscriptionStatus } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
 import { parsePhoneNumber } from "../phone.js";
@@ -162,6 +162,17 @@ export interface RecordInboundResult {
   replayed: boolean;
 }
 
+/**
+ * The customer's open/pending conversation with this business, or a new one.
+ * Shared by the inbound path and automated outbound sends so a customer's
+ * reply lands in the same thread as the message they are replying to.
+ */
+export async function findOrOpenConversation(tx: Prisma.TransactionClient, businessId: string, customerId: string | undefined, address: string) {
+  const existing = await tx.conversation.findFirst({ where: { businessId, OR: [...(customerId ? [{ customerId }] : []), { participants: { some: { externalAddress: address } } }], status: { in: ["OPEN", "PENDING"] }, deletedAt: null }, orderBy: { updatedAt: "desc" } });
+  if (existing) return existing;
+  return tx.conversation.create({ data: { businessId, customerId, status: "OPEN", participants: { create: { businessId, customerId, externalAddress: address, role: "CUSTOMER" } }, lifecycleEvents: { create: { businessId, type: "OPENED" } } } });
+}
+
 export async function recordInboundMessage(input: { businessId: string; customerId?: string; from: string; channel: PlatformChannel; body: string; provider: string; providerMessageId: string }): Promise<RecordInboundResult> {
   const normalized = input.body.trim().toLowerCase();
   return prisma.$transaction(async (tx) => {
@@ -174,8 +185,7 @@ export async function recordInboundMessage(input: { businessId: string; customer
     });
     if (already) return { message: already, conversationId: already.conversationId ?? "", replayed: true };
 
-    let conversation = await tx.conversation.findFirst({ where: { businessId: input.businessId, OR: [{ customerId: input.customerId }, { participants: { some: { externalAddress: input.from } } }], status: { in: ["OPEN", "PENDING"] }, deletedAt: null }, orderBy: { updatedAt: "desc" } });
-    if (!conversation) conversation = await tx.conversation.create({ data: { businessId: input.businessId, customerId: input.customerId, status: "OPEN", participants: { create: { businessId: input.businessId, customerId: input.customerId, externalAddress: input.from, role: "CUSTOMER" } }, lifecycleEvents: { create: { businessId: input.businessId, type: "OPENED" } } } });
+    const conversation = await findOrOpenConversation(tx, input.businessId, input.customerId, input.from);
     const message = await tx.message.create({ data: { businessId: input.businessId, customerId: input.customerId, conversationId: conversation.id, messageType: "custom", channel: input.channel, body: input.body, status: "sent", direction: "INBOUND", actorType: "CUSTOMER", provider: input.provider, providerMessageId: input.providerMessageId, contents: { create: { businessId: input.businessId, contentType: "TEXT", body: input.body } } } });
     await tx.conversation.update({ where: { id: conversation.id }, data: { lastInboundAt: new Date(), waitingSince: new Date(), status: "OPEN" } });
     if (STOP_WORDS.has(normalized)) {

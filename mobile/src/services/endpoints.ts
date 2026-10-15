@@ -283,7 +283,7 @@ export const accountingApi = {
 
 export const aiReceptionistApi = {
   get: () => api.get<AiReceptionistViewDto>('/ai/receptionist'),
-  patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled' | 'mode'>>) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),
+  patch: (body: Partial<Pick<AiReceptionistSettingsDto, 'enabled' | 'smsEnabled' | 'whatsappEnabled' | 'mode'>> & { autonomy?: 'DRAFT' | 'APPROVAL' | 'AUTONOMOUS' }) => api.patch<AiReceptionistSettingsDto>('/ai/receptionist', body),
 };
 
 import type {

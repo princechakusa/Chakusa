@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LeadDto, LeadPaymentStatus, LeadStatus } from '../apiTypes';
 import { getAllowedLeadTransitions } from '../domain/mobileDomain';
+import { leadFollowUpTimeline } from '../domain/leadFollowUp';
 import { ApiError } from '../services/api';
 import { leadsApi } from '../services/endpoints';
 import { copyMessage, openSms, openWhatsApp } from '../services/messaging';
@@ -48,6 +49,7 @@ export function LeadDetailCorrectScreen({ route, navigation }: Props) {
       lead
         ? [
             { id: 'missed', date: 'MISSED', title: 'Incoming call', detail: formatDateTime(lead.missedCallTime), tone: 'attention' },
+            ...leadFollowUpTimeline(lead, formatDateTime),
             ...(lead.contactedAt
               ? [{ id: 'contacted', date: 'CONTACTED', title: 'Follow-up recorded', detail: formatDateTime(lead.contactedAt), tone: 'success' as const }]
               : []),

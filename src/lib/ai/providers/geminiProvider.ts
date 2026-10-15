@@ -1,5 +1,5 @@
 import { config } from "../../config.js";
-import type { AIProvider, AITask } from "../aiGateway.js";
+import type { AIProvider, AITask, AIToolDeclaration } from "../aiGateway.js";
 import { AIProviderError, createFetchTransport, type ProviderTransport } from "./providerTransport.js";
 
 // Google Gemini adapter. Implements the AIProvider contract only - the
@@ -16,9 +16,9 @@ interface GeminiOptions {
   transport?: ProviderTransport;
 }
 
-function toGeminiTools(tools: Array<{ name: string; schema: object }>) {
+function toGeminiTools(tools: AIToolDeclaration[]) {
   if (!tools.length) return undefined;
-  return [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, parameters: tool.schema ?? { type: "object", properties: {} } })) }];
+  return [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, ...(tool.description ? { description: tool.description } : {}), parameters: tool.schema ?? { type: "object", properties: {} } })) }];
 }
 
 function wantsJson(task: AITask): boolean {

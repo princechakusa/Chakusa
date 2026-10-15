@@ -28,3 +28,16 @@ export async function ensureBootstrapAIModel(): Promise<{ provider: string; mode
   });
   return { provider, model };
 }
+
+// Env-only switch for the platform-wide AI Customer Agent flag
+// (ai.customer_agent, scope PLATFORM — read by isCustomerAgentEnabled).
+// Creates the platform row only when none exists, so an admin-console
+// decision (on or off) is never overridden by the environment. Each
+// business still has to opt in, be entitled and pass the Policy Engine.
+export async function ensureCustomerAgentPlatformFlag(): Promise<boolean> {
+  if (!config.AI_CUSTOMER_AGENT_ENABLED) return false;
+  const existing = await prisma.featureFlag.findFirst({ where: { key: "ai.customer_agent", scope: "PLATFORM" }, select: { id: true } });
+  if (existing) return false;
+  await prisma.featureFlag.create({ data: { key: "ai.customer_agent", scope: "PLATFORM", enabled: true, status: "ENABLED", metadata: { source: "AI_CUSTOMER_AGENT_ENABLED" } } });
+  return true;
+}

@@ -191,3 +191,35 @@ export async function listPolicyHistory(businessId: string) {
 export async function listPolicyDecisions(businessId: string, limit = 100) {
   return prisma.aIPolicyDecision.findMany({ where: { businessId }, orderBy: { createdAt: "desc" }, take: Math.min(limit, 500) });
 }
+
+/**
+ * Changes only the autonomy mode (DRAFT / APPROVAL / AUTONOMOUS): copies the
+ * active document and, for a configured policy, its rules into a fresh draft,
+ * then activates it — the same audited draft -> activate path as the policy
+ * editor, so history and AIPolicyChange stay complete. Any unpublished draft
+ * is replaced by this one.
+ */
+export async function setPolicyMode(input: { businessId: string; mode: string; actorUserId?: string | null }) {
+  if (!AI_MODES.includes(input.mode as AIMode)) throw ApiError.badRequest(`Unknown AI mode: ${input.mode}`);
+  const active = await resolveActivePolicy(input.businessId);
+  if (active.mode === input.mode && !active.isDefault) return prisma.aIPolicy.findFirstOrThrow({ where: { businessId: input.businessId, scope: "BUSINESS", status: ACTIVE }, include: { rules: true } });
+
+  await prisma.aIPolicy.deleteMany({ where: { businessId: input.businessId, scope: "BUSINESS", status: DRAFT } });
+  const draft = await savePolicyDraft({ businessId: input.businessId, mode: input.mode, document: active.document, actorUserId: input.actorUserId });
+  if (active.isDefault) {
+    // The built-in default's hard denials (money movement) survive the switch;
+    // its blanket REQUIRE_APPROVAL rules are exactly what the mode replaces.
+    const denials = DEFAULT_RULES.filter((rule) => rule.effect === "DENY");
+    if (denials.length) {
+      await prisma.aIPolicyRule.createMany({ data: denials.map((rule) => ({ businessId: input.businessId, policyId: draft.id, category: rule.category, action: rule.action, toolName: rule.toolName, workflowId: rule.workflowId, effect: rule.effect, strategy: rule.strategy, approverUserId: rule.approverUserId, minConfidence: rule.minConfidence })) });
+    }
+  } else if (active.policyId) {
+    const rules = await prisma.aIPolicyRule.findMany({ where: { policyId: active.policyId } });
+    if (rules.length) {
+      await prisma.aIPolicyRule.createMany({
+        data: rules.map(({ id: _id, policyId: _policyId, createdAt: _createdAt, updatedAt: _updatedAt, ...rule }) => ({ ...rule, policyId: draft.id })) as never,
+      });
+    }
+  }
+  return activatePolicy({ businessId: input.businessId, version: draft.version, actorUserId: input.actorUserId });
+}

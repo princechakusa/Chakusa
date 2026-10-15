@@ -57,7 +57,7 @@ describe("missed-call ingestion (POST /leads/missed-call)", () => {
     expect(leads).toHaveLength(1);
   });
 
-  it("3. a second call from the same number reuses the existing customer instead of duplicating it", async () => {
+  it("3. a repeat call while the first lead is still untouched joins that lead (one customer, one lead)", async () => {
     const { token, businessId } = await registerAccount(app);
 
     await app.inject({
@@ -76,8 +76,8 @@ describe("missed-call ingestion (POST /leads/missed-call)", () => {
     const customers = await prisma.customer.findMany({ where: { businessId } });
     expect(customers).toHaveLength(1);
     const leads = await prisma.lead.findMany({ where: { businessId } });
-    expect(leads).toHaveLength(2);
-    expect(leads.every((lead) => lead.customerId === customers[0]!.id)).toBe(true);
+    expect(leads).toHaveLength(1);
+    expect(leads[0]!.customerId).toBe(customers[0]!.id);
   });
 
   it("4. a differently-formatted number from the same caller still resolves to one customer", async () => {
@@ -129,6 +129,38 @@ describe("missed-call ingestion (POST /leads/missed-call)", () => {
     expect(runs).toHaveLength(1);
     expect(runs[0]!.automationRuleId).toBe(rule.id);
     expect(runs[0]!.status).toBe("PENDING");
+
+    // The lead detail shows the owner the follow-up's state and channel.
+    const detail = await app.inject({ method: "GET", url: `/leads/${leadId}`, headers: authHeader(token) });
+    expect(detail.json().automationRuns).toEqual([expect.objectContaining({ id: runs[0]!.id, status: "PENDING", automationRule: { channel: "SMS" } })]);
+  });
+
+  it("3b. once the first lead has been actioned, a new call opens a new lead", async () => {
+    const { token, businessId } = await registerAccount(app);
+    const call = (clientEventId: string) => app.inject({ method: "POST", url: "/leads/missed-call", headers: authHeader(token), payload: { phone: "+263771234567", occurredAt: new Date().toISOString(), clientEventId } });
+
+    const first = await call("call-x");
+    await prisma.lead.update({ where: { id: first.json().id }, data: { status: "contacted" } });
+    const second = await call("call-y");
+
+    expect(second.json().id).not.toBe(first.json().id);
+    expect(await prisma.lead.count({ where: { businessId } })).toBe(2);
+  });
+
+  it("5b. repeat calls schedule only one follow-up, and WhatsApp wins over SMS when both rules are on", async () => {
+    const { token, businessId } = await registerAccount(app);
+    await setPlan(businessId, "PRO");
+    await setSubscriptionStatus(businessId, "ACTIVE");
+    await createAutomationRule(businessId, "PRO", "ACTIVE", { name: "SMS", enabled: true, triggerType: "LEAD_CREATED", channel: "SMS", delaySeconds: 0, config: {} });
+    const whatsapp = await createAutomationRule(businessId, "PRO", "ACTIVE", { name: "WhatsApp", enabled: true, triggerType: "LEAD_CREATED", channel: "WHATSAPP", delaySeconds: 0, config: {} });
+
+    for (const clientEventId of ["call-1", "call-2"]) {
+      await app.inject({ method: "POST", url: "/leads/missed-call", headers: authHeader(token), payload: { phone: "+263771234567", occurredAt: new Date().toISOString(), clientEventId } });
+    }
+
+    const runs = await prisma.automationRun.findMany({ where: { businessId } });
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.automationRuleId).toBe(whatsapp.id);
   });
 
   it("6. rejects a missing phone or clientEventId with a validation error", async () => {

@@ -461,3 +461,46 @@ setting or credential that only the owner can create.
      `TWILIO_FROM_NUMBER=+18446041271`
    - Pro plan and the automation rule switched on in the app (automation
      screens now default to on)
+
+## OA-13 — Missed call → WhatsApp → AI booking → review: production switches (2026-10-15) — OPEN
+
+The code path is complete and tested (see
+`docs/progress/2026-10-15-missed-call-whatsapp-ai-receptionist.md`). On
+2026-10-15 the owner's Android phone reported both test missed calls as leads
+in production. Nothing was sent to the caller, for the reasons below. Each one
+is a console setting only the owner can change.
+
+1. **Render → chakusa-api → Environment**
+   - `COMPLIMENTARY_PLAN_GRANTS=chakusaprince@gmail.com:BUSINESS`. This must
+     be the app's sign-in email; a placeholder matches nobody. The account was
+     still on the Free plan, so automation and the AI receptionist were locked.
+   - `GEMINI_DEFAULT_MODEL` set to a real model id. `/health/ai` reported
+     `configured:false` with no active model.
+   - `RUN_WORKER_IN_API=true`. There has been no worker since 2026-08-31, so
+     no scheduled message (follow-ups, reminders, review requests) has been sent.
+   - `AI_CUSTOMER_AGENT_ENABLED=true` (platform AI receptionist switch).
+   - Twilio: `TWILIO_ENABLED=true`, `TWILIO_ACCOUNT_SID`,
+     `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` (for testing:
+     `whatsapp:+14155238886`, the Twilio Sandbox).
+2. **Twilio WhatsApp sender.** For testing, use the Sandbox: the test phone
+   first sends `join <code>` to +1 415 523 8886. Then, under Sandbox settings,
+   set "When a message comes in" to
+   `https://chakusa-api.onrender.com/webhooks/twilio/inbound` (POST). Production
+   needs a WhatsApp Business sender registered with Meta (Messaging → Senders →
+   WhatsApp senders), with the same inbound webhook URL.
+3. **WhatsApp templates** (Content Template Builder; submit both for WhatsApp
+   approval). Then set the HX… SIDs on Render:
+   - `TWILIO_WHATSAPP_MISSED_CALL_CONTENT_SID`: e.g. "Hi, this is {{1}}.
+     Sorry we missed your call. How can we help? Reply here and we'll sort it out."
+   - `TWILIO_WHATSAPP_REVIEW_REQUEST_CONTENT_SID`: e.g. "Hi {{1}}, thanks
+     for visiting {{2}}! Would you leave us a quick review? {{3}}"
+   Without them, free text is sent. That only works in the Sandbox or inside
+   a customer's 24-hour reply window.
+4. **SMS to UAE (+971) numbers.** The toll-free +1 844 number can only text
+   the US and Canada, and a trial account can only text verified numbers.
+   UAE SMS needs an upgraded account and a registered alphanumeric sender ID.
+   Until then, WhatsApp is the channel for UAE callers.
+5. **In the app** (after item 1 redeploys): More → Automation → missed-call
+   follow-up on, channel WhatsApp, delay Immediately. More → AI receptionist
+   → on, WhatsApp on, "Answers and acts automatically". Business profile →
+   confirm messaging consent and turn on automatic review requests.

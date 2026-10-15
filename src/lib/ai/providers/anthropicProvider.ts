@@ -18,9 +18,9 @@ interface AnthropicOptions {
   transport?: ProviderTransport;
 }
 
-function toAnthropicTools(tools: Array<{ name: string; schema: object }>) {
+function toAnthropicTools(tools: Array<{ name: string; description?: string; schema: object }>) {
   if (!tools.length) return undefined;
-  return tools.map((tool) => ({ name: tool.name, input_schema: tool.schema ?? { type: "object", properties: {} } }));
+  return tools.map((tool) => ({ name: tool.name, ...(tool.description ? { description: tool.description } : {}), input_schema: tool.schema ?? { type: "object", properties: {} } }));
 }
 
 function wantsJson(task: AITask): boolean {

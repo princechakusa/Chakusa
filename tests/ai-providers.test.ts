@@ -86,9 +86,9 @@ describe("AI provider adapters (LOOP 4)", () => {
         json: { candidates: [{ content: { parts: [{ functionCall: { name: "book_appointment", args: { serviceOfferingId: "abc" } } }] } }] },
       }));
       const provider = createGeminiProvider({ apiKey: "gm-test", transport });
-      const result = await provider.invoke({ model: "gemini-2.0-flash", task: "conversation", prompt: "book", context: {}, tools: [{ name: "book_appointment", schema: { type: "object" } }] });
+      const result = await provider.invoke({ model: "gemini-2.0-flash", task: "conversation", prompt: "book", context: {}, tools: [{ name: "book_appointment", description: "Book it.", schema: { type: "object" } }] });
       expect(result.toolRequests).toEqual([{ name: "book_appointment", arguments: { serviceOfferingId: "abc" } }]);
-      expect((transport.calls[0]?.body as { tools?: unknown[] }).tools).toHaveLength(1);
+      expect((transport.calls[0]?.body as { tools?: unknown[] }).tools).toEqual([{ functionDeclarations: [{ name: "book_appointment", description: "Book it.", parameters: { type: "object" } }] }]);
     });
 
     it("requests JSON output for extraction tasks and parses it", async () => {

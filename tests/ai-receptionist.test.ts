@@ -51,6 +51,33 @@ describe("AI receptionist settings + gate", () => {
     expect(status.effective).toBe(true);
   });
 
+  it("owner can set autonomy; it goes through the audited policy path and keeps the payment denial", async () => {
+    const account = await business("recept-autonomy@ex.com");
+    const res = await app.inject({ method: "PATCH", url: "/ai/receptionist", headers: authHeader(account.token), payload: { autonomy: "AUTONOMOUS" } });
+    expect(res.statusCode).toBe(200);
+
+    const status = (await app.inject({ method: "GET", url: "/ai/receptionist", headers: authHeader(account.token) })).json().status;
+    expect(status.policyMode).toBe("AUTONOMOUS");
+    const active = await prisma.aIPolicy.findFirstOrThrow({ where: { businessId: account.businessId, status: "ACTIVE" }, include: { rules: true } });
+    expect(active.rules).toEqual(expect.arrayContaining([expect.objectContaining({ action: "payment", effect: "DENY" })]));
+    expect(await prisma.aIPolicyChange.count({ where: { businessId: account.businessId, changeType: "ACTIVATED" } })).toBe(1);
+
+    // Switching back keeps the business's configured rules.
+    await app.inject({ method: "PATCH", url: "/ai/receptionist", headers: authHeader(account.token), payload: { autonomy: "DRAFT" } });
+    const back = await prisma.aIPolicy.findFirstOrThrow({ where: { businessId: account.businessId, status: "ACTIVE" }, include: { rules: true } });
+    expect(back.mode).toBe("DRAFT");
+    expect(back.rules).toEqual(expect.arrayContaining([expect.objectContaining({ action: "payment", effect: "DENY" })]));
+  });
+
+  it("autonomy changes are blocked for staff and for plans without the AI receptionist", async () => {
+    const pro = await business("recept-autonomy-pro@ex.com", "PRO");
+    expect((await app.inject({ method: "PATCH", url: "/ai/receptionist", headers: authHeader(pro.token), payload: { autonomy: "AUTONOMOUS" } })).statusCode).toBe(403);
+    const owner = await business("recept-autonomy-owner@ex.com");
+    const staff = await memberToken(app, owner.businessId, "STAFF");
+    expect((await app.inject({ method: "PATCH", url: "/ai/receptionist", headers: authHeader(staff), payload: { autonomy: "AUTONOMOUS" } })).statusCode).toBe(403);
+    expect(await prisma.aIPolicy.count({ where: { businessId: owner.businessId } })).toBe(0);
+  });
+
   it("PATCH is gated by the AI_RECEPTIONIST entitlement", async () => {
     const pro = await business("recept-pro@ex.com", "PRO");
     expect((await app.inject({ method: "PATCH", url: "/ai/receptionist", headers: authHeader(pro.token), payload: { enabled: true } })).statusCode).toBe(403);

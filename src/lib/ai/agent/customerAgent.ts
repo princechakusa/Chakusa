@@ -9,7 +9,7 @@ import { retrieveMemory, formatMemoryForContext } from "../memory/retrievalEngin
 import { ensureSession } from "../memory/memoryStore.js";
 import { recordConversationEvent, summarizeConversation } from "../memory/summarization.js";
 import { executeAITool } from "../aiRuntime.js";
-import { isAgentTool } from "./agentTools.js";
+import { agentToolDeclarations, isAgentTool } from "./agentTools.js";
 import { receptionistGate, resolveBusinessHoursForReceptionist } from "./receptionistSettings.js";
 
 const MAX_TOOL_ITERATIONS = 4;
@@ -86,13 +86,17 @@ export async function runCustomerAgentTurn(input: {
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration += 1) {
     const context = {
       ...(await businessAIContext(input.businessId, run.customerId ?? undefined)),
+      now: new Date().toISOString(),
       memoryDigest: formatMemoryForContext(memory.items),
       ...(input.businessHours ? { businessHours: input.businessHours } : {}),
       toolResults,
     };
+    // The published version's system prompt carries the receptionist's
+    // instructions; routeAI takes a single prompt, so it leads.
+    const basePrompt = resolved.rendered.systemPrompt ? `${resolved.rendered.systemPrompt}\n\n${resolved.rendered.prompt}` : resolved.rendered.prompt;
     const turnPrompt = toolResults.length
-      ? `${resolved.rendered.prompt}\n\nTool results so far:\n${JSON.stringify(toolResults)}`
-      : resolved.rendered.prompt;
+      ? `${basePrompt}\n\nTool results so far:\n${JSON.stringify(toolResults)}`
+      : basePrompt;
 
     const response = await routeAI({
       businessId: input.businessId,
@@ -105,6 +109,7 @@ export async function runCustomerAgentTurn(input: {
       channel: input.channel,
       promptVersionId: resolved.versionId,
       requiredCapability: resolved.requiredCapability ?? "conversation",
+      tools: agentToolDeclarations(),
     });
 
     const requests = response.toolRequests ?? [];

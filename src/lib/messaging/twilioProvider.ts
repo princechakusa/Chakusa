@@ -21,7 +21,9 @@ export interface TwilioRestClient {
   messages: {
     create(options: {
       to: string;
-      body: string;
+      body?: string;
+      contentSid?: string;
+      contentVariables?: string;
       from?: string;
       messagingServiceSid?: string;
       statusCallback?: string;
@@ -144,7 +146,9 @@ export class TwilioMessagingProvider implements MessagingProvider {
     try {
       const result = await this.client.messages.create({
         to: message.channel === "whatsapp" && !message.to.startsWith("whatsapp:") ? `whatsapp:${message.to}` : message.to,
-        body: message.body,
+        ...(message.channel === "whatsapp" && message.template
+          ? { contentSid: message.template.contentSid, contentVariables: JSON.stringify(message.template.variables) }
+          : { body: message.body }),
         ...(message.channel === "whatsapp"
           ? { from: this.sender.whatsappFrom }
           : this.sender.messagingServiceSid

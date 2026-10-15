@@ -104,6 +104,9 @@ export async function createLead(
   return withResponseTime(lead);
 }
 
+/** Repeat missed calls from the same caller within this window join their open lead. */
+const REPEAT_MISSED_CALL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Entry point for an automated recovery-source connector (currently: the
  * Android missed-call detector). Unlike createLead above, this is
@@ -131,6 +134,18 @@ export async function createLeadFromMissedCall(
   if (existing) return withResponseTime(existing);
 
   const customer = await findOrCreateCustomerByPhone(businessId, actorId, input.phone, plan);
+
+  // A caller who rings again while their previous missed-call lead is still
+  // untouched is the same enquiry, not a new one: refresh that lead's call
+  // time instead of opening a second lead (and a second follow-up message).
+  const openLead = await prisma.lead.findFirst({
+    where: { businessId, customerId: customer.id, source: LEAD_SOURCE_MISSED_CALL, status: "new", createdAt: { gte: new Date(Date.now() - REPEAT_MISSED_CALL_WINDOW_MS) } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (openLead) {
+    const refreshed = await prisma.lead.update({ where: { id: openLead.id }, data: { missedCallTime: new Date(input.occurredAt) } });
+    return withResponseTime(refreshed);
+  }
 
   try {
     return await createLead(
@@ -177,7 +192,18 @@ async function getOwnedLead(businessId: string, leadId: string) {
 export async function getLead(businessId: string, leadId: string) {
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, businessId },
-    include: { customer: true, referredBy: true, messages: { orderBy: { createdAt: "desc" } } },
+    include: {
+      customer: true,
+      referredBy: true,
+      messages: { orderBy: { createdAt: "desc" } },
+      // Lets the owner see whether the automatic follow-up went out, and why
+      // not when it didn't (cancel/failure reasons are written for people).
+      automationRuns: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, status: true, scheduledFor: true, completedAt: true, cancelledAt: true, errorMessage: true, automationRule: { select: { channel: true } } },
+      },
+    },
   });
   if (!lead) {
     throw ApiError.notFound("Lead not found");

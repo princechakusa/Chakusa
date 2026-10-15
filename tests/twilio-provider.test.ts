@@ -130,4 +130,23 @@ describe("TwilioMessagingProvider", () => {
     expect(provider.parseDeliveryWebhook({ MessageSid: "SM123", MessageStatus: "undelivered", ErrorCode: "30005" })).toMatchObject({ status: "undelivered", errorCode: "30005" });
     expect(provider.parseInboundWebhook({ From: "+15551234567", To: "+15005550006", Body: "STOP" })).toMatchObject({ from: "+15551234567", body: "STOP", channel: "sms" });
   });
+
+  it("sends an approved WhatsApp template (ContentSid + variables) instead of free text", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const provider = new TwilioMessagingProvider({ messages: { create: async (options) => { calls.push(options); return { sid: "SM9", status: "queued" }; } } }, { whatsappFrom: "whatsapp:+15005550006" });
+    const result = await provider.send({ ...baseMessage, channel: "whatsapp", template: { contentSid: "HX0123456789abcdef0123456789abcdef", variables: { "1": "Kuts" } } });
+
+    expect(result.accepted).toBe(true);
+    expect(calls[0]).toMatchObject({ to: "whatsapp:+263771234567", from: "whatsapp:+15005550006", contentSid: "HX0123456789abcdef0123456789abcdef", contentVariables: JSON.stringify({ "1": "Kuts" }) });
+    expect(calls[0]).not.toHaveProperty("body");
+  });
+
+  it("ignores a template on SMS and sends the body", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const provider = new TwilioMessagingProvider({ messages: { create: async (options) => { calls.push(options); return { sid: "SM9", status: "queued" }; } } }, { fromNumber: "+15005550006" });
+    await provider.send({ ...baseMessage, template: { contentSid: "HX0123456789abcdef0123456789abcdef", variables: { "1": "Kuts" } } });
+
+    expect(calls[0]).toMatchObject({ body: "Test message" });
+    expect(calls[0]).not.toHaveProperty("contentSid");
+  });
 });

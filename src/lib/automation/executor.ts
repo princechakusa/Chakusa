@@ -9,6 +9,9 @@ import { DEFAULT_LEAD_FOLLOW_UP_STATUSES } from "./scheduler.js";
 import { sendOutboundMessage } from "../messaging/messagingService.js";
 import type { MessagingProvider } from "../messaging/messagingProvider.js";
 import { messagingBudgetAvailable } from "../messaging/messagingBudget.js";
+import { findOrOpenConversation } from "../messaging/messagingPlatform.js";
+import { missedCallWhatsAppTemplate, reviewRequestWhatsAppTemplate } from "../messaging/whatsappTemplates.js";
+import type { OutboundMessage } from "../messaging/messagingProvider.js";
 import type { AutomationRule, AutomationRun, Customer, Lead, LeadStatus, MessageType } from "@prisma/client";
 
 /** Total send attempts allowed for one run before giving up (bounded, not unlimited). */
@@ -120,6 +123,8 @@ interface ResolvedRunContext {
   phone: string;
   body: string;
   messageType: MessageType;
+  /** WhatsApp approved template for business-initiated sends (see whatsappTemplates.ts). */
+  template?: OutboundMessage["template"];
 }
 
 /**
@@ -147,7 +152,8 @@ async function resolveRunContext(
 
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
     const { body, messageType } = await renderLeadFollowUpMessage(business, lead, customer.customer);
-    return { lead, customer: customer.customer, phone: customer.phone, body, messageType };
+    const template = rule.channel === "WHATSAPP" ? missedCallWhatsAppTemplate(business.name) : undefined;
+    return { lead, customer: customer.customer, phone: customer.phone, body, messageType, template };
   }
 
   if (rule.triggerType === "LEAD_FOLLOW_UP") {
@@ -179,7 +185,8 @@ async function resolveRunContext(
     const business = await prisma.business.findUniqueOrThrow({ where: { id: run.businessId } });
     const reviewLink = buildPublicReviewUrl((await generatePublicReviewLink(run.businessId, reviewRequest.id)).token);
     const { body, messageType } = await renderReviewRequestFollowUpMessage(business, customer.customer, reviewRequest.serviceName, reviewLink);
-    return { lead: null, customer: customer.customer, phone: customer.phone, body, messageType };
+    const template = rule.channel === "WHATSAPP" ? reviewRequestWhatsAppTemplate(customer.customer.name, business.name, reviewLink) : undefined;
+    return { lead: null, customer: customer.customer, phone: customer.phone, body, messageType, template };
   }
 
   // CUSTOMER_RETENTION — no lead is involved; the win-back attempt concerns
@@ -296,12 +303,12 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
 
     const resolved = await resolveRunContext(run, rule);
     if ("cancelReason" in resolved) return cancelRun(run.id, resolved.cancelReason);
-    const { lead, customer, phone, body, messageType } = resolved;
+    const { lead, customer, phone, body, messageType, template } = resolved;
     const countryCode = parsePhoneNumber(phone).country ?? "ZZ";
 
     const channel = rule.channel === "WHATSAPP" ? "whatsapp" : "sms";
     const result = await sendOutboundMessage(
-      { to: phone, channel, body, countryCode, idempotencyKey: run.id },
+      { to: phone, channel, body, countryCode, idempotencyKey: run.id, ...(template ? { template } : {}) },
       provider,
     );
 
@@ -309,27 +316,34 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
       // Message row + AutomationRun status committed together — see the
       // "SEND-DUPLICATION SAFETY" note above for exactly what this does
       // and does not guarantee.
-      await prisma.$transaction([
-        prisma.message.create({
+      // Threaded into the customer's conversation so their reply (and the
+      // AI receptionist answering it) sees what Chakusa just sent.
+      await prisma.$transaction(async (tx) => {
+        const conversation = await findOrOpenConversation(tx, run.businessId, customer.id, phone);
+        await tx.message.create({
           data: {
             businessId: run.businessId,
             customerId: customer.id,
+            conversationId: conversation.id,
             leadId: lead?.id ?? null,
             automationRunId: run.id,
             messageType,
             channel,
             body,
             status: "sent",
+            direction: "OUTBOUND",
+            actorType: "SYSTEM",
             sentAt: new Date(),
             provider: "twilio",
             providerMessageId: result.providerMessageId,
           },
-        }),
-        prisma.automationRun.updateMany({
+        });
+        await tx.conversation.update({ where: { id: conversation.id }, data: { lastOutboundAt: new Date() } });
+        await tx.automationRun.updateMany({
           where: { id: run.id, status: "RUNNING" },
           data: { status: "COMPLETED", completedAt: new Date(), leaseExpiresAt: null },
-        }),
-      ]);
+        });
+      });
       return;
     }
 
@@ -350,7 +364,7 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
             leadId: lead?.id ?? null,
             automationRunId: run.id,
             messageType,
-            channel: "sms",
+            channel,
             body,
             status: "failed",
             provider: "twilio",

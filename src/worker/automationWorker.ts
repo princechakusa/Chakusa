@@ -2,6 +2,8 @@ import { processDueAutomationRuns } from "../lib/automation/executor.js";
 import { sweepLifecycleAutomations } from "../lib/automation/scheduler.js";
 import type { MessagingProvider } from "../lib/messaging/messagingProvider.js";
 import { sendDueAppointmentPaymentReminders, sendDueAppointmentReminders, sendDueCustomerAppointmentMessages } from "../modules/appointments/appointmentReminders.js";
+import { sendDueReviewRequests } from "../modules/reviews/reviewAutomation.js";
+import { expireStaleLocationShares } from "../modules/locationShare/locationShare.service.js";
 import type { PushProvider } from "../lib/push/pushProvider.js";
 import { recordWorkerHeartbeat } from './workerHeartbeat.js';
 import { generateDueWeeklyOwnerReports } from "../modules/weeklyReports/weeklyReports.service.js";
@@ -97,6 +99,11 @@ export function startAutomationWorker(options: AutomationWorkerOptions = {}): Au
       () => sendDueAppointmentReminders(options.appointmentPushProvider, batchSize),
       () => sendDueCustomerAppointmentMessages(options.appointmentMessagingProvider ?? options.provider, batchSize),
       () => sendDueAppointmentPaymentReminders(options.appointmentMessagingProvider ?? options.provider, batchSize),
+      // Parity with the HTTP-tick path (scheduledWorkTrigger.ts): these two
+      // were only ever run there, so a long-running worker never sent
+      // automatic review requests or expired stale location shares.
+      () => sendDueReviewRequests(options.provider, batchSize),
+      () => expireStaleLocationShares(new Date()),
     ];
     for (const job of jobs) {
       try { await job(); } catch (error) { options.onError?.(error); }

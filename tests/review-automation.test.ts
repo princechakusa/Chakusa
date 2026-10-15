@@ -76,6 +76,28 @@ describe("automatic review requests (#20)", () => {
     expect(await prisma.reviewRequest.count({ where: { businessId: b.businessId } })).toBe(1);
   });
 
+  it("asks on WhatsApp when the customer's latest conversation with the business was on WhatsApp", async () => {
+    const b = await biz("rev-wa@ex.com");
+    await completed(b.businessId, b.customer.id, 48);
+    await prisma.message.create({ data: { businessId: b.businessId, customerId: b.customer.id, messageType: "custom", channel: "whatsapp", body: "Hi", status: "sent", direction: "INBOUND", actorType: "CUSTOMER" } });
+    const { provider, calls } = fake();
+
+    expect(await sendDueReviewRequests(provider, 50, new Date())).toBe(1);
+    expect(calls[0]!.channel).toBe("whatsapp");
+    expect(await prisma.message.count({ where: { businessId: b.businessId, messageType: "review_request", channel: "whatsapp" } })).toBe(1);
+  });
+
+  it("falls back to SMS when the provider has no WhatsApp sender", async () => {
+    const b = await biz("rev-wa-off@ex.com");
+    await completed(b.businessId, b.customer.id, 48);
+    await prisma.message.create({ data: { businessId: b.businessId, customerId: b.customer.id, messageType: "custom", channel: "whatsapp", body: "Hi", status: "sent", direction: "INBOUND", actorType: "CUSTOMER" } });
+    const { provider, calls } = fake();
+    provider.supportsChannel = (channel) => channel === "sms";
+
+    expect(await sendDueReviewRequests(provider, 50, new Date())).toBe(1);
+    expect(calls[0]!.channel).toBe("sms");
+  });
+
   it("does not send before the business's configured delay has elapsed", async () => {
     const b = await biz("rev-delay@ex.com", { delayHours: 24 });
     await completed(b.businessId, b.customer.id, 2); // ended 2h ago, delay is 24h

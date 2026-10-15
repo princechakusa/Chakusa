@@ -94,9 +94,17 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     // Customer Agent gets a turn for any business that has opted in. A retry
     // skips the AI trigger entirely (it is also idempotent, but there is no
     // reason to re-run the gates). A failure never blocks the ack.
+    // The Chakusa sender is shared by every business, so a number saved by
+    // several businesses must not get an AI answer from each. The AI turn
+    // goes to the business that last messaged this customer (the one they
+    // are replying to); with a single match, that one.
+    const lastOutbound = customers.length > 1
+      ? await prisma.message.findFirst({ where: { customerId: { in: customers.map((row) => row.id) }, direction: "OUTBOUND", status: { not: "draft" } }, orderBy: { createdAt: "desc" }, select: { customerId: true } })
+      : null;
+    const aiCustomerId = customers.length === 1 ? customers[0]?.id : lastOutbound?.customerId;
     for (const customer of customers) {
       const inbound = await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
-      if (inbound.replayed || !inbound.conversationId) continue;
+      if (inbound.replayed || !inbound.conversationId || customer.id !== aiCustomerId) continue;
       try {
         await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
       } catch (error) {

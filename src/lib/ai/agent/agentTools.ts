@@ -177,6 +177,39 @@ async function assertAppointmentOwned(ctx: AgentToolContext, appointmentId: stri
   }
 }
 
+// JSON-schema declarations the model sees (the Zod schemas above remain the
+// authority — every request is re-parsed before it runs). Kept to the
+// OpenAPI subset Gemini accepts: no `format: uuid`, no additionalProperties.
+const str = (description: string) => ({ type: "string", description });
+const dateTime = (description: string) => ({ type: "string", format: "date-time", description: `${description} ISO-8601 with UTC offset.` });
+const TOOL_PARAMETERS: Record<string, object> = {
+  check_availability: {
+    type: "object",
+    properties: { serviceOfferingId: str("Service id from context.services."), from: dateTime("Start of the window to search."), to: dateTime("End of the window to search."), memberId: str("Optional team member id.") },
+    required: ["serviceOfferingId", "from", "to"],
+  },
+  book_appointment: {
+    type: "object",
+    properties: { serviceOfferingId: str("Service id from context.services."), startsAt: dateTime("Slot start, exactly as returned by check_availability."), endsAt: dateTime("Slot end, exactly as returned by check_availability."), assignedMemberId: str("Optional team member id from the chosen slot.") },
+    required: ["serviceOfferingId", "startsAt", "endsAt"],
+  },
+  reschedule_appointment: {
+    type: "object",
+    properties: { appointmentId: str("Id of the customer's existing appointment from context.appointments."), startsAt: dateTime("New start."), endsAt: dateTime("New end.") },
+    required: ["appointmentId", "startsAt", "endsAt"],
+  },
+  cancel_appointment: { type: "object", properties: { appointmentId: str("Id of the customer's existing appointment from context.appointments.") }, required: ["appointmentId"] },
+  get_business_info: { type: "object", properties: {} },
+  answer_faq: { type: "object", properties: { query: str("The customer's question.") }, required: ["query"] },
+  request_information: { type: "object", properties: { question: str("What you need the customer to tell you.") }, required: ["question"] },
+  escalate_to_human: { type: "object", properties: { reason: str("Why a person should take over.") } },
+};
+
+/** What the Customer Agent offers the model each turn. */
+export function agentToolDeclarations(): Array<{ name: string; description: string; schema: object }> {
+  return Object.values(tools).map((tool) => ({ name: tool.name, description: tool.description, schema: TOOL_PARAMETERS[tool.name] ?? { type: "object", properties: {} } }));
+}
+
 export const AGENT_TOOL_NAMES = Object.keys(tools);
 export function getAgentTool(name: string): AgentTool | undefined {
   return tools[name];

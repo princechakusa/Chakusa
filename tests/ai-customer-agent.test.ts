@@ -19,10 +19,13 @@ let script: {
   endsAt: string;
 } = { startsAt: "2027-03-01T10:00:00.000Z", endsAt: "2027-03-01T11:00:00.000Z" };
 
+let offeredTools: Array<{ name: string; description?: string; schema: object }> = [];
+
 function scriptedProvider(): AIProvider {
   return {
     id: SCRIPTED_PROVIDER,
-    async invoke({ prompt }) {
+    async invoke({ prompt, tools }) {
+      offeredTools = tools;
       const text = prompt.toLowerCase();
       const secondTurn = prompt.includes("Tool results so far");
       const usage = { inputTokens: 20, outputTokens: 8 };
@@ -141,6 +144,17 @@ describe("AI Customer Agent — live conversation E2E (LOOP 4)", () => {
 
     const reply = await prisma.message.findFirst({ where: { businessId: biz.businessId, direction: "OUTBOUND", actorType: "SYSTEM" } });
     expect(reply?.body).toContain("booked");
+  });
+
+  it("offers the model every receptionist tool with a description and a parameter schema", async () => {
+    await setupBusiness(app);
+    await inbound(app, "What are your opening hours?");
+
+    const names = offeredTools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(["check_availability", "book_appointment", "reschedule_appointment", "cancel_appointment", "escalate_to_human"]));
+    const book = offeredTools.find((tool) => tool.name === "book_appointment");
+    expect(book?.description).toBeTruthy();
+    expect(book?.schema).toMatchObject({ type: "object", required: ["serviceOfferingId", "startsAt", "endsAt"] });
   });
 
   it("Escalation flow: AI hands off, conversation flips to HUMAN, no autonomous reply", async () => {

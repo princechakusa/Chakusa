@@ -28,6 +28,10 @@ export const envSchema = z.object({
   // fallback. When absent, POST /internal/worker/tick is disabled. Use a
   // random value of at least 32 characters and send it only as a Bearer
   // token from the external scheduler.
+  // Runs the automation worker loop inside the API process (src/server.ts)
+  // for single-instance deployments with no separate worker service. Only
+  // one API instance should set it; the worker self-leases either way.
+  RUN_WORKER_IN_API: booleanFlag,
   WORKER_TRIGGER_SECRET: z.preprocess((value) => value === "" ? undefined : value, z.string().min(32).optional()),
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -145,6 +149,15 @@ export const envSchema = z.object({
   TWILIO_FROM_NUMBER: optionalSecret,
   TWILIO_WHATSAPP_FROM: optionalSecret,
   TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
+  // WhatsApp only lets a business start a conversation (or write after the
+  // customer's 24-hour window has closed) with a Meta-approved template.
+  // These are the Twilio Content SIDs (HX...) of the approved templates the
+  // shared Chakusa WhatsApp sender uses. Unset -> free-form text is sent,
+  // which only Twilio's sandbox and open 24-hour windows accept.
+  // Missed call: {{1}} = business name.
+  TWILIO_WHATSAPP_MISSED_CALL_CONTENT_SID: z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^HX[0-9a-fA-F]{32}$/).optional()),
+  // Review request: {{1}} = customer first name, {{2}} = business name, {{3}} = review link.
+  TWILIO_WHATSAPP_REVIEW_REQUEST_CONTENT_SID: z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^HX[0-9a-fA-F]{32}$/).optional()),
   TWILIO_STATUS_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   TWILIO_MONTHLY_MESSAGE_LIMIT: z.coerce.number().int().positive().default(1000),
   STRIPE_PAYMENTS_ENABLED: booleanFlag,
@@ -293,6 +306,10 @@ export const envSchema = z.object({
   GEMINI_API_KEY: optionalSecret,
   GEMINI_BASE_URL: z.preprocess((value) => (value === "" ? undefined : value), z.string().url().optional()),
   GEMINI_DEFAULT_MODEL: z.preprocess((value) => (value === "" ? undefined : value), z.string().optional()),
+  // Turns the platform-wide AI Customer Agent switch (feature flag
+  // ai.customer_agent, scope PLATFORM) on at startup when no platform row
+  // exists yet. An admin-console row always wins, on or off.
+  AI_CUSTOMER_AGENT_ENABLED: booleanFlag,
   // Timeout (ms) and max retry attempts applied by every provider adapter.
   AI_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(30_000),
   AI_PROVIDER_MAX_RETRIES: z.coerce.number().int().min(0).max(6).default(2),

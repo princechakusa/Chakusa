@@ -50,6 +50,18 @@ export function AiReceptionistScreen() {
     } finally { setSaving(false); }
   };
 
+  const patchAutonomy = async (autonomy: 'DRAFT' | 'APPROVAL' | 'AUTONOMOUS') => {
+    if (saving || !view || view.status.policyMode === autonomy) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await aiReceptionistApi.patch({ autonomy });
+      await load(true);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Could not save that change.');
+    } finally { setSaving(false); }
+  };
+
   const header = <M3Header businessName="AI receptionist" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />;
 
   if (loading) return <M3Screen header={header}><M3Loading label="Loading…" /></M3Screen>;
@@ -111,7 +123,11 @@ export function AiReceptionistScreen() {
       ) : null}
 
       <M3Card style={styles.card}>
-        <View style={styles.metaRow}><Icon name="policy" size={16} color={m3.onSurfaceVariant} /><Text style={styles.note}>Autonomy: {POLICY_LABEL[status.policyMode] ?? status.policyMode}</Text></View>
+        <Text style={styles.sectionLabel}>HOW MUCH IT DOES ON ITS OWN</Text>
+        {(['AUTONOMOUS', 'APPROVAL', 'DRAFT'] as const).map(level => (
+          <ModeRow key={level} label={POLICY_LABEL[level] ?? level} active={status.policyMode === level} disabled={disabled} onPress={() => void patchAutonomy(level)} />
+        ))}
+        <Text style={styles.note}>"Answers and acts automatically" lets it reply and book appointments without waiting for you. Payments are never handled by the AI.</Text>
         {!status.platformEnabled ? <View style={styles.metaRow}><Icon name="info" size={16} color={m3.onSurfaceVariant} /><Text style={styles.note}>Not yet activated for your account. Contact support to switch it on.</Text></View> : null}
       </M3Card>
 

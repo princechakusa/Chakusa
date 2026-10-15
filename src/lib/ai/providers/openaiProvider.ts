@@ -17,11 +17,11 @@ interface OpenAIOptions {
   transport?: ProviderTransport;
 }
 
-function toOpenAITools(tools: Array<{ name: string; schema: object }>) {
+function toOpenAITools(tools: Array<{ name: string; description?: string; schema: object }>) {
   if (!tools.length) return undefined;
   return tools.map((tool) => ({
     type: "function" as const,
-    function: { name: tool.name, parameters: tool.schema ?? { type: "object", properties: {} } },
+    function: { name: tool.name, ...(tool.description ? { description: tool.description } : {}), parameters: tool.schema ?? { type: "object", properties: {} } },
   }));
 }
 

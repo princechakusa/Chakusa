@@ -9,7 +9,23 @@ import { buildPublicReviewUrl } from "../../lib/publicReviewLinks.js";
 import { recordActivity } from "../../lib/activity.js";
 import { captureUnexpectedError } from "../../lib/sentry.js";
 import { generatePublicReviewLink } from "./reviews.service.js";
-import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
+import type { MessagingChannel, MessagingProvider } from "../../lib/messaging/messagingProvider.js";
+import { defaultTwilioProvider } from "../../lib/messaging/twilioProvider.js";
+import { reviewRequestWhatsAppTemplate } from "../../lib/messaging/whatsappTemplates.js";
+
+/**
+ * Ask where the customer actually talks to the business: WhatsApp when their
+ * latest message with this business was on WhatsApp (or WhatsApp is the only
+ * configured channel), otherwise SMS.
+ */
+async function reviewRequestChannel(businessId: string, customerId: string, provider: MessagingProvider): Promise<MessagingChannel> {
+  const whatsapp = provider.supportsChannel("whatsapp");
+  const sms = provider.supportsChannel("sms");
+  if (whatsapp && !sms) return "whatsapp";
+  if (!whatsapp) return "sms";
+  const latest = await prisma.message.findFirst({ where: { businessId, customerId, channel: { in: ["sms", "whatsapp"] } }, orderBy: { createdAt: "desc" }, select: { channel: true } });
+  return latest?.channel === "whatsapp" ? "whatsapp" : "sms";
+}
 
 // #20 Reputation & Review Growth — the automatic, business-controlled review
 // request after an eligible completed appointment.
@@ -29,7 +45,7 @@ import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js
 const MAX_COMPLETION_AGE_MS = 30 * 86_400_000; // don't chase very old completions
 const MIN_COMPLETION_AGE_MS = 60 * 60_000; // never within the hour
 
-export async function sendDueReviewRequests(provider?: MessagingProvider, batchSize = 50, now = new Date()) {
+export async function sendDueReviewRequests(provider: MessagingProvider = defaultTwilioProvider, batchSize = 50, now = new Date()) {
   const candidates = await prisma.appointment.findMany({
     where: {
       status: "COMPLETED",
@@ -66,8 +82,9 @@ export async function sendDueReviewRequests(provider?: MessagingProvider, batchS
       where: { businessId: business.id, customerId: customer.id, createdAt: { gte: windowStart } },
       select: { id: true },
     });
+    const channel = await reviewRequestChannel(business.id, customer.id, provider);
     const optedOut = await prisma.customerOptOut.findFirst({
-      where: { businessId: business.id, phone: customer.phoneE164, channel: { in: ["SMS", "ALL"] } },
+      where: { businessId: business.id, phone: customer.phoneE164, channel: { in: [channel === "whatsapp" ? "WHATSAPP" : "SMS", "ALL"] } },
       select: { id: true },
     });
     if (recentlyAsked || optedOut) {
@@ -110,7 +127,14 @@ export async function sendDueReviewRequests(provider?: MessagingProvider, batchS
       }
 
       const result = await sendOutboundMessage(
-        { to: customer.phoneE164, channel: "sms", body, countryCode: parsePhoneNumber(customer.phoneE164).country ?? "ZZ", idempotencyKey: `review-request:auto:${appointment.id}` },
+        {
+          to: customer.phoneE164,
+          channel,
+          body,
+          countryCode: parsePhoneNumber(customer.phoneE164).country ?? "ZZ",
+          idempotencyKey: `review-request:auto:${appointment.id}`,
+          ...(channel === "whatsapp" ? { template: reviewRequestWhatsAppTemplate(customer.name, business.name, link) } : {}),
+        },
         provider,
       );
       await prisma.message.create({
@@ -118,11 +142,11 @@ export async function sendDueReviewRequests(provider?: MessagingProvider, batchS
           businessId: business.id,
           customerId: customer.id,
           messageType: "review_request",
-          channel: "sms",
+          channel,
           body,
           status: result.accepted ? "sent" : "failed",
           sentAt: result.accepted ? new Date() : null,
-          provider: provider?.id ?? "twilio",
+          provider: provider.id,
           providerMessageId: result.providerMessageId,
         },
       });

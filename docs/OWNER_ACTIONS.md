@@ -421,8 +421,11 @@ in the `.password.txt` file beside it, outside Git; the owner should move it to
 a password manager. The owner submitted the upload key reset with the `.pem`.
 AAB versionCode 2 is built and signed with the new key, at
 `.chakusa\android\chakusa-v1.0.0-vc2-2026-10-16.aab`. Still to do once Google
-approves: upload the AAB to Internal testing and add the new SHA-1 to the
-Google Sign-In Android OAuth client.
+approves: upload the AAB to Internal testing.
+Google Sign-In (project chakusa-507914), done 2026-10-16: the "Chakusa
+Android" client now uses the new upload SHA-1, and "Chakusa Android (Play)"
+was created with the Play app-signing SHA-1
+`42:31:19:EE:30:10:8C:7D:B7:CD:01:7E:37:C1:4B:2B:85:F4:78:08`.
 
 Original note:
 

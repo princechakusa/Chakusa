@@ -29,7 +29,19 @@ document.documentElement.classList.add(reduced ? "fx-static" : "fx-live");
 function splitWords(el: HTMLElement) {
   const words = (el.textContent ?? "").trim().split(/\s+/);
   el.setAttribute("aria-label", words.join(" "));
-  el.innerHTML = words.map((w) => `<span class="fx-word" aria-hidden="true"><span class="fx-word__in">${w}</span></span>`).join(" ");
+  const content = document.createDocumentFragment();
+  words.forEach((word, index) => {
+    if (index) content.append(" ");
+    const outer = document.createElement("span");
+    outer.className = "fx-word";
+    outer.setAttribute("aria-hidden", "true");
+    const inner = document.createElement("span");
+    inner.className = "fx-word__in";
+    inner.textContent = word;
+    outer.append(inner);
+    content.append(outer);
+  });
+  el.replaceChildren(content);
   return [...el.querySelectorAll<HTMLElement>(".fx-word__in")];
 }
 
@@ -99,7 +111,17 @@ if (!reduced) {
     const words = (el.textContent ?? "").trim().split(/\s+/);
     el.setAttribute("aria-label", words.join(" "));
     el.style.setProperty("--n", String(words.length));
-    el.innerHTML = words.map((w, i) => `<span class="fx-scrub" aria-hidden="true" style="--i:${i}">${w}</span>`).join(" ");
+    const content = document.createDocumentFragment();
+    words.forEach((word, index) => {
+      if (index) content.append(" ");
+      const span = document.createElement("span");
+      span.className = "fx-scrub";
+      span.setAttribute("aria-hidden", "true");
+      span.style.setProperty("--i", String(index));
+      span.textContent = word;
+      content.append(span);
+    });
+    el.replaceChildren(content);
     scroll((p: number) => el.style.setProperty("--p", p.toFixed(4)), { target: el, offset: ["start 85%", "end 50%"] });
   });
 

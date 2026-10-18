@@ -1,0 +1,22 @@
+/*
+  ! Access-Control-Allow-Origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Strict-Transport-Security: max-age=31536000
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Resource-Policy: same-site
+  Origin-Agent-Cluster: ?1
+  X-Permitted-Cross-Domain-Policies: none
+  X-DNS-Prefetch-Control: off
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+
+/dashboard/*
+  Cache-Control: no-store
+
+/login
+  Cache-Control: no-store
+
+/reset-password
+  Cache-Control: no-store

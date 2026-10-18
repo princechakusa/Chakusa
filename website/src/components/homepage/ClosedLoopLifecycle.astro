@@ -9,7 +9,7 @@ import { lifecycleSteps } from "../../data/homepageStory";
     <p>From the first search to a repeat visit, Chakusa keeps every step of the relationship connected.</p>
   </div>
   <ol class="story-lifecycle__grid" data-scroll-progress>
-    {lifecycleSteps.map((step, i) => <li style={`--i:${i}`}>
+    {lifecycleSteps.map((step, i) => <li class={`u-i-${i}`}>
       <span class="story-lifecycle__number">{step.number}</span>
       <StoryIcon name={step.icon} class="story-lifecycle__icon" />
       <strong>{step.label}</strong>

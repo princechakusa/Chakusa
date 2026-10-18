@@ -3,20 +3,54 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
-  Strict-Transport-Security: max-age=31536000
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
-  Cross-Origin-Opener-Policy: same-origin-allow-popups
-  Cross-Origin-Resource-Policy: same-site
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Permissions-Policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), gamepad=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
   Origin-Agent-Cluster: ?1
   X-Permitted-Cross-Domain-Policies: none
   X-DNS-Prefetch-Control: off
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+
+
+# Google Sign-In (popup/FedCM), Turnstile iframes and user-uploaded images cannot
+# satisfy COEP require-corp; these pages keep same-origin-allow-popups and no COEP.
+# Google Sign-In injects <style> elements, so the four sign-in pages allow inline
+# styles (never inline scripts); every other page has no 'unsafe-inline' at all.
+# One block per path: a later block for the same path replaces an earlier one.
+/login*
+  ! Cross-Origin-Opener-Policy
+  ! Cross-Origin-Embedder-Policy
+  ! Content-Security-Policy
   Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
-
-/dashboard/*
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: no-store
 
-/login
+/create-account*
+  ! Cross-Origin-Opener-Policy
+  ! Cross-Origin-Embedder-Policy
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+/forgot-password*
+  ! Cross-Origin-Opener-Policy
+  ! Cross-Origin-Embedder-Policy
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+/reset-password*
+  ! Cross-Origin-Opener-Policy
+  ! Cross-Origin-Embedder-Policy
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: no-store
 
-/reset-password
+/dashboard*
+  ! Cross-Origin-Opener-Policy
+  ! Cross-Origin-Embedder-Policy
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: no-store

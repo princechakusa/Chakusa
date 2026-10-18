@@ -28,12 +28,43 @@ test("map tooltip renders a hostile business label as text", async ({ page }) =>
   expect(await page.evaluate(() => (window as unknown as { securityXss?: boolean }).securityXss)).toBeUndefined();
 });
 
+// Applies public/_headers the way Cloudflare Pages does: every block whose
+// path pattern matches contributes headers in file order, `! Name` removes a
+// header set by an earlier matching block, and `*` matches any characters.
+function headersForPath(rules: string, path: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const block of rules.split(/\r?\n\s*\r?\n/)) {
+    const lines = block.split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith("#"));
+    const pattern = lines.shift()?.trim();
+    if (!pattern) continue;
+    const matcher = new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`);
+    if (!matcher.test(path)) continue;
+    for (const line of lines.map(l => l.trim())) {
+      if (line.startsWith("!")) { delete headers[line.slice(1).trim().toLowerCase()]; continue; }
+      const colon = line.indexOf(":");
+      if (colon > 0) headers[line.slice(0, colon).toLowerCase()] = line.slice(colon + 1).trim();
+    }
+  }
+  return headers;
+}
+
+test("auth pages relax only what Google Sign-In and Turnstile need", () => {
+  const rules = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+  const home = headersForPath(rules, "/");
+  const login = headersForPath(rules, "/login/");
+  expect(home["cross-origin-embedder-policy"]).toBe("require-corp");
+  expect(home["cross-origin-opener-policy"]).toBe("same-origin");
+  expect(home["content-security-policy"]).not.toContain("'unsafe-inline'");
+  expect(login["cross-origin-embedder-policy"]).toBeUndefined();
+  expect(login["cross-origin-opener-policy"]).toBe("same-origin-allow-popups");
+  expect(login["content-security-policy"]).toMatch(/style-src [^;]*'unsafe-inline'/);
+  expect(login["content-security-policy"]).not.toMatch(/script-src [^;]*'unsafe-inline'/);
+  expect(login["cache-control"]).toBe("no-store");
+});
+
 for (const path of ["/", "/login", "/product"]) {
   test(`candidate HTTP CSP preserves ${path} and blocks inline injection`, async ({ page }) => {
-    const rules = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
-    const candidateHeaders = Object.fromEntries(rules.split(/\r?\n\r?\n/)[0].split(/\r?\n/)
-      .map(line => line.trim()).filter(line => /^[A-Za-z][A-Za-z-]+:/.test(line))
-      .map(line => [line.slice(0, line.indexOf(":")).toLowerCase(), line.slice(line.indexOf(":") + 1).trim()]));
+    const candidateHeaders = headersForPath(readFileSync(new URL("../public/_headers", import.meta.url), "utf8"), path);
     const violations: string[] = [];
     await page.exposeFunction("recordCspViolation", (directive: string) => violations.push(directive));
     await page.addInitScript(() => document.addEventListener("securitypolicyviolation", (event) => {

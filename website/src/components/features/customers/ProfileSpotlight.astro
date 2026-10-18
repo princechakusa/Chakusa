@@ -14,7 +14,7 @@ const { label, note, name, meta, tags, notes, visits, cadence } = profileSpotlig
       <div class="cu-spotlight__cadence">
         <div class="cu-spotlight__cadence-head"><span>{cadence.label}</span></div>
         <p>{cadence.detail}</p>
-        <div class="cu-spotlight__bar"><div style={`width:${cadence.progress}%`}></div></div>
+        <div class="cu-spotlight__bar"><div class={`u-w-${Math.round(cadence.progress / 5) * 5}`}></div></div>
       </div>
     </div>
     <div class="cu-spotlight__col cu-spotlight__col--wide">

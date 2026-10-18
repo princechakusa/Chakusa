@@ -104,10 +104,10 @@ import DashboardCollection from "../../../components/dashboard/DashboardCollecti
 
   const load = async () => {
     const [feedbackRes, identity] = await Promise.all([
-      fetch(`${gateway}/v1/business/feedback`, { credentials: "include" }),
+      fetch(`${gateway}/v1/business/feedback`, { credentials: "include" }).catch(() => null),
       fetch(`${gateway}/v1/dashboard`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
-    if (!feedbackRes.ok) return; // stay hidden; the review-requests collection above still renders
+    if (!feedbackRes?.ok) return; // stay hidden; the review-requests collection above still renders
     canRespond = can(identity?.account?.role ?? null, "reviews.manage");
     const payload = await feedbackRes.json().catch(() => []);
     render(Array.isArray(payload) ? payload : []);

@@ -1,6 +1,6 @@
 # Security follow-up — 18 October 2026
 
-Status updated 19 October (Asia/Dubai): dependency mitigations, optimized signed build, admin identity binding, mobile privacy and browser regressions verified. The privacy-updated release is installed and launches on the connected Android 15 phone. Full backend follow-up and the final artifact-specific MobSF scan remain in progress. Local changes only. Android 7–9 compatibility remains an explicit owner decision.
+Status updated 19 October (Asia/Dubai): dependency mitigations, optimized signed build, admin identity binding, mobile privacy, session/upload-queue isolation and browser regressions verified. The full backend follow-up completed (see "Final verification — 19 October"). The upload-queue change added the native `expo-crypto` module after the installed privacy release was built, so a fresh signed build, device smoke test and artifact-specific MobSF scan are still required. Committed locally; not deployed. Android 7–9 compatibility remains an explicit owner decision.
 
 The owner requested higher security scores across the stack. Scores will be recorded from the actual tools and artifacts; findings are not suppressed or renamed to manufacture a passing result. The previous complete evidence set remains in [the original report](2026-10-17-security-validation.md).
 
@@ -86,3 +86,32 @@ An earlier full backend follow-up was interrupted after a 5-second Prisma transa
 Private raw evidence remains under `C:/Users/Surface/.codex/tmp/chakusa-security/`. No production deployment, database migration, external delivery or store action is performed. This stage changes no backend schema. The earlier report's open native MFA enrollment, runtime/iOS, provider and production validation requirements still apply.
 
 Operational correction: MobSF prints its API key in its startup banner; a startup-log read exposed that local credential in tool output. The scanner's backing secret was rotated without displaying replacement values and its service restarted. The published port remains restricted to `127.0.0.1:8000`. Subsequent startup checks use status/readiness instead of printing that banner. No Chakusa application credential was involved.
+
+## Mobile session and upload-queue isolation — 19 October
+
+New regressions reproduced two cross-account risks on a shared device. First, the attachment queue was one plaintext file in app documents, so files queued by one account were uploaded with whichever account signed in next. Second, a refresh that finished after a logout or a different login could write its stale tokens back over the newer session.
+
+- The queue is now per user + business, AES-GCM encrypted with a per-owner key in SecureStore (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`). Every read, write and upload re-checks that the stored session still belongs to that owner. Uploaded items drop their file bytes. The queue is capped at 20 items / 28 MB and expires items after 48 hours. The legacy plaintext file is encrypted into a quarantine file and deleted; it is never imported into any account.
+- Business and customer session stores serialize writes and carry a revision counter. A refresh stores its result only if no login, logout or other refresh happened in between.
+
+Focused suites pass 15/15. The full mobile suite passes 567/567, and mobile typecheck passes. This adds the native `expo-crypto` module (installed 19 October 00:34), which the 13a42313… privacy APK on the phone does not contain. That APK must not be used to QA uploads.
+
+## Final verification — 19 October
+
+- Full backend suite: three isolated loopback PostgreSQL instances (`chakusa_test`), Vitest shards 1–3. Shards 1 and 3 passed. In shard 2, one assertion in `ai-customer-agent.test.ts` failed: the dispatch worker's due check uses the database clock while enqueue uses the application clock, and the first tick ran before both agreed. The test now polls the real worker (2 s) with the same assertions (at least one dispatch, message `sent`); the file then passed 10/10. Merged and checked for exactly-once file coverage: **1,724 / 1,724 passed**, 0 failed or skipped. No backend source changed after the run started.
+- Rerun on the committed tree: backend build and test typecheck pass. Lint shows 0 errors and the 3 existing warnings. Admin typecheck passes. Auth gateway: 42/42. Dependency-patch regressions: 5/5. Repository secret scan passes (1,471 tracked files). Website security browser group: 5/5 (CSP/headers, 19 October).
+- Commits: `59f0bb0` backend, `f23be64` admin/gateway, `645cc1d` mobile, `c9fba10` website, `1210161` CI/docs.
+
+## Still open
+
+- Fresh signed release with `expo-crypto`, then a physical-device smoke test (uploads, sign-in, maps, call screening, push) and an artifact-specific MobSF scan. Device and scanner results are recorded only against that artifact's hash.
+- `npm audit --audit-level=high` for mobile stays red (braces / node-forge have no upstream fix; local patches mitigate them). The new CI gate shows this intentionally.
+- Deploy the backend/admin/gateway/website changes. `CF_ACCESS_ENABLED` identity binding needs a live check against the real Access application after deploy.
+
+## Mobile audit to zero — 19 October
+
+`braces` and `node-forge` still have no upstream fixed release. Patches applied on top of the installed packages do not change what `npm audit` checks, so the gate stayed at 19 high. Codex's patched code now ships as two in-repo forks under `mobile/vendor/` (`braces@3.0.3-chakusa.1`, `node-forge@1.4.0-chakusa.1`, original licenses kept). `overrides` routes every dependent to them, through `$name` references to direct dev dependencies; a relative `file:` override resolves from inside each dependent package and fails. The two `patch-package` patches are retired; the other four still apply.
+
+Result: `npm audit` reports **0 vulnerabilities in all four projects** (root, admin, website, mobile). `npm audit` cannot evaluate local forks. The evidence they are fixed is `npm run security:mobile-dependencies` (5/5: attack inputs rejected, ordinary patterns and valid signatures still work). Mobile 567/567 and typecheck pass. See `mobile/vendor/README.md` for when to remove the forks.
+
+The signed release rebuild compiled and passed R8, then failed at signing: "keystore password was incorrect" for `chakusa-upload-2026-10.p12` with the adjacent password file. Recorded as an owner action. The previous privacy APK was removed from the build output by that failed packaging step; the phone still has it installed.

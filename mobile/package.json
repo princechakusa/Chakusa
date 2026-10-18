@@ -46,7 +46,9 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "~19.2.2",
     "patch-package": "^8.0.1",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "braces": "file:vendor/braces-3.0.3-chakusa.1.tgz",
+    "node-forge": "file:vendor/node-forge-1.4.0-chakusa.1.tgz"
   },
   "scripts": {
     "postinstall": "patch-package --error-on-fail",
@@ -66,6 +68,8 @@
   },
   "private": true,
   "overrides": {
-    "uuid": "^11.1.1"
+    "uuid": "^11.1.1",
+    "braces": "$braces",
+    "node-forge": "$node-forge"
   }
 }

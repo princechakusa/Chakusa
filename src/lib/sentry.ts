@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { ApiError } from "./errors.js";
+import { redactLocationFromUrl } from "./requestLogging.js";
 
 /**
  * Production Infrastructure Phase 4 — the smallest correct Sentry
@@ -26,7 +27,16 @@ function sentryActuallyEnabled(): boolean {
 }
 
 const SENSITIVE_KEY_PATTERN =
-  /^(authorization|cookie|password|token|refreshtoken|accesstoken|apikey|secret|dsn|databaseurl|directurl|jwtsecret|purchasetoken|transactionid|providertokenencryptionkey|resendapikey|twilioauthtoken|twilioaccountsid)$/i;
+  /authorization|cookie|password|token|api[-_]?key|secret|dsn|databaseurl|directurl|transactionid|twilioaccountsid|email|phone|name|address|message|body|notes|payload|contact|latitude|longitude|location/i;
+
+function diagnosticUrl(value: string): string {
+  try {
+    if (!/^(https?:\/\/|\/)/i.test(value)) return "[RedactedUrl]";
+    const url = new URL(value, "https://diagnostic.invalid");
+    const path = redactLocationFromUrl(url.pathname);
+    return value.startsWith("/") ? path : `${url.origin}${path}`;
+  } catch { return "[RedactedUrl]"; }
+}
 
 /**
  * Recursively redacts any object key matching SENSITIVE_KEY_PATTERN,
@@ -37,13 +47,22 @@ const SENSITIVE_KEY_PATTERN =
  * containing one of these field names, it never reaches Sentry's servers
  * verbatim.
  */
-function scrub(value: unknown, depth = 0): unknown {
-  if (depth > 6 || value === null || typeof value !== "object") return value;
-  if (Array.isArray(value)) return value.map((item) => scrub(item, depth + 1));
-  const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-    result[key] = SENSITIVE_KEY_PATTERN.test(key) ? "[Redacted]" : scrub(val, depth + 1);
+function scrub(value: unknown, depth = 0, seen = new WeakSet<object>(), key = ""): unknown {
+  if (depth >= 6) return "[MaxDepth]";
+  if (typeof value === "string") return /url|uri/i.test(key) ? diagnosticUrl(value) : value.slice(0, 4_000);
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value)) return "[Circular]";
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const result = value.slice(0, 50).map(item => scrub(item, depth + 1, seen, key));
+    seen.delete(value);
+    return result;
   }
+  const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  for (const [childKey, val] of Object.entries(value as Record<string, unknown>).slice(0, 100)) {
+    result[childKey] = SENSITIVE_KEY_PATTERN.test(childKey) ? "[Redacted]" : scrub(val, depth + 1, seen, childKey);
+  }
+  seen.delete(value);
   return result;
 }
 
@@ -56,24 +75,41 @@ function scrub(value: unknown, depth = 0): unknown {
 export function sentryBeforeSend(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
   if (event.request) {
     if (event.request.headers) {
-      const headers = { ...event.request.headers };
-      delete headers.authorization;
-      delete headers.Authorization;
-      delete headers.cookie;
-      delete headers.Cookie;
+      const headers = Object.fromEntries(Object.entries(event.request.headers)
+        .filter(([key]) => ["content-type", "content-length"].includes(key.toLowerCase())));
       event.request.headers = headers as typeof event.request.headers;
     }
     if (event.request.data !== undefined) {
-      event.request.data = scrub(event.request.data) as typeof event.request.data;
+      event.request.data = (typeof event.request.data === "object" ? scrub(event.request.data) : "[Redacted]") as typeof event.request.data;
     }
     // Never send the URL's query string or cookies-in-url verbatim —
     // opaque tokens (public review tokens, team invitation tokens,
     // password reset tokens) travel in some of this API's URLs.
     delete event.request.cookies;
     delete event.request.query_string;
+    delete event.request.env;
+    if (event.request.url) event.request.url = diagnosticUrl(event.request.url);
   }
   if (event.extra) {
     event.extra = scrub(event.extra) as typeof event.extra;
+  }
+  if (event.contexts) event.contexts = scrub(event.contexts) as typeof event.contexts;
+  if (event.tags) event.tags = scrub(event.tags) as typeof event.tags;
+  if (event.user) event.user = event.user.id ? { id: event.user.id } : undefined;
+  delete event.message;
+  if ("logentry" in event) delete event.logentry;
+  event.breadcrumbs = event.breadcrumbs?.map(breadcrumb => ({
+    ...breadcrumb, message: undefined,
+    data: breadcrumb.data ? scrub(breadcrumb.data) as typeof breadcrumb.data : undefined,
+  }));
+  for (const exception of event.exception?.values ?? []) {
+    delete exception.value;
+    if (exception.stacktrace?.frames) exception.stacktrace.frames = exception.stacktrace.frames.map(frame => ({
+      ...frame, vars: undefined, pre_context: undefined, context_line: undefined, post_context: undefined, abs_path: undefined,
+      filename: frame.filename
+        ? (frame.filename.includes("://") ? diagnosticUrl(frame.filename) : frame.filename.split(/[?#]/)[0])
+        : frame.filename,
+    }));
   }
   return event;
 }

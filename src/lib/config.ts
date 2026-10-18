@@ -34,6 +34,7 @@ export const envSchema = z.object({
   RUN_WORKER_IN_API: booleanFlag,
   WORKER_TRIGGER_SECRET: z.preprocess((value) => value === "" ? undefined : value, z.string().min(32).optional()),
   PORT: z.coerce.number().int().positive().default(4000),
+  API_BIND_HOST: z.string().ip().default("0.0.0.0"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),

@@ -126,7 +126,10 @@ describe("AI Customer Agent — live conversation E2E (LOOP 4)", () => {
     expect(reply?.body).toContain("Monday to Friday");
 
     // Full delivery: the dispatch worker sends it through the fake provider.
-    expect(await processMessageDispatches(messagingProvider)).toBeGreaterThanOrEqual(1);
+    // The scheduler's due check uses the database clock, while enqueue uses
+    // the application clock. Poll the real worker as production does rather
+    // than assuming both clocks agree within the first dispatch tick.
+    await expect.poll(() => processMessageDispatches(messagingProvider), { timeout: 2000, interval: 50 }).toBeGreaterThanOrEqual(1);
     expect((await prisma.message.findFirstOrThrow({ where: { id: reply!.id } })).status).toBe("sent");
   });
 

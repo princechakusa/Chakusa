@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { serializeErrorForLog } from '../lib/requestLogging.js';
 import { config } from '../lib/config.js';
 import { captureUnexpectedError } from '../lib/sentry.js';
 import { processDueAutomationRuns } from '../lib/automation/executor.js';
@@ -79,7 +80,7 @@ export function runTriggeredScheduledWork(): Promise<ScheduledWorkResult> {
       } catch (error) {
         result.failedSteps += 1;
         captureUnexpectedError(error, { tags: { scope: 'scheduled-work', step: name } });
-        console.error(`[scheduled-work] step "${name}" failed`, error);
+        console.error(`[scheduled-work] step "${name}" failed`, serializeErrorForLog(error));
       }
     };
 
@@ -90,7 +91,7 @@ export function runTriggeredScheduledWork(): Promise<ScheduledWorkResult> {
       // one bad init doesn't look like a dead worker.
       result.failedSteps += 1;
       captureUnexpectedError(error, { tags: { scope: 'scheduled-work', step: 'initialize' } });
-      console.error('[scheduled-work] initialization failed', error);
+      console.error('[scheduled-work] initialization failed', serializeErrorForLog(error));
     }
 
     // Fail safe: if the kill-switch / maintenance state can't be read, do NOT
@@ -102,7 +103,7 @@ export function runTriggeredScheduledWork(): Promise<ScheduledWorkResult> {
       result.failedSteps += 1;
       result.skipped = true;
       captureUnexpectedError(error, { tags: { scope: 'scheduled-work', step: 'foundation-status' } });
-      console.error('[scheduled-work] could not read foundation status; skipping work this cycle', error);
+      console.error('[scheduled-work] could not read foundation status; skipping work this cycle', serializeErrorForLog(error));
     }
 
     if (!foundation || foundation.maintenance || !foundation.killSwitches.automation) {
@@ -149,7 +150,7 @@ export function runTriggeredScheduledWork(): Promise<ScheduledWorkResult> {
         await recordWorkerHeartbeat(triggerStartedAt);
       } catch (error) {
         captureUnexpectedError(error, { tags: { scope: 'scheduled-work', step: 'heartbeat' } });
-        console.error('[scheduled-work] heartbeat write failed', error);
+        console.error('[scheduled-work] heartbeat write failed', serializeErrorForLog(error));
       }
     }
   })();

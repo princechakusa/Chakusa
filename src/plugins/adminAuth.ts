@@ -7,7 +7,7 @@ import { config } from "../lib/config.js";
 import { permissionsForAdminRole, requireAdminPermission, type AdminPermission } from "../modules/admin/admin.permissions.js";
 import { adminCsrfHeaderSchema } from "../modules/admin/admin.schemas.js";
 import { tokenHashMatches } from "../lib/authTokens.js";
-import { extractCloudflareAccessToken, verifyCloudflareAccessToken } from "../lib/cloudflareAccess.js";
+import { requireMatchingAdminAccess, verifyAdminAccess } from "../lib/adminAccess.js";
 
 export interface AdminPrincipal {
   membershipId: string;
@@ -31,18 +31,15 @@ declare module "fastify" {
 export default fp(async function adminAuthPlugin(fastify: FastifyInstance) {
   fastify.decorate("authenticateAdmin", async function (request: FastifyRequest) {
     if (!config.ADMIN_CONSOLE_ENABLED) throw ApiError.notFound();
+    if (request.headers.origin && config.ADMIN_CONSOLE_ORIGIN && request.headers.origin !== config.ADMIN_CONSOLE_ORIGIN) {
+      throw ApiError.forbidden("Admin request origin is not allowed");
+    }
     // Second, independent auth layer (see src/lib/cloudflareAccess.ts):
     // checked before the app's own session JWT, so a valid admin password
     // alone is never enough when this is turned on - the request must also
     // carry a Cloudflare-signed assertion that this admin cleared the Access
     // application in front of the console.
-    if (config.CF_ACCESS_ENABLED) {
-      try {
-        await verifyCloudflareAccessToken(extractCloudflareAccessToken(request));
-      } catch {
-        throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Cloudflare Access verification failed");
-      }
-    }
+    const verifiedAccessEmail = await verifyAdminAccess(request);
     try {
       await request.jwtVerify();
     } catch {
@@ -70,7 +67,11 @@ export default fp(async function adminAuthPlugin(fastify: FastifyInstance) {
       include: { user: { select: { email: true, fullName: true, accountStatus: true } } },
     });
     if (!membership) throw ApiError.auth(401, "AUTH_SESSION_EXPIRED", "Admin session expired");
+    requireMatchingAdminAccess(verifiedAccessEmail, membership.user.email);
     if (membership.user.accountStatus === "DISABLED") throw ApiError.auth(403, "AUTH_ACCOUNT_DISABLED", "This account has been disabled");
+    // No application MFA challenge exists yet. A policy change must close
+    // pre-existing password-only sessions as well as prevent new logins.
+    if (membership.mfaRequired) throw ApiError.forbidden("This admin account requires multi-factor authentication, but no MFA challenge has been completed");
 
     request.admin = {
       membershipId: membership.id,

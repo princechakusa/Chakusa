@@ -65,7 +65,7 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
       return;
     }
 
-    request.log.error(error);
+    request.log.error({ err: error }, "Unhandled request error");
     reply.status(500).send({
       error: { code: "INTERNAL_ERROR", message: "Internal server error" },
     });

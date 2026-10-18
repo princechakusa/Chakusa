@@ -8,6 +8,7 @@ import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../l
 import { createSession, rotateRefreshToken } from "../auth/auth.service.js";
 import { recordAdminAudit, type AdminAuditActor, type AdminAuditContext } from "./adminAudit.service.js";
 import { permissionsForAdminRole } from "./admin.permissions.js";
+import { requireMatchingAdminAccess } from "../../lib/adminAccess.js";
 
 export interface AdminLoginInput { email: string; password: string }
 
@@ -15,7 +16,8 @@ function actorFromMembership(membership: { id: string; userId: string; role: Adm
   return { membershipId: membership.id, userId: membership.userId, email: membership.user.email, role: membership.role };
 }
 
-export async function authenticateAdminUser(input: AdminLoginInput, context: AdminAuditContext) {
+export async function authenticateAdminUser(input: AdminLoginInput, context: AdminAuditContext, verifiedAccessEmail?: string) {
+  requireMatchingAdminAccess(verifiedAccessEmail, input.email);
   const user = await prisma.user.findUnique({
     where: { normalizedEmail: normalizeEmail(input.email) },
     include: { adminMembership: true },
@@ -63,7 +65,7 @@ export async function authenticateAdminUser(input: AdminLoginInput, context: Adm
   };
 }
 
-export async function rotateAdminRefreshToken(rawToken: string, csrfToken: string, context: AdminAuditContext) {
+export async function rotateAdminRefreshToken(rawToken: string, csrfToken: string, context: AdminAuditContext, verifiedAccessEmail?: string) {
   const id = parseOpaqueToken(rawToken);
   if (!id) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid admin refresh token");
   const current = await prisma.authSession.findUnique({
@@ -82,6 +84,8 @@ export async function rotateAdminRefreshToken(rawToken: string, csrfToken: strin
   }
 
   const membership = current.user.adminMembership;
+  requireMatchingAdminAccess(verifiedAccessEmail, current.user.email);
+  if (membership.mfaRequired) throw ApiError.forbidden("This admin account requires multi-factor authentication, but no MFA challenge has been completed");
   const actor = { membershipId: membership.id, userId: current.userId, email: current.user.email, role: membership.role } satisfies AdminAuditActor;
   const rotated = await rotateRefreshToken(rawToken, "ADMIN", async (tx, oldSession, newSession) => {
     await recordAdminAudit({

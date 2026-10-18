@@ -4,7 +4,7 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
-import { serializeRequestForLog } from "./lib/requestLogging.js";
+import { serializeErrorForLog, serializeRequestForLog } from "./lib/requestLogging.js";
 import { prisma } from "./lib/prisma.js";
 import { attachFastifySentry, captureUnexpectedError } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
@@ -118,10 +118,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
     // lib/requestLogging.ts.
     logger:
       config.NODE_ENV === "development"
-        ? { transport: { target: "pino-pretty" }, serializers: { req: serializeRequestForLog } }
+        ? { transport: { target: "pino-pretty" }, serializers: { req: serializeRequestForLog, err: serializeErrorForLog, error: serializeErrorForLog } }
         : config.NODE_ENV === "test"
           ? false
-          : { serializers: { req: serializeRequestForLog } },
+          : { serializers: { req: serializeRequestForLog, err: serializeErrorForLog, error: serializeErrorForLog } },
     // See config.ts's TRUST_PROXY doc — off by default, must be explicitly
     // enabled once the deployment target's reverse proxy is confirmed to
     // set X-Forwarded-For correctly. Without this, IP-based rate limiting
@@ -153,8 +153,20 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    // Apply to errors and unauthenticated responses too. Public routes may
+    // explicitly opt into caching; authenticated data defaults to no storage.
+    reply.header("cache-control", "no-store");
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("x-frame-options", "DENY");
+    reply.header("referrer-policy", "no-referrer");
+    reply.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    reply.header("permissions-policy", "camera=(), microphone=(), geolocation=()");
+    if (config.NODE_ENV === "production") {
+      reply.header("strict-transport-security", "max-age=31536000");
+    }
   });
 
+  const parseJson = app.getDefaultJsonParser("error", "error");
   app.removeContentTypeParser("application/json");
   // Keeps the raw bytes (webhook signatures). An empty body sent with a JSON
   // content-type (a bodyless DELETE) means "no body", not a server error;
@@ -163,24 +175,21 @@ export async function buildApp(options: BuildAppOptions = {}) {
     request.rawBody = Buffer.from(body);
     const text = request.rawBody.toString("utf8");
     if (!text.trim()) { done(null, undefined); return; }
-    try { done(null, JSON.parse(text)); } catch {
-      done(Object.assign(new Error("Request body is not valid JSON"), { statusCode: 400 }));
-    }
+    // Retain Fastify's prototype/constructor poisoning protection while
+    // preserving the exact raw bytes needed by signed webhook handlers.
+    parseJson(request, text, done);
   });
 
   await app.register(sensible);
-  // corsAllowedOrigins is null (permissive `origin: true`) until
-  // CORS_ALLOWED_ORIGINS is set — see config.ts for why that default is
-  // safe for a mobile-only, bearer-token client with no browser-enforced
-  // Origin header. Once a real web frontend domain exists, set
-  // CORS_ALLOWED_ORIGINS and this becomes a real allowlist.
+  // Development can reflect origins for local tooling. Production disables
+  // browser cross-origin access unless an explicit origin is configured.
   // The administration console uses an HttpOnly refresh cookie and sends
   // credentialed cross-origin requests while the UI and API are deployed on
   // separate hosts. Browsers reject even a successful login response unless
   // the API explicitly opts into credentialed CORS. The origin callback still
   // reflects only the configured allowlist in production, and admin routes
   // independently enforce ADMIN_CONSOLE_ORIGIN as an exact match.
-  await app.register(cors, { origin: corsAllowedOrigins ?? true, credentials: true });
+  await app.register(cors, { origin: corsAllowedOrigins ?? (config.NODE_ENV !== "production"), credentials: true });
   const rateLimitEnabled = config.NODE_ENV !== "test" || options.enableRateLimit === true;
   if (rateLimitEnabled) {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });

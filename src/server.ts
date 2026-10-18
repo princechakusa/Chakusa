@@ -7,6 +7,7 @@ import { ensureBootstrapAIModel, ensureCustomerAgentPlatformFlag } from "./lib/a
 import { ensurePlatformPrompts } from "./lib/ai/platformPrompts.js";
 import { startAutomationWorker, type AutomationWorkerHandle } from "./worker/automationWorker.js";
 import { applyComplimentaryPlans } from "./lib/billing/complimentaryPlans.js";
+import { serializeErrorForLog } from "./lib/requestLogging.js";
 
 // Initialized before anything else so a failure during buildApp() itself
 // (e.g. assertValidAppleRootCertificates throwing at boot) is still
@@ -23,12 +24,12 @@ initSentry();
 // worth knowing about, hence still captured.
 process.on("uncaughtException", (error) => {
   captureUnexpectedError(error);
-  console.error("[uncaughtException]", error);
+  console.error("[uncaughtException]", serializeErrorForLog(error));
   void flushSentry().finally(() => process.exit(1));
 });
 process.on("unhandledRejection", (reason) => {
   captureUnexpectedError(reason);
-  console.error("[unhandledRejection]", reason);
+  console.error("[unhandledRejection]", serializeErrorForLog(reason));
 });
 
 async function main() {
@@ -37,15 +38,15 @@ async function main() {
     app = await buildApp();
   } catch (err) {
     captureUnexpectedError(err);
-    console.error(err);
+    console.error("[startup] initialization failed", serializeErrorForLog(err));
     await flushSentry();
     process.exit(1);
   }
 
   try {
-    await app.listen({ port: config.PORT, host: "0.0.0.0" });
+    await app.listen({ port: config.PORT, host: config.API_BIND_HOST });
   } catch (err) {
-    app.log.error(err);
+    app.log.error({ err }, "API listener failed");
     captureUnexpectedError(err);
     await flushSentry();
     process.exit(1);
@@ -115,7 +116,7 @@ async function main() {
       .then(() => prisma.$disconnect())
       .then(() => process.exit(0))
       .catch((err) => {
-        app.log.error(err);
+        app.log.error({ err }, "API shutdown failed");
         process.exit(1);
       });
   };

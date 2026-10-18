@@ -14,6 +14,7 @@ const target = assertLocalTestDatabaseTarget(process.env);
 const childEnvironment: NodeJS.ProcessEnv = {
   ...process.env,
   NODE_ENV: "test",
+  API_BIND_HOST: "127.0.0.1",
   DATABASE_URL: process.env.DATABASE_URL,
   DIRECT_URL: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
   JWT_SECRET: randomBytes(32).toString("hex"),
@@ -24,6 +25,7 @@ const childEnvironment: NodeJS.ProcessEnv = {
   APPLE_BILLING_ENABLED: "false",
   GOOGLE_BILLING_ENABLED: "false",
   SENTRY_ENABLED: "false",
+  CF_ACCESS_ENABLED: "false",
   ADMIN_CONSOLE_ENABLED: "true",
   ADMIN_CONSOLE_ORIGIN: "http://localhost:5173",
 };

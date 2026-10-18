@@ -126,6 +126,18 @@ describe("admin security foundation", () => {
     await expect(prisma.adminAuditLog.update({ where: { id: (await prisma.adminAuditLog.findFirstOrThrow()).id }, data: { action: "TAMPERED" } })).rejects.toThrow();
   });
 
+  it("enforces a newly required MFA policy on existing access and refresh sessions", async () => {
+    const account = await adminAccount();
+    const signedIn = await login(account.email);
+    expect(signedIn.statusCode).toBe(200);
+    await prisma.adminMembership.update({ where: { id: account.membership.id }, data: { mfaRequired: true } });
+    const access = await app.inject({ method: "GET", url: "/admin/auth/me", headers: { authorization: `Bearer ${signedIn.json().accessToken}` } });
+    expect(access.statusCode).toBe(403);
+    const refresh = await app.inject({ method: "POST", url: "/admin/auth/refresh", headers: { origin: "http://localhost:5173", cookie: refreshCookie(signedIn), "x-csrf-token": signedIn.json().csrfToken } });
+    expect(refresh.statusCode).toBe(403);
+    expect(refresh.headers["set-cookie"]).toBeUndefined();
+  });
+
   it("redacts secret-like fields before persisting audit values", async () => {
     const account = await adminAccount();
     await recordAdminAudit({

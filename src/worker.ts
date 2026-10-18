@@ -11,11 +11,12 @@
  * process (or another instance of it) is running to claim and act on them.
  */
 import { startAutomationWorker } from "./worker/automationWorker.js";
+import { serializeErrorForLog } from "./lib/requestLogging.js";
 
 console.log("[automation-worker] starting");
 
 const handle = startAutomationWorker({
-  onError: (error) => console.error("[automation-worker] poll cycle failed", error),
+  onError: (error) => console.error("[automation-worker] poll cycle failed", serializeErrorForLog(error)),
 });
 
 async function shutdown(signal: string) {

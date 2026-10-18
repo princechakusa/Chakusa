@@ -252,7 +252,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
     },
   );
 
-  fastify.post("/reset-password", async (request, reply) => {
+  fastify.post("/reset-password", { config: { rateLimit: { max: 10, timeWindow: "15 minutes" } } }, async (request, reply) => {
     const input = resetPasswordSchema.parse(request.body);
     await resetPassword(input.token, input.password);
     reply.send({ message: "Password reset successfully. Sign in with your new password." });

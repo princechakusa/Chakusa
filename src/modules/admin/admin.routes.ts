@@ -53,6 +53,7 @@ import { createWorkflowTemplateVersion, listAllWorkflowTemplates, setWorkflowTem
 import { workflowDefinitionSchema } from "../automation/automation.schemas.js";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
+import { verifyAdminAccess } from "../../lib/adminAccess.js";
 import {
   adminCustomerAnalytics,
   getAdminCustomer,
@@ -222,7 +223,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } },
     async (request, reply) => {
       requireAdminOrigin(request);
-      const result = await authenticateAdminUser(adminLoginSchema.parse(request.body), auditContext(request));
+      const verifiedAccessEmail = await verifyAdminAccess(request);
+      const result = await authenticateAdminUser(adminLoginSchema.parse(request.body), auditContext(request), verifiedAccessEmail);
       reply.header("set-cookie", refreshCookie(result.refreshToken, config.REFRESH_TOKEN_TTL_DAYS * 86_400));
       reply.send({
         ...sessionResponse(result.user.id, result.session.id),
@@ -238,7 +240,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     { config: { rateLimit: { max: 20, timeWindow: "15 minutes" } } },
     async (request, reply) => {
       requireAdminOrigin(request);
-      const result = await rotateAdminRefreshToken(requireRefreshCookie(request), requireCsrf(request), auditContext(request));
+      const verifiedAccessEmail = await verifyAdminAccess(request);
+      const result = await rotateAdminRefreshToken(requireRefreshCookie(request), requireCsrf(request), auditContext(request), verifiedAccessEmail);
       reply.header("set-cookie", refreshCookie(result.refreshToken, config.REFRESH_TOKEN_TTL_DAYS * 86_400));
       reply.send({ ...sessionResponse(result.userId, result.session.id), csrfToken: result.csrfToken });
     },

@@ -106,6 +106,39 @@ describe("shouldCaptureError: expected vs. unexpected error classification", () 
 });
 
 describe("sentryBeforeSend: redaction", () => {
+  it("redacts nested customer data, header variants and bearer URLs", () => {
+    const result = sentryBeforeSend({
+      request: { url: "https://user:private-pass@api.example/public/invoices/private-link?code=private-code#private-fragment", headers: { "X-Api-Key": "private-key", aUtHoRiZaTiOn: "private-auth" }, data: { email: "private-email", customer: { phone: "private-phone", name: "private-name" } } },
+      user: { id: "opaque-user", email: "private-user-email" },
+      breadcrumbs: [{ message: "private-breadcrumb", data: { url: "https://api.example/public/quotes/private-quote?token=private-query" } }],
+      tags: { secret: "private-tag", operation: "load" },
+    } as never);
+    expect(JSON.stringify(result)).not.toContain("private-");
+    expect(result.user).toEqual({ id: "opaque-user" });
+    expect(result.request?.url).toBe("https://api.example/public/invoices/[redacted]");
+  });
+
+  it("replaces cycles and truncates deep structures instead of returning raw data", () => {
+    const cycle: Record<string, unknown> = {};
+    cycle.loop = cycle;
+    let deep: Record<string, unknown> = { secret: "private-deep" };
+    for (let i = 0; i < 12; i++) deep = { next: deep };
+    const serialized = JSON.stringify(sentryBeforeSend({ extra: { cycle, deep } } as never));
+    expect(serialized).not.toContain("private-deep");
+    expect(serialized).toContain("[Circular]");
+    expect(serialized).toContain("[MaxDepth]");
+  });
+
+  it("drops free-form error content and locals while preserving stack identity", () => {
+    const result = sentryBeforeSend({
+      message: "private-message", logentry: { message: "private-log" },
+      exception: { values: [{ type: "TypeError", value: "private-error", stacktrace: { frames: [{ function: "loadCustomer", filename: "https://api.example/index.js?token=private-token", vars: { customer: "private-customer" }, context_line: "private-context" }] } }] },
+    } as never);
+    expect(JSON.stringify(result)).not.toContain("private-");
+    expect(result.exception?.values?.[0]?.type).toBe("TypeError");
+    expect(result.exception?.values?.[0]?.stacktrace?.frames?.[0]?.function).toBe("loadCustomer");
+  });
+
   it("5. redacts the Authorization header", () => {
     const event = { request: { headers: { authorization: "Bearer super-secret-jwt", "content-type": "application/json" } } } as never;
     const result = sentryBeforeSend(event);
@@ -142,7 +175,7 @@ describe("sentryBeforeSend: redaction", () => {
     expect(data.password).toBe("[Redacted]");
     expect(data.token).toBe("[Redacted]");
     expect(data.refreshToken).toBe("[Redacted]");
-    expect(data.email).toBe("user@example.com");
+    expect(data.email).toBe("[Redacted]");
   });
 
   it("removes cookies and query string from the request entirely", () => {

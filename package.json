@@ -29,7 +29,8 @@
     "admin:dev": "npm --prefix admin run dev",
     "admin:typecheck": "npm --prefix admin run typecheck",
     "admin:build": "npm --prefix admin run build",
-    "security:repository": "node scripts/check-repository-secrets.mjs"
+    "security:repository": "node scripts/check-repository-secrets.mjs",
+    "security:mobile-dependencies": "node --test scripts/security/mobile-dependencies.test.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

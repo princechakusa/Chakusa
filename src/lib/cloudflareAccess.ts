@@ -68,6 +68,8 @@ export async function verifyCloudflareAccessToken(token: string | null): Promise
   if (!config.CF_ACCESS_TEAM_DOMAIN || !config.CF_ACCESS_AUD) throw new CloudflareAccessError("Cloudflare Access is not configured");
   try {
     const { payload } = await jwtVerify(token, getJwks(config.CF_ACCESS_TEAM_DOMAIN), {
+      algorithms: ["RS256"],
+      requiredClaims: ["exp"],
       issuer: `https://${config.CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com`,
       audience: config.CF_ACCESS_AUD,
     });

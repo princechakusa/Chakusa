@@ -17,6 +17,12 @@ team membership.
 - Refresh and cookie-authenticated logout require a session-bound CSRF token.
 - The console is disabled unless `ADMIN_CONSOLE_ENABLED=true`. Production
   enablement additionally requires an exact HTTPS `ADMIN_CONSOLE_ORIGIN`.
+- When Cloudflare Access is enabled, login, refresh and authenticated API requests
+  require a verified Access assertion whose normalized email matches the app
+  administrator identity. A different approved Access user cannot lend their
+  assertion to another administrator's password or session. Invalid/mismatched
+  evidence creates or rotates no session. Logout remains available to revoke a
+  valid session using its existing CSRF protection.
 
 ## Authorization
 

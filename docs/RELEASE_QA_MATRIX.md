@@ -215,6 +215,10 @@ staging at sandbox provider credentials.
 | 17.3 | Generated iOS Info.plist | Location usage string present, foreground only |
 | 17.4 | Account deletion in-app + the public deletion URL | Both reachable and functional |
 | 17.5 | Every store/privacy declaration | Matches a feature the built app actually ships (reconcile against `docs/progress/` reports) |
+| 17.6 | Install the exact signed R8-optimized release, retain its SHA-256 and mapping file, cold launch both experiences and restore saved sessions | No missing native classes, JNI/reflection crashes or lost SecureStore access; debug builds are not substituted |
+| 17.7 | On the optimized release, exercise Google sign-in, map rendering/messages, call-screening role setup and provider push delivery | Native integrations work under optimization; hostile tooltip text renders literally and unknown/out-of-range map messages are ignored |
+| 17.8 | Probe WebView debugging on the optimized release, and inspect its release manifest and backup XML | No externally attachable release WebView debug endpoint; non-debuggable, no cleartext/backup or release overlay permission; cloud/device-transfer exclusions retained |
+| 17.9 | Repeat release smoke tests on an Android 7–9 device and a current Android device; perform supported backup/device-transfer checks | Compatibility policy remains intact; app-private credentials are excluded from transfer. Record the accepted older-OS risk and actual device results |
 
 ---
 

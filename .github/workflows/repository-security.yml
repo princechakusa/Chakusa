@@ -3,6 +3,9 @@ name: Repository security
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,3 +19,27 @@ jobs:
         with:
           node-version: 20
       - run: npm run security:repository
+  dependency-advisories:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [".", "admin", "website", "mobile"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Do not suppress unpatched advisories. The mobile toolchain currently
+      # has known findings; this gate stays red until they are resolved.
+      - working-directory: ${{ matrix.project }}
+        run: npm audit --audit-level=high
+  mobile-security-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix mobile
+      - run: npm run security:mobile-dependencies

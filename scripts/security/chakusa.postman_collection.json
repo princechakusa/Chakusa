@@ -1,0 +1,1830 @@
+{
+  "info": {
+    "name": "Chakusa isolated security checks",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if(pm.variables.get('baseUrl')!=='http://127.0.0.1:4400') throw new Error('Security collection is restricted to the isolated loopback test server');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Business A identity",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.test('Identity is A',()=>pm.expect(pm.response.json().user.id).to.equal(pm.environment.get('aId')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create A private customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Original security customer\",\"notes\":\"Synthetic only\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.environment.set('customerId',pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cross-tenant customer read denied",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/{{customerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404',()=>pm.response.to.have.status(404));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cross-tenant customer write denied",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/{{customerId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Attacker mutation\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404',()=>pm.response.to.have.status(404));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Victim independently unchanged",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/{{customerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.test('Victim unchanged',()=>pm.expect(pm.response.json().customer.name).to.equal('Original security customer'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenant header cannot change ownership",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bToken}}"
+          },
+          {
+            "key": "X-Business-Id",
+            "value": "{{aBusinessId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/{{customerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404',()=>pm.response.to.have.status(404));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "SQL-like identifier does not bypass ownership",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/customers/00000000-0000-0000-0000-000000000000%27%20OR%201%3D1--"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404',()=>pm.response.to.have.status(404));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Privileged registration fields cannot grant admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{aEmail}}\",\"password\":\"{{aPassword}}\",\"role\":\"SUPER_ADMIN\",\"admin\":true}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /auth/me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /auth/me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /business/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/business/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /business/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/business/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /customers/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/customers/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /customers/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/customers/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /leads/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/leads/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /leads/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/leads/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /quotes/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/quotes/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /quotes/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/quotes/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /invoices/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/invoices/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /invoices/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/invoices/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /message-templates/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/message-templates/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /message-templates/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/message-templates/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /review-requests/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/review-requests/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /review-requests/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/review-requests/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /feedback/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/feedback/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /feedback/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/feedback/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /reminders/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/reminders/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /reminders/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/reminders/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /appointments/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/appointments/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /appointments/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/appointments/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /services/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/services/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /services/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/services/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /dashboard/summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/dashboard/summary"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /dashboard/summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/summary"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /messages/conversations",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/messages/conversations"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /messages/conversations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/messages/conversations"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /weekly-reports/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/weekly-reports/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /weekly-reports/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/weekly-reports/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /support-tickets/",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/support-tickets/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /support-tickets/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/support-tickets/"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous denied /team/members",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/team/members"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forged JWT denied /team/members",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJub25lIn0.eyJzdWIiOiJhZG1pbiJ9."
+          }
+        ],
+        "url": "{{baseUrl}}/team/members"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/auth/me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/dashboard",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/dashboard"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/businesses",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/businesses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/users",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/audit",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/audit"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/settings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/settings"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product token denied /admin/provider-secrets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{aToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/provider-secrets"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "full admin login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{fullEmail}}\",\"password\":\"{{fullPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.environment.set('fullAdminToken',pm.response.json().accessToken); pm.environment.set('fullCsrf',pm.response.json().csrfToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "restricted admin login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{restrictedEmail}}\",\"password\":\"{{restrictedPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.environment.set('restrictedAdminToken',pm.response.json().accessToken); pm.environment.set('restrictedCsrf',pm.response.json().csrfToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Full admin positive control",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{fullAdminToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restricted admin cannot read provider secrets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{restrictedAdminToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/provider-secrets"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403',()=>pm.response.to.have.status(403));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "MFA-required admin fails closed without challenge",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{mfaEmail}}\",\"password\":\"{{mfaPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403',()=>pm.response.to.have.status(403));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hostile admin origin denied",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{fullAdminToken}}"
+          },
+          {
+            "key": "Origin",
+            "value": "https://security.invalid"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403',()=>pm.response.to.have.status(403));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin refresh without CSRF denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400',()=>pm.response.to.have.status(400));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hostile CORS origin not reflected",
+      "request": {
+        "method": "OPTIONS",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "https://security.invalid"
+          },
+          {
+            "key": "Access-Control-Request-Method",
+            "value": "POST"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204',()=>pm.response.to.have.status(204));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.test('Hostile origin absent',()=>pm.expect(pm.response.headers.get('access-control-allow-origin')).to.not.equal('https://security.invalid'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Allowed CORS origin reflected exactly",
+      "request": {
+        "method": "OPTIONS",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "http://localhost:5173"
+          },
+          {
+            "key": "Access-Control-Request-Method",
+            "value": "POST"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204',()=>pm.response.to.have.status(204));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.test('Exact origin',()=>pm.expect(pm.response.headers.get('access-control-allow-origin')).to.equal('http://localhost:5173'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Malformed JSON",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{invalid"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400',()=>pm.response.to.have.status(400));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Prototype poisoning",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"__proto__\":{\"admin\":true}}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400',()=>pm.response.to.have.status(400));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Constructor poisoning",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"constructor\":{\"prototype\":{\"admin\":true}}}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400',()=>pm.response.to.have.status(400));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Generic nonexistent-user login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"missing@security.example.test\",\"password\":\"invalid-password\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.environment.set('genericLoginError',JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Generic existing-user login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{aEmail}}\",\"password\":\"invalid-password\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.test('No account enumeration in message',()=>pm.expect(JSON.stringify(pm.response.json())).to.equal(pm.environment.get('genericLoginError')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Valid refresh rotates session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"refreshToken\":\"{{bRefresh}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));",
+              "pm.environment.set('bNewRefresh',pm.response.json().refreshToken); pm.environment.set('bNewToken',pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bNewToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/logout",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"refreshToken\":\"{{bNewRefresh}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204',()=>pm.response.to.have.status(204));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logged-out access token rejected",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bNewToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logged-out refresh rejected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"refreshToken\":\"{{bNewRefresh}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('MIME sniffing disabled',()=>pm.expect(pm.response.headers.get('x-content-type-options')).to.equal('nosniff'));",
+              "pm.test('Response not cached',()=>pm.expect(pm.response.headers.get('cache-control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

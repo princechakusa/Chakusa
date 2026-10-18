@@ -11,13 +11,15 @@
   Origin-Agent-Cluster: ?1
   X-Permitted-Cross-Domain-Policies: none
   X-DNS-Prefetch-Control: off
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; style-src 'self' https://accounts.google.com; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com https://accounts.google.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
 
 
 # Google Sign-In (popup/FedCM), Turnstile iframes and user-uploaded images cannot
 # satisfy COEP require-corp; these pages keep same-origin-allow-popups and no COEP.
 # Google Sign-In injects <style> elements, so the four sign-in pages allow inline
 # styles (never inline scripts); every other page has no 'unsafe-inline' at all.
+# Marketing pages allow only this origin plus the API hosts; third-party hosts
+# are listed only where they are used (sign-in pages, uploaded images in /dashboard).
 # One block per path: a later block for the same path replaces an earlier one.
 /login*
   ! Cross-Origin-Opener-Policy
@@ -52,5 +54,7 @@
 /dashboard*
   ! Cross-Origin-Opener-Policy
   ! Cross-Origin-Embedder-Policy
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://auth.chakusarecovery.com https://chakusa-api.onrender.com; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cache-Control: no-store

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { apiFetch, loginAdmin, logoutAdmin, onUnauthorized, refreshAdminSession, type AdminIdentity, type AdminUser } from "./api";
 
 interface AuthState {
@@ -16,19 +16,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthState["status"]>("loading");
   const [user, setUser] = useState<AdminUser | null>(null);
   const [admin, setAdmin] = useState<AdminIdentity | null>(null);
+  const revision = useRef(0);
 
-  const clear = () => { setUser(null); setAdmin(null); setStatus("anonymous"); };
+  const clear = () => { revision.current++; setUser(null); setAdmin(null); setStatus("anonymous"); };
 
   useEffect(() => {
     const unsubscribe = onUnauthorized(clear);
+    const initialRevision = revision.current;
+    let cancelled = false;
     void (async () => {
-      if (!await refreshAdminSession()) return clear();
+      if (!await refreshAdminSession()) { if (!cancelled && initialRevision === revision.current) clear(); return; }
       try {
         const me = await apiFetch<{ user: AdminUser; admin: AdminIdentity }>("/admin/auth/me");
+        if (cancelled || initialRevision !== revision.current) return;
         setUser(me.user); setAdmin(me.admin); setStatus("authenticated");
-      } catch { clear(); }
+      } catch { if (!cancelled && initialRevision === revision.current) clear(); }
     })();
-    return unsubscribe;
+    return () => { cancelled = true; unsubscribe(); };
   }, []);
 
   const value = useMemo<AuthState>(() => ({
@@ -36,10 +40,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     user,
     admin,
     login: async (email, password) => {
+      const loginRevision = ++revision.current;
       const result = await loginAdmin(email, password);
+      if (loginRevision !== revision.current) return;
       setUser(result.user); setAdmin(result.admin); setStatus("authenticated");
     },
-    logout: async () => { await logoutAdmin(); clear(); },
+    logout: async () => { clear(); await logoutAdmin(); },
     hasPermission: (permission) => admin?.permissions.includes(permission) ?? false,
   }), [status, user, admin]);
 

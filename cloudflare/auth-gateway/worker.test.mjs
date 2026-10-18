@@ -2,6 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import worker, { internals } from "./worker.mjs";
 
+test("HTTP reads redirect to HTTPS before routing", async () => {
+  const response = await worker.fetch(new Request("http://auth.chakusarecovery.com/health"), {});
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("location"), "https://auth.chakusarecovery.com/health");
+});
+
+test("HTTP authentication writes are rejected without processing cookies", async () => {
+  const response = await worker.fetch(new Request("http://auth.chakusarecovery.com/v1/logout", { method: "POST", headers: { origin: "https://chakusarecovery.com" } }), {});
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("set-cookie"), null);
+});
+
 test("refresh cookie keeps realm, persistence, and opaque token", () => {
   const value = internals.encodeRefreshCookie("business", "family.secret.part", true);
   assert.deepEqual(internals.decodeRefreshCookie(value), { realm: "business", refreshToken: "family.secret.part", remember: true });

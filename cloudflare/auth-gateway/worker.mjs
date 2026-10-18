@@ -547,6 +547,15 @@ export const internals = { upstreamErrorHints, accessSecondsLeft, upstreamErrorM
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("origin") || ""; const url = new URL(request.url);
+    // Secure cookies and HSTS do not make an initial HTTP request secure.
+    // Reject authentication writes before parsing credentials or cookies.
+    if (url.protocol !== "https:") {
+      if (request.method === "GET" || request.method === "HEAD") {
+        url.protocol = "https:";
+        return new Response(null, { status: 308, headers: { ...securityHeaders, location: url.href } });
+      }
+      return json({ error: "HTTPS is required." }, 400, "");
+    }
     if (url.pathname === "/health" && request.method === "GET") return json({ ok: true }, 200, "");
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "Origin not allowed." }, 403, "");
     const fetchSite = request.headers.get("sec-fetch-site");

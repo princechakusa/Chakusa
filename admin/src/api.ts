@@ -4,6 +4,7 @@ const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\
 let accessToken: string | null = null;
 let csrfToken: string | null = sessionStorage.getItem("chakusa_admin_csrf");
 let refreshPromise: Promise<boolean> | null = null;
+let sessionRevision = 0;
 const unauthorizedListeners = new Set<() => void>();
 
 export interface ApiErrorShape { error?: { code?: string; message?: string; details?: unknown } }
@@ -15,6 +16,8 @@ export class ApiError extends Error {
 }
 
 export function setAdminSession(nextAccessToken: string | null, nextCsrfToken?: string | null) {
+  sessionRevision++;
+  refreshPromise = null;
   accessToken = nextAccessToken;
   if (nextCsrfToken !== undefined) {
     csrfToken = nextCsrfToken;
@@ -37,30 +40,37 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function refreshAdminSession(): Promise<boolean> {
   if (!csrfToken) return false;
   if (refreshPromise) return refreshPromise;
-  refreshPromise = fetch(`${API_URL}/admin/auth/refresh`, {
+  const revision = sessionRevision;
+  const pending = fetch(`${API_URL}/admin/auth/refresh`, {
     method: "POST",
     credentials: "include",
     headers: { "x-csrf-token": csrfToken },
   })
     .then(async (response) => {
-      if (!response.ok) return false;
+      if (!response.ok) throw new Error("Admin refresh failed");
       const body = await response.json() as { accessToken: string; csrfToken: string };
+      if (revision !== sessionRevision) return false;
+      if (typeof body.accessToken !== "string" || !body.accessToken || typeof body.csrfToken !== "string" || !body.csrfToken) throw new Error("Invalid admin session");
       setAdminSession(body.accessToken, body.csrfToken);
       return true;
     })
-    .catch(() => false)
-    .finally(() => { refreshPromise = null; });
-  return refreshPromise;
+    .catch(() => { if (revision === sessionRevision) { setAdminSession(null, null); unauthorizedListeners.forEach((listener) => listener()); } return false; })
+    .finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+  refreshPromise = pending;
+  return pending;
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  const revision = sessionRevision;
   const headers = new Headers(init.headers);
   const method = (init.method ?? "GET").toUpperCase();
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
   if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) headers.set("x-csrf-token", csrfToken);
   const response = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+  if (revision !== sessionRevision) throw new ApiError(401, "AUTH_SESSION_CHANGED", "Admin session changed; please retry");
   if (response.status === 401 && retry && await refreshAdminSession()) return apiFetch<T>(path, init, false);
+  if (revision !== sessionRevision) throw new ApiError(401, "AUTH_SESSION_CHANGED", "Admin session changed; please retry");
   if (response.status === 401) {
     setAdminSession(null, null);
     unauthorizedListeners.forEach((listener) => listener());
@@ -69,6 +79,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
 }
 
 export async function loginAdmin(email: string, password: string) {
+  setAdminSession(null, null);
+  const revision = sessionRevision;
   const body = await parseResponse<{
     accessToken: string;
     csrfToken: string;
@@ -80,16 +92,16 @@ export async function loginAdmin(email: string, password: string) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password }),
   }));
+  if (revision !== sessionRevision) throw new ApiError(401, "AUTH_SESSION_CHANGED", "Admin session changed; please sign in again");
+  if (typeof body.accessToken !== "string" || !body.accessToken || typeof body.csrfToken !== "string" || !body.csrfToken) throw new ApiError(401, "AUTH_TOKEN_INVALID", "Invalid admin session");
   setAdminSession(body.accessToken, body.csrfToken);
   return body;
 }
 
 export async function logoutAdmin() {
-  try {
-    if (csrfToken) await fetch(`${API_URL}/admin/auth/logout`, { method: "POST", credentials: "include", headers: { "x-csrf-token": csrfToken } });
-  } finally {
-    setAdminSession(null, null);
-  }
+  const logoutCsrf = csrfToken;
+  setAdminSession(null, null);
+  if (logoutCsrf) await fetch(`${API_URL}/admin/auth/logout`, { method: "POST", credentials: "include", headers: { "x-csrf-token": logoutCsrf } });
 }
 
 export interface AdminUser { id: string; email: string; fullName: string }

@@ -11,6 +11,7 @@ let nextId = 0;
 
 export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = 'Map', ...options }: LeafletMapProps) {
   const id = useRef(`map-web-${++nextId}`).current;
+  const frameRef = useRef<HTMLIFrameElement>(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
   // Rebuild the page only when what is drawn changes, not on every parent render.
@@ -19,6 +20,7 @@ export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = '
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
+      if (event.source !== frameRef.current?.contentWindow || event.origin !== window.location.origin) return;
       const message = parseMapMessage(event.data, id);
       if (message?.type === 'pick') onPickRef.current?.({ latitude: message.latitude!, longitude: message.longitude! });
     };
@@ -29,6 +31,7 @@ export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = '
   return (
     <View style={[styles.frame, { height }, style]}>
       <iframe
+        ref={frameRef}
         title={accessibilityLabel}
         data-testid="leaflet-map"
         srcDoc={html}

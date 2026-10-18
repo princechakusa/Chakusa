@@ -7,6 +7,10 @@ import { Platform } from 'react-native';
 // business build reads/writes only its own. See CUSTOMER_APP.md.
 
 const CUSTOMER_SESSION_KEY = 'chakusa.customer.session.v1';
+let revision = 0;
+let pendingWrite: Promise<unknown> = Promise.resolve();
+export function customerSessionRevision() { return revision; }
+function persist(action: () => Promise<void>) { const pending = pendingWrite.then(action); pendingWrite = pending.catch(() => undefined); return pending; }
 
 export interface CustomerStoredSession {
   accessToken: string;
@@ -14,6 +18,7 @@ export interface CustomerStoredSession {
 }
 
 export async function getCustomerSession(): Promise<CustomerStoredSession | null> {
+  await pendingWrite;
   const raw = Platform.OS === 'web'
     ? globalThis.localStorage?.getItem(CUSTOMER_SESSION_KEY) ?? null
     : await SecureStore.getItemAsync(CUSTOMER_SESSION_KEY);
@@ -29,15 +34,18 @@ export async function getCustomerSession(): Promise<CustomerStoredSession | null
   }
 }
 
-export async function storeCustomerSession(session: CustomerStoredSession) {
+export async function storeCustomerSession(session: CustomerStoredSession, expectedRevision?: number) {
+  if (expectedRevision !== undefined && expectedRevision !== revision) throw new Error('Session changed');
+  revision++;
   const value = JSON.stringify(session);
-  if (Platform.OS === 'web') globalThis.localStorage?.setItem(CUSTOMER_SESSION_KEY, value);
+  return persist(async () => { if (Platform.OS === 'web') globalThis.localStorage?.setItem(CUSTOMER_SESSION_KEY, value);
   else await SecureStore.setItemAsync(CUSTOMER_SESSION_KEY, value, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+  }); });
 }
 
 export async function clearCustomerSession() {
-  if (Platform.OS === 'web') globalThis.localStorage?.removeItem(CUSTOMER_SESSION_KEY);
-  else await SecureStore.deleteItemAsync(CUSTOMER_SESSION_KEY);
+  revision++;
+  return persist(async () => { if (Platform.OS === 'web') globalThis.localStorage?.removeItem(CUSTOMER_SESSION_KEY);
+  else await SecureStore.deleteItemAsync(CUSTOMER_SESSION_KEY); });
 }

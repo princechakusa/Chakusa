@@ -33,5 +33,8 @@ describe('parseMapMessage', () => {
     expect(parseMapMessage({ source: 'chakusa-map' }, 'm1')).toBeNull();
     expect(parseMapMessage(JSON.stringify({ source: 'someone-else', id: 'm1', type: 'pick', latitude: 1, longitude: 2 }), 'm1')).toBeNull();
     expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'pick', latitude: 'x', longitude: 2 }), 'm1')).toBeNull();
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'pick', latitude: 91, longitude: 2 }), 'm1')).toBeNull();
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'pick', latitude: 1, longitude: 181 }), 'm1')).toBeNull();
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'unknown' }), 'm1')).toBeNull();
   });
 });

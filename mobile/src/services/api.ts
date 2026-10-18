@@ -1,7 +1,7 @@
 import { ApiErrorBody, RefreshResponse } from '../apiTypes';
 import { API_URL } from '../config';
 import { renderWakeErrorCopy } from '../domain/mobileProduction';
-import { clearStoredSession, getStoredSession, storeSession } from './tokenStorage';
+import { businessSessionRevision, clearStoredSession, getStoredSession, storeSession } from './tokenStorage';
 
 export type ApiErrorKind = 'validation' | 'unauthorized' | 'forbidden' | 'not-found' | 'conflict' | 'server' | 'network' | 'configuration' | 'invalid-response';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -14,6 +14,10 @@ export class ApiError extends Error {
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;
 let entitlementErrorHandler: ((error: ApiError) => void) | undefined;
 let refreshPromise: Promise<string> | null = null;
+let refreshRevision = -1;
+function assertSession(revision: number) {
+  if (revision !== businessSessionRevision()) throw new ApiError('unauthorized', 'Your session changed. Please retry.', 401, 'AUTH_SESSION_CHANGED');
+}
 export function setUnauthorizedHandler(handler?: () => void | Promise<void>) { unauthorizedHandler = handler; }
 export function setEntitlementErrorHandler(handler?: (error: ApiError) => void) { entitlementErrorHandler = handler; }
 
@@ -40,10 +44,12 @@ async function responseError(response: Response) {
 }
 
 async function rotateSession(): Promise<string> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = (async () => {
+  const revision = businessSessionRevision();
+  if (refreshPromise && refreshRevision === revision) return refreshPromise;
+  const pending = (async () => {
     if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address. Set EXPO_PUBLIC_API_URL and rebuild this app.', undefined, 'API_URL_MISSING');
     const session = await getStoredSession();
+    assertSession(revision);
     if (!session) throw new ApiError('unauthorized', 'Your session has expired.', 401, 'AUTH_SESSION_EXPIRED');
     let response: Response;
     try {
@@ -58,6 +64,7 @@ async function rotateSession(): Promise<string> {
     }
     if (!response.ok) {
       const error = await responseError(response);
+      assertSession(revision);
       if (response.status === 401) {
         await clearStoredSession();
         await unauthorizedHandler?.();
@@ -65,13 +72,17 @@ async function rotateSession(): Promise<string> {
       throw error;
     }
     const next = await response.json() as RefreshResponse;
-    await storeSession({ accessToken: next.accessToken, refreshToken: next.refreshToken });
+    assertSession(revision);
+    if (typeof next.accessToken !== 'string' || !next.accessToken || typeof next.refreshToken !== 'string' || !next.refreshToken) throw new ApiError('unauthorized', 'Invalid session response.', 401, 'AUTH_TOKEN_INVALID');
+    await storeSession({ ...session, accessToken: next.accessToken, refreshToken: next.refreshToken }, revision);
     return next.accessToken;
-  })().finally(() => { refreshPromise = null; });
-  return refreshPromise;
+  })().finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+  refreshRevision = revision;
+  refreshPromise = pending;
+  return pending;
 }
 
-interface ApiRequestInit extends RequestInit { auth?: 'required' | 'none'; retryRefresh?: boolean; }
+interface ApiRequestInit extends RequestInit { auth?: 'required' | 'none'; retryRefresh?: boolean; expectedAccessToken?: string; }
 
 async function fetchWithTimeout(url: string, init: RequestInit) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -82,9 +93,12 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
 
 export class ApiClient {
   async request<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
-    const { auth = 'required', retryRefresh = true, ...requestInit } = init;
+    const { auth = 'required', retryRefresh = true, expectedAccessToken, ...requestInit } = init;
+    const revision = businessSessionRevision();
     if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address. Set EXPO_PUBLIC_API_URL and rebuild this app.', undefined, 'API_URL_MISSING');
     const session = auth === 'required' ? await getStoredSession() : null;
+    assertSession(revision);
+    if (expectedAccessToken !== undefined && session?.accessToken !== expectedAccessToken) throw new ApiError('unauthorized', 'Your session changed. Please retry.', 401, 'AUTH_SESSION_CHANGED');
     let response: Response;
     try {
       response = await fetchWithTimeout(`${API_URL}${path}`, {
@@ -103,12 +117,14 @@ export class ApiClient {
       throw new ApiError('network', 'Unable to reach CHAKUSA. Check your connection and try again.');
     }
 
+    assertSession(revision);
     if (response.status === 401 && auth === 'required' && retryRefresh) {
       const accessToken = await rotateSession();
       return this.request<T>(path, {
         ...requestInit,
         auth: 'required',
         retryRefresh: false,
+        expectedAccessToken: accessToken,
         headers: { ...requestInit.headers, Authorization: `Bearer ${accessToken}` },
       });
     }
@@ -118,11 +134,15 @@ export class ApiClient {
     }
     if (!response.ok) {
       const error = await responseError(response);
+      assertSession(revision);
       if (['LIMIT_REACHED', 'FEATURE_NOT_AVAILABLE', 'PLAN_REQUIRED'].includes(error.code ?? '')) entitlementErrorHandler?.(error);
       throw error;
     }
     if (response.status === 204) return undefined as T;
-    try { return await response.json() as T; } catch { throw new ApiError('invalid-response', 'The server returned an unexpected response.'); }
+    let body: T;
+    try { body = await response.json() as T; } catch { throw new ApiError('invalid-response', 'The server returned an unexpected response.'); }
+    assertSession(revision);
+    return body;
   }
   get<T>(path: string, auth: 'required' | 'none' = 'required') { return this.request<T>(path, { auth }); }
   post<T>(path: string, body: unknown = {}, auth: 'required' | 'none' = 'required') { return this.request<T>(path, { method: 'POST', body: JSON.stringify(body), auth }); }

@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useCallback, useContext, useEffect, u
 import { AuthResponse, BusinessDto, LegalDocumentType, UserDto } from '../apiTypes';
 import { ApiError, setUnauthorizedHandler } from '../services/api';
 import { authApi, businessApi, legalApi } from '../services/endpoints';
-import { clearStoredSession, getStoredSession, storeSession } from '../services/tokenStorage';
+import { businessSessionRevision, clearStoredSession, getStoredSession, storeSession } from '../services/tokenStorage';
 import { requestGoogleIdToken } from '../services/googleAuth';
 import { requestAppleCredential } from '../services/appleAuth';
 import { unregisterCurrentPushToken } from '../services/pushNotifications';
@@ -45,6 +45,7 @@ const unregisterPushBeforeLogout = () => Promise.race([
 export function AuthProvider({ children }: PropsWithChildren) {
   const preferences = usePreferences();
   const preferencesRef = useRef(preferences);
+  const authAttempt = useRef(0);
   const [status, setStatus] = useState<AuthStatus>('restoring');
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [user, setUser] = useState<UserDto | null>(null);
@@ -52,7 +53,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [role, setRole] = useState<string | null>(null);
   const [pendingLegalDocuments, setPendingLegalDocuments] = useState<PendingLegalDocument[]>([]);
   const clearSession = useCallback(async () => {
-    await clearStoredSession(); await preferencesRef.current.activateScope(null, false); setUser(null); setBusiness(null); setRole(null); setPendingLegalDocuments([]); setStatus('anonymous');
+    const attempt = ++authAttempt.current;
+    await clearStoredSession();
+    if (attempt !== authAttempt.current) return;
+    await preferencesRef.current.activateScope(null, false);
+    if (attempt !== authAttempt.current) return;
+    setUser(null); setBusiness(null); setRole(null); setPendingLegalDocuments([]); setStatus('anonymous');
   }, []);
   // PROGRAM 2 LOOP 4: a business account's legal-acceptance status is a
   // server fact, not a device preference like onboardingComplete - so it's
@@ -62,12 +68,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // network; AppNavigator simply won't show the LegalAcceptance gate until
   // a subsequent successful check finds something pending.
   const refreshLegalStatus = useCallback(async () => {
-    try { setPendingLegalDocuments((await legalApi.businessStatus()).pending); }
+    const attempt = authAttempt.current;
+    try { const documents = await legalApi.businessStatus(); if (attempt === authAttempt.current) setPendingLegalDocuments(documents.pending); }
     catch { /* best-effort; see comment above */ }
   }, []);
-  const applySession = useCallback(async (response: AuthResponse) => {
+  const applySession = useCallback(async (response: AuthResponse, attempt: number) => {
+    if (attempt !== authAttempt.current) return;
+    const revision = businessSessionRevision();
     await preferencesRef.current.activateScope(response.user.id, hasCompletedBusinessSetup(response.business), response.business?.industry);
-    await storeSession({ accessToken: response.accessToken, refreshToken: response.refreshToken });
+    if (attempt !== authAttempt.current) return;
+    await storeSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, ownerUserId: response.user.id, ownerBusinessId: response.business?.id }, revision);
+    if (attempt !== authAttempt.current) return;
     setUser(response.user); setBusiness(response.business); setRole(response.role ?? null); setStatus('authenticated');
     void refreshLegalStatus();
   }, [refreshLegalStatus]);
@@ -75,12 +86,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => { preferencesRef.current = preferences; }, [preferences]);
   useEffect(() => { setUnauthorizedHandler(clearSession); return () => setUnauthorizedHandler(undefined); }, [clearSession]);
   const restore = useCallback(async () => {
+    const attempt = ++authAttempt.current;
     setStatus('restoring'); setRestoreError(null);
-    if (!await getStoredSession()) { setStatus('anonymous'); return; }
+    if (!await getStoredSession()) { if (attempt === authAttempt.current) setStatus('anonymous'); return; }
     try {
-      const me = await authApi.me(); await preferencesRef.current.activateScope(me.user.id, hasCompletedBusinessSetup(me.business), me.business?.industry); setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
+      const me = await authApi.me();
+      if (attempt !== authAttempt.current) return;
+      const revision = businessSessionRevision();
+      const stored = await getStoredSession();
+      if (!stored || attempt !== authAttempt.current) return;
+      await storeSession({ ...stored, ownerUserId: me.user.id, ownerBusinessId: me.business?.id }, revision);
+      await preferencesRef.current.activateScope(me.user.id, hasCompletedBusinessSetup(me.business), me.business?.industry);
+      if (attempt !== authAttempt.current) return;
+      setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
       void refreshLegalStatus();
     } catch (error) {
+      if (attempt !== authAttempt.current) return;
       if (error instanceof ApiError && error.kind === 'unauthorized') return;
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.'); setStatus('restore-error');
     }
@@ -96,14 +117,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     status, restoreError, user, business, role, restore,
     isOnboarded: hasCompletedBusinessSetup(business),
     pendingLegalDocuments, refreshLegalStatus, acceptLegalDocument,
-    login: async (email, password) => applySession(await authApi.login({ email, password })),
-    register: async input => applySession(await authApi.register(input)),
-    googleSignIn: async invitationToken => { const idToken = await requestGoogleIdToken(); if (!idToken) return false; await applySession(await authApi.google(idToken, invitationToken)); return true; },
+    login: async (email, password) => { const attempt = ++authAttempt.current; await applySession(await authApi.login({ email, password }), attempt); },
+    register: async input => { const attempt = ++authAttempt.current; await applySession(await authApi.register(input), attempt); },
+    googleSignIn: async invitationToken => { const attempt = ++authAttempt.current; const idToken = await requestGoogleIdToken(); if (!idToken || attempt !== authAttempt.current) return false; await applySession(await authApi.google(idToken, invitationToken), attempt); return attempt === authAttempt.current; },
     linkGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.linkGoogle(idToken); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'GOOGLE' as const])] } : current); return true; },
-    appleSignIn: async invitationToken => { const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await applySession(await authApi.apple({ ...credential, invitationToken })); return true; },
+    appleSignIn: async invitationToken => { const attempt = ++authAttempt.current; const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential || attempt !== authAttempt.current) return false; await applySession(await authApi.apple({ ...credential, invitationToken }), attempt); return attempt === authAttempt.current; },
     linkApple: async () => { const challenge = await authApi.appleLinkChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.linkApple(credential); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'APPLE' as const])] } : current); return true; },
-    logout: async () => { const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { void clearPendingIntent(); await clearSession(); } },
-    logoutAll: async () => { try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { void clearPendingIntent(); await clearSession(); } },
+    logout: async () => { const attempt = ++authAttempt.current; const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { if (attempt === authAttempt.current) { void clearPendingIntent(); await clearSession(); } } },
+    logoutAll: async () => { const attempt = ++authAttempt.current; try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { if (attempt === authAttempt.current) { void clearPendingIntent(); await clearSession(); } } },
     forgotPassword: async email => (await authApi.forgotPassword(email)).message,
     updateProfile: async fullName => { const updated = await authApi.updateProfile(fullName); setUser(current => current ? { ...current, fullName: updated.fullName } : current); },
     changePassword: async (currentPassword, newPassword) => { await authApi.changePassword({ currentPassword, newPassword }); setUser(current => current ? { ...current, hasPassword: true } : current); },

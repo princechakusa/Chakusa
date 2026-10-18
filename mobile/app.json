@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.chakusa.mobile",
+      "allowBackup": false,
       "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#FF5C5C",
@@ -63,6 +64,7 @@
         }
       ],
       "./plugins/withCppStlLinkerFix",
+      "./plugins/withAndroidSecurity",
       [
         "expo-image-picker",
         {

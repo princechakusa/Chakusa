@@ -1,0 +1,32 @@
+diff --git a/node_modules/@expo/dom-webview/android/src/main/java/expo/modules/webview/DomWebView.kt b/node_modules/@expo/dom-webview/android/src/main/java/expo/modules/webview/DomWebView.kt
+--- a/node_modules/@expo/dom-webview/android/src/main/java/expo/modules/webview/DomWebView.kt
++++ b/node_modules/@expo/dom-webview/android/src/main/java/expo/modules/webview/DomWebView.kt
+@@ -36,8 +36,9 @@ internal class DomWebView(context: Context, appContext: AppContext) : ExpoView(conte
+   private val rncWebViewBridge = RNCWebViewBridge(this@DomWebView)
+   var webviewDebuggingEnabled: Boolean = false
+     set(value) {
+-      field = value
+-      WebView.setWebContentsDebuggingEnabled(value)
++      val debuggable = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
++      field = value && debuggable
++      WebView.setWebContentsDebuggingEnabled(field)
+     }
+   var nestedScrollEnabled = true
+ 
+@@ -204,9 +205,13 @@ internal class DomWebView(context: Context, appContext: AppContext) : ExpoView(conte
+     return WebView(context).apply {
+       setBackgroundColor(Color.TRANSPARENT)
+       settings.javaScriptEnabled = true
+-      // API 30+ default disables file access; DOM bundles need it for sibling assets.
+-      settings.allowFileAccess = true
+-      settings.allowFileAccessFromFileURLs = true
++      // Chakusa has no release DOM components. File-origin access is reserved
++      // for the development tooling; future release DOM assets must migrate
++      // to an HTTPS asset loader before enabling local-resource access.
++      val debuggable = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
++      settings.allowFileAccess = debuggable
++      settings.allowFileAccessFromFileURLs = debuggable
++      settings.allowUniversalAccessFromFileURLs = false
+       webViewClient = createWebViewClient()
+       addJavascriptInterface(rncWebViewBridge, "ReactNativeWebView")
+       addJavascriptInterface(DomWebViewBridge(this@DomWebView), "ExpoDomWebViewBridge")

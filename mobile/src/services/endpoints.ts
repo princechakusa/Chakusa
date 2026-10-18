@@ -190,7 +190,7 @@ export const messagingApi = {
   updateConversation: (id:string, body:{status?:string;assignedMemberId?:string|null;automationMode?:string}) => api.patch(`/messages/conversations/${id}`,body),
   markConversationRead: (id:string) => api.post<{read:boolean}>(`/messages/conversations/${id}/read`, {}),
   completeAnalytics: () => api.get<Record<string,unknown>>('/messages/analytics/complete'),
-  uploadAttachment: (body: { fileName: string; mimeType: string; dataBase64: string }) => api.post<{ id: string; uploadStatus: string; malwareScanStatus: string }>('/messages/attachments/mobile', body),
+  uploadAttachment: (body: { fileName: string; mimeType: string; dataBase64: string }, expectedAccessToken: string) => api.request<{ id: string; uploadStatus: string; malwareScanStatus: string }>('/messages/attachments/mobile', { method: 'POST', body: JSON.stringify(body), expectedAccessToken }),
 };
 export const subscriptionApi = {
   getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),

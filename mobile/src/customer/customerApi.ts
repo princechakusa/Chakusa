@@ -2,7 +2,7 @@ import { ApiErrorBody } from '../apiTypes';
 import { API_URL } from '../config';
 import { ApiError } from '../services/api';
 import { renderWakeErrorCopy } from '../domain/mobileProduction';
-import { clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
+import { customerSessionRevision, clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
 
 // PROGRAM 2 LOOP 7: the CUSTOMER API transport. Self-contained and bound
 // exclusively to the customer session store + /customer/auth/refresh. It
@@ -53,11 +53,15 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
 }
 
 let refreshPromise: Promise<string> | null = null;
+let refreshRevision = -1;
+function assertSession(revision: number) { if (revision !== customerSessionRevision()) throw new ApiError('unauthorized', 'Your session changed. Please retry.', 401, 'AUTH_SESSION_CHANGED'); }
 async function rotateCustomerSession(): Promise<string> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = (async () => {
+  const revision = customerSessionRevision();
+  if (refreshPromise && refreshRevision === revision) return refreshPromise;
+  const pending = (async () => {
     if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address.', undefined, 'API_URL_MISSING');
     const session = await getCustomerSession();
+    assertSession(revision);
     if (!session) throw new ApiError('unauthorized', 'Your session has expired.', 401, 'AUTH_SESSION_EXPIRED');
     let response: Response;
     try {
@@ -72,22 +76,30 @@ async function rotateCustomerSession(): Promise<string> {
     }
     if (!response.ok) {
       const error = await toApiError(response);
+      assertSession(revision);
       if (response.status === 401) { await clearCustomerSession(); await onUnauthorized?.(); }
       throw error;
     }
     const next = (await response.json()) as { accessToken: string; refreshToken: string };
-    await storeCustomerSession({ accessToken: next.accessToken, refreshToken: next.refreshToken });
+    assertSession(revision);
+    if (typeof next.accessToken !== 'string' || !next.accessToken || typeof next.refreshToken !== 'string' || !next.refreshToken) throw new ApiError('unauthorized', 'Invalid session response.', 401, 'AUTH_TOKEN_INVALID');
+    await storeCustomerSession({ accessToken: next.accessToken, refreshToken: next.refreshToken }, revision);
     return next.accessToken;
-  })().finally(() => { refreshPromise = null; });
-  return refreshPromise;
+  })().finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+  refreshRevision = revision;
+  refreshPromise = pending;
+  return pending;
 }
 
-interface CustomerRequestInit extends RequestInit { auth?: 'required' | 'none'; retryRefresh?: boolean }
+interface CustomerRequestInit extends RequestInit { auth?: 'required' | 'none'; retryRefresh?: boolean; expectedAccessToken?: string }
 
 async function request<T>(path: string, init: CustomerRequestInit = {}): Promise<T> {
-  const { auth = 'required', retryRefresh = true, ...requestInit } = init;
+  const { auth = 'required', retryRefresh = true, expectedAccessToken, ...requestInit } = init;
+  const revision = customerSessionRevision();
   if (!API_URL) throw new ApiError('configuration', 'Chakusa is not configured with an API address. Set EXPO_PUBLIC_API_URL and rebuild this app.', undefined, 'API_URL_MISSING');
   const session = auth === 'required' ? await getCustomerSession() : null;
+  assertSession(revision);
+  if (expectedAccessToken !== undefined && session?.accessToken !== expectedAccessToken) throw new ApiError('unauthorized', 'Your session changed. Please retry.', 401, 'AUTH_SESSION_CHANGED');
 
   let response: Response;
   try {
@@ -107,14 +119,18 @@ async function request<T>(path: string, init: CustomerRequestInit = {}): Promise
     throw new ApiError('network', 'Unable to reach Chakusa. Check your connection and try again.');
   }
 
+  assertSession(revision);
   if (response.status === 401 && auth === 'required' && retryRefresh) {
     const accessToken = await rotateCustomerSession();
-    return request<T>(path, { ...requestInit, auth: 'required', retryRefresh: false, headers: { ...requestInit.headers, Authorization: `Bearer ${accessToken}` } });
+    return request<T>(path, { ...requestInit, auth: 'required', retryRefresh: false, expectedAccessToken: accessToken, headers: { ...requestInit.headers, Authorization: `Bearer ${accessToken}` } });
   }
   if (response.status === 401 && auth === 'required') { await clearCustomerSession(); await onUnauthorized?.(); }
-  if (!response.ok) throw await toApiError(response);
+  if (!response.ok) { const error = await toApiError(response); assertSession(revision); throw error; }
   if (response.status === 204) return undefined as T;
-  try { return (await response.json()) as T; } catch { throw new ApiError('invalid-response', 'The server returned an unexpected response.'); }
+  let body: T;
+  try { body = (await response.json()) as T; } catch { throw new ApiError('invalid-response', 'The server returned an unexpected response.'); }
+  assertSession(revision);
+  return body;
 }
 
 export const customerHttp = {

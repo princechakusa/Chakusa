@@ -67,7 +67,7 @@ html,body,#map{height:100%;margin:0;background:#F4F1ED}
   var pin=null, bounds=[];
   cfg.markers.forEach(function(m){
     var mk=L.marker([m.latitude,m.longitude],{icon:icon(m.kind),keyboard:false}).addTo(map);
-    if (m.label) mk.bindTooltip(m.label,{direction:'top',offset:[0,-10]});
+    if (m.label) { var label=document.createElement('span'); label.textContent=m.label; mk.bindTooltip(label,{direction:'top',offset:[0,-10]}); }
     if (m.kind==='pin') pin=mk;
     bounds.push([m.latitude,m.longitude]);
   });
@@ -88,7 +88,9 @@ export function parseMapMessage(raw: unknown, id: string): MapMessage | null {
   try {
     const message = JSON.parse(raw) as MapMessage;
     if (message?.source !== 'chakusa-map' || message.id !== id) return null;
+    if (!['ready', 'pick', 'error'].includes(message.type)) return null;
     if (message.type === 'pick' && !(Number.isFinite(message.latitude) && Number.isFinite(message.longitude))) return null;
+    if (message.type === 'pick' && (Math.abs(message.latitude!) > 90 || Math.abs(message.longitude!) > 180)) return null;
     return message;
   } catch {
     return null;

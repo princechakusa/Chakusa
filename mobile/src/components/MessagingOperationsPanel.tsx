@@ -1,17 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { messagingApi } from '../services/endpoints';
 import { enqueueAttachment, flushAttachmentQueue, queuedAttachments, removeQueuedAttachment, type QueuedAttachment } from '../services/messagingAttachmentQueue';
 import { ErrorState, LoadingState, SecondaryButton, StatusBadge } from './ui';
 import { colors, radius, spacing, typography } from '../theme';
+import { useAuth } from '../state/AuthContext';
 
 type Conversation = { id: string; status: string; priority: string; automationMode: string; assignedMemberId:string|null; updatedAt: string; messages: Array<{ id:string;body: string; direction: string }>;slas:Array<{type:string;status:string;dueAt:string}> };
 type Failure = { id: string; status: string; lastError: string | null; message: { body: string } };
 type Analytics = { conversations: Array<{ status: string; _count: number }>; delivery: Array<{ status: string; channel: string; _count: number }>; verifiedCost: string };
 
 export function MessagingOperationsPanel() {
+  const { user, business } = useAuth();
+  const owner = useMemo(() => ({ userId: user?.id ?? '', businessId: business?.id ?? '' }), [user?.id, business?.id]);
+  const ownerId = `${owner.userId}.${owner.businessId}`;
+  const currentOwner = useRef(ownerId);
+  currentOwner.current = ownerId;
   const [data, setData] = useState<{ conversations: Conversation[]; failures: Failure[]; analytics: Analytics } | null>(null);
   const [error, setError] = useState(false);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -24,9 +30,27 @@ export function MessagingOperationsPanel() {
     setError(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { void queuedAttachments().then(setUploads); }, []);
-  const syncUploads = useCallback(() => { void flushAttachmentQueue(setUploads); }, []);
-  const chooseAttachment = useCallback(async () => { try { const picked = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf', 'text/plain'], copyToCacheDirectory: true }); if (picked.canceled) return; const asset = picked.assets[0]; if (!asset || (asset.size ?? 0) > 20 * 1024 * 1024) return; await enqueueAttachment({ fileName: asset.name, mimeType: asset.mimeType ?? 'application/octet-stream', dataBase64: await new File(asset.uri).base64() }); setUploads(await flushAttachmentQueue(setUploads)); } catch { setError(true); } }, []);
+  const publishUploads = useCallback((items: QueuedAttachment[]) => { if (currentOwner.current === ownerId) setUploads(items); }, [ownerId]);
+  useEffect(() => { let active = true; setUploads([]); if (owner.userId && owner.businessId) void queuedAttachments(owner).then(items => { if (active) publishUploads(items); }).catch(() => { if (active) setError(true); }); return () => { active = false; }; }, [owner, publishUploads]);
+  const syncUploads = useCallback(() => { void flushAttachmentQueue(publishUploads, owner).catch(() => { if (currentOwner.current === ownerId) setError(true); }); }, [owner, ownerId, publishUploads]);
+  const chooseAttachment = useCallback(async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf', 'text/plain'], copyToCacheDirectory: true });
+      if (picked.canceled) return;
+      const asset = picked.assets[0];
+      if (!asset) return;
+      const cached = new File(asset.uri);
+      try {
+        if ((asset.size ?? 0) > 20 * 1024 * 1024) throw new Error('Attachment is too large.');
+        await enqueueAttachment({ fileName: asset.name, mimeType: asset.mimeType ?? 'application/octet-stream', dataBase64: await cached.base64() }, owner);
+      } finally {
+        // Remove only the picker-created cache copy, never the original file.
+        const cacheRoot = Paths.cache.uri.replace(/\/?$/, '/');
+        if (cached.uri.startsWith(cacheRoot) && cached.exists) cached.delete();
+      }
+      publishUploads(await flushAttachmentQueue(publishUploads, owner));
+    } catch { if (currentOwner.current === ownerId) setError(true); }
+  }, [owner, ownerId, publishUploads]);
   if (!data && !error) return <LoadingState label="Loading messaging operations…" />;
   if (!data) return <ErrorState message="Couldn’t load messaging operations." onRetry={() => void load()} />;
   const open = data.analytics.conversations.find(item => item.status === 'OPEN')?._count ?? 0;
@@ -36,7 +60,8 @@ export function MessagingOperationsPanel() {
     <View style={styles.header}><Text style={styles.heading}>Messaging operations</Text><StatusBadge label={`${open} open`} /></View>
     <Text style={styles.body}>{delivered} delivered · {data.failures.length} need attention · verified cost {data.analytics.verifiedCost}</Text>
     <View style={styles.actions}><SecondaryButton compact label="Attach file" onPress={() => void chooseAttachment()} /><SecondaryButton compact label="Sync uploads" onPress={syncUploads} /></View>
-    {uploads.map(upload => <View key={upload.id} style={styles.row}><View style={styles.copy}><Text numberOfLines={1} style={styles.label}>{upload.fileName}</Text><Text style={upload.status === 'FAILED' ? styles.error : styles.body}>{upload.status.replaceAll('_', ' ').toLowerCase()} · {upload.progress}% {upload.error ? `· ${upload.error}` : ''}</Text></View>{upload.status === 'FAILED' ? <SecondaryButton compact label="Retry" onPress={syncUploads} /> : null}<SecondaryButton compact label="Remove" onPress={() => void removeQueuedAttachment(upload.id).then(setUploads)} /></View>)}
+    {error ? <Text accessibilityRole="alert" style={styles.error}>An operation failed. Please retry; if your account changed, reopen this screen.</Text> : null}
+    {uploads.map(upload => <View key={upload.id} style={styles.row}><View style={styles.copy}><Text numberOfLines={1} style={styles.label}>{upload.fileName}</Text><Text style={upload.status === 'FAILED' ? styles.error : styles.body}>{upload.status.replaceAll('_', ' ').toLowerCase()} · {upload.progress}% {upload.error ? `· ${upload.error}` : ''}</Text></View>{upload.status === 'FAILED' ? <SecondaryButton compact label="Retry" onPress={syncUploads} /> : null}<SecondaryButton compact label="Remove" onPress={() => void removeQueuedAttachment(upload.id, owner).then(publishUploads).catch(() => { if (currentOwner.current === ownerId) setError(true); })} /></View>)}
     <TextInput accessibilityLabel="Search conversations" placeholder="Search conversations" value={search} onChangeText={setSearch} style={styles.input}/><View style={styles.filters}>{['ALL','OPEN','PENDING','RESOLVED'].map(value=><Pressable key={value} accessibilityRole="button" accessibilityState={{selected:status===value}} onPress={()=>setStatus(value)} style={styles.filter}><Text style={styles.body}>{value}</Text></Pressable>)}</View>
     {visible.slice(0, 10).map(item => <View key={item.id}><Pressable onPress={()=>setSelected(selected===item.id?null:item.id)} accessibilityRole="summary" accessibilityState={{expanded:selected===item.id}} accessibilityLabel={`${item.status} conversation, ${item.messages[0]?.body ?? 'No messages'}`} style={styles.row}><View style={styles.copy}><Text numberOfLines={1} style={styles.label}>{item.messages[0]?.body ?? 'New conversation'}</Text><Text style={styles.body}>{item.automationMode.toLowerCase()} · {item.priority.toLowerCase()} · {item.slas.some(sla=>sla.status==='BREACHED')?'SLA breached':`${item.slas.filter(sla=>sla.status==='ACTIVE').length} active SLA`}</Text></View><StatusBadge label={item.status} /></Pressable>{selected===item.id?<View style={styles.actions}><SecondaryButton compact label="Assign to me" onPress={()=>void messagingApi.updateConversation(item.id,{automationMode:'HUMAN'}).then(load)}/><SecondaryButton compact label={item.status==='RESOLVED'?'Reopen':'Resolve'} onPress={()=>void messagingApi.updateConversation(item.id,{status:item.status==='RESOLVED'?'OPEN':'RESOLVED'}).then(load)}/></View>:null}</View>)}
     {data.failures.slice(0, 3).map(item => <View key={item.id} style={styles.row}><View style={styles.copy}><Text numberOfLines={1} style={styles.label}>{item.message.body}</Text><Text numberOfLines={1} style={styles.error}>{item.lastError ?? item.status}</Text></View><SecondaryButton compact disabled={retrying === item.id} label={retrying === item.id ? 'Queuing…' : 'Retry'} onPress={() => { setRetrying(item.id); void messagingApi.retry(item.id).then(load).finally(() => setRetrying(null)); }} /></View>)}

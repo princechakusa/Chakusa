@@ -24,8 +24,15 @@ export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = '
   return (
     <View accessibilityLabel={accessibilityLabel} style={[styles.frame, { height }, style]}>
       <WebView
-        originWhitelist={['*']}
+        originWhitelist={['https://chakusarecovery.com']}
         source={{ html, baseUrl: 'https://chakusarecovery.com/' }}
+        onShouldStartLoadWithRequest={(request) => request.url === 'about:blank' || request.url === 'https://chakusarecovery.com/'}
+        webviewDebuggingEnabled={false}
+        allowFileAccess={false}
+        allowFileAccessFromFileURLs={false}
+        allowUniversalAccessFromFileURLs={false}
+        mixedContentMode="never"
+        javaScriptCanOpenWindowsAutomatically={false}
         onMessage={(event) => {
           const message = parseMapMessage(event.nativeEvent.data, id);
           if (message?.type === 'pick' && onPick) onPick({ latitude: message.latitude!, longitude: message.longitude! });

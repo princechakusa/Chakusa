@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerAuthUser, CustomerSelfProfileDto, CustomerSessionResponse, LegalDocumentType } from '../apiTypes';
 import { EMAIL_ENABLED } from '../config';
 import { requestAppleCredential } from '../services/appleAuth';
@@ -55,6 +55,7 @@ interface CustomerAuthValue {
 const CustomerAuthContext = createContext<CustomerAuthValue | null>(null);
 
 export function CustomerAuthProvider({ children }: PropsWithChildren) {
+  const authAttempt = useRef(0);
   const [status, setStatus] = useState<CustomerAuthStatus>('restoring');
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<CustomerAuthEvent>('none');
@@ -63,7 +64,9 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   const [pendingLegalDocuments, setPendingLegalDocuments] = useState<PendingLegalDocument[]>([]);
 
   const clearLocal = useCallback(async (event: CustomerAuthEvent) => {
+    const attempt = ++authAttempt.current;
     await clearCustomerSession();
+    if (attempt !== authAttempt.current) return;
     // PROGRAM 2 LOOP 10: drop any preserved customer destination on an
     // explicit sign-out / account close - but NOT on 'session-expired',
     // where the intent must survive so it opens after re-authentication.
@@ -83,12 +86,15 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   }, [clearLocal]);
 
   const refreshLegalStatus = useCallback(async () => {
-    try { setPendingLegalDocuments((await legalApi.customerStatus()).pending); }
+    const attempt = authAttempt.current;
+    try { const documents = await legalApi.customerStatus(); if (attempt === authAttempt.current) setPendingLegalDocuments(documents.pending); }
     catch { /* best-effort: never block sign-in on the legal-status probe */ }
   }, []);
 
-  const applySession = useCallback(async (response: CustomerSessionResponse) => {
+  const applySession = useCallback(async (response: CustomerSessionResponse, attempt: number) => {
+    if (attempt !== authAttempt.current) return;
     await storeCustomerSession({ accessToken: response.accessToken, refreshToken: response.refreshToken });
+    if (attempt !== authAttempt.current) return;
     setUser(response.user);
     setProfile(response.profile);
     setLastEvent('none');
@@ -97,16 +103,19 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   }, [refreshLegalStatus]);
 
   const restore = useCallback(async () => {
+    const attempt = ++authAttempt.current;
     setStatus('restoring');
     setRestoreError(null);
-    if (!(await getCustomerSession())) { setStatus('signed-out'); return; }
+    if (!(await getCustomerSession())) { if (attempt === authAttempt.current) setStatus('signed-out'); return; }
     try {
       const me = await customerAuthApi.me();
+      if (attempt !== authAttempt.current) return;
       setUser(me.user);
       setProfile(me.profile);
       setStatus('authenticated');
       void refreshLegalStatus();
     } catch (error) {
+      if (attempt !== authAttempt.current) return;
       if (error instanceof ApiError && error.kind === 'unauthorized') { await clearLocal('session-expired'); return; }
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.');
       setStatus('restore-error');
@@ -115,11 +124,12 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => { void restore(); }, [restore]);
 
-  const runSignIn = useCallback(async (work: () => Promise<CustomerSessionResponse>) => {
+  const runSignIn = useCallback(async (work: () => Promise<CustomerSessionResponse>, attempt = ++authAttempt.current) => {
+    if (attempt !== authAttempt.current) return;
     setStatus('authenticating');
-    try { await applySession(await work()); }
+    try { await applySession(await work(), attempt); }
     catch (error) {
-      setStatus(user ? 'authenticated' : 'signed-out');
+      if (attempt === authAttempt.current) setStatus(user ? 'authenticated' : 'signed-out');
       throw error;
     }
   }, [applySession, user]);
@@ -137,17 +147,19 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     loginWithEmail: (email, password) => runSignIn(() => customerAuthApi.login({ email, password })),
     registerWithEmail: (input) => runSignIn(() => customerAuthApi.register(input)),
     signInWithGoogle: async () => {
+      const attempt = ++authAttempt.current;
       const idToken = await requestGoogleIdToken();
-      if (!idToken) return false;
-      await runSignIn(() => customerAuthApi.google(idToken));
-      return true;
+      if (!idToken || attempt !== authAttempt.current) return false;
+      await runSignIn(() => customerAuthApi.google(idToken), attempt);
+      return attempt === authAttempt.current;
     },
     signInWithApple: async () => {
+      const attempt = ++authAttempt.current;
       const challenge = await customerAuthApi.appleChallenge();
       const credential = await requestAppleCredential({ ...challenge });
-      if (!credential) return false;
-      await runSignIn(() => customerAuthApi.apple({ ...credential }));
-      return true;
+      if (!credential || attempt !== authAttempt.current) return false;
+      await runSignIn(() => customerAuthApi.apple({ ...credential }), attempt);
+      return attempt === authAttempt.current;
     },
     forgotPassword: async (email) => (await customerAuthApi.forgotPassword(email)).message,
     refreshLegalStatus,
@@ -161,10 +173,11 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
       setProfile(next.profile);
     },
     logout: async () => {
+      const attempt = ++authAttempt.current;
       const session = await getCustomerSession();
       try { if (session) await customerAuthApi.logout(session.refreshToken); }
       catch { /* local sign-out must still succeed while offline */ }
-      finally { await clearLocal('signed-out'); }
+      finally { if (attempt === authAttempt.current) await clearLocal('signed-out'); }
     },
     closeAccount: async () => {
       await customerApi.closeAccount();

@@ -521,3 +521,16 @@ is a console setting only the owner can change.
    follow-up on, channel WhatsApp, delay Immediately. More → AI receptionist
    → on, WhatsApp on, "Answers and acts automatically". Business profile →
    confirm messaging consent and turn on automatic review requests.
+
+## OA-14 — Signed Android rebuild after the security fixes (2026-10-19) — OPEN
+
+**Status:** OPEN (blocks device QA of the encrypted upload queue and the final MobSF scan; does not block other work)
+
+The 19 October mobile fixes add the native `expo-crypto` module, so the APK on the test phone (SHA-256 `13a42313…`) is out of date. A release build on 19 October compiled and passed R8 shrinking, then stopped at signing: "keystore password was incorrect" for `chakusa-upload-2026-10.p12`, using the password file beside it.
+
+Owner: confirm the upload-key password (it should also be in your password manager, per OA-11), then build with the four `CHAKUSA_UPLOAD_*` variables set:
+
+    cd mobile
+    node scripts/eas-env.mjs production --cwd android -- .\gradlew.bat assembleRelease
+
+Then: install on the phone and smoke-test uploads, sign-in, maps, call screening and push. Run a MobSF scan of that exact APK and record its hash with the score.

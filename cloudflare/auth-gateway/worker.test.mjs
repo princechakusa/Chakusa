@@ -204,6 +204,13 @@ test("an unreachable legal status fails closed without a session", async () => {
   } finally { net.restore(); }
 });
 
+test("logout expires the session and tells the browser to clear this origin's cache and storage", async () => {
+  const response = await signIn("/v1/logout", {});
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("clear-site-data"), '"cache", "storage"');
+  assert.match(response.headers.get("set-cookie") ?? "", /Max-Age=0/i);
+});
+
 // --- Quotes & invoices (web sales documents) ---------------------------------
 test("quote and invoice routes map to the exact backend paths", () => {
   const uuid = "11111111-2222-4333-8444-555555555555";

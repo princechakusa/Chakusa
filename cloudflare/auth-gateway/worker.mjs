@@ -9,9 +9,9 @@ const securityHeaders = {
   "cache-control": "no-store, max-age=0",
   "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
   "cross-origin-resource-policy": "same-site",
-  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "permissions-policy": "accelerometer=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()",
   "referrer-policy": "no-referrer",
-  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 };
@@ -539,7 +539,10 @@ async function accountAction(request, env, origin, action) {
 async function logout(request, env, origin) {
   const session = decodeRefreshCookie(readCookie(request.headers.get("cookie"), REFRESH_COOKIE));
   if (session) { try { await callApi(env, authPath(session.realm, "logout"), { method: "POST", body: { refreshToken: session.refreshToken } }); } catch { /* Local cookie removal must still complete. */ } }
-  return json({ ok: true }, 200, origin, { cookies: clearSessionCookies() });
+  // Drop anything the browser cached or stored for this origin during the session.
+  // "cookies" is left out: it would clear every chakusarecovery.com cookie, not only
+  // the session cookies that clearSessionCookies() already expires.
+  return json({ ok: true }, 200, origin, { cookies: clearSessionCookies(), headers: { "clear-site-data": '"cache", "storage"' } });
 }
 
 export const internals = { upstreamErrorHints, accessSecondsLeft, upstreamErrorMessage, ACCOUNT_ACTIONS, decodeAccessCookie, decodeRefreshCookie, encodeAccessCookie, encodeRefreshCookie, readCookie, safeAuthPayload, authPath, matchProtectedRoute };

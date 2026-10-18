@@ -522,15 +522,8 @@ is a console setting only the owner can change.
    → on, WhatsApp on, "Answers and acts automatically". Business profile →
    confirm messaging consent and turn on automatic review requests.
 
-## OA-14 — Signed Android rebuild after the security fixes (2026-10-19) — OPEN
+## OA-14 — Signed Android rebuild after the security fixes (2026-10-19) — RESOLVED
 
-**Status:** OPEN (blocks device QA of the encrypted upload queue and the final MobSF scan; does not block other work)
+**Status:** DONE 2026-10-19. The upload-key password was never wrong: the first build read the whole `chakusa-upload-2026-10.password.txt` (four labelled lines) as the password instead of its `password:` line. The rebuilt APK (SHA-256 `bad03f25e342931e9c7d945786a4274f83774c1dbd905d18923c0604e9179c14`, signer SHA-1 `32:5C:1D:12…5F:6F`) contains `expo-crypto` and is not debuggable. It is installed on the test phone and cold-launches to the welcome screen with no crash. The phone's previous copy had a different signature, so it was uninstalled first; it held only a fresh install with no account.
 
-The 19 October mobile fixes add the native `expo-crypto` module, so the APK on the test phone (SHA-256 `13a42313…`) is out of date. A release build on 19 October compiled and passed R8 shrinking, then stopped at signing: "keystore password was incorrect" for `chakusa-upload-2026-10.p12`, using the password file beside it.
-
-Owner: confirm the upload-key password (it should also be in your password manager, per OA-11), then build with the four `CHAKUSA_UPLOAD_*` variables set:
-
-    cd mobile
-    node scripts/eas-env.mjs production --cwd android -- .\gradlew.bat assembleRelease
-
-Then: install on the phone and smoke-test uploads, sign-in, maps, call screening and push. Run a MobSF scan of that exact APK and record its hash with the score.
+Still open: authenticated device QA (uploads, sign-in, maps, call screening, push) and a MobSF scan of this exact APK (the scanner's web login is needed).

@@ -11,6 +11,7 @@ export interface SigningInfo {
 
 interface ChakusaAppIntegrityNativeModule {
   getSigningInfo(): SigningInfo | null;
+  requestIntegrityToken(nonce: string, cloudProjectNumber: number): Promise<string>;
 }
 
 const native = Platform.OS === 'android' ? requireOptionalNativeModule<ChakusaAppIntegrityNativeModule>('ChakusaAppIntegrity') : null;
@@ -19,6 +20,15 @@ const native = Platform.OS === 'android' ? requireOptionalNativeModule<ChakusaAp
 export function getSigningInfo(): SigningInfo | null {
   try {
     return native?.getSigningInfo() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** A Google Play Integrity token bound to `nonce`, or null when unavailable (not Android, no Play services, offline). */
+export async function requestIntegrityToken(nonce: string, cloudProjectNumber: number): Promise<string | null> {
+  try {
+    return native ? await native.requestIntegrityToken(nonce, cloudProjectNumber) : null;
   } catch {
     return null;
   }

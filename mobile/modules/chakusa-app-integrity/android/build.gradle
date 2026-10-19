@@ -12,3 +12,9 @@ android {
     versionName '1.0.0'
   }
 }
+
+dependencies {
+  // Google Play Integrity (classic requests): proves to the server that it is
+  // talking to the genuine app from Play on a real device.
+  implementation 'com.google.android.play:integrity:1.4.0'
+}

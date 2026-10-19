@@ -1,5 +1,6 @@
 import { ApiErrorBody } from '../apiTypes';
 import { API_URL } from '../config';
+import { appIntegrityHeaders } from '../services/appAttestation';
 import { ApiError } from '../services/api';
 import { renderWakeErrorCopy } from '../domain/mobileProduction';
 import { customerSessionRevision, clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
@@ -44,7 +45,7 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
   if (init.signal?.aborted) abort();
   else init.signal?.addEventListener('abort', abort, { once: true });
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), ...(await appIntegrityHeaders(url)) }, signal: controller.signal });
   } catch (caught) {
     if (caught instanceof Error && caught.name === 'AbortError') {
       throw new ApiError('network', renderWakeErrorCopy('REQUEST_TIMEOUT'), undefined, 'REQUEST_TIMEOUT');

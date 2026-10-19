@@ -19,6 +19,11 @@ export const APP_VARIANT: AppVariant = rawVariant === 'customer' ? 'customer' : 
 // Required per build/environment through the process, EAS, or CI secret manager.
 // There is deliberately no repository file or source fallback.
 export const API_URL = configuredUrl;
+
+// Google Cloud project number linked to the app in Play Console, used for Play
+// Integrity tokens. Unset: the app never asks for one (see appAttestation.ts).
+const integrityProjectNumber = Number(process.env.EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT_NUMBER);
+export const PLAY_INTEGRITY_PROJECT_NUMBER = Number.isSafeInteger(integrityProjectNumber) && integrityProjectNumber > 0 ? integrityProjectNumber : null;
 export let GOOGLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED);
 export let APPLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED);
 export let EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_EMAIL_ENABLED ?? process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED);

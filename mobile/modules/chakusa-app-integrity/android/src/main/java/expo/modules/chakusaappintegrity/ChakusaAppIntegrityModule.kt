@@ -1,6 +1,9 @@
 package expo.modules.chakusaappintegrity
 
 import android.content.pm.PackageManager
+import com.google.android.play.core.integrity.IntegrityManagerFactory
+import com.google.android.play.core.integrity.IntegrityTokenRequest
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.security.MessageDigest
@@ -33,6 +36,23 @@ class ChakusaAppIntegrityModule : Module() {
         "sha1" to certificates.map { digest("SHA-1", it.toByteArray()) },
         "installer" to installer,
       )
+    }
+
+    // Asks Google Play for an integrity token bound to the server's nonce. The
+    // token is opaque here; only the server (via Google) can decode and judge it.
+    AsyncFunction("requestIntegrityToken") { nonce: String, cloudProjectNumber: Double, promise: Promise ->
+      val context = appContext.reactContext
+      if (context == null) {
+        promise.reject("ERR_NO_CONTEXT", "No Android context", null)
+        return@AsyncFunction
+      }
+      val request = IntegrityTokenRequest.builder()
+        .setNonce(nonce)
+        .setCloudProjectNumber(cloudProjectNumber.toLong())
+        .build()
+      IntegrityManagerFactory.create(context).requestIntegrityToken(request)
+        .addOnSuccessListener { response -> promise.resolve(response.token()) }
+        .addOnFailureListener { error -> promise.reject("ERR_INTEGRITY", error.message ?: "Play Integrity request failed", error) }
     }
   }
 

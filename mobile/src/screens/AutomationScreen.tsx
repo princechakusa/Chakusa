@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AutomationChannel, AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
 import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { LifecycleAutomationCards } from '../components/LifecycleAutomationCards';
 import { appendUniqueRuns, AUTOMATION_DELAYS, automationAvailability, automationReasonCopy, automationRunTimestamp, channelLabel, delayLabel, missedCallRules, runStatusCopy, shouldLoadMoreHistory } from '../domain/automation';
 import { CallDetectionAvailability } from '../domain/callDetection';
 import { EngineItem, recoveryEngineStatus } from '../domain/recoveryEngineStatus';
+import { permissionDisclosure, PermissionDisclosureKey } from '../domain/permissionDisclosure';
 import { ApiError } from '../services/api';
 import { setMissedCallChannel } from '../services/automationSetup';
 import { enableCallDetection, enableContactCoverage, getCallDetectionAvailability, getContactsPermissionStatus } from '../services/callDetection';
@@ -132,8 +133,17 @@ export function AutomationScreen({ navigation }: Props) {
     }).finally(() => setLifecycleMutation(null));
   };
 
+  const confirmDisclosure = (key: PermissionDisclosureKey) => new Promise<boolean>(resolve => {
+    const copy = permissionDisclosure(key);
+    Alert.alert(copy.title, copy.body, [
+      { text: copy.decline, style: 'cancel', onPress: () => resolve(false) },
+      { text: copy.accept, onPress: () => resolve(true) },
+    ], { cancelable: true, onDismiss: () => resolve(false) });
+  });
+
   const handleEngineAction = async (key: EngineItem['key']) => {
     if (engineWorking) return;
+    if ((key === 'detection' || key === 'contactCoverage') && !(await confirmDisclosure(key))) return;
     setEngineWorking(key); setEngineError(null);
     try {
       if (key === 'detection') {

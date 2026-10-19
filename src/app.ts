@@ -49,6 +49,8 @@ import legalRoutes from "./modules/legal/legal.routes.js";
 import publicBusinessProfileRoutes from "./modules/public/publicBusinessProfile.routes.js";
 import wellKnownRoutes from "./modules/wellKnown/wellKnown.routes.js";
 import appConfigRoutes from "./modules/appConfig/appConfig.routes.js";
+import appIntegrityRoutes, { registerAppIntegrityGate } from "./modules/appIntegrity/appIntegrity.routes.js";
+import type { IntegrityDecoder } from "./modules/appIntegrity/appIntegrity.service.js";
 import publicQuoteRoutes from "./modules/public/publicQuotes.routes.js";
 import publicInvoiceRoutes from "./modules/public/publicInvoices.routes.js";
 import webhookRoutes from "./modules/webhooks/webhooks.routes.js";
@@ -96,6 +98,8 @@ export interface BuildAppOptions {
   teamInvitationEmailSender?: TeamInvitationEmailSender;
   messagingProvider?: MessagingProvider;
   stripePaymentProvider?: StripePaymentProvider;
+  /** Test-only injection — see appIntegrity.routes.ts. */
+  integrityDecoder?: IntegrityDecoder;
   /**
    * Rate limiting is skipped by default in NODE_ENV=test so ordinary test
    * suites (which reuse one app instance across many requests in a single
@@ -298,6 +302,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
     reply.code(202).send({ status: 'accepted' });
   });
 
+  registerAppIntegrityGate(app);
+  await app.register(appIntegrityRoutes, { prefix: "/app-integrity", integrityDecoder: options.integrityDecoder });
   await app.register(authRoutes, {
     prefix: "/auth",
     googleTokenVerifier: options.googleTokenVerifier,

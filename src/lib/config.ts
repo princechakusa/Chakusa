@@ -324,6 +324,19 @@ export const envSchema = z.object({
   // Sentry associate an issue with the exact deployed commit. Optional;
   // Sentry functions fine without it, just with less precise grouping.
   SENTRY_RELEASE: optionalSecret,
+  // Google Play Integrity: proof that an Android request comes from the
+  // genuine Chakusa app installed from Play on a real device. "report" logs
+  // requests without a valid attestation; "enforce" refuses their sign-in.
+  // A clone can still pose as another client type (web/iOS) until those have
+  // their own proof, so "off" is the default. See docs/OWNER_ACTIONS.md OA-16.
+  PLAY_INTEGRITY_MODE: z.enum(["off", "report", "enforce"]).default("off"),
+  // Base64 of a Google service-account JSON key allowed to call
+  // playintegrity.googleapis.com decodeIntegrityToken for this app.
+  PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_BASE64: optionalSecret,
+  PLAY_INTEGRITY_PACKAGE_NAME: z.string().min(1).default("com.chakusa.mobile"),
+  // Comma-separated base64url SHA-256 digests of the Play app-signing
+  // certificate (as reported in appIntegrity.certificateSha256Digest).
+  PLAY_INTEGRITY_CERT_SHA256: optionalSecret,
 }).superRefine((env, context) => {
   if (env.NODE_ENV !== "production") return;
   if (env.EMAIL_ENABLED && !env.RESEND_API_KEY) {
@@ -331,6 +344,9 @@ export const envSchema = z.object({
   }
   if (env.EMAIL_ENABLED && !env.EMAIL_FROM) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["EMAIL_FROM"], message: "EMAIL_FROM is required in production when EMAIL_ENABLED=true" });
+  }
+  if (env.PLAY_INTEGRITY_MODE !== "off" && (!env.PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_BASE64 || !env.PLAY_INTEGRITY_CERT_SHA256)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["PLAY_INTEGRITY_MODE"], message: "PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_BASE64 and PLAY_INTEGRITY_CERT_SHA256 are required in production when PLAY_INTEGRITY_MODE is report or enforce" });
   }
   if (env.SENTRY_ENABLED && !env.SENTRY_DSN) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["SENTRY_DSN"], message: "SENTRY_DSN is required in production when SENTRY_ENABLED=true" });

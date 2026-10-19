@@ -72,5 +72,12 @@
     "uuid": "^11.1.1",
     "braces": "$braces",
     "node-forge": "$node-forge"
+  },
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "@expo/dom-webview"
+      ]
+    }
   }
 }

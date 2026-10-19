@@ -40,6 +40,9 @@ async function toApiError(response: Response): Promise<ApiError> {
 async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const abort = () => controller.abort();
+  if (init.signal?.aborted) abort();
+  else init.signal?.addEventListener('abort', abort, { once: true });
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (caught) {
@@ -49,13 +52,14 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
     throw caught;
   } finally {
     clearTimeout(timeout);
+    init.signal?.removeEventListener('abort', abort);
   }
 }
 
 let refreshPromise: Promise<string> | null = null;
 let refreshRevision = -1;
 function assertSession(revision: number) { if (revision !== customerSessionRevision()) throw new ApiError('unauthorized', 'Your session changed. Please retry.', 401, 'AUTH_SESSION_CHANGED'); }
-async function rotateCustomerSession(): Promise<string> {
+async function rotateCustomerSession(signal?: AbortSignal | null): Promise<string> {
   const revision = customerSessionRevision();
   if (refreshPromise && refreshRevision === revision) return refreshPromise;
   const pending = (async () => {
@@ -69,6 +73,7 @@ async function rotateCustomerSession(): Promise<string> {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: session.refreshToken }),
+        signal,
       });
     } catch (caught) {
       if (caught instanceof ApiError) throw caught;
@@ -121,7 +126,7 @@ async function request<T>(path: string, init: CustomerRequestInit = {}): Promise
 
   assertSession(revision);
   if (response.status === 401 && auth === 'required' && retryRefresh) {
-    const accessToken = await rotateCustomerSession();
+    const accessToken = await rotateCustomerSession(requestInit.signal);
     return request<T>(path, { ...requestInit, auth: 'required', retryRefresh: false, expectedAccessToken: accessToken, headers: { ...requestInit.headers, Authorization: `Bearer ${accessToken}` } });
   }
   if (response.status === 401 && auth === 'required') { await clearCustomerSession(); await onUnauthorized?.(); }
@@ -134,7 +139,7 @@ async function request<T>(path: string, init: CustomerRequestInit = {}): Promise
 }
 
 export const customerHttp = {
-  get: <T>(path: string, auth: 'required' | 'none' = 'required') => request<T>(path, { auth }),
+  get: <T>(path: string, auth: 'required' | 'none' = 'required', signal?: AbortSignal) => request<T>(path, { auth, signal }),
   post: <T>(path: string, body: unknown = {}, auth: 'required' | 'none' = 'required') => request<T>(path, { method: 'POST', body: JSON.stringify(body), auth }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),

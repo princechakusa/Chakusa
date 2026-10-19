@@ -1,7 +1,7 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { deepLinkToSubscriptions, ErrorCode, getAvailablePurchases, ProductSubscription, Purchase, useIAP } from 'expo-iap';
+import type { ProductSubscription, Purchase } from 'expo-iap';
 import { APPLE_BUSINESS_MONTHLY_PRODUCT_ID, APPLE_PRO_MONTHLY_PRODUCT_ID, BILLING_ENABLED, GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID } from '../config';
 import { billingErrorKind, billingMessage, BillingPlan, BillingPlatform, canNativeSubscribe, isEntitledStatus, productConfigured, productIdForPlatform } from '../domain/billing';
 import { ApiError } from '../services/api';
@@ -28,6 +28,8 @@ export function BillingProvider({ children }: PropsWithChildren) {
 }
 
 function NativeBillingProvider({ children }: PropsWithChildren) {
+  // Expo Go takes the unsupported branch above without importing native IAP.
+  const { deepLinkToSubscriptions, ErrorCode, getAvailablePurchases, useIAP } = require('expo-iap') as typeof import('expo-iap');
   const { status: authStatus, role } = useAuth();
   const { plan: currentPlan, status: currentStatus, refresh: refreshPlan } = usePlanExperience();
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan>(currentPlan === 'PRO' ? 'BUSINESS' : 'PRO');

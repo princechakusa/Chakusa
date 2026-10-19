@@ -527,3 +527,15 @@ is a console setting only the owner can change.
 **Status:** DONE 2026-10-19. The upload-key password was never wrong: the first build read the whole `chakusa-upload-2026-10.password.txt` (four labelled lines) as the password instead of its `password:` line. The rebuilt APK (SHA-256 `bad03f25e342931e9c7d945786a4274f83774c1dbd905d18923c0604e9179c14`, signer SHA-1 `32:5C:1D:12…5F:6F`) contains `expo-crypto` and is not debuggable. It is installed on the test phone and cold-launches to the welcome screen with no crash. The phone's previous copy had a different signature, so it was uninstalled first; it held only a fresh install with no account.
 
 Still open: authenticated device QA (uploads, sign-in, maps, call screening, push) and a MobSF scan of this exact APK (the scanner's web login is needed).
+
+## OA-15 — Outbound email for password reset (2026-10-19) — OPEN
+
+**Why:** Both apps now always show Sign in / Create account with email + password (the API has always accepted these; they need no outbound mail). "Forgot password?" sends a real reset email only when `/app-config` reports `features.passwordReset: true`, which requires BOTH the admin switch **Password reset email** (`app.email_auth_enabled`) AND `RESEND_API_KEY` + `EMAIL_FROM` set on the API. Live production on 2026-10-19 reports `emailAuth: false`, so reset currently tells people to contact support instead of promising an email.
+
+**Owner steps:**
+1. Verify the sending domain in Resend (a paid/vendor account decision) and create an API key.
+2. In Render → `chakusa-api` → Environment, set `RESEND_API_KEY`, `EMAIL_FROM` (e.g. `Chakusa <no-reply@chakusarecovery.com>`) and `EMAIL_ENABLED=true`; confirm `PASSWORD_RESET_URL` points at the live reset page. Redeploy.
+3. In the admin console → App config, turn on **Password reset email**.
+4. Request a reset for a test account and confirm the email arrives and the link resets the password.
+
+Until then, sign-in and sign-up work; only self-service reset is unavailable.

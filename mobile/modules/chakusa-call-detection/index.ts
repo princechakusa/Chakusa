@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { requireNativeModule, type EventSubscription } from 'expo-modules-core';
+import { requireOptionalNativeModule, type EventSubscription } from 'expo-modules-core';
 
 export type CallScreeningRoleStatus = 'granted' | 'not_granted' | 'unsupported';
 
@@ -35,7 +35,7 @@ interface ChakusaCallDetectionNativeModule {
 // per-platform branching.
 const isSupportedPlatform = Platform.OS === 'android';
 const native: ChakusaCallDetectionNativeModule | null = isSupportedPlatform
-  ? requireNativeModule<ChakusaCallDetectionNativeModule>('ChakusaCallDetection')
+  ? requireOptionalNativeModule<ChakusaCallDetectionNativeModule>('ChakusaCallDetection')
   : null;
 
 export async function getCallScreeningRoleStatus(): Promise<CallScreeningRoleStatus> {

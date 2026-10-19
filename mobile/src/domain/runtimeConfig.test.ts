@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compareVersions, copyrightLine, mergeConfig, parseRemoteConfig, updateRequired, type BuildDefaults } from './runtimeConfig';
 
 const build: BuildDefaults = {
-  automation: false, billing: true, emailAuth: false, googleSignIn: true, appleSignIn: false,
+  automation: false, billing: true, emailAuth: false, passwordReset: false, googleSignIn: true, appleSignIn: false,
   supportEmail: 'support@chakusarecovery.com', supportUrl: 'https://chakusarecovery.com/help',
   privacyUrl: 'https://chakusarecovery.com/privacy', termsUrl: 'https://chakusarecovery.com/terms',
 };
@@ -16,6 +16,16 @@ describe('runtime config', () => {
   it('lets the server turn product switches on or off', () => {
     const remote = parseRemoteConfig({ schemaVersion: 1, features: { automation: true, billing: false, emailAuth: true } });
     expect(mergeConfig(build, remote)).toMatchObject({ automation: true, billing: false, emailAuth: true });
+  });
+
+  it('follows the server password-reset readiness, falling back to emailAuth for older servers', () => {
+    const notReady = parseRemoteConfig({ schemaVersion: 1, features: { emailAuth: true, passwordReset: false } });
+    expect(mergeConfig(build, notReady).passwordReset).toBe(false);
+    const ready = parseRemoteConfig({ schemaVersion: 1, features: { emailAuth: true, passwordReset: true } });
+    expect(mergeConfig(build, ready).passwordReset).toBe(true);
+    const legacy = parseRemoteConfig({ schemaVersion: 1, features: { emailAuth: true } });
+    expect(mergeConfig(build, legacy).passwordReset).toBe(true);
+    expect(mergeConfig(build, null).passwordReset).toBe(false);
   });
 
   it('lets the server only hide native sign-in, never add it to a build without it', () => {

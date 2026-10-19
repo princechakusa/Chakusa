@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "chakusa",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/chakusa-app-icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
@@ -51,7 +51,7 @@
       "./plugins/withCallDetection",
       "./plugins/withReleaseSigning",
       "@sentry/react-native",
-      "expo-splash-screen",
+      ["expo-splash-screen", {"image": "./assets/chakusa-app-icon.png", "imageWidth": 96, "backgroundColor": "#FBFAF8", "resizeMode": "contain"}],
       [
         "expo-location",
         {

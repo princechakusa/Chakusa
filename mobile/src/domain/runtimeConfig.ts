@@ -4,8 +4,10 @@
 // caching live in services/runtimeConfig.ts.
 //
 // Merge rules against the build-time values in config.ts:
-// - Product switches (automation, billing, email auth): the server value
-//   wins, so admins can turn them on or off after release.
+// - Product switches (automation, billing, email auth, password reset): the
+//   server value wins, so admins can turn them on or off after release.
+//   Password reset follows the server's `passwordReset` (admin switch AND
+//   outbound mail configured); servers that predate it fall back to emailAuth.
 // - Native sign-in (Google, Apple): server can only HIDE a provider. A build
 //   that lacks the native configuration never shows it.
 // - Links: server value wins only if it's a valid https URL / email;
@@ -16,6 +18,7 @@ export interface BuildDefaults {
   automation: boolean;
   billing: boolean;
   emailAuth: boolean;
+  passwordReset: boolean;
   googleSignIn: boolean;
   appleSignIn: boolean;
   supportEmail: string;
@@ -25,7 +28,7 @@ export interface BuildDefaults {
 }
 
 export interface RemoteAppConfig {
-  features: { automation?: boolean; billing?: boolean; emailAuth?: boolean; googleSignIn?: boolean; appleSignIn?: boolean };
+  features: { automation?: boolean; billing?: boolean; emailAuth?: boolean; passwordReset?: boolean; googleSignIn?: boolean; appleSignIn?: boolean };
   links: { supportEmail?: string; supportUrl?: string; privacyUrl?: string; termsUrl?: string; iosStoreUrl?: string | null; androidStoreUrl?: string | null };
   app: { minSupportedVersion?: string | null; notice?: string | null; maintenance?: boolean };
   company?: { websiteUrl?: string; legalName?: string | null; registrationNumber?: string | null; address?: string | null; copyrightHolder?: string; copyrightStartYear?: number };
@@ -73,7 +76,7 @@ export function parseRemoteConfig(raw: unknown): RemoteAppConfig | null {
   const l = isObj(raw.links) ? raw.links : {};
   const a = isObj(raw.app) ? raw.app : {};
   return {
-    features: { automation: bool(f.automation), billing: bool(f.billing), emailAuth: bool(f.emailAuth), googleSignIn: bool(f.googleSignIn), appleSignIn: bool(f.appleSignIn) },
+    features: { automation: bool(f.automation), billing: bool(f.billing), emailAuth: bool(f.emailAuth), passwordReset: bool(f.passwordReset), googleSignIn: bool(f.googleSignIn), appleSignIn: bool(f.appleSignIn) },
     links: { supportEmail: str(l.supportEmail), supportUrl: str(l.supportUrl), privacyUrl: str(l.privacyUrl), termsUrl: str(l.termsUrl), iosStoreUrl: str(l.iosStoreUrl) ?? null, androidStoreUrl: str(l.androidStoreUrl) ?? null },
     app: { minSupportedVersion: str(a.minSupportedVersion) ?? null, notice: str(a.notice) ?? null, maintenance: bool(a.maintenance) ?? false },
     company: isObj(raw.company) ? { websiteUrl: str(raw.company.websiteUrl), legalName: str(raw.company.legalName) ?? null, registrationNumber: str(raw.company.registrationNumber) ?? null, address: str(raw.company.address) ?? null, copyrightHolder: str(raw.company.copyrightHolder), copyrightStartYear: typeof raw.company.copyrightStartYear === 'number' ? raw.company.copyrightStartYear : undefined } : undefined,
@@ -91,6 +94,7 @@ export function mergeConfig(build: BuildDefaults, remote: RemoteAppConfig | null
     automation: f.automation ?? build.automation,
     billing: f.billing ?? build.billing,
     emailAuth: f.emailAuth ?? build.emailAuth,
+    passwordReset: f.passwordReset ?? f.emailAuth ?? build.passwordReset,
     googleSignIn: build.googleSignIn && f.googleSignIn !== false,
     appleSignIn: build.appleSignIn && f.appleSignIn !== false,
     supportEmail: validEmail(l.supportEmail) ?? build.supportEmail,

@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerAuthUser, CustomerSelfProfileDto, CustomerSessionResponse, LegalDocumentType } from '../apiTypes';
-import { EMAIL_ENABLED } from '../config';
+import { PASSWORD_RESET_EMAIL_ENABLED } from '../config';
 import { requestAppleCredential } from '../services/appleAuth';
 import { requestGoogleIdToken } from '../services/googleAuth';
 import { ApiError } from '../services/api';
@@ -9,6 +9,7 @@ import { setCustomerUnauthorizedHandler } from './customerApi';
 import { customerApi, customerAuthApi, legalApi } from './endpoints';
 import { clearPendingIntent } from '../experience/pendingIntentStorage';
 import { clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
+import { SESSION_RESTORE_TIMEOUT_COPY, SESSION_RESTORE_TIMEOUT_MS } from '../domain/startup';
 
 // PROGRAM 2 LOOP 7: customer authentication + secure session.
 //
@@ -16,9 +17,9 @@ import { clearCustomerSession, getCustomerSession, storeCustomerSession } from '
 // ever touches the customer session store and the `/customer/auth/*`
 // routes. A customer token is never sent to a business endpoint because
 // this context is only mounted by `CustomerRoot`, which is only rendered
-// when APP_VARIANT === 'customer'. Email/password is gated behind
-// EMAIL_ENABLED exactly like the business `AuthForm`; in production only
-// Google + Apple are available.
+// when APP_VARIANT === 'customer'. Email + password sign-in / sign-up is
+// always offered (the server validates it); only the reset email is gated,
+// on PASSWORD_RESET_EMAIL_ENABLED, because it needs outbound mail.
 
 export type CustomerAuthStatus =
   | 'restoring'        // reading a stored session on boot
@@ -33,7 +34,7 @@ interface CustomerAuthValue {
   status: CustomerAuthStatus;
   restoreError: string | null;
   lastEvent: CustomerAuthEvent;
-  emailAuthEnabled: boolean;
+  passwordResetEnabled: boolean;
   user: CustomerAuthUser | null;
   profile: CustomerSelfProfileDto | null;
   pendingLegalDocuments: PendingLegalDocument[];
@@ -56,6 +57,7 @@ const CustomerAuthContext = createContext<CustomerAuthValue | null>(null);
 
 export function CustomerAuthProvider({ children }: PropsWithChildren) {
   const authAttempt = useRef(0);
+  const restoreAbort = useRef<AbortController | null>(null);
   const [status, setStatus] = useState<CustomerAuthStatus>('restoring');
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [lastEvent, setLastEvent] = useState<CustomerAuthEvent>('none');
@@ -64,6 +66,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   const [pendingLegalDocuments, setPendingLegalDocuments] = useState<PendingLegalDocument[]>([]);
 
   const clearLocal = useCallback(async (event: CustomerAuthEvent) => {
+    restoreAbort.current?.abort();
     const attempt = ++authAttempt.current;
     await clearCustomerSession();
     if (attempt !== authAttempt.current) return;
@@ -103,12 +106,24 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
   }, [refreshLegalStatus]);
 
   const restore = useCallback(async () => {
+    restoreAbort.current?.abort();
+    const controller = new AbortController();
+    restoreAbort.current = controller;
     const attempt = ++authAttempt.current;
+    const timeout = setTimeout(() => {
+      if (attempt !== authAttempt.current) return;
+      authAttempt.current++;
+      controller.abort();
+      setRestoreError(SESSION_RESTORE_TIMEOUT_COPY);
+      setStatus('restore-error');
+    }, SESSION_RESTORE_TIMEOUT_MS);
     setStatus('restoring');
     setRestoreError(null);
-    if (!(await getCustomerSession())) { if (attempt === authAttempt.current) setStatus('signed-out'); return; }
     try {
-      const me = await customerAuthApi.me();
+      const existing = await getCustomerSession();
+      if (attempt !== authAttempt.current) return;
+      if (!existing) { setStatus('signed-out'); return; }
+      const me = await customerAuthApi.me(controller.signal);
       if (attempt !== authAttempt.current) return;
       setUser(me.user);
       setProfile(me.profile);
@@ -116,13 +131,16 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
       void refreshLegalStatus();
     } catch (error) {
       if (attempt !== authAttempt.current) return;
-      if (error instanceof ApiError && error.kind === 'unauthorized') { await clearLocal('session-expired'); return; }
+      if (error instanceof ApiError && error.kind === 'unauthorized' && error.code !== 'AUTH_SESSION_CHANGED') { await clearLocal('session-expired'); return; }
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.');
       setStatus('restore-error');
+    } finally {
+      clearTimeout(timeout);
+      if (restoreAbort.current === controller) restoreAbort.current = null;
     }
   }, [clearLocal, refreshLegalStatus]);
 
-  useEffect(() => { void restore(); }, [restore]);
+  useEffect(() => { void restore(); return () => { authAttempt.current++; restoreAbort.current?.abort(); }; }, [restore]);
 
   const runSignIn = useCallback(async (work: () => Promise<CustomerSessionResponse>, attempt = ++authAttempt.current) => {
     if (attempt !== authAttempt.current) return;
@@ -138,7 +156,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     status,
     restoreError,
     lastEvent,
-    emailAuthEnabled: EMAIL_ENABLED,
+    passwordResetEnabled: PASSWORD_RESET_EMAIL_ENABLED,
     user,
     profile,
     pendingLegalDocuments,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authenticationEntry, authenticationRoutes, hasCompletedBusinessSetup, registrationInput } from './authenticationFlow';
+import { authenticationEntry, authenticationRoutes, emailPasswordProblem, hasCompletedBusinessSetup, registrationInput } from './authenticationFlow';
 
 describe('authentication flow', () => {
   it('opens the redesigned form in login mode', () => expect(authenticationEntry('login')).toEqual(['Login', { mode: 'login' }]));
@@ -15,4 +15,26 @@ describe('authentication flow', () => {
   it('routes an onboarded owner with a pending legal document to legalAcceptance instead of Main', () => expect(authenticationRoutes('authenticated', true, true)).toMatchObject({ main: false, onboarding: false, legalAcceptance: true }));
   it('defaults to no pending legal acceptance so every pre-existing caller is unaffected', () => expect(authenticationRoutes('authenticated', true)).toMatchObject({ main: true, legalAcceptance: false }));
   it('never shows legalAcceptance before business onboarding is complete, onboarding still takes priority', () => expect(authenticationRoutes('authenticated', false, true)).toMatchObject({ onboarding: true, legalAcceptance: false, main: false }));
+});
+
+describe('email + password form validation', () => {
+  const ok = { email: 'owner@example.com', password: 'correct horse', fullName: 'Ada', businessName: 'Ada Studio' };
+  it('accepts a complete sign-in and sign-up', () => {
+    expect(emailPasswordProblem({ ...ok, registering: false })).toBeNull();
+    expect(emailPasswordProblem({ ...ok, registering: true, needsBusinessName: true })).toBeNull();
+  });
+  it('asks for a valid email and a password', () => {
+    expect(emailPasswordProblem({ ...ok, email: '  ', registering: false })).toBe('Enter your email address.');
+    expect(emailPasswordProblem({ ...ok, email: 'not-an-email', registering: false })).toBe('Enter a valid email address.');
+    expect(emailPasswordProblem({ ...ok, password: '', registering: false })).toBe('Enter your password.');
+  });
+  it('does not apply the new-password length rule to sign-in', () => {
+    expect(emailPasswordProblem({ ...ok, password: 'short', registering: false })).toBeNull();
+  });
+  it('mirrors the server rules for sign-up', () => {
+    expect(emailPasswordProblem({ ...ok, password: '1234567', registering: true })).toBe('Use at least 8 characters for your password.');
+    expect(emailPasswordProblem({ ...ok, fullName: ' ', registering: true })).toBe('Enter your name.');
+    expect(emailPasswordProblem({ ...ok, businessName: '', registering: true, needsBusinessName: true })).toBe('Enter your business name.');
+    expect(emailPasswordProblem({ ...ok, businessName: '', registering: true })).toBeNull();
+  });
 });

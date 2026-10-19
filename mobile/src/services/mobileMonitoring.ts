@@ -3,7 +3,7 @@ import { SENTRY_DSN, SENTRY_ENABLED } from '../config';
 import { mobileMonitoringConfigured, scrubDiagnosticEvent } from '../domain/mobileMonitoring';
 
 export function initMobileMonitoring() {
-  if (!mobileMonitoringConfigured(SENTRY_ENABLED, SENTRY_DSN, process.env.NODE_ENV)) return;
+  if (!mobileMonitoringConfigured(SENTRY_ENABLED, SENTRY_DSN, process.env.NODE_ENV)) return false;
   Sentry.init({
     dsn: SENTRY_DSN,
     sendDefaultPii: false,
@@ -15,6 +15,7 @@ export function initMobileMonitoring() {
     enableCaptureFailedRequests: false,
     beforeSend: event => scrubDiagnosticEvent(event),
   });
+  return true;
 }
 
 export function setMobileMonitoringIdentity(userId: string, businessId: string | null, role: string | null) {

@@ -1,4 +1,4 @@
-import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from '../config';
 
@@ -10,6 +10,13 @@ function configureGoogle() {
   if (Platform.OS === 'web') {
     throw new GoogleAuthenticationError('Google Sign-In requires an iOS or Android development build.');
   }
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    throw new GoogleAuthenticationError('Google Sign-In needs a Chakusa development build. You can preview the app design in Expo Go.');
+  }
+  // The native Google module is absent in Expo Go. Load it when the user
+  // requests sign-in so it cannot crash the welcome screen at import time.
+  const google = require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+  const { GoogleSignin } = google;
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new GoogleAuthenticationError('Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID and rebuild the app.');
   }
@@ -24,10 +31,11 @@ function configureGoogle() {
     });
     configured = true;
   }
+  return google;
 }
 
 export async function requestGoogleIdToken(options: { fresh?: boolean } = {}): Promise<string | null> {
-  configureGoogle();
+  const { GoogleSignin, isErrorWithCode, statusCodes } = configureGoogle();
   try {
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });

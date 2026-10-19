@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
-import * as Notifications from 'expo-notifications';
-import { InteractionManager, Platform, StyleSheet, Text, View } from 'react-native';
+import { nativeNotifications as Notifications } from '../services/nativeNotifications';
+import { InteractionManager, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import { BusinessRoot } from '../BusinessRoot';
 import { APP_VARIANT } from '../config';
-import { CustomerRoot } from '../customer/CustomerRoot';
 import { getCustomerSession } from '../customer/session';
 import { getStoredSession } from '../services/tokenStorage';
 import { BrandMark } from '../components/BrandMark';
 import { authColors, authSpace, authType } from './authTheme';
-import { HeroMark, PulseRings } from './motion';
 import { ExperienceSelectScreen } from './ExperienceSelectScreen';
 import { ExperienceContext, ExperienceValue } from './experienceContext';
 import {
@@ -25,6 +22,7 @@ import {
 import { readExperiencePreference, writeExperiencePreference } from './experiencePreference';
 import { normalizeDeepLinkIntent, normalizeNotificationIntent, PendingIntent } from './pendingIntent';
 import { writePendingIntent } from './pendingIntentStorage';
+import { startupFallback } from '../domain/startup';
 
 export { useExperience } from './experienceContext';
 
@@ -35,6 +33,14 @@ export { useExperience } from './experienceContext';
 // CustomerRoot.
 
 const FORCED: Experience | null = APP_VARIANT === 'customer' ? 'customer' : null;
+function BusinessRoot() {
+  const Root = (require('../BusinessRoot') as typeof import('../BusinessRoot')).BusinessRoot;
+  return <Root />;
+}
+function CustomerRoot() {
+  const Root = (require('../customer/CustomerRoot') as typeof import('../customer/CustomerRoot')).CustomerRoot;
+  return <Root />;
+}
 
 export function ExperienceRouter() {
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
@@ -64,6 +70,14 @@ export function ExperienceRouter() {
     switchingRef.current = true;
     setSwitching(true);
     void writeExperiencePreference(target);
+    // The plain welcome screen owns no navigator or modal to tear down.
+    // Enter it directly instead of waiting on unrelated native interactions.
+    if (experienceRef.current === 'unselected') {
+      apply(target);
+      switchingRef.current = false;
+      setSwitching(false);
+      return;
+    }
     InteractionManager.runAfterInteractions(() => {
       apply(target);
       switchingRef.current = false;
@@ -75,11 +89,11 @@ export function ExperienceRouter() {
     let cancelled = false;
     (async () => {
       const [preference, businessSession, customerSession, initialUrl, lastNotification] = await Promise.all([
-        readExperiencePreference(),
-        getStoredSession().catch(() => null),
-        getCustomerSession().catch(() => null),
-        Linking.getInitialURL().catch(() => null),
-        Platform.OS === 'web' ? Promise.resolve(null) : Notifications.getLastNotificationResponseAsync().catch(() => null),
+        startupFallback(readExperiencePreference(), 'unselected'),
+        startupFallback(getStoredSession(), null),
+        startupFallback(getCustomerSession(), null),
+        startupFallback(Linking.getInitialURL(), null),
+        !Notifications ? Promise.resolve(null) : startupFallback(Notifications.getLastNotificationResponseAsync(), null),
       ]);
       if (cancelled) return;
 
@@ -96,7 +110,8 @@ export function ExperienceRouter() {
       // intent, any previously persisted one is left for its owning shell
       // to consume - the TTL in peek/consume is what expires it, so an
       // intent survives an OAuth / process bounce.
-      if (launchIntent) await writePendingIntent(launchIntent);
+      if (launchIntent) await startupFallback(writePendingIntent(launchIntent), undefined, 500);
+      if (cancelled) return;
 
       apply(resolveInitialExperience({
         preference,
@@ -123,7 +138,7 @@ export function ExperienceRouter() {
       startSwitch(intent.experience);
     };
     const urlSub = Linking.addEventListener('url', ({ url }) => crossOver(normalizeDeepLinkIntent(url)));
-    const noteSub = Platform.OS === 'web' ? null : Notifications.addNotificationResponseReceivedListener((response) => {
+    const noteSub = !Notifications ? null : Notifications.addNotificationResponseReceivedListener((response) => {
       crossOver(normalizeNotificationIntent(response.notification.request.content.data as Record<string, unknown> | undefined));
     });
     return () => { urlSub.remove(); noteSub?.remove(); };
@@ -147,8 +162,7 @@ export function ExperienceRouter() {
         <StatusBar style="dark" />
         <View accessibilityLabel="Loading Chakusa" style={styles.loading}>
           <View style={styles.launchMark}>
-            <PulseRings size={84} color={authColors.coral} />
-            <HeroMark idle><BrandMark size={56} /></HeroMark>
+            <BrandMark size={48} />
           </View>
           <Text style={styles.loadingText}>CHAKUSA</Text>
         </View>
@@ -172,6 +186,6 @@ export function ExperienceRouter() {
 
 const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: authSpace.md, backgroundColor: authColors.bg },
-  launchMark: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { ...authType.micro, fontSize: 12, letterSpacing: 4, color: authColors.coral },
+  launchMark: { width: 64, height: 64, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { ...authType.micro, fontSize: 12, letterSpacing: 2, color: authColors.ink },
 });

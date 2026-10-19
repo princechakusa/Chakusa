@@ -33,6 +33,24 @@ export function registrationInput(input: { email: string; password: string; full
     : { ...common, businessName: input.businessName.trim(), industry: input.defaultIndustry };
 }
 
+/** Server minimum (auth.schemas.ts / customerAuth.schemas.ts). */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Early, friendly feedback for the email + password forms. Mirrors the
+ * server's zod rules; the server still validates every request.
+ */
+export function emailPasswordProblem(input: { email: string; password: string; registering: boolean; fullName?: string; businessName?: string; needsBusinessName?: boolean }): string | null {
+  const email = input.email.trim();
+  if (input.registering && !input.fullName?.trim()) return 'Enter your name.';
+  if (input.registering && input.needsBusinessName && !input.businessName?.trim()) return 'Enter your business name.';
+  if (!email) return 'Enter your email address.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
+  if (!input.password) return input.registering ? 'Create a password.' : 'Enter your password.';
+  if (input.registering && input.password.length < MIN_PASSWORD_LENGTH) return `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`;
+  return null;
+}
+
 export function hasCompletedBusinessSetup(business: BusinessDto | null) {
   return Boolean(business?.onboardingCompletedAt);
 }

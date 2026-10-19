@@ -13,6 +13,18 @@ describe('customer API session boundaries', () => {
     const data = new Map<string, string>();
     vi.stubGlobal('localStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value), removeItem: (key: string) => data.delete(key) });
   });
+  it('cancels a stalled customer restore while preserving its saved credentials', async () => {
+    const store = await import('./session'); const { customerHttp } = await import('./customerApi');
+    await store.storeCustomerSession(a);
+    const fetcher = vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' })), { once: true });
+    })); vi.stubGlobal('fetch', fetcher);
+    const controller = new AbortController();
+    const result = customerHttp.get('/customer/auth/me', 'required', controller.signal).catch(error => error);
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1)); controller.abort();
+    expect(await result).toMatchObject({ code: 'REQUEST_TIMEOUT' });
+    expect(await store.getCustomerSession()).toEqual(a);
+  });
   it('does not restore a customer session after logout while refresh was pending', async () => {
     const store = await import('./session'); const { customerHttp } = await import('./customerApi');
     await store.storeCustomerSession(a);

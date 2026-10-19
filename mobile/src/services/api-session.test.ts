@@ -13,6 +13,19 @@ describe('business API session boundaries', () => {
     const data = new Map<string, string>();
     vi.stubGlobal('localStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value), removeItem: (key: string) => data.delete(key) });
   });
+  it('cancels a stalled startup request without deleting the saved session', async () => {
+    const storage = await import('./tokenStorage'); const { api } = await import('./api');
+    await storage.storeSession(sessionA);
+    const fetcher = vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('Aborted'), { name: 'AbortError' })), { once: true });
+    })); vi.stubGlobal('fetch', fetcher);
+    const controller = new AbortController();
+    const result = api.request('/auth/me', { signal: controller.signal }).catch(error => error);
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    controller.abort();
+    expect(await result).toMatchObject({ code: 'REQUEST_TIMEOUT' });
+    expect(await storage.getStoredSession()).toEqual(sessionA);
+  });
   it('does not resurrect a session when refresh finishes after logout', async () => {
     const storage = await import('./tokenStorage');
     const { api } = await import('./api');

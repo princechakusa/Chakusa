@@ -1,5 +1,5 @@
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { nativeNotifications as Notifications } from './nativeNotifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -10,7 +10,7 @@ import { devicesApi } from './endpoints';
 const PUSH_TOKEN_KEY = 'chakusa.push.expo-token.v1';
 let registrationPromise: Promise<void> | null = null;
 
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
     shouldSetBadge: false,
@@ -48,7 +48,7 @@ async function removeStoredToken() {
 }
 
 async function registerCurrentDevice() {
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+  if (!Notifications || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return;
   if (!Device.isDevice) return;
 
   if (Platform.OS === 'android') {
@@ -89,7 +89,7 @@ export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unsu
 // Read-only check - never triggers the OS prompt. Used by the onboarding
 // notifications step to render the current state before the user opts in.
 export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return 'unsupported';
+  if (!Notifications || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return 'unsupported';
   if (!Device.isDevice) return 'unsupported';
   const permissions = await Notifications.getPermissionsAsync();
   if (permissions.status === Notifications.PermissionStatus.GRANTED) return 'granted';

@@ -1,7 +1,12 @@
 import { config } from "../../lib/config.js";
 
+/** Whether the API holds the credentials needed to send reset mail. */
+export function outboundEmailConfigured(): boolean {
+  return Boolean(config.RESEND_API_KEY && config.EMAIL_FROM);
+}
+
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-  if (!config.RESEND_API_KEY || !config.EMAIL_FROM) {
+  if (!outboundEmailConfigured()) {
     return false;
   }
 

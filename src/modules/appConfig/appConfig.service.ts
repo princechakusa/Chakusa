@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
+import { outboundEmailConfigured } from "../auth/passwordResetEmail.js";
 import { recordAdminAudit, type AdminAuditActor, type AdminAuditContext } from "../admin/adminAudit.service.js";
 
 // Runtime app configuration: values the mobile app reads at launch instead
@@ -34,7 +35,7 @@ interface AppConfigDefinition {
 export const APP_CONFIG_DEFINITIONS = [
   { key: "app.automation_enabled", kind: "boolean", default: true, label: "Automation screens", description: "Show automation in the business app. The backend's automation_enabled switch and plan entitlements still decide what can run." },
   { key: "app.billing_enabled", kind: "boolean", default: true, label: "In-app purchases", description: "Show App Store / Google Play subscription purchase. Store product IDs still come from the build." },
-  { key: "app.email_auth_enabled", kind: "boolean", default: false, label: "Email sign-in", description: "Offer email + password sign-in and password reset. Only enable once outbound email is configured." },
+  { key: "app.email_auth_enabled", kind: "boolean", default: false, label: "Password reset email", description: "Offer 'Forgot password?' reset links in the apps. Takes effect only while outbound email (RESEND_API_KEY, EMAIL_FROM) is configured on the API. Email + password sign-in and sign-up are always offered by current app versions; older app versions also use this switch to show the email form." },
   { key: "app.google_sign_in_enabled", kind: "boolean", default: true, label: "Google sign-in", description: "Offer Google sign-in. Can only hide it; a build without Google configured never shows it." },
   { key: "app.apple_sign_in_enabled", kind: "boolean", default: true, label: "Apple sign-in", description: "Offer Sign in with Apple on iOS. Can only hide it; a build without Apple configured never shows it." },
   { key: "app.support_email", kind: "email", default: "support@chakusarecovery.com", label: "Support email", description: "Where the app sends people who need help." },
@@ -152,6 +153,9 @@ export async function getPublicAppConfig() {
       automation: v["app.automation_enabled"] as boolean,
       billing: v["app.billing_enabled"] as boolean,
       emailAuth: v["app.email_auth_enabled"] as boolean,
+      // True only when the admin switch is on AND the API can actually send
+      // mail, so the apps never offer a reset link that cannot arrive.
+      passwordReset: (v["app.email_auth_enabled"] as boolean) && outboundEmailConfigured(),
       googleSignIn: v["app.google_sign_in_enabled"] as boolean,
       appleSignIn: v["app.apple_sign_in_enabled"] as boolean,
     },

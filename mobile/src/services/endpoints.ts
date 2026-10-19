@@ -24,7 +24,7 @@ export const authApi = {
   deleteAccount: (password: string) => api.post<void>('/auth/delete-account', { password }),
   deleteAccountWithGoogle: (googleIdToken: string) => api.post<void>('/auth/delete-account', { googleIdToken }),
   deleteAccountWithApple: (apple: AppleCredentialPayload) => api.post<void>('/auth/delete-account', { apple }),
-  me: () => api.get<MeResponse>('/auth/me'),
+  me: (signal?: AbortSignal) => api.request<MeResponse>('/auth/me', { signal }),
 };
 export const businessApi = {
   create: (body: { name: string; industry?: string; phone?: string }) => api.post<BusinessDto>('/business', body),

@@ -1,5 +1,5 @@
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { nativeNotifications as Notifications } from '../services/nativeNotifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -38,7 +38,7 @@ export type CustomerPushResult = 'registered' | 'denied' | 'unsupported' | 'not-
 
 /** Requests permission (if still undetermined), then registers the Expo token for this customer. */
 export async function enableCustomerPush(): Promise<CustomerPushResult> {
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return 'unsupported';
+  if (!Notifications || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return 'unsupported';
   if (!Device.isDevice) return 'unsupported';
 
   if (Platform.OS === 'android') {
@@ -73,7 +73,7 @@ export async function enableCustomerPush(): Promise<CustomerPushResult> {
 }
 
 export async function getCustomerPushStatus(): Promise<'granted' | 'denied' | 'undetermined' | 'unsupported'> {
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return 'unsupported';
+  if (!Notifications || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return 'unsupported';
   if (!Device.isDevice) return 'unsupported';
   const permissions = await Notifications.getPermissionsAsync();
   if (permissions.status === Notifications.PermissionStatus.GRANTED) return 'granted';

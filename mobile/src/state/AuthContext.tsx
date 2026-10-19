@@ -10,6 +10,7 @@ import { usePreferences } from './PreferencesContext';
 import { hasCompletedBusinessSetup } from '../domain/authenticationFlow';
 import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
 import { clearPendingIntent } from '../experience/pendingIntentStorage';
+import { SESSION_RESTORE_TIMEOUT_COPY, SESSION_RESTORE_TIMEOUT_MS } from '../domain/startup';
 
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const preferences = usePreferences();
   const preferencesRef = useRef(preferences);
   const authAttempt = useRef(0);
+  const restoreAbort = useRef<AbortController | null>(null);
   const [status, setStatus] = useState<AuthStatus>('restoring');
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [user, setUser] = useState<UserDto | null>(null);
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [role, setRole] = useState<string | null>(null);
   const [pendingLegalDocuments, setPendingLegalDocuments] = useState<PendingLegalDocument[]>([]);
   const clearSession = useCallback(async () => {
+    restoreAbort.current?.abort();
     const attempt = ++authAttempt.current;
     await clearStoredSession();
     if (attempt !== authAttempt.current) return;
@@ -86,11 +89,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => { preferencesRef.current = preferences; }, [preferences]);
   useEffect(() => { setUnauthorizedHandler(clearSession); return () => setUnauthorizedHandler(undefined); }, [clearSession]);
   const restore = useCallback(async () => {
+    restoreAbort.current?.abort();
+    const controller = new AbortController();
+    restoreAbort.current = controller;
     const attempt = ++authAttempt.current;
+    const timeout = setTimeout(() => {
+      if (attempt !== authAttempt.current) return;
+      authAttempt.current++;
+      controller.abort();
+      setRestoreError(SESSION_RESTORE_TIMEOUT_COPY);
+      setStatus('restore-error');
+    }, SESSION_RESTORE_TIMEOUT_MS);
     setStatus('restoring'); setRestoreError(null);
-    if (!await getStoredSession()) { if (attempt === authAttempt.current) setStatus('anonymous'); return; }
     try {
-      const me = await authApi.me();
+      const existing = await getStoredSession();
+      if (attempt !== authAttempt.current) return;
+      if (!existing) { setStatus('anonymous'); return; }
+      const me = await authApi.me(controller.signal);
       if (attempt !== authAttempt.current) return;
       const revision = businessSessionRevision();
       const stored = await getStoredSession();
@@ -102,11 +117,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       void refreshLegalStatus();
     } catch (error) {
       if (attempt !== authAttempt.current) return;
-      if (error instanceof ApiError && error.kind === 'unauthorized') return;
+      if (error instanceof ApiError && error.kind === 'unauthorized' && error.code !== 'AUTH_SESSION_CHANGED') { await clearSession(); return; }
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.'); setStatus('restore-error');
+    } finally {
+      clearTimeout(timeout);
+      if (restoreAbort.current === controller) restoreAbort.current = null;
     }
-  }, [refreshLegalStatus]);
-  useEffect(() => { void restore(); }, [restore]);
+  }, [clearSession, refreshLegalStatus]);
+  useEffect(() => { void restore(); return () => { authAttempt.current++; restoreAbort.current?.abort(); }; }, [restore]);
 
   const acceptLegalDocument = useCallback(async (type: LegalDocumentType) => {
     await legalApi.businessAccept(type);

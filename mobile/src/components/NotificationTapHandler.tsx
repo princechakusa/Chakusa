@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import type { NotificationResponse } from 'expo-notifications';
+import { nativeNotifications as Notifications } from '../services/nativeNotifications';
 
 import { navigationRef } from '../navigation/navigationRef';
 import { resolveNotificationTarget, NotificationTarget } from '../services/notificationRouting';
@@ -48,14 +48,14 @@ export function NotificationTapHandler() {
     // expo-notifications' response emitter is a no-op stub on web (it only
     // logs a warning), and push itself is never registered there - skip
     // subscribing entirely rather than let it warn on every launch.
-    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    if (!Notifications) return;
 
     // Guards against the same tap being handled twice - Notifications.
     // getLastNotificationResponseAsync() keeps returning the launching
     // response for the lifetime of the app, so a remount (or calling it
     // once here while the live listener also fires for the same tap) would
     // otherwise navigate twice.
-    const handleResponse = (response: Notifications.NotificationResponse) => {
+    const handleResponse = (response: NotificationResponse) => {
       const id = response.notification.request.identifier;
       if (processedIds.current.has(id)) return;
       processedIds.current.add(id);

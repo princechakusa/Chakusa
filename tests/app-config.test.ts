@@ -31,7 +31,7 @@ describe("runtime app config", () => {
     const body = res.json();
     expect(body.schemaVersion).toBe(1);
     // Matches today's production builds: automation hidden, email auth off.
-    expect(body.features).toEqual({ automation: true, billing: true, emailAuth: false, googleSignIn: true, appleSignIn: true });
+    expect(body.features).toEqual({ automation: true, billing: true, emailAuth: false, passwordReset: false, googleSignIn: true, appleSignIn: true });
     expect(body.links.privacyUrl).toBe("https://chakusarecovery.com/privacy");
     expect(body.app).toEqual({ minSupportedVersion: null, notice: null, maintenance: false });
     expect(body.company).toMatchObject({ copyrightHolder: "Chakusa", copyrightStartYear: 2026, legalName: null });
@@ -45,6 +45,24 @@ describe("runtime app config", () => {
     expect((await app.inject({ method: "GET", url: "/app-config" })).json().features.automation).toBe(false);
     const audit = await prisma.adminAuditLog.findFirst({ where: { action: "APP_CONFIG_UPDATED", targetId: "app.automation_enabled" } });
     expect(audit).toMatchObject({ adminEmail: a.email, oldValue: { value: true }, newValue: { value: false, reset: false } });
+  });
+
+  it("offers password reset only when the switch is on AND outbound email is configured", async () => {
+    const a = await admin("SUPER_ADMIN");
+    await app.inject({ method: "PATCH", url: "/admin/app-config", headers: headers(a.token, a.csrf), payload: { key: "app.email_auth_enabled", value: true } });
+    const mutable = config as { RESEND_API_KEY?: string; EMAIL_FROM?: string };
+    const saved = { key: mutable.RESEND_API_KEY, from: mutable.EMAIL_FROM };
+    try {
+      mutable.RESEND_API_KEY = undefined;
+      mutable.EMAIL_FROM = undefined;
+      expect((await app.inject({ method: "GET", url: "/app-config" })).json().features).toMatchObject({ emailAuth: true, passwordReset: false });
+      mutable.RESEND_API_KEY = "re_test_key";
+      mutable.EMAIL_FROM = "Chakusa <no-reply@chakusarecovery.com>";
+      expect((await app.inject({ method: "GET", url: "/app-config" })).json().features).toMatchObject({ emailAuth: true, passwordReset: true });
+    } finally {
+      mutable.RESEND_API_KEY = saved.key;
+      mutable.EMAIL_FROM = saved.from;
+    }
   });
 
   it("resets a value to its default with null", async () => {

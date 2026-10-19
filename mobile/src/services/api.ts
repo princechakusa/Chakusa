@@ -43,7 +43,7 @@ async function responseError(response: Response) {
   return new ApiError(errorKinds[response.status] ?? 'server', message, response.status, code, body?.error.details);
 }
 
-async function rotateSession(): Promise<string> {
+async function rotateSession(signal?: AbortSignal | null): Promise<string> {
   const revision = businessSessionRevision();
   if (refreshPromise && refreshRevision === revision) return refreshPromise;
   const pending = (async () => {
@@ -57,6 +57,7 @@ async function rotateSession(): Promise<string> {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: session.refreshToken }),
+        signal,
       });
     } catch (caught) {
       if (caught instanceof ApiError) throw caught;
@@ -86,9 +87,12 @@ interface ApiRequestInit extends RequestInit { auth?: 'required' | 'none'; retry
 
 async function fetchWithTimeout(url: string, init: RequestInit) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const abort = () => controller.abort();
+  if (init.signal?.aborted) abort();
+  else init.signal?.addEventListener('abort', abort, { once: true });
   try { return await fetch(url, { ...init, signal: controller.signal }); }
   catch (caught) { if (caught instanceof Error && caught.name === 'AbortError') throw new ApiError('network', renderWakeErrorCopy('REQUEST_TIMEOUT'), undefined, 'REQUEST_TIMEOUT'); throw caught; }
-  finally { clearTimeout(timeout); }
+  finally { clearTimeout(timeout); init.signal?.removeEventListener('abort', abort); }
 }
 
 export class ApiClient {
@@ -119,7 +123,7 @@ export class ApiClient {
 
     assertSession(revision);
     if (response.status === 401 && auth === 'required' && retryRefresh) {
-      const accessToken = await rotateSession();
+      const accessToken = await rotateSession(requestInit.signal);
       return this.request<T>(path, {
         ...requestInit,
         auth: 'required',

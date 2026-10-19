@@ -539,3 +539,20 @@ Still open: authenticated device QA (uploads, sign-in, maps, call screening, pus
 4. Request a reset for a test account and confirm the email arrives and the link resets the password.
 
 Until then, sign-in and sign-up work; only self-service reset is unavailable.
+
+## OA-16 — Turn on Google Play Integrity (anti-clone, server side) (2026-10-19) — OPEN
+
+**Status:** OPEN (not blocking; the code ships with `PLAY_INTEGRITY_MODE=off`)
+
+**What's already in place:** a release build signed by any other key refuses to run (signature self-check, tested on the phone with a re-signed clone). The server can additionally require a Google Play Integrity attestation on Android sign-in, so a clone that strips the self-check still can't sign in. Verdicts accepted: `PLAY_RECOGNIZED`, our app-signing certificate, `MEETS_DEVICE_INTEGRITY`.
+
+**Owner steps:**
+1. Play Console → Chakusa → Test and release → App integrity → Play Integrity API → link the Google Cloud project `chakusa-507914`.
+2. Google Cloud → `chakusa-507914` → enable the **Google Play Integrity API**. Note the **project number** (Dashboard → Project info).
+3. IAM → Service accounts → create `chakusa-play-integrity` (no roles needed for decoding), then create a JSON key. Base64-encode it.
+4. Play Console → App integrity → App signing → copy the app-signing certificate **SHA-256**, converted to base64url (Play Integrity reports `certificateSha256Digest` in that form).
+5. Render → `chakusa-api` → Environment: `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_BASE64`, `PLAY_INTEGRITY_CERT_SHA256` (comma-separated if more than one), `PLAY_INTEGRITY_MODE=report`.
+6. `mobile/eas.json` production env: `EXPO_PUBLIC_PLAY_INTEGRITY_PROJECT_NUMBER=<project number>`. Rebuild and ship through Play (Integrity only recognizes Play-distributed builds).
+7. Watch the API logs for `app_integrity_unverified` / `app_integrity_rejected` for a few days, then set `PLAY_INTEGRITY_MODE=enforce`.
+
+**Known limit:** the API can't yet tell a clone posing as the website or the iOS app from the real ones. Closing that needs a gateway→API shared secret and Apple App Attest for iOS (backlog).

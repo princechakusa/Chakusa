@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
@@ -17,8 +17,12 @@ import { PublicNotFoundScreen } from './src/screens/PublicNotFoundScreen';
 import { ExperienceRouter } from './src/experience/ExperienceRouter';
 import { RuntimeShell } from './src/components/RuntimeShell';
 import { startRuntimeConfig } from './src/services/runtimeConfig';
+import { BrandMark } from './src/components/BrandMark';
+import { getSigningInfo } from './modules/chakusa-app-integrity';
+import { signingVerdict } from './src/domain/appIntegrity';
+import { NotGenuineAppScreen } from './src/screens/NotGenuineAppScreen';
 
-const FONT_WAIT_MS = 4000;
+const FONT_WAIT_MS = 800;
 // Runtime config: wait for the cached copy only (never the network), capped.
 const CONFIG_WAIT_MS = 1000;
 
@@ -78,7 +82,11 @@ export default function App() {
   if (publicRoute?.kind === 'business-booking') return <SafeAreaProvider><StatusBar style="dark" /><PublicBookingManagementScreen slug={publicRoute.slug} token={publicRoute.token} /></SafeAreaProvider>;
   if (!publicRoute && PUBLIC_LINKS_ONLY_BUILD) return <SafeAreaProvider><StatusBar style="dark" /><PublicNotFoundScreen /></SafeAreaProvider>;
 
-  if ((!fontsLoaded && !fontError && !fontWaitOver) || !configReady) return <SafeAreaProvider><StatusBar style="dark" /><View style={{ flex: 1, backgroundColor: '#FBFAF8' }} /></SafeAreaProvider>;
+  // A repackaged APK signed with someone else's key never mounts the app or
+  // touches stored sessions. Development builds are not checked.
+  if (!__DEV__ && signingVerdict(getSigningInfo()) === 'not-genuine') return <SafeAreaProvider><StatusBar style="dark" /><NotGenuineAppScreen /></SafeAreaProvider>;
+
+  if ((!fontsLoaded && !fontError && !fontWaitOver) || !configReady) return <SafeAreaProvider><StatusBar style="dark" /><View accessibilityLabel="Opening Chakusa" style={{ flex: 1, backgroundColor: '#FBFAF8', alignItems: 'center', justifyContent: 'center', gap: 14 }}><BrandMark size={48} /><Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 2, color: '#0E1116' }}>CHAKUSA</Text></View></SafeAreaProvider>;
 
   return <SafeAreaProvider><RuntimeShell><ExperienceRouter /></RuntimeShell></SafeAreaProvider>;
 }

@@ -15,9 +15,13 @@ export default function withAndroidSecurity(config) {
     return config;
   });
   config = withGradleProperties(config, (config) => {
-    for (const key of ['android.enableMinifyInReleaseBuilds', 'android.enableShrinkResourcesInReleaseBuilds']) {
+    // Android 10 (API 29) is the oldest release still receiving platform
+    // security patches through Play system updates; older versions can no
+    // longer install the app.
+    const properties = { 'android.enableMinifyInReleaseBuilds': 'true', 'android.enableShrinkResourcesInReleaseBuilds': 'true', 'android.minSdkVersion': '29' };
+    for (const [key, value] of Object.entries(properties)) {
       config.modResults = config.modResults.filter((entry) => entry.type !== 'property' || entry.key !== key);
-      config.modResults.push({ type: 'property', key, value: 'true' });
+      config.modResults.push({ type: 'property', key, value });
     }
     return config;
   });

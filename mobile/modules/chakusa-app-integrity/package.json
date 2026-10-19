@@ -1,0 +1,8 @@
+{
+  "name": "chakusa-app-integrity",
+  "version": "1.0.0",
+  "description": "Local Expo module: reports the installed app's signing certificate fingerprints and installer so the app can refuse to run as a repackaged clone.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true
+}

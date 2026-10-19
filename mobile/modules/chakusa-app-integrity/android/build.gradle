@@ -1,0 +1,14 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.chakusaappintegrity'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.chakusaappintegrity"
+  defaultConfig {
+    versionName '1.0.0'
+  }
+}

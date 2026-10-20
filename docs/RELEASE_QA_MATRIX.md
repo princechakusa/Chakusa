@@ -218,7 +218,7 @@ staging at sandbox provider credentials.
 | 17.6 | Install the exact signed R8-optimized release, retain its SHA-256 and mapping file, cold launch both experiences and restore saved sessions | No missing native classes, JNI/reflection crashes or lost SecureStore access; debug builds are not substituted |
 | 17.7 | On the optimized release, exercise Google sign-in, map rendering/messages, call-screening role setup and provider push delivery | Native integrations work under optimization; hostile tooltip text renders literally and unknown/out-of-range map messages are ignored |
 | 17.8 | Probe WebView debugging on the optimized release, and inspect its release manifest and backup XML | No externally attachable release WebView debug endpoint; non-debuggable, no cleartext/backup or release overlay permission; cloud/device-transfer exclusions retained |
-| 17.9 | Repeat release smoke tests on an Android 10 device (minSdk 29, oldest supported) and a current Android device; confirm an Android 9 device cannot install it; perform supported backup/device-transfer checks | Android 10+ only (owner decision 2026-10-19); app-private credentials are excluded from transfer. Record actual device results |
+| 17.9 | Repeat release smoke tests on an Android 7 device (minSdk 24, oldest supported), an Android 10 device and a current Android device; perform supported backup/device-transfer checks | Android 7+ again (owner decision 2026-10-20, after Play reported minSdk 29 dropped ~5,200 devices); camera, location, telephony and portrait are optional hardware. App-private credentials are excluded from transfer. Record actual device results |
 
 ---
 

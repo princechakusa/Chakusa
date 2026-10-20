@@ -4,6 +4,19 @@ import { join } from 'node:path';
 
 // Keep these settings across Expo prebuild. Debug variants explicitly opt
 // back into cleartext/overlay access in their own manifests for Metro.
+export const ANDROID_MIN_SDK = 24;
+export const OPTIONAL_HARDWARE = [
+  'android.hardware.camera',
+  'android.hardware.camera.autofocus',
+  'android.hardware.camera.front',
+  'android.hardware.location',
+  'android.hardware.location.gps',
+  'android.hardware.location.network',
+  'android.hardware.screen.portrait',
+  'android.hardware.telephony',
+  'android.hardware.microphone',
+];
+
 export default function withAndroidSecurity(config) {
   config = withAppBuildGradle(config, (config) => {
     // Expo's legacy default rules disable optimization even when minification
@@ -15,10 +28,10 @@ export default function withAndroidSecurity(config) {
     return config;
   });
   config = withGradleProperties(config, (config) => {
-    // Android 10 (API 29) is the oldest release still receiving platform
-    // security patches through Play system updates; older versions can no
-    // longer install the app.
-    const properties = { 'android.enableMinifyInReleaseBuilds': 'true', 'android.enableShrinkResourcesInReleaseBuilds': 'true', 'android.minSdkVersion': '29' };
+    // Android 7 (API 24) is React Native's floor. Raising it to 29 cut ~30% of
+    // phones from Play; the server (auth, Play Integrity) stays the security
+    // boundary, so older devices are supported again.
+    const properties = { 'android.enableMinifyInReleaseBuilds': 'true', 'android.enableShrinkResourcesInReleaseBuilds': 'true', 'android.minSdkVersion': String(ANDROID_MIN_SDK) };
     for (const [key, value] of Object.entries(properties)) {
       config.modResults = config.modResults.filter((entry) => entry.type !== 'property' || entry.key !== key);
       config.modResults.push({ type: 'property', key, value });
@@ -34,6 +47,13 @@ export default function withAndroidSecurity(config) {
     application.$['android:dataExtractionRules'] = '@xml/chakusa_data_extraction_rules';
     manifest.manifest['uses-permission'] = (manifest.manifest['uses-permission'] ?? [])
       .filter((permission) => permission.$?.['android:name'] !== 'android.permission.SYSTEM_ALERT_WINDOW');
+    // Permissions imply required hardware, and Play hides the app from every
+    // device without it (tablets, Chromebooks, cars). Each of these is an
+    // optional enhancement in Chakusa, so declare it not required.
+    const features = (manifest.manifest['uses-feature'] ?? [])
+      .filter((feature) => !OPTIONAL_HARDWARE.includes(feature.$?.['android:name']));
+    for (const name of OPTIONAL_HARDWARE) features.push({ $: { 'android:name': name, 'android:required': 'false' } });
+    manifest.manifest['uses-feature'] = features;
     return config;
   });
   // Some Android 12+ manufacturers allow D2D transfer despite allowBackup=false.

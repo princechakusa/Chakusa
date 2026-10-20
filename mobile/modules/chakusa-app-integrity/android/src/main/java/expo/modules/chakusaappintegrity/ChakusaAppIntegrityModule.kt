@@ -1,6 +1,8 @@
 package expo.modules.chakusaappintegrity
 
 import android.content.pm.PackageManager
+import android.content.pm.Signature
+import android.os.Build
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
 import expo.modules.kotlin.Promise
@@ -21,13 +23,24 @@ class ChakusaAppIntegrityModule : Module() {
     Function("getSigningInfo") {
       val context = appContext.reactContext ?: return@Function null
       val packageManager = context.packageManager
-      val info = packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-      val signing = info.signingInfo ?: return@Function null
-      // With key rotation, the history holds every certificate the app was
-      // signed with; otherwise the current signers are authoritative.
-      val certificates = if (signing.hasMultipleSigners()) signing.apkContentsSigners else signing.signingCertificateHistory
+      val certificates: Array<Signature> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val info = packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        val signing = info.signingInfo ?: return@Function null
+        // With key rotation, the history holds every certificate the app was
+        // signed with; otherwise the current signers are authoritative.
+        if (signing.hasMultipleSigners()) signing.apkContentsSigners else signing.signingCertificateHistory
+      } else {
+        // Android 7-8 have no signing history API; the APK's signers are it.
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures ?: return@Function null
+      }
       val installer = try {
-        packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+        } else {
+          @Suppress("DEPRECATION")
+          packageManager.getInstallerPackageName(context.packageName)
+        }
       } catch (_: Exception) {
         null
       }

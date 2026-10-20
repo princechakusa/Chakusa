@@ -42,7 +42,7 @@ export function CustomerRedemptionsScreen() {
   const shown = items.filter((r) => (tab === 'active' ? redemptionIsUsable(r) : !redemptionIsUsable(r)));
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>REWARDS READY</Text>
         <Text style={styles.title}>Your rewards</Text>

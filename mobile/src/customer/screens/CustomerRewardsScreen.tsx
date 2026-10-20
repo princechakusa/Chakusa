@@ -45,7 +45,7 @@ export function CustomerRewardsScreen() {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MY REWARDS</Text>
         <Text style={styles.title}>Rewards</Text>

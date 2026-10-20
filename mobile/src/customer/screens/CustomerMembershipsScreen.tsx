@@ -61,7 +61,7 @@ export function CustomerMembershipsScreen(_: Props) {
   };
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MEMBERSHIPS</Text>
         <Text style={styles.title}>Your memberships</Text>

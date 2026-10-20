@@ -41,7 +41,7 @@ export function CustomerBookingsScreen() {
   const shown = tab === 'upcoming' ? upcoming : past;
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MY BOOKINGS</Text>
         <Text style={styles.title}>Bookings</Text>

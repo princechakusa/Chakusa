@@ -77,7 +77,7 @@ export function LoyaltyMembershipPlansScreen(_props: Props) {
 
   return (
     <>
-      <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
+      <Screen onRefresh={load}>
         <AppHeader eyebrow="LOYALTY & REWARDS" title="Membership plans" subtitle="Member pricing and priority booking for your regulars." />
         <View style={styles.note}>
           <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />

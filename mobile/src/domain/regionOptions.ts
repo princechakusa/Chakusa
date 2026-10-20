@@ -55,3 +55,12 @@ export const CURRENCIES: SelectOption[] = [
   ['THB', 'Thai Baht'], ['PHP', 'Philippine Peso'], ['VND', 'Vietnamese Dong'], ['AUD', 'Australian Dollar'], ['NZD', 'New Zealand Dollar'], ['CAD', 'Canadian Dollar'],
   ['MXN', 'Mexican Peso'], ['BRL', 'Brazilian Real'], ['ARS', 'Argentine Peso'], ['CLP', 'Chilean Peso'], ['COP', 'Colombian Peso'], ['PEN', 'Peruvian Sol'], ['JMD', 'Jamaican Dollar'],
 ].map(([value, label]) => ({ value, label: `${value} · ${label}`, keywords: label }));
+
+/** BCP 47 codes (2-10 chars, as the API accepts); Zimbabwe's main languages first. */
+export const LANGUAGES: SelectOption[] = [
+  ['en', 'English'], ['sn', 'Shona', 'chiShona'], ['nd', 'Ndebele', 'isiNdebele'], ['zu', 'Zulu', 'isiZulu'], ['xh', 'Xhosa', 'isiXhosa'], ['af', 'Afrikaans'],
+  ['ny', 'Chichewa', 'Chinyanja'], ['tn', 'Tswana', 'Setswana'], ['st', 'Sotho', 'Sesotho'], ['sw', 'Swahili', 'Kiswahili'], ['pt', 'Portuguese', 'Português'],
+  ['fr', 'French', 'Français'], ['es', 'Spanish', 'Español'], ['de', 'German', 'Deutsch'], ['it', 'Italian', 'Italiano'], ['nl', 'Dutch', 'Nederlands'],
+  ['ar', 'Arabic', 'العربية'], ['hi', 'Hindi', 'हिन्दी'], ['ur', 'Urdu', 'اردو'], ['zh', 'Chinese', '中文'], ['ja', 'Japanese', '日本語'], ['ko', 'Korean', '한국어'],
+  ['ru', 'Russian', 'Русский'], ['tr', 'Turkish', 'Türkçe'], ['am', 'Amharic', 'አማርኛ'], ['yo', 'Yoruba', 'Yorùbá'], ['ha', 'Hausa'], ['ig', 'Igbo'],
+].map(([value, label, native]) => ({ value, label, detail: native, keywords: `${native ?? ''} ${value}` }));

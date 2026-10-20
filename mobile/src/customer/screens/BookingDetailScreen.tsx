@@ -188,7 +188,7 @@ export function BookingDetailScreen({ route, navigation }: Props) {
   if (error || !booking) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{bookingStatusLabel(booking.status).toUpperCase()}</Text>
         <Text style={styles.title}>{booking.serviceName}</Text>

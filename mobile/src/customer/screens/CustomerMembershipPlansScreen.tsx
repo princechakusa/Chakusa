@@ -73,7 +73,7 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
   if (error) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={load} /></Screen>;
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MEMBERSHIP</Text>
         <Text style={styles.title}>{businessName ? `${businessName} membership` : 'Membership plans'}</Text>

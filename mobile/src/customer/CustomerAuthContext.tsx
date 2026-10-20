@@ -6,7 +6,7 @@ import { requestGoogleIdToken } from '../services/googleAuth';
 import { ApiError } from '../services/api';
 import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
 import { setCustomerUnauthorizedHandler } from './customerApi';
-import { customerApi, customerAuthApi, legalApi } from './endpoints';
+import { customerAuthApi, legalApi } from './endpoints';
 import { clearPendingIntent } from '../experience/pendingIntentStorage';
 import { clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
 import { SESSION_RESTORE_TIMEOUT_COPY, SESSION_RESTORE_TIMEOUT_MS } from '../domain/startup';

@@ -49,6 +49,9 @@ export function CustomerAccountScreen() {
   const { switching, switchExperience } = useExperience();
 
   const { confirm, sheet } = useConfirmSheet();
+  const confirmSwitch = async () => {
+    if (await confirm({ title: 'Switch to business?', message: 'You will go to your Chakusa business tools: bookings, customers and growth. You can switch back any time.', confirmLabel: 'Yes, switch', cancelLabel: 'No, stay here', icon: 'swap-horizontal-outline' })) await switchExperience('business');
+  };
   const confirmSignOut = async () => {
     if (await confirm({ title: 'Sign out?', message: 'You can sign back in any time with the same account.', confirmLabel: 'Yes, sign out', cancelLabel: 'No, stay signed in', destructive: true, icon: 'log-out-outline' })) await logout();
   };
@@ -89,7 +92,7 @@ export function CustomerAccountScreen() {
 
       <SectionLabel title="Chakusa" />
       <View style={styles.group}>
-        <MenuRow icon="swap-horizontal-outline" label={switching ? 'Switching…' : 'Switch to business'} disabled={switching} onPress={() => switchExperience('business')} />
+        <MenuRow icon="swap-horizontal-outline" label={switching ? 'Switching…' : 'Switch to business'} disabled={switching} onPress={() => void confirmSwitch()} />
       </View>
 
       <SectionLabel title="Legal" />

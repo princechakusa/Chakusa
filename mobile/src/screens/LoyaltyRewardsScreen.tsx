@@ -89,7 +89,7 @@ export function LoyaltyRewardsScreen(_props: Props) {
 
   return (
     <>
-      <Screen refreshing={loaded && !error} onRefresh={() => void load()}>
+      <Screen onRefresh={load}>
         <AppHeader eyebrow="LOYALTY & REWARDS" title="Rewards" subtitle="What your customers can unlock with points. Types are shown to customers in plain language." />
         {!loaded ? <LoadingState label="Loading rewards…" />
           : error && !rewards.length ? <ErrorState message={error} onRetry={() => void load()} />

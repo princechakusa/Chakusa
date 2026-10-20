@@ -116,6 +116,8 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
     expect(res.statusCode).toBe(503);
     expect(res.json().error.code).toBe("AI_UNAVAILABLE");
     expect(res.body).not.toContain("not found");
+    // The unanswered question is not left behind (Retry must not duplicate it).
+    expect(await prisma.customerAIMessage.count({ where: { conversationId } })).toBe(0);
   });
 
   describe("conversation lifecycle", () => {

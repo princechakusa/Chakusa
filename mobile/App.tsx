@@ -5,6 +5,7 @@ import { PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_8
 import { StatusBar } from 'expo-status-bar';
 import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { PublicFeedbackScreen } from './src/screens/PublicFeedbackScreen';
 import { PublicQuoteScreen } from './src/screens/PublicQuoteScreen';
@@ -88,5 +89,5 @@ export default function App() {
 
   if ((!fontsLoaded && !fontError && !fontWaitOver) || !configReady) return <SafeAreaProvider><StatusBar style="dark" /><View accessibilityLabel="Opening Chakusa" style={{ flex: 1, backgroundColor: '#FBFAF8', alignItems: 'center', justifyContent: 'center', gap: 14 }}><BrandMark size={48} /><Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 2, color: '#0E1116' }}>CHAKUSA</Text></View></SafeAreaProvider>;
 
-  return <SafeAreaProvider><RuntimeShell><ExperienceRouter /></RuntimeShell></SafeAreaProvider>;
+  return <SafeAreaProvider><KeyboardProvider><RuntimeShell><ExperienceRouter /></RuntimeShell></KeyboardProvider></SafeAreaProvider>;
 }

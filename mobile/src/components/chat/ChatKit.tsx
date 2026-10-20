@@ -3,7 +3,8 @@ import { forwardRef, ReactElement, ReactNode, useEffect, useMemo, useRef } from 
 import { ActivityIndicator, Animated, Easing, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useKeyboardHeight } from './useKeyboardHeight';
+import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Reanimated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 
 // WhatsApp-style chat building blocks shared by customer Messages, the
 // business inbox thread and the Chakusa assistant:
@@ -25,54 +26,19 @@ export interface ChatPalette {
   font: { body: string; medium: string; semibold: string };
 }
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  mine: boolean;
-  at: string;
-  failed?: boolean;
-  /** Rendered under the bubble (e.g. assistant feedback buttons). */
-  footer?: ReactNode;
-}
+export { chatRows, chatTime, type ChatMessage, type ChatRow } from './chatRows';
+import { chatRows, chatTime, type ChatMessage, type ChatRow as Row } from './chatRows';
 
-type Row = { kind: 'day'; id: string; label: string } | { kind: 'msg'; id: string; message: ChatMessage; first: boolean };
-
-function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  if (same(d, today)) return 'Today';
-  if (same(d, yesterday)) return 'Yesterday';
-  const withinWeek = today.getTime() - d.getTime() < 6 * 86_400_000;
-  return d.toLocaleDateString(undefined, withinWeek ? { weekday: 'long' } : { day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
-}
-
-export function chatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
-/** Oldest-first messages → rows for an inverted list (newest first, day chip above each day). */
-export function chatRows(messages: ChatMessage[]): Row[] {
-  const rows: Row[] = [];
-  let lastDay = '';
-  let lastMine: boolean | null = null;
-  for (const message of messages) {
-    const day = new Date(message.at).toDateString();
-    if (day !== lastDay) { rows.push({ kind: 'day', id: `day-${day}`, label: dayLabel(message.at) }); lastDay = day; lastMine = null; }
-    rows.push({ kind: 'msg', id: message.id, message, first: lastMine !== message.mine });
-    lastMine = message.mine;
-  }
-  return rows.reverse();
-}
-
-/** Screen body below a fixed header: lifts everything above the keyboard. */
+/**
+ * Screen body below a fixed header. The messages and composer ride up with
+ * the keyboard frame by frame (react-native-keyboard-controller), like
+ * WhatsApp; the header never moves.
+ */
 export function ChatLayout({ palette, header, children }: { palette: ChatPalette; header: ReactNode; children: ReactNode }) {
-  const keyboard = useKeyboardHeight();
   return (
     <View style={[styles.fill, { backgroundColor: palette.bg }]}>
       {header}
-      <View style={[styles.fill, { paddingBottom: keyboard }]}>{children}</View>
+      <KeyboardAvoidingView behavior="padding" style={styles.fill}>{children}</KeyboardAvoidingView>
     </View>
   );
 }
@@ -112,10 +78,7 @@ function Bubble({ message, first, palette }: { message: ChatMessage; first: bool
         mine ? { backgroundColor: palette.mineBubble } : { backgroundColor: palette.theirBubble, borderColor: palette.theirBorder, borderWidth: StyleSheet.hairlineWidth },
         first && (mine ? styles.tailMine : styles.tailTheirs),
       ]}>
-        <Text style={[styles.bubbleText, { color: mine ? palette.mineText : palette.theirText, fontFamily: palette.font.body }]}>
-          {message.text}
-          <Text style={styles.timeSpacer}>{' '.repeat(12)}</Text>
-        </Text>
+        <Text style={[styles.bubbleText, { color: mine ? palette.mineText : palette.theirText, fontFamily: palette.font.body }]}>{message.text}</Text>
         <View style={styles.meta}>
           {message.failed ? <Ionicons name="alert-circle" size={12} color="#E5484D" /> : null}
           <Text style={[styles.time, { color: mine ? palette.mineMeta : palette.theirMeta, fontFamily: palette.font.body }]}>{chatTime(message.at)}</Text>
@@ -161,10 +124,13 @@ export function ChatComposer({ value, onChangeText, onSend, sending = false, dis
   maxLength?: number;
 }) {
   const insets = useSafeAreaInsets();
-  const keyboard = useKeyboardHeight();
+  const { progress } = useReanimatedKeyboardAnimation();
+  const restingPad = Math.max(insets.bottom, 8);
+  // The home-indicator gap is only needed while the keyboard is down.
+  const padding = useAnimatedStyle(() => ({ paddingBottom: interpolate(progress.value, [0, 1], [restingPad, 8]) }));
   const canSend = Boolean(value.trim()) && !sending && !disabled;
   return (
-    <View style={[styles.composer, { backgroundColor: palette.composerBg, borderTopColor: palette.line, paddingBottom: keyboard ? 8 : Math.max(insets.bottom, 8) }]}>
+    <Reanimated.View style={[styles.composer, { backgroundColor: palette.composerBg, borderTopColor: palette.line }, padding]}>
       {note}
       <View style={styles.composerRow}>
         <View style={[styles.inputWrap, { backgroundColor: palette.inputBg, borderColor: palette.inputBorder }]}>
@@ -185,7 +151,7 @@ export function ChatComposer({ value, onChangeText, onSend, sending = false, dis
           {sending ? <ActivityIndicator size="small" color={palette.sendIcon} /> : <Ionicons name="send" size={19} color={palette.sendIcon} style={styles.sendIcon} />}
         </Pressable>
       </View>
-    </View>
+    </Reanimated.View>
   );
 }
 
@@ -198,16 +164,17 @@ const styles = StyleSheet.create({
   groupGap: { marginTop: 8 },
   rowMine: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   rowTheirs: { alignSelf: 'flex-start', alignItems: 'flex-start' },
-  bubble: { borderRadius: 16, paddingLeft: 11, paddingRight: 9, paddingTop: 7, paddingBottom: 7 },
+  // Text and time share a wrapping row: a short message keeps the time beside it,
+  // a full line pushes the time onto its own line at the right. Never overlaps.
+  bubble: { borderRadius: 16, paddingLeft: 11, paddingRight: 9, paddingTop: 7, paddingBottom: 6, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'flex-end', columnGap: 8 },
   tailMine: { borderTopRightRadius: 4 },
   tailTheirs: { borderTopLeftRadius: 4 },
-  bubbleText: { fontSize: 15.5, lineHeight: 21 },
-  timeSpacer: { fontSize: 11 },
-  meta: { position: 'absolute', right: 9, bottom: 5, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  bubbleText: { fontSize: 15.5, lineHeight: 21, flexShrink: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 'auto', paddingTop: 2 },
   time: { fontSize: 11 },
   typing: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 13, paddingHorizontal: 14 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  composer: { paddingHorizontal: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
+  composer: { paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   inputWrap: { flex: 1, minHeight: 46, maxHeight: 140, borderRadius: 23, borderWidth: 1, paddingHorizontal: 16, justifyContent: 'center' },
   input: { fontSize: 16, lineHeight: 21, paddingTop: 11, paddingBottom: 11, maxHeight: 138 },

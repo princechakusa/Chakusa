@@ -74,7 +74,7 @@ export function LoyaltyRedemptionScreen({ route }: Props) {
   const filtersBar = useMemo(() => FILTERS, []);
 
   return (
-    <Screen refreshing={loaded && !error} onRefresh={search}>
+    <Screen onRefresh={search}>
       <AppHeader eyebrow="LOYALTY & REWARDS" title="Redeem a reward" subtitle="Enter the code a customer shows you, honour the reward, then mark it redeemed." />
 
       <View style={styles.searchCard}>

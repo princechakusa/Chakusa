@@ -55,7 +55,7 @@ export function CustomerLoyaltyHistoryScreen({ route }: Props) {
   const groups = groupTransactionsByMonth(items);
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>POINTS HISTORY</Text>
         <Text style={styles.title}>{businessName ?? 'Points history'}</Text>

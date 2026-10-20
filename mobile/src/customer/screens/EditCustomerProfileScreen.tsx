@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { SelectField, type SelectFieldTheme } from '../../components/SelectField';
-import { timezoneOptions } from '../../domain/regionOptions';
+import { LANGUAGES, timezoneOptions } from '../../domain/regionOptions';
 import { Screen } from '../../components/ui';
 import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
@@ -131,7 +131,9 @@ export function EditCustomerProfileScreen({ navigation }: Props) {
       </SectionCard>
 
       <SectionCard icon="options" title="Preferences & Privacy">
-        <Field label="Preferred language" value={preferredLanguage} onChangeText={setPreferredLanguage} placeholder="en" autoCapitalize="none" accessibilityLabel="Preferred language" />
+        <View style={styles.field}>
+          <SelectField label="Preferred language" title="Choose your language" searchPlaceholder="Search language" value={preferredLanguage} options={LANGUAGES} onChange={setPreferredLanguage} placeholder="Choose a language" theme={selectTheme} />
+        </View>
         <View style={styles.field}>
           <SelectField label="Preferred time zone" title="Choose your time zone" searchPlaceholder="Search city or region" value={preferredTimezone} options={TIMEZONES} onChange={setPreferredTimezone} placeholder="Choose a time zone" theme={selectTheme} />
         </View>

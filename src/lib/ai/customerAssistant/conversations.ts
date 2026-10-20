@@ -75,13 +75,21 @@ export async function sendAssistantMessage(customerProfileId: string, conversati
     data: { conversationId, role: "user", content: trimmed },
   });
 
-  const turn = await runCustomerAssistantTurn({
-    customerProfileId,
-    conversationId,
-    messageId: userMessage.id,
-    prompt: trimmed,
-    preferBusinessId: conversation.businessId,
-  });
+  let turn: Awaited<ReturnType<typeof runCustomerAssistantTurn>>;
+  try {
+    turn = await runCustomerAssistantTurn({
+      customerProfileId,
+      conversationId,
+      messageId: userMessage.id,
+      prompt: trimmed,
+      preferBusinessId: conversation.businessId,
+    });
+  } catch (error) {
+    // No answer, no message: an unanswered question would otherwise linger in
+    // the thread and repeat when the customer taps Retry.
+    await prisma.customerAIMessage.delete({ where: { id: userMessage.id } }).catch(() => undefined);
+    throw error;
+  }
 
   const assistantMessage = await prisma.customerAIMessage.create({
     data: {

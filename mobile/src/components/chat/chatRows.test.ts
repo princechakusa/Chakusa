@@ -1,10 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { chatRows } from './chatRows';
 
-vi.mock('react-native', () => ({ Animated: {}, Easing: {}, FlatList: () => null, Pressable: () => null, StyleSheet: { create: (s: unknown) => s, hairlineWidth: 1 }, Text: () => null, TextInput: () => null, View: () => null, ActivityIndicator: () => null, Keyboard: { addListener: () => ({ remove() {} }) }, LayoutAnimation: {}, Platform: { OS: 'android' } }));
-vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
-vi.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
-
-const { chatRows } = await import('./ChatKit');
 
 describe('chatRows (inverted WhatsApp list)', () => {
   it('puts the newest message first and a day chip above each day', () => {

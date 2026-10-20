@@ -58,7 +58,7 @@ export function CustomerInvoicesScreen() {
   const outstanding = outstandingInvoiceCount(items);
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>INVOICES</Text>
         <Text style={styles.title}>Your invoices</Text>

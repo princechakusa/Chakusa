@@ -7,6 +7,7 @@ import { formatAppVersion } from '../domain/trustSettings';
 import { businessApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
 import { useExperience } from '../experience/experienceContext';
+import { useConfirmSheet } from '../components/ConfirmSheet';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { m3, m3Radius, m3Space, m3Shadow, m3Type } from '../experience/businessTheme';
 import { Icon, M3Card, M3Header, M3Screen } from '../experience/businessKit';
@@ -34,6 +35,10 @@ export function AccountHubScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { business, user, role, logout, logoutAll } = useAuth();
   const { switching, switchExperience } = useExperience();
+  const { confirm, sheet } = useConfirmSheet();
+  const confirmSwitch = async () => {
+    if (await confirm({ title: 'Switch to customer?', message: 'You will leave your business tools and go to the customer side, where you find and book services. You can switch back any time.', confirmLabel: 'Yes, switch', cancelLabel: 'No, stay here', icon: 'swap-horizontal-outline' })) await switchExperience('customer');
+  };
   const { plan, status, features } = usePlanExperience();
   const [sessionAction, setSessionAction] = useState<'logout' | 'all' | null>(null);
   const owner = role === 'OWNER';
@@ -146,7 +151,7 @@ export function AccountHubScreen() {
       <MenuSection title="Account">
         <MenuRow icon="credit_card" tone="primary" title="Subscription and billing" detail={`${planLabel} plan`} onPress={() => navigation.navigate('Pro')} />
         <MenuRow icon="verified_user" tone="tertiary" title="Security and sign-in" detail="Profile, password and connected accounts" onPress={() => navigation.navigate('AccountInformation')} />
-        <MenuRow icon="sync_alt" tone="secondary" title={switching ? 'Switching…' : 'Switch to customer'} detail="Find and book services, view your rewards" disabled={switching} onPress={() => switchExperience('customer')} />
+        <MenuRow icon="sync_alt" tone="secondary" title={switching ? 'Switching…' : 'Switch to customer'} detail="Find and book services, view your rewards" disabled={switching} onPress={() => void confirmSwitch()} />
         <MenuRow icon="help" tone="secondary" title="Help and support" detail="Answers and contact options" onPress={() => navigation.navigate('Help')} />
         <MenuRow icon="info" tone="neutral" title="About Chakusa" detail={version} last />
       </MenuSection>
@@ -167,6 +172,7 @@ export function AccountHubScreen() {
         <Icon name="logout" size={20} color={m3.error} />
         <Text style={styles.logoutText}>{sessionAction === 'logout' ? 'Signing out…' : 'Sign out'}</Text>
       </Pressable>
+      {sheet}
     </M3Screen>
   );
 }

@@ -16,4 +16,12 @@ describe('region dropdown options', () => {
     expect(new Set(zones).size).toBe(zones.length);
     expect(zones).toContain('Africa/Harare');
   });
+
+  it('offers language codes the API accepts (2-10 chars), once each, with English and Shona', async () => {
+    const { LANGUAGES } = await import('./regionOptions');
+    const codes = LANGUAGES.map((l) => l.value);
+    expect(codes.every((c) => c.length >= 2 && c.length <= 10)).toBe(true);
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(codes).toEqual(expect.arrayContaining(['en', 'sn', 'nd']));
+  });
 });

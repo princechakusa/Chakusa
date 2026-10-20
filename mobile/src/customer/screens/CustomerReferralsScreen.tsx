@@ -100,7 +100,7 @@ export function CustomerReferralsScreen(_: Props) {
   const progress = overview ? referralProgress(overview) : { invited: 0, joined: 0, completed: 0, conversionRate: 0 };
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>REFERRALS</Text>
         <Text style={styles.title}>Invite friends</Text>

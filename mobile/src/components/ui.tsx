@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import {
   ActivityIndicator, Animated, Easing, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput,
   View, ViewStyle,
@@ -15,10 +16,17 @@ import { formatDate, formatDateTime, formatDuration, formatMoney, titleCase } fr
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-export function Screen({ children, scroll = true, style, backgroundColor, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; backgroundColor?: string; refreshing?: boolean; onRefresh?: () => void }>) {
+/** `onRefresh` may return a promise: the pull-to-refresh spinner shows only until it settles. */
+export function Screen({ children, scroll = true, style, backgroundColor, refreshing = false, onRefresh }: PropsWithChildren<{ scroll?: boolean; style?: StyleProp<ViewStyle>; backgroundColor?: string; refreshing?: boolean; onRefresh?: () => unknown }>) {
+  const [pulling, setPulling] = useState(false);
+  const pull = async () => {
+    if (!onRefresh) return;
+    setPulling(true);
+    try { await onRefresh(); } finally { setPulling(false); }
+  };
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, backgroundColor ? { backgroundColor } : null]}>
-      {scroll ? <ScrollView style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
+      {scroll ? <KeyboardAwareScrollView bottomOffset={56} style={styles.flex} contentContainerStyle={[styles.screen, style]} refreshControl={onRefresh ? <RefreshControl refreshing={pulling || refreshing} onRefresh={() => void pull()} /> : undefined} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</KeyboardAwareScrollView>
         : <View style={[styles.screen, styles.flex, style]}>{children}</View>}
     </SafeAreaView>
   );

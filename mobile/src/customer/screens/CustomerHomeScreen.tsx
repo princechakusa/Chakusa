@@ -64,7 +64,7 @@ export function CustomerHomeScreen() {
   const greeting = homeGreeting(profile?.displayName);
 
   return (
-    <Screen style={styles.screen} backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen style={styles.screen} backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{greeting.subtitle}</Text>

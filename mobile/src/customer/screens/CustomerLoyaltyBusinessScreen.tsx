@@ -80,7 +80,7 @@ export function CustomerLoyaltyBusinessScreen({ route, navigation }: Props) {
   const effectiveSlug = slug ?? account.business?.publicSlug ?? undefined;
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>LOYALTY</Text>
         <Text style={styles.title}>{name}</Text>

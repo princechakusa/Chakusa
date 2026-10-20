@@ -101,7 +101,7 @@ export function CustomerInvoiceDetailScreen() {
   const revision = invoice.revision;
 
   return (
-    <Screen backgroundColor={authColors.bg} refreshing={loaded && !error} onRefresh={() => void load()}>
+    <Screen backgroundColor={authColors.bg} onRefresh={load}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{invoice.business.name.toUpperCase()}</Text>

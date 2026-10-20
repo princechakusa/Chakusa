@@ -32,7 +32,7 @@ type Mode = 'chat' | 'history';
 interface Pending { id: string; text: string; at: string; failed: boolean }
 
 function friendly(caught: unknown): string {
-  if (caught instanceof ApiError && caught.code === 'AI_UNAVAILABLE') return 'The assistant is taking a break right now. Try again in a moment.';
+  if (caught instanceof ApiError && (caught.code === 'AI_UNAVAILABLE' || caught.status === 503)) return 'The assistant is unavailable right now. Please try again in a moment.';
   if (caught instanceof ApiError && caught.status === 429) return 'That was a lot of questions at once. Wait a few seconds and try again.';
   return 'The assistant could not answer. Check your connection and try again.';
 }
@@ -52,6 +52,9 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
+  // A conversation this screen just created is already in local state; reloading it
+  // mid-send would race the reply and show messages twice.
+  const createdHere = useRef<string | null>(null);
 
   const loadList = useCallback(async () => {
     try { setConversations((await customerAssistantApi.listConversations({ limit: 30 })).items); } catch { /* history is optional */ }
@@ -68,7 +71,7 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
   }, []);
 
   useEffect(() => { void loadList(); }, [loadList]);
-  useEffect(() => { if (activeId) void loadThread(activeId); }, [activeId, loadThread]);
+  useEffect(() => { if (activeId && activeId !== createdHere.current) void loadThread(activeId); }, [activeId, loadThread]);
 
   const ask = async (text: string) => {
     const content = text.trim();
@@ -81,6 +84,7 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
       if (!id) {
         const conversation = await customerAssistantApi.createConversation();
         id = conversation.id;
+        createdHere.current = id;
         setActiveId(id);
         setConversations((current) => [conversation, ...current]);
       }
@@ -133,7 +137,7 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
       <View style={styles.avatar}><Ionicons name="sparkles" size={18} color={premium.onDeep} /></View>
       <View style={styles.headerCopy}>
         <Text style={styles.headerName}>{mode === 'history' ? 'Your conversations' : 'Chakusa assistant'}</Text>
-        <Text style={styles.headerHint}>{sending ? 'typing…' : 'AI helper · can make mistakes'}</Text>
+        <Text numberOfLines={1} style={styles.headerHint}>{sending ? 'typing…' : 'AI · may make mistakes'}</Text>
       </View>
       {mode === 'chat' ? (
         <>

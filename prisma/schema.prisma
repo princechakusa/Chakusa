@@ -955,6 +955,10 @@ model Business {
   timezone                          String?
   currency                          String?
   googleReviewLink                  String?                @map("google_review_link")
+  // Google Places place ID the owner linked (Google Places API "id"). Only the
+  // ID is stored; Google content (rating, review count) is fetched live, never
+  // persisted, per Google Maps Platform terms.
+  googlePlaceId                     String?                @map("google_place_id")
   // Shown on the public business profile page (see publicSlug below) as a
   // short "about this business" summary — distinct from `industry` (a
   // category) and `defaultServices` (a list), this is free-text the owner
@@ -1032,6 +1036,7 @@ model Business {
   betaFeedback                   BetaFeedback[]
   subscriptionEvents             SubscriptionEvent[]
   marketplaceListing             BusinessMarketplaceListing?
+  galleryPhotos                  BusinessGalleryPhoto[]
   marketplacePromotions          MarketplacePromotion[]
   loyaltyProgram                 LoyaltyProgram?
   loyaltyAccounts                LoyaltyAccount[]
@@ -2082,6 +2087,7 @@ model Conversation {
   @@index([businessId, status, priority, updatedAt])
   @@index([businessId, customerId, updatedAt])
   @@index([businessId, assignedMemberId, status])
+  @@index([contextType, contextId])
   @@map("conversations")
 }
 
@@ -4758,4 +4764,24 @@ model AccountingSyncLog {
   @@index([connectionId, createdAt])
   @@index([businessId, entity, status])
   @@map("accounting_sync_logs")
+}
+
+// Owner-uploaded gallery photos shown to customers on the business page and
+// discovery cards. Stored in Postgres (JPEG/PNG/WebP, client-compressed to
+// <=1600 px, capped at 700 KB each and 12 per business) and served from
+// /public/business/:slug/gallery/:id - no object-storage vendor needed.
+model BusinessGalleryPhoto {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  position   Int      @default(0)
+  mimeType   String   @map("mime_type")
+  data       Bytes
+  byteSize   Int      @map("byte_size")
+  caption    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, position])
+  @@map("business_gallery_photos")
 }

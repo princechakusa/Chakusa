@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { DISCOVERY_MODES, discoverBusinesses, getMarketplaceBusinessProfile, searchSuggestions } from "../../lib/marketplace/discovery.js";
 import { listCategories, trendingCategories } from "../../lib/marketplace/categories.js";
+import { googlePlacesEnabled, nearbyGooglePlaces } from "../../lib/marketplace/googlePlaces.js";
+import { prisma } from "../../lib/prisma.js";
 import {
   activePromotions,
   listFavourites,
@@ -43,6 +45,18 @@ export default async function marketplaceRoutes(fastify: FastifyInstance) {
   fastify.get("/nearby", async (request) => {
     const query = discoverQuery.parse(request.query);
     return discoverBusinesses({ mode: "nearby", lat: query.lat, lng: query.lng, radiusKm: query.radiusKm, categorySlug: query.category, query: query.q, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
+  });
+
+  // Places near the customer that are on Google but not (yet) on Chakusa.
+  // Clients list these with Google attribution; they are never drawn on the
+  // OpenStreetMap map (Google Maps Platform terms).
+  fastify.get("/google-nearby", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
+    const query = z.object({ lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180), radiusKm: z.coerce.number().min(0.5).max(50).default(5), q: z.string().trim().max(120).optional() }).parse(request.query);
+    if (!googlePlacesEnabled()) return { enabled: false, attribution: "Google", places: [] };
+    const places = await nearbyGooglePlaces({ latitude: query.lat, longitude: query.lng, radiusKm: query.radiusKm, query: query.q });
+    const linked = places.length ? await prisma.business.findMany({ where: { googlePlaceId: { in: places.map((p) => p.placeId) } }, select: { googlePlaceId: true } }) : [];
+    const onChakusa = new Set(linked.map((b) => b.googlePlaceId));
+    return { enabled: true, attribution: "Google", places: places.filter((p) => !onChakusa.has(p.placeId)) };
   });
 
   fastify.get("/featured", async (request) => discoverBusinesses({ mode: "featured", limit: discoverQuery.parse(request.query).limit }));

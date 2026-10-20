@@ -13,6 +13,8 @@ import { requireCapability } from '../../lib/authorization.js';
 import { syncServiceOfferingsFromLegacyNames } from '../services/services.service.js';
 import { getOwnAcceptanceHistory, getPendingAcceptances, recordAcceptance, LEGAL_DOCUMENT_TYPES } from "../../lib/legal/legalDocuments.service.js";
 import { z } from "zod";
+import { googlePlacesEnabled, googleRating, searchGooglePlaces } from "../../lib/marketplace/googlePlaces.js";
+import { addGalleryPhoto, deleteGalleryPhoto, GALLERY_MAX_PHOTOS, listGallery, reorderGallery } from "../../lib/marketplace/gallery.js";
 
 const cookiePreferencesSchema = z.object({ analytics: z.boolean(), functional: z.boolean(), marketing: z.boolean() });
 const legalAcceptSchema = z.object({
@@ -194,5 +196,46 @@ export default async function businessRoutes(fastify: FastifyInstance) {
     requireCapability(request, "business.data.export");
     reply.header('content-disposition', `attachment; filename="chakusa-business-${request.businessId}.json"`);
     reply.send(await exportBusinessData(request.businessId!));
+  });
+
+  // Link the business to its Google listing so customers see its Google
+  // rating. Only the place ID is stored.
+  fastify.get("/google-place/search", { preHandler: fastify.requireBusiness, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request) => {
+    requireCapability(request, "business.settings.manage");
+    const { q } = z.object({ q: z.string().trim().min(2).max(200) }).parse(request.query);
+    if (!googlePlacesEnabled()) return { enabled: false, places: [] };
+    const listing = await prisma.businessMarketplaceListing.findUnique({ where: { businessId: request.businessId! }, select: { latitude: true, longitude: true } });
+    const near = typeof listing?.latitude === "number" && typeof listing?.longitude === "number" ? { latitude: listing.latitude, longitude: listing.longitude } : undefined;
+    return { enabled: true, places: await searchGooglePlaces(q, near) };
+  });
+
+  fastify.put("/google-place", { preHandler: fastify.requireBusiness }, async (request) => {
+    requireCapability(request, "business.settings.manage");
+    const { placeId } = z.object({ placeId: z.string().regex(/^[A-Za-z0-9_-]{10,300}$/).nullable() }).parse(request.body);
+    await prisma.business.update({ where: { id: request.businessId! }, data: { googlePlaceId: placeId } });
+    return { placeId, google: await googleRating(placeId) };
+  });
+
+  // Customer-facing photo gallery. Any member can view; changing it is a
+  // business-settings action.
+  fastify.get("/gallery", { preHandler: fastify.requireBusiness }, async (request) => listGallery(request.businessId!));
+
+  fastify.post("/gallery", { preHandler: fastify.requireBusiness, bodyLimit: 1_000_000 }, async (request, reply) => {
+    requireCapability(request, "business.settings.manage");
+    const input = z.object({ dataBase64: z.string().min(1).max(960_000), caption: z.string().max(140).nullable().optional() }).parse(request.body);
+    reply.status(201).send(await addGalleryPhoto(request.businessId!, input));
+  });
+
+  fastify.put("/gallery/order", { preHandler: fastify.requireBusiness }, async (request) => {
+    requireCapability(request, "business.settings.manage");
+    const { ids } = z.object({ ids: z.array(z.string().uuid()).max(GALLERY_MAX_PHOTOS) }).parse(request.body);
+    return reorderGallery(request.businessId!, ids);
+  });
+
+  fastify.delete("/gallery/:id", { preHandler: fastify.requireBusiness }, async (request, reply) => {
+    requireCapability(request, "business.settings.manage");
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    await deleteGalleryPhoto(request.businessId!, id);
+    reply.status(204).send();
   });
 }

@@ -5,6 +5,8 @@ import { config } from "../config.js";
 import { mapIndustryToCategory } from "./categories.js";
 import { displayDistanceKm, haversineKm, type Coordinates } from "./geo.js";
 import { businessPhotoPath } from "../imageDataUrl.js";
+import { galleryPhotoPath } from "./gallery.js";
+import { googleRating } from "./googlePlaces.js";
 
 // PROGRAM 2 LOOP 2: business discovery. Reads `Business` / `ServiceOffering` /
 // `Feedback` / `BusinessMember` directly; `BusinessMarketplaceListing` is
@@ -18,6 +20,7 @@ const NEARBY_CANDIDATE_CAP = 200;
 
 const CARD_INCLUDE = {
   marketplaceListing: true,
+  galleryPhotos: { orderBy: [{ position: "asc" }, { createdAt: "asc" }], take: 4, select: { id: true } },
 } satisfies Prisma.BusinessInclude;
 
 type BusinessWithListing = Prisma.BusinessGetPayload<{ include: typeof CARD_INCLUDE }>;
@@ -49,6 +52,13 @@ function distanceFrom(business: BusinessWithListing, origin?: Coordinates) {
   return haversineKm(origin, { latitude: listing.latitude, longitude: listing.longitude });
 }
 
+/** Owner gallery first, then admin-curated listing photos. */
+function cardPhotos(business: BusinessWithListing): string[] {
+  const gallery = business.publicSlug ? business.galleryPhotos.map((photo) => galleryPhotoPath(business.publicSlug!, photo.id)) : [];
+  const curated = Array.isArray(business.marketplaceListing?.photos) ? (business.marketplaceListing!.photos as unknown[]).map(String) : [];
+  return [...gallery, ...curated].slice(0, 4);
+}
+
 function serializeCard(
   business: BusinessWithListing,
   rating: { average: number | null; count: number } | undefined,
@@ -72,7 +82,9 @@ function serializeCard(
     // Already public on the business profile; lets clients draw results on a map.
     latitude: listing?.latitude ?? null,
     longitude: listing?.longitude ?? null,
-    photo: Array.isArray(listing?.photos) && listing.photos.length ? String(listing.photos[0]) : null,
+    photo: cardPhotos(business)[0] ?? null,
+    // Up to four photos so a card can swipe through the business's gallery.
+    photos: cardPhotos(business),
     verified: Boolean(business.verifiedAt),
     featured: Boolean(listing?.featured && (!listing.featuredUntil || listing.featuredUntil > new Date())),
     loyaltyBadge: badges?.loyalty ?? false,
@@ -254,6 +266,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     where: { publicSlug: slug, platformStatus: "ACTIVE" },
     include: {
       marketplaceListing: true,
+      galleryPhotos: { orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { id: true, caption: true } },
       serviceOfferings: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, description: true, category: true, durationMinutes: true, price: true, depositAmount: true, publiclyBookable: true } },
       members: { where: { status: "ACTIVE" }, select: { role: true, user: { select: { fullName: true } } }, orderBy: { createdAt: "asc" }, take: 30 },
       marketplacePromotions: { where: { active: true, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] }, orderBy: { createdAt: "desc" }, take: 10 },
@@ -263,9 +276,10 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
   const listing = business.marketplaceListing;
   if (listing && (!listing.listed || !listing.discoverable)) throw ApiError.notFound("Business not found");
 
-  const [ratingRow, recentReviews] = await Promise.all([
+  const [ratingRow, recentReviews, google] = await Promise.all([
     prisma.feedback.aggregate({ where: { businessId: business.id }, _avg: { rating: true }, _count: { _all: true } }),
     prisma.feedback.findMany({ where: { businessId: business.id, comment: { not: null } }, orderBy: { createdAt: "desc" }, take: 5, select: { rating: true, comment: true, createdAt: true, sentiment: true, response: true, respondedAt: true } }),
+    googleRating(business.googlePlaceId),
   ]);
 
   let favourite = false;
@@ -312,7 +326,8 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     contact: { phone: business.phone },
     address: { line: listing?.addressLine ?? null, city: listing?.city ?? null, region: listing?.region ?? null, country: business.country, latitude: listing?.latitude ?? null, longitude: listing?.longitude ?? null },
     openingHours: (business.workingHours as unknown) ?? null,
-    photos: (listing?.photos as string[] | null) ?? [],
+    photos: [...business.galleryPhotos.map((photo) => galleryPhotoPath(business.publicSlug!, photo.id)), ...((listing?.photos as string[] | null) ?? [])],
+    gallery: business.galleryPhotos.map((photo) => ({ url: galleryPhotoPath(business.publicSlug!, photo.id), caption: photo.caption })),
     socialLinks: (listing?.socialLinks as Record<string, string> | null) ?? {},
     acceptsOnlineBooking: business.serviceOfferings.some((service) => service.publiclyBookable),
     services: business.serviceOfferings.map((service) => ({
@@ -332,6 +347,8 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
       totalReviews: ratingRow._count._all,
       recent: recentReviews.map((review) => ({ rating: review.rating, comment: review.comment, sentiment: review.sentiment, createdAt: review.createdAt, response: review.response, respondedAt: review.respondedAt })),
     },
+    // Live from Google, never stored; clients must label it "Google".
+    google: google ? { ...google, attribution: "Google" } : null,
     viewer: { favourite, following },
     loyalty,
     shareUrl: buildShareUrl(business.publicSlug!),

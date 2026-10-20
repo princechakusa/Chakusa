@@ -10,6 +10,7 @@ import { bulkConversationUpdate, completeMessagingAnalytics, createMessagingTemp
 import { attachmentStorageHealth, createAttachmentDownload, downloadAttachment, initiateAttachment, rescanAttachment, uploadAttachment } from "../../lib/messaging/attachmentPlatform.js";
 import { requireCapability } from "../../lib/authorization.js";
 import { getProviderCredentialVerifier } from "../../lib/messaging/providerRegistry.js";
+import { sendBusinessInquiryReply } from "../../lib/marketplace/inquiries.js";
 
 /** #18: a conversation is unread when its newest inbound message post-dates the last time a member opened it. */
 const isConversationUnread = (c: { lastInboundAt: Date | null; lastReadAt: Date | null }): boolean =>
@@ -61,6 +62,14 @@ export default async function messageRoutes(fastify: FastifyInstance) {
     if (!result.count) throw ApiError.notFound("Conversation not found");
     await prisma.conversationLifecycleEvent.create({ data: { businessId: request.businessId!, conversationId: id, type: "UPDATED", actorId: request.user?.userId, metadata: body } });
     return prisma.conversation.findUnique({ where: { id } });
+  });
+
+  // In-app reply to a Chakusa app customer's question (CUSTOMER_APP_INQUIRY threads only).
+  fastify.post("/conversations/:id/reply", async (request, reply) => {
+    requireCapability(request, "messaging.operate");
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const { body } = z.object({ body: z.string().max(4000) }).parse(request.body);
+    reply.status(201).send(await sendBusinessInquiryReply(request.businessId!, id, body));
   });
 
   fastify.post("/conversations/:id/notes", async (request, reply) => {

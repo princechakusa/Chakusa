@@ -54,6 +54,24 @@ export async function notifyLeadCreated(
   );
 }
 
+export async function notifyCustomerInquiry(
+  businessId: string,
+  inquiry: { conversationId: string; customerName: string; preview: string },
+  provider?: PushProvider,
+): Promise<void> {
+  await safeSend(businessId, (ownerId) =>
+    sendPushToUser(
+      ownerId,
+      {
+        title: `Message from ${inquiry.customerName}`,
+        body: truncate(inquiry.preview),
+        data: { type: "conversation", conversationId: inquiry.conversationId },
+      },
+      provider,
+    ),
+  );
+}
+
 export async function notifyFeedbackReceived(
   businessId: string,
   feedback: { id: string; rating: number; comment: string | null; sentiment: string | null },

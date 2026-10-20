@@ -17,6 +17,7 @@ import customerPlatformRoutes from "./modules/customer/customer.routes.js";
 import marketplaceRoutes from "./modules/marketplace/marketplace.routes.js";
 import customerBookingRoutes from "./modules/customer/booking.routes.js";
 import customerAIAssistantRoutes from "./modules/customer/aiAssistant.routes.js";
+import customerInquiryRoutes from "./modules/customer/inquiries.routes.js";
 import customerInvoiceRoutes from "./modules/customer/invoices.routes.js";
 import customerLoyaltyRoutes from "./modules/customer/loyalty.routes.js";
 import loyaltyBusinessRoutes from "./modules/loyalty/loyaltyBusiness.routes.js";
@@ -321,6 +322,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(marketplaceRoutes, { prefix: "/customer/marketplace" });
   await app.register(customerBookingRoutes, { prefix: "/customer/bookings" });
   await app.register(customerAIAssistantRoutes, { prefix: "/customer/ai/assistant" });
+  await app.register(customerInquiryRoutes, { prefix: "/customer/inquiries" });
   await app.register(customerInvoiceRoutes, { prefix: "/customer/invoices", provider: options.stripePaymentProvider });
   await app.register(customerLoyaltyRoutes, { prefix: "/customer/loyalty" });
   await app.register(businessRoutes, { prefix: "/business" });

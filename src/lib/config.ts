@@ -330,6 +330,9 @@ export const envSchema = z.object({
   // A clone can still pose as another client type (web/iOS) until those have
   // their own proof, so "off" is the default. See docs/OWNER_ACTIONS.md OA-16.
   PLAY_INTEGRITY_MODE: z.enum(["off", "report", "enforce"]).default("off"),
+  // Google Places API (New) key, server-side only. When absent, Google ratings
+  // and "also nearby on Google" are simply not offered.
+  GOOGLE_PLACES_API_KEY: optionalSecret,
   // Base64 of a Google service-account JSON key allowed to call
   // playintegrity.googleapis.com decodeIntegrityToken for this app.
   PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_BASE64: optionalSecret,

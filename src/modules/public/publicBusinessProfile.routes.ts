@@ -6,6 +6,8 @@ import { createPublicBookingSchema, publicAvailabilitySchema, reschedulePublicBo
 import { cancelPublicBooking, confirmPublicBooking, createPublicBooking, publicAvailability, publicBookingCalendar, reschedulePublicBooking, resolvePublicBooking, resolvePublicBusinessProfile, submitPublicContactForm } from "./publicBusinessProfile.service.js";
 import { createAppointmentPaymentLink } from "../payments/payments.service.js";
 import { paymentLinkSchema } from "../payments/payments.schemas.js";
+import { publicGalleryPhoto } from "../../lib/marketplace/gallery.js";
+import { z } from "zod";
 
 /**
  * Unauthenticated, permanent-link routes for a business's public profile
@@ -41,6 +43,21 @@ export default async function publicBusinessProfileRoutes(fastify: FastifyInstan
       reply
         .header("content-type", image.contentType)
         .header("cache-control", "public, max-age=86400")
+        .header("x-content-type-options", "nosniff")
+        .send(image.bytes);
+    },
+  );
+
+  // Owner gallery photos. Ids are immutable, so responses cache for a year.
+  fastify.get<{ Params: { slug: string; photoId: string } }>(
+    "/:slug/gallery/:photoId",
+    { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { photoId } = z.object({ photoId: z.string().uuid() }).parse(request.params);
+      const image = await publicGalleryPhoto(request.params.slug, photoId);
+      reply
+        .header("content-type", image.contentType)
+        .header("cache-control", "public, max-age=31536000, immutable")
         .header("x-content-type-options", "nosniff")
         .send(image.bytes);
     },

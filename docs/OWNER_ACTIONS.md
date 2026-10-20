@@ -528,7 +528,7 @@ is a console setting only the owner can change.
 
 Still open: authenticated device QA (uploads, sign-in, maps, call screening, push) and a MobSF scan of this exact APK (the scanner's web login is needed).
 
-## OA-15 — Outbound email for password reset (2026-10-19) — OPEN
+## OA-15 — Outbound email for password reset (2026-10-19) — RESOLVED 2026-10-20
 
 **Why:** Both apps now always show Sign in / Create account with email + password (the API has always accepted these; they need no outbound mail). "Forgot password?" sends a real reset email only when `/app-config` reports `features.passwordReset: true`, which requires BOTH the admin switch **Password reset email** (`app.email_auth_enabled`) AND `RESEND_API_KEY` + `EMAIL_FROM` set on the API. Live production on 2026-10-19 reports `emailAuth: false`, so reset currently tells people to contact support instead of promising an email.
 
@@ -540,7 +540,9 @@ Still open: authenticated device QA (uploads, sign-in, maps, call screening, pus
 
 Until then, sign-in and sign-up work; only self-service reset is unavailable.
 
-**2026-10-20 note:** a send-only Resend key exists on the build machine (user environment variable) - it can be reused for step 2, but its domain status can't be read with a send-only key, so confirm the domain shows *Verified* in the Resend dashboard. Reset is now hardened (per-account cooldown and hourly cap, timing-safe response, other links retired on reset, "password changed" notice, token stripped from the reset page URL).
+**Resolved 2026-10-20:** `chakusarecovery.com` added and verified in Resend (DKIM `resend._domainkey`, `send`/`rsend` CNAMEs, `_dmarc` p=none in Cloudflare, DNS only; existing Email Routing MX/SPF untouched). Render: `RESEND_API_KEY` (owner-pasted), `EMAIL_FROM=Chakusa <no-reply@chakusarecovery.com>`, `EMAIL_ENABLED=true`, live 18:35. Admin switch *Password reset email* on; `/app-config` reports `passwordReset: true`. Remaining: owner confirms a real reset email arrives for an existing account.
+
+**Earlier note:** a send-only Resend key exists on the build machine (user environment variable) - it can be reused for step 2, but its domain status can't be read with a send-only key, so confirm the domain shows *Verified* in the Resend dashboard. Reset is now hardened (per-account cooldown and hourly cap, timing-safe response, other links retired on reset, "password changed" notice, token stripped from the reset page URL).
 
 ## OA-16 — Turn on Google Play Integrity (anti-clone, server side) (2026-10-19) — OPEN
 

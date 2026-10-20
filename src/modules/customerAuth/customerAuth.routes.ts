@@ -2,10 +2,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../../lib/config.js";
 import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
-import { createAppleChallenge, createPasswordReset, resetPassword, validateAppleChallenge } from "../auth/auth.service.js";
+import { createAppleChallenge, resetPassword, validateAppleChallenge } from "../auth/auth.service.js";
 import { verifyGoogleIdToken, type GoogleTokenVerifier } from "../auth/googleVerifier.js";
 import { exchangeAppleAuthorizationCode, verifyAppleIdentityToken, type AppleCodeExchanger, type AppleTokenVerifier } from "../auth/appleAuth.js";
-import { sendPasswordResetEmail } from "../auth/passwordResetEmail.js";
+import { requestPasswordReset, sendPasswordChangedEmail } from "../auth/passwordResetEmail.js";
 import { consumeEmailVerification, createEmailVerification } from "../../lib/customer/emailVerification.js";
 import {
   customerAppleSignIn,
@@ -128,14 +128,14 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
 
   fastify.post("/forgot-password", rl(5, "15 minutes"), async (request, reply) => {
     const input = customerForgotPasswordSchema.parse(request.body);
-    const token = await createPasswordReset(input.email);
-    if (token) await sendPasswordResetEmail(input.email, token).catch(() => undefined);
+    await requestPasswordReset(input.email, request.log);
     reply.send({ message: "If an account exists for that email, a reset link has been sent." });
   });
 
   fastify.post("/reset-password", rl(10, "15 minutes"), async (request, reply) => {
     const input = customerResetPasswordSchema.parse(request.body);
-    await resetPassword(input.token, input.password);
+    const { email } = await resetPassword(input.token, input.password);
+    void sendPasswordChangedEmail(email);
     reply.send({ message: "Password updated. Please sign in again." });
   });
 

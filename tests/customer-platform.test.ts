@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { config } from "../src/lib/config.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -75,8 +76,10 @@ describe("Customer Platform Foundation (Program 2, Loop 1)", () => {
 
     it("resets a password through the customer endpoint", async () => {
       const customer = await registerCustomer(app);
-      await app.inject({ method: "POST", url: "/customer/auth/forgot-password", payload: { email: customer.email } });
-      const reset = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: customer.userId } });
+      const res = await app.inject({ method: "POST", url: "/customer/auth/forgot-password", payload: { email: customer.email } });
+      expect(res.statusCode).toBe(200);
+      // The link is issued after the response (constant-time reply).
+      const reset = await vi.waitFor(() => prisma.passwordResetToken.findFirstOrThrow({ where: { userId: customer.userId } }), { timeout: 3000 });
       expect(reset.usedAt).toBeNull();
     });
   });

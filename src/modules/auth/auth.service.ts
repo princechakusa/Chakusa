@@ -626,11 +626,21 @@ export async function revokeAllSessions(userId: string, reason = "logout_all", d
   });
 }
 
+// Per-account throttle on top of the per-IP route limits, so nobody can
+// flood one inbox from many addresses: one link a minute, five an hour.
+export const PASSWORD_RESET_COOLDOWN_MS = 60_000;
+export const PASSWORD_RESET_HOURLY_CAP = 5;
+
 export async function createPasswordReset(email: string): Promise<string | null> {
   const token = generateOpaqueToken();
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) } });
     if (!user?.passwordHash) return null;
+    // Serialise concurrent requests for one account so the throttle holds.
+    await tx.$executeRaw`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`;
+    const recent = await tx.passwordResetToken.findMany({ where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60 * 60_000) } }, select: { createdAt: true }, orderBy: { createdAt: "desc" } });
+    if (recent.length >= PASSWORD_RESET_HOURLY_CAP) return null;
+    if (recent[0] && Date.now() - recent[0].createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS) return null;
     await tx.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
@@ -647,7 +657,8 @@ export async function createPasswordReset(email: string): Promise<string | null>
   });
 }
 
-export async function resetPassword(rawToken: string, password: string) {
+/** Resets the password and returns the account email (for the security notice). */
+export async function resetPassword(rawToken: string, password: string): Promise<{ email: string }> {
   const id = parseOpaqueToken(rawToken);
   if (!id) throw ApiError.auth(400, "AUTH_RESET_TOKEN_INVALID", "Invalid password reset token");
   const passwordHash = await hashPassword(password);
@@ -663,17 +674,20 @@ export async function resetPassword(rawToken: string, password: string) {
       data: { usedAt: new Date() },
     });
     if (claimed.count !== 1) return "used" as const;
-    await tx.user.update({ where: { id: reset.userId }, data: { passwordHash } });
+    const user = await tx.user.update({ where: { id: reset.userId }, data: { passwordHash }, select: { email: true } });
     await tx.authSession.updateMany({
       where: { userId: reset.userId, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: "password_reset" },
     });
-    return "ok" as const;
+    // Any other outstanding link for this account dies with this reset.
+    await tx.passwordResetToken.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: new Date() } });
+    return { email: user.email };
   });
 
   if (outcome === "invalid") throw ApiError.auth(400, "AUTH_RESET_TOKEN_INVALID", "Invalid password reset token");
   if (outcome === "expired") throw ApiError.auth(400, "AUTH_RESET_TOKEN_EXPIRED", "Password reset token expired");
   if (outcome === "used") throw ApiError.auth(400, "AUTH_RESET_TOKEN_USED", "Password reset token has already been used");
+  return outcome;
 }
 
 export async function deleteAccount(userId: string, password: string) {

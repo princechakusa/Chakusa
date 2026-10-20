@@ -19,7 +19,6 @@ import {
   authenticateAppleIdentity,
   createAppleChallenge,
   authenticateGoogleIdentity,
-  createPasswordReset,
   deleteAccount,
   deleteAccountWithGoogle,
   deleteAccountWithApple,
@@ -38,7 +37,7 @@ import {
   updateUserProfile,
   changeAccountPassword,
 } from "./auth.service.js";
-import { sendPasswordResetEmail } from "./passwordResetEmail.js";
+import { requestPasswordReset, sendPasswordChangedEmail } from "./passwordResetEmail.js";
 import { requireFreshGoogleIdentity, verifyGoogleIdToken, type GoogleTokenVerifier } from "./googleVerifier.js";
 import {
   exchangeAppleAuthorizationCode,
@@ -243,18 +242,15 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
     { config: { rateLimit: { max: 5, timeWindow: "1 hour" } } },
     async (request, reply) => {
       const input = forgotPasswordSchema.parse(request.body);
-      const token = await createPasswordReset(input.email);
-      if (token) {
-        const delivered = await sendPasswordResetEmail(input.email.trim().toLowerCase(), token);
-        if (!delivered) request.log.warn("Password reset email was not delivered");
-      }
+      await requestPasswordReset(input.email, request.log);
       reply.status(202).send({ message: "If an account exists, password reset instructions have been sent." });
     },
   );
 
   fastify.post("/reset-password", { config: { rateLimit: { max: 10, timeWindow: "15 minutes" } } }, async (request, reply) => {
     const input = resetPasswordSchema.parse(request.body);
-    await resetPassword(input.token, input.password);
+    const { email } = await resetPassword(input.token, input.password);
+    void sendPasswordChangedEmail(email);
     reply.send({ message: "Password reset successfully. Sign in with your new password." });
   });
 

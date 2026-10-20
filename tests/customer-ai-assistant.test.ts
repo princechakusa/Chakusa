@@ -8,6 +8,7 @@ import { registerBuiltInAIProviders } from "../src/lib/ai/registerProviders.js";
 import { resetCircuitBreakers } from "../src/lib/ai/ops/circuitBreaker.js";
 import { savePolicyDraft, activatePolicy } from "../src/lib/ai/policyAdmin.js";
 import { resetCustomerAssistantPromptCache } from "../src/lib/ai/customerAssistant/customerAssistant.js";
+import { AIProviderError } from "../src/lib/ai/providers/providerTransport.js";
 
 const SCRIPTED = "scripted-assistant";
 const openEveryDay = { version: 1, days: Object.fromEntries(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((d) => [d, { enabled: true, opensAt: "00:00", closesAt: "23:59" }])) };
@@ -103,6 +104,18 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
     config.ADMIN_CONSOLE_ENABLED = false;
     await app.close();
     await prisma.$disconnect();
+  });
+
+  it("an AI vendor failure (e.g. unknown model) answers 503 AI_UNAVAILABLE, never a raw internal error", async () => {
+    const shop = await bookableBusiness(app, "Vendor Down Cuts");
+    const customer = await registerCustomer(app);
+    await favourite(app, customer.token, shop.businessId);
+    registerAIProvider({ id: SCRIPTED, async invoke() { throw new AIProviderError("models/s1 is not found", { kind: "bad_request", retriable: false, status: 404 }); } });
+    const conversationId = await newConversation(app, customer.token, shop.slug);
+    const res = await say(app, customer.token, conversationId, "hello");
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe("AI_UNAVAILABLE");
+    expect(res.body).not.toContain("not found");
   });
 
   describe("conversation lifecycle", () => {

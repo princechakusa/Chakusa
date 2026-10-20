@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyError } from "fastify";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import { ApiError } from "../lib/errors.js";
+import { AIProviderError } from "../lib/ai/providers/providerTransport.js";
 
 export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
   fastify.setErrorHandler((error: FastifyError | ApiError | ZodError, request, reply) => {
@@ -61,6 +62,17 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
     if ("statusCode" in error && typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 500) {
       reply.status(error.statusCode).send({
         error: { code: "BAD_REQUEST", message: error.message },
+      });
+      return;
+    }
+
+    // The AI vendor failed (bad key, unknown model, quota, outage). That is not
+    // the user's fault and not a crash: say the assistant is unavailable, and
+    // log the failure class (never the vendor message, which can echo input).
+    if (error instanceof AIProviderError) {
+      request.log.warn({ aiProvider: { kind: error.kind, status: error.status, providerCode: error.providerCode, retriable: error.retriable } }, "AI provider request failed");
+      reply.status(503).send({
+        error: { code: "AI_UNAVAILABLE", message: "The assistant is unavailable right now. Please try again in a moment." },
       });
       return;
     }

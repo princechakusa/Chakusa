@@ -6,16 +6,29 @@ export function outboundEmailConfigured(): boolean {
   return Boolean(config.RESEND_API_KEY && config.EMAIL_FROM);
 }
 
-async function sendEmail(to: string, subject: string, html: string, text: string): Promise<boolean> {
-  if (!outboundEmailConfigured()) return false;
+type EmailLog = { warn: (msg: string) => void };
+
+/** Resend's error (status, name, message) for the logs; never includes the recipient. */
+async function describeEmailFailure(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { name?: unknown; message?: unknown } | null;
+  return [`HTTP ${response.status}`, body?.name, body?.message].filter((part) => typeof part === "string" || typeof part === "number").join(" - ").slice(0, 300);
+}
+
+async function sendEmail(to: string, subject: string, html: string, text: string, log?: EmailLog): Promise<boolean> {
+  if (!outboundEmailConfigured()) {
+    log?.warn("Email not sent: RESEND_API_KEY or EMAIL_FROM is not set");
+    return false;
+  }
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${config.RESEND_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({ from: config.EMAIL_FROM, to: [to], subject, html, text }),
     });
+    if (!response.ok) log?.warn(`Email "${subject}" rejected by Resend: ${await describeEmailFailure(response)}`);
     return response.ok;
-  } catch {
+  } catch (error) {
+    log?.warn(`Email "${subject}" could not reach Resend: ${error instanceof Error ? error.message : "unknown error"}`);
     return false;
   }
 }
@@ -23,7 +36,7 @@ async function sendEmail(to: string, subject: string, html: string, text: string
 const wrap = (body: string) =>
   `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#182B29">${body}<p style="color:#8C948E;font-size:12px;margin-top:32px">Chakusa · chakusarecovery.com</p></div>`;
 
-export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
+export async function sendPasswordResetEmail(email: string, token: string, log?: EmailLog): Promise<boolean> {
   const resetUrl = new URL(config.PASSWORD_RESET_URL);
   resetUrl.searchParams.set("token", token);
   const minutes = config.PASSWORD_RESET_TTL_MINUTES;
@@ -36,11 +49,12 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
 <p>This link works once and expires in ${minutes} minutes. Resetting signs you out on every device.</p>
 <p>If you didn't ask for this, ignore this email - your password stays the same.</p>`),
     `Reset your Chakusa password: ${resetUrl.toString()}\n\nThis link works once and expires in ${minutes} minutes. If you didn't ask for this, ignore this email.`,
+    log,
   );
 }
 
 /** "Forgot password" on a Google/Apple account: tell the owner how they actually sign in. */
-export async function sendSocialSignInReminderEmail(email: string, providers: string[]): Promise<boolean> {
+export async function sendSocialSignInReminderEmail(email: string, providers: string[], log?: EmailLog): Promise<boolean> {
   const names = providers.map((p) => (p.toUpperCase() === "GOOGLE" ? "Google" : p.toUpperCase() === "APPLE" ? "Apple" : p)).join(" or ");
   return sendEmail(
     email,
@@ -50,6 +64,7 @@ export async function sendSocialSignInReminderEmail(email: string, providers: st
 <p>Open Chakusa and tap <b>Continue with ${names}</b> to sign in.</p>
 <p>If you didn't ask for this, ignore this email - nothing has changed.</p>`),
     `This Chakusa account signs in with ${names}, not a password. Open Chakusa and tap "Continue with ${names}". If you didn't ask for this, ignore this email.`,
+    log,
   );
 }
 
@@ -70,7 +85,7 @@ export async function sendPasswordChangedEmail(email: string): Promise<boolean> 
  * email provider, so the response time does not reveal whether the account
  * exists (the slow part is the network send). Never throws.
  */
-export async function requestPasswordReset(email: string, log: { warn: (msg: string) => void }): Promise<void> {
+export async function requestPasswordReset(email: string, log: EmailLog & { info?: (msg: string) => void }): Promise<void> {
   const normalized = email.trim().toLowerCase();
   let token: string | null = null;
   try {
@@ -82,12 +97,19 @@ export async function requestPasswordReset(email: string, log: { warn: (msg: str
   if (!token) {
     // No password on this account (Google/Apple): remind the owner by email.
     // The HTTP response is identical either way, so nothing is revealed.
+    // The logs never name the address, only which path the request took.
     const providers = await passwordlessSignInProviders(normalized).catch(() => null);
-    if (providers?.length) void sendSocialSignInReminderEmail(normalized, providers).then((ok) => { if (!ok) log.warn("Sign-in reminder email was not delivered"); });
+    if (!providers?.length) {
+      log.info?.("Password reset: nothing sent (no account with that email, or a recent reset/reminder is still cooling down)");
+      return;
+    }
+    log.info?.(`Password reset: account signs in with ${providers.join("/")}; sending a sign-in reminder`);
+    void sendSocialSignInReminderEmail(normalized, providers, log).then((ok) => { if (!ok) log.warn("Sign-in reminder email was not delivered"); });
     return;
   }
   const issued = token;
-  void sendPasswordResetEmail(normalized, issued).then((delivered) => {
+  log.info?.("Password reset: link issued; sending reset email");
+  void sendPasswordResetEmail(normalized, issued, log).then((delivered) => {
     if (!delivered) log.warn("Password reset email was not delivered");
   });
 }

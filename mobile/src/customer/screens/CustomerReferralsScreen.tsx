@@ -6,12 +6,13 @@ import { ActivityIndicator, Pressable, Share, StyleSheet, Text, TextInput, View 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { ReferralCodeDto, ReferralOverviewDto } from '../../apiTypes';
 import { referralProgress, referralStatusLabel, shareInviteMessage } from '../../domain/loyalty';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate } from '../../utils/format';
 import { ReferralProgressCard } from '../components/loyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerReferrals'>;
 
@@ -31,7 +32,7 @@ function SectionLabel({ title }: { title: string }) {
 function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
+      {icon ? <Ionicons name={icon} size={17} color={premium.onDeep} /> : null}
       <Text style={styles.primaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -40,7 +41,7 @@ function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: 
 function SecondaryBtn({ label, disabled, onPress }: { label: string; disabled?: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {disabled ? <ActivityIndicator size="small" color={authColors.ink} /> : null}
+      {disabled ? <ActivityIndicator size="small" color={premium.ink} /> : null}
       <Text style={styles.secondaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -94,13 +95,13 @@ export function CustomerReferralsScreen(_: Props) {
     }
   };
 
-  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading referrals…" /></Screen>;
-  if (error && !overview) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading referrals…" /></Screen>;
+  if (error && !overview) return <Screen backgroundColor={premium.bg}><ErrorState message={error} onRetry={load} /></Screen>;
 
   const progress = overview ? referralProgress(overview) : { invited: 0, joined: 0, completed: 0, conversionRate: 0 };
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>REFERRALS</Text>
         <Text style={styles.title}>Invite friends</Text>
@@ -127,7 +128,7 @@ export function CustomerReferralsScreen(_: Props) {
           value={entry}
           onChangeText={setEntry}
           placeholder="Enter a friend’s referral code"
-          placeholderTextColor={authColors.inkFaint}
+          placeholderTextColor={premium.inkFaint}
           autoCapitalize="characters"
           autoCorrect={false}
         />
@@ -156,23 +157,23 @@ export function CustomerReferralsScreen(_: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
-  code: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: authColors.ink, letterSpacing: 1 },
+  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
+  code: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: premium.ink, letterSpacing: 1 },
   meta: { ...authType.body, fontSize: 12 },
-  input: { minHeight: 48, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bgSunk, paddingHorizontal: authSpace.md, ...authType.body, fontSize: 15, color: authColors.ink },
+  input: { minHeight: 48, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.sageSoft, paddingHorizontal: authSpace.md, ...authType.body, fontSize: 15, color: premium.ink },
   entryMessage: { ...authType.body, fontSize: 12 },
   list: { gap: authSpace.xs },
-  referralRow: { flexDirection: 'row', alignItems: 'center', padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
+  referralRow: { flexDirection: 'row', alignItems: 'center', padding: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, ...authShadow.card },
   copy: { flex: 1, minWidth: 0 },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  secondaryBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  secondaryBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

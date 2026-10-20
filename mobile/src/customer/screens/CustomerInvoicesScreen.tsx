@@ -6,12 +6,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerInvoiceListItemDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate, formatMoney } from '../../utils/format';
 import { customerInvoiceStatusLabel, isCustomerInvoiceOverdue, outstandingInvoiceCount, sortCustomerInvoices } from '../domain/customerInvoices';
 import { customerInvoicesApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
@@ -58,7 +59,7 @@ export function CustomerInvoicesScreen() {
   const outstanding = outstandingInvoiceCount(items);
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>INVOICES</Text>
         <Text style={styles.title}>Your invoices</Text>
@@ -98,7 +99,7 @@ export function CustomerInvoicesScreen() {
                   <Text style={styles.total}>{formatMoney(invoice.total, invoice.currency)}</Text>
                   <StatusPill label={customerInvoiceStatusLabel(invoice.status, overdue)} />
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={authColors.coral} />
+                <Ionicons name="chevron-forward" size={16} color={premium.deep} />
               </Pressable>
             );
           })}
@@ -110,24 +111,24 @@ export function CustomerInvoicesScreen() {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
   list: { gap: authSpace.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
+  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, ...authShadow.card },
   pressed: { opacity: 0.78 },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   alignEnd: { alignItems: 'flex-end', gap: 4 },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   meta: { ...authType.body, fontSize: 12 },
-  metaOverdue: { color: authColors.danger },
-  total: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  pill: { paddingHorizontal: authSpace.xs, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft },
-  pillText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.coral },
+  metaOverdue: { color: premium.danger },
+  total: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
+  pill: { paddingHorizontal: authSpace.xs, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft },
+  pillText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: premium.deep },
   pillPositive: { backgroundColor: '#EAF9F1' },
-  pillTextPositive: { color: authColors.positive },
+  pillTextPositive: { color: '#1E7A55' },
   pillDanger: { backgroundColor: '#FDECEC' },
-  pillTextDanger: { color: authColors.danger },
+  pillTextDanger: { color: premium.danger },
   pillAttention: { backgroundColor: '#FDF3E4' },
   pillTextAttention: { color: '#B7791F' },
 });

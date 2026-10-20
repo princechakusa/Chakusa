@@ -6,11 +6,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { LoyaltyAccountSummaryDto } from '../../apiTypes';
 import { formatPoints, sortRewards } from '../../domain/loyalty';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { RewardCard, TierProgressBar } from '../components/loyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLoyaltyBusiness'>;
 
@@ -36,7 +37,7 @@ function PrimaryBtn({ label, disabled, onPress }: { label: string; disabled?: bo
 function SecondaryBtn({ label, icon, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.ink} /> : null}
+      {icon ? <Ionicons name={icon} size={17} color={premium.ink} /> : null}
       <Text style={styles.secondaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -72,15 +73,15 @@ export function CustomerLoyaltyBusinessScreen({ route, navigation }: Props) {
     }
   };
 
-  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
-  if (error || !account) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading…" /></Screen>;
+  if (error || !account) return <Screen backgroundColor={premium.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   const name = account.business?.name ?? businessName ?? 'This business';
   const rewards = sortRewards(account.availableRewards);
   const effectiveSlug = slug ?? account.business?.publicSlug ?? undefined;
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>LOYALTY</Text>
         <Text style={styles.title}>{name}</Text>
@@ -140,24 +141,24 @@ export function CustomerLoyaltyBusinessScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
-  joinCard: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
-  joinTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink },
+  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
+  joinCard: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
+  joinTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink },
   joinBody: { ...authType.body, fontSize: 13 },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
   perks: { gap: authSpace.xxs },
   perk: { ...authType.body, fontSize: 13 },
   expiry: { ...authType.body, fontSize: 12 },
   actions: { gap: authSpace.sm },
   list: { gap: authSpace.xs },
-  error: { ...authType.body, fontSize: 12, color: authColors.danger },
-  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  error: { ...authType.body, fontSize: 12, color: premium.danger },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

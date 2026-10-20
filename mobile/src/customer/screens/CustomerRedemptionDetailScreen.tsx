@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '../../components/ui';
 import { redemptionCodeDisplay } from '../../domain/loyalty';
-import { authColors, authRadius, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authSpace, authType } from '../../experience/authTheme';
 import { RedemptionCodeCard } from '../components/loyalty';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRedemptionDetail'>;
 
@@ -19,7 +20,7 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRedempt
 export function CustomerRedemptionDetailScreen({ route, navigation }: Props) {
   const { redemption } = route.params;
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>YOUR REWARD</Text>
         <Text style={styles.title}>{redemption.reward?.name ?? 'Reward'}</Text>
@@ -34,9 +35,9 @@ export function CustomerRedemptionDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
-  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   pressed: { opacity: 0.85 },
 });

@@ -6,11 +6,12 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerMembershipDto } from '../../apiTypes';
 import { isMembershipActive, membershipStatusLabel } from '../../domain/loyalty';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate, formatMoney } from '../../utils/format';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerMemberships'>;
 
@@ -61,7 +62,7 @@ export function CustomerMembershipsScreen(_: Props) {
   };
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MEMBERSHIPS</Text>
         <Text style={styles.title}>Your memberships</Text>
@@ -94,14 +95,14 @@ export function CustomerMembershipsScreen(_: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   list: { gap: authSpace.sm },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.xxs, ...authShadow.card },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.xxs, ...authShadow.card },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink },
   meta: { ...authType.body, fontSize: 12 },
-  secondaryBtn: { minHeight: 48, marginTop: authSpace.xs, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  secondaryBtn: { minHeight: 48, marginTop: authSpace.xs, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

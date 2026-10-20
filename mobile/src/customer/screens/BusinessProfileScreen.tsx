@@ -136,7 +136,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={premium.deep} />}
       >
-        <PhotoCarousel testID="business-photo" photos={heroPhotos} name={profile.name} width={width} height={heroHeight} />
+        <PhotoCarousel testID="business-photo" photos={heroPhotos} name={profile.name} width={width} height={heroHeight} chromeBottom={42} onPress={gallery.length ? (index) => setViewer(index) : undefined} />
 
         <View style={styles.sheet}>
           <Text style={styles.eyebrow}>{profile.category.toUpperCase()}{profile.address.city ? ` · ${profile.address.city.toUpperCase()}` : ''}</Text>

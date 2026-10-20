@@ -34,7 +34,8 @@ interface Pending { id: string; text: string; at: string; failed: boolean }
 function friendly(caught: unknown): string {
   if (caught instanceof ApiError && (caught.code === 'AI_UNAVAILABLE' || caught.status === 503)) return 'The assistant is unavailable right now. Please try again in a moment.';
   if (caught instanceof ApiError && caught.status === 429) return 'That was a lot of questions at once. Wait a few seconds and try again.';
-  return 'The assistant could not answer. Check your connection and try again.';
+  if (caught instanceof ApiError && caught.kind === 'network') return 'You seem to be offline. Check your connection and try again.';
+  return 'The assistant couldn’t answer just now. Please try again.';
 }
 
 export function CustomerAssistantScreen({ navigation, route }: Props) {

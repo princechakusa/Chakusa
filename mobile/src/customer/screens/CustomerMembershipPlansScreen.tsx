@@ -4,11 +4,12 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { MembershipPlanDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { membershipPlanPriceCaption } from '../domain/customerLoyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerMembershipPlans'>;
 
@@ -69,11 +70,11 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
     );
   };
 
-  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading plans…" /></Screen>;
-  if (error) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading plans…" /></Screen>;
+  if (error) return <Screen backgroundColor={premium.bg}><ErrorState message={error} onRetry={load} /></Screen>;
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MEMBERSHIP</Text>
         <Text style={styles.title}>{businessName ? `${businessName} membership` : 'Membership plans'}</Text>
@@ -105,18 +106,18 @@ export function CustomerMembershipPlansScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   disclaimer: { ...authType.body, fontSize: 12, marginBottom: authSpace.sm },
   list: { gap: authSpace.sm },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink },
   meta: { ...authType.body, fontSize: 12 },
-  price: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  price: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   perks: { gap: authSpace.xxs },
   perk: { ...authType.body, fontSize: 12 },
-  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

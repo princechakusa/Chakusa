@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorState } from '../../components/ui';
 import { authColors, authSpace, authType } from '../../experience/authTheme';
+import { premium } from '../premiumTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import { BookingDetailScreen } from '../screens/BookingDetailScreen';
 import { BookingFlowScreen } from '../screens/BookingFlowScreen';
@@ -72,7 +73,7 @@ function CustomerTabBar({ state, navigation }: BottomTabBarProps) {
             }}
             style={styles.tab}
           >
-            <Ionicons name={focused ? icon.active : icon.inactive} size={23} color={focused ? authColors.coral : authColors.inkFaint} />
+            <Ionicons name={focused ? icon.active : icon.inactive} size={23} color={focused ? premium.deep : premium.inkFaint} />
             <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{tabLabels[key]}</Text>
           </Pressable>
         );
@@ -125,11 +126,11 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
     <Stack.Navigator
       screenOptions={{
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: authColors.bg },
+        headerStyle: { backgroundColor: premium.bg },
         headerTintColor: authColors.ink,
         headerTitle: '',
         headerBackButtonDisplayMode: 'minimal',
-        contentStyle: { backgroundColor: authColors.bg },
+        contentStyle: { backgroundColor: premium.bg },
       }}
     >
       {!authed ? (
@@ -179,8 +180,8 @@ function LegalGate() {
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: authSpace.sm, backgroundColor: authColors.bg },
   centreText: { ...authType.body, color: authColors.inkSoft },
-  tabBar: { minHeight: 64, backgroundColor: authColors.surface, borderTopWidth: 1, borderTopColor: authColors.line, flexDirection: 'row', paddingTop: authSpace.xs, paddingHorizontal: authSpace.xs },
+  tabBar: { minHeight: 64, backgroundColor: premium.card, borderTopWidth: 1, borderTopColor: premium.line, flexDirection: 'row', paddingTop: authSpace.xs, paddingHorizontal: authSpace.xs },
   tab: { flex: 1, minWidth: 0, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  tabLabel: { ...authType.micro, fontSize: 10, color: authColors.inkFaint },
-  tabLabelActive: { color: authColors.coral },
+  tabLabel: { ...authType.micro, fontSize: 10, color: premium.inkFaint },
+  tabLabelActive: { color: premium.deep },
 });

@@ -5,10 +5,11 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { LegalDocumentDto, LegalDocumentType } from '../../apiTypes';
 import { APPROVED_PUBLIC_DESTINATIONS } from '../../domain/trustSettings';
-import { authColors, authSpace, authType } from '../../experience/authTheme';
+import { authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { legalApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLegalDocument'>;
 
@@ -48,12 +49,12 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
 
   useEffect(load, [type]);
 
-  if (loading) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
+  if (loading) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading…" /></Screen>;
   // Not published through the Legal Platform yet: the same document is public on the website.
   const websiteUrl = WEBSITE_LEGAL_URLS[type];
   if (notFound && websiteUrl) {
     return (
-      <Screen backgroundColor={authColors.bg}>
+      <Screen backgroundColor={premium.bg}>
         <Text style={styles.body}>This document is published on the Chakusa website.</Text>
         <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(websiteUrl)} style={styles.link}>
           <Text style={styles.linkText}>Open on chakusarecovery.com</Text>
@@ -61,10 +62,10 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
       </Screen>
     );
   }
-  if (error || !doc) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (error || !doc) return <Screen backgroundColor={premium.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>LEGAL</Text>
         <Text style={styles.title}>{doc.title}</Text>
@@ -78,11 +79,11 @@ export function CustomerLegalDocumentScreen({ route }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  summary: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  summary: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   body: { ...authType.body },
-  link: { marginTop: authSpace.md, paddingVertical: authSpace.sm, paddingHorizontal: authSpace.md, borderRadius: 999, backgroundColor: authColors.coral, alignSelf: 'flex-start' },
-  linkText: { color: authColors.onCoral, fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  link: { marginTop: authSpace.md, paddingVertical: authSpace.sm, paddingHorizontal: authSpace.md, borderRadius: 999, backgroundColor: premium.deep, alignSelf: 'flex-start' },
+  linkText: { color: premium.onDeep, fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });

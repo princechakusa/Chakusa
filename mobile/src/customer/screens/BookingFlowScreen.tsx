@@ -10,11 +10,12 @@ import {
   formatSlotTime, groupSlotsByDay, slotsForStaff, staffOptions,
 } from '../../domain/booking';
 import { ApiError } from '../../services/api';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ServiceRow } from '../components/cards';
 import { memberPriceDisplay } from '../domain/customerLoyalty';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingFlow'>;
 
@@ -116,13 +117,13 @@ export function BookingFlowScreen({ route, navigation }: Props) {
     }
   };
 
-  if (loadingServices) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading services…" /></Screen>;
-  if (error && !services) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={() => navigation.replace('BookingFlow', route.params)} /></Screen>;
+  if (loadingServices) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading services…" /></Screen>;
+  if (error && !services) return <Screen backgroundColor={premium.bg}><ErrorState message={error} onRetry={() => navigation.replace('BookingFlow', route.params)} /></Screen>;
 
   const stepIndex = STEP_ORDER.indexOf(step);
 
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>NEW BOOKING</Text>
         <Text style={styles.title}>{services?.businessName ?? 'Book'}</Text>
@@ -228,7 +229,7 @@ export function BookingFlowScreen({ route, navigation }: Props) {
           onPress={() => setSmsConsent((value) => !value)}
           style={styles.consentRow}
         >
-          <Ionicons name={smsConsent ? 'checkbox' : 'square-outline'} size={22} color={smsConsent ? authColors.coral : authColors.inkFaint} />
+          <Ionicons name={smsConsent ? 'checkbox' : 'square-outline'} size={22} color={smsConsent ? premium.deep : premium.inkFaint} />
           <Text style={styles.consentText}>
             Text me about this appointment. I agree to receive appointment text messages (confirmations, reminders and updates) from {services?.businessName ?? 'this business'} via Chakusa at the phone number on my account. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking. See chakusarecovery.com/sms.
           </Text>
@@ -272,7 +273,7 @@ function SelectField({ placeholder, value, options, onSelect }: { placeholder: s
         <Text style={[styles.selectText, !selected && styles.selectPlaceholder]} numberOfLines={1}>
           {selected ? selected.label : placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={18} color={authColors.inkSoft} />
+        <Ionicons name="chevron-down" size={18} color={premium.inkSoft} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.sheetOverlay} onPress={() => setOpen(false)}>
@@ -290,7 +291,7 @@ function SelectField({ placeholder, value, options, onSelect }: { placeholder: s
                     style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}
                   >
                     <Text style={[styles.sheetRowText, isActive && styles.sheetRowTextActive]}>{option.label}</Text>
-                    {isActive ? <Ionicons name="checkmark" size={18} color={authColors.coral} /> : null}
+                    {isActive ? <Ionicons name="checkmark" size={18} color={premium.deep} /> : null}
                   </Pressable>
                 );
               })}
@@ -318,42 +319,42 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
   progressRow: { flexDirection: 'row', gap: authSpace.xxs, marginBottom: authSpace.sm },
-  progressSegment: { flex: 1, height: 4, borderRadius: authRadius.pill, backgroundColor: authColors.lineSoft },
-  progressSegmentActive: { backgroundColor: authColors.coral },
-  memberBanner: { padding: authSpace.sm, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.coral, backgroundColor: authColors.coralSoft },
-  memberBannerText: { ...authType.body, fontSize: 12, color: authColors.ink },
-  groupLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink, marginTop: authSpace.sm },
+  progressSegment: { flex: 1, height: 4, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft },
+  progressSegmentActive: { backgroundColor: premium.deep },
+  memberBanner: { padding: authSpace.sm, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.deep, backgroundColor: premium.sageSoft },
+  memberBannerText: { ...authType.body, fontSize: 12, color: premium.ink },
+  groupLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink, marginTop: authSpace.sm },
   list: { gap: authSpace.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xs },
-  chip: { minHeight: 38, paddingHorizontal: authSpace.md, justifyContent: 'center', borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  chipActive: { backgroundColor: authColors.coral, borderColor: authColors.coral },
-  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
-  chipTextActive: { color: authColors.onCoral },
+  chip: { minHeight: 38, paddingHorizontal: authSpace.md, justifyContent: 'center', borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  chipActive: { backgroundColor: premium.deep, borderColor: premium.deep },
+  chipText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.inkSoft },
+  chipTextActive: { color: premium.onDeep },
   empty: { ...authType.body, fontSize: 13 },
-  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: authSpace.md, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  selectText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink, flex: 1 },
-  selectPlaceholder: { color: authColors.inkFaint, fontFamily: 'Inter_400Regular' },
+  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: authSpace.md, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  selectText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.ink, flex: 1 },
+  selectPlaceholder: { color: premium.inkFaint, fontFamily: 'Inter_400Regular' },
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.45)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '70%', backgroundColor: authColors.surface, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg },
-  sheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink, marginBottom: authSpace.xs },
+  sheet: { maxHeight: '70%', backgroundColor: premium.card, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg },
+  sheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: premium.ink, marginBottom: authSpace.xs },
   sheetList: { flexGrow: 0 },
-  sheetRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
-  sheetRowText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: authColors.ink },
-  sheetRowTextActive: { color: authColors.coral, fontFamily: 'Inter_600SemiBold' },
-  summary: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs, ...authShadow.card },
-  summaryTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  sheetRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: premium.sageSoft },
+  sheetRowText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: premium.ink },
+  sheetRowTextActive: { color: premium.deep, fontFamily: 'Inter_600SemiBold' },
+  summary: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, gap: authSpace.xxs, ...authShadow.card },
+  summaryTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   summaryLine: { ...authType.body, fontSize: 13 },
   consentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: authSpace.sm, paddingVertical: authSpace.xs },
-  consentText: { ...authType.body, flex: 1, fontSize: 12, lineHeight: 18, color: authColors.inkSoft },
-  error: { ...authType.body, fontSize: 12, color: authColors.danger },
-  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  consentText: { ...authType.body, flex: 1, fontSize: 12, lineHeight: 18, color: premium.inkSoft },
+  error: { ...authType.body, fontSize: 12, color: premium.danger },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

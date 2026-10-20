@@ -5,11 +5,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { LoyaltyTransactionDto } from '../../apiTypes';
 import { groupTransactionsByMonth, transactionLabel } from '../../domain/loyalty';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate } from '../../utils/format';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerLoyaltyHistory'>;
 
@@ -55,7 +56,7 @@ export function CustomerLoyaltyHistoryScreen({ route }: Props) {
   const groups = groupTransactionsByMonth(items);
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>POINTS HISTORY</Text>
         <Text style={styles.title}>{businessName ?? 'Points history'}</Text>
@@ -95,20 +96,20 @@ export function CustomerLoyaltyHistoryScreen({ route }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   groups: { gap: authSpace.md },
   group: { gap: authSpace.xs },
   month: { ...authType.body, fontSize: 12 },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
-  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, paddingVertical: authSpace.sm, borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, paddingVertical: authSpace.sm, borderBottomWidth: 1, borderBottomColor: premium.sageSoft },
   copy: { flex: 1, minWidth: 0 },
-  label: { ...authType.body, fontSize: 13, color: authColors.ink },
+  label: { ...authType.body, fontSize: 13, color: premium.ink },
   meta: { ...authType.micro, textTransform: 'none', letterSpacing: 0, fontSize: 11, marginTop: 2 },
-  delta: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.positive },
-  deltaNegative: { color: authColors.ink },
-  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  delta: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: '#1E7A55' },
+  deltaNegative: { color: premium.ink },
+  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

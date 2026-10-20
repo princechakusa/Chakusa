@@ -5,11 +5,12 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '../../components/ui';
 import { formatPoints, rewardValueLabel } from '../../domain/loyalty';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { rewardEligibilityReason } from '../domain/customerLoyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRewardDetail'>;
 
@@ -23,7 +24,7 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerRewardD
 function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <Ionicons name={icon} size={18} color={authColors.coral} />
+      <Ionicons name={icon} size={18} color={premium.deep} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
@@ -88,7 +89,7 @@ export function CustomerRewardDetailScreen({ route, navigation }: Props) {
   };
 
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>REWARD</Text>
         <Text style={styles.title}>{reward.name}</Text>
@@ -120,22 +121,22 @@ export function CustomerRewardDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, paddingHorizontal: authSpace.md, ...authShadow.card },
   infoRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
   infoLabel: { ...authType.body, fontSize: 13, flex: 1 },
-  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink, textAlign: 'right', maxWidth: '58%' },
-  divider: { height: 1, backgroundColor: authColors.lineSoft },
+  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.ink, textAlign: 'right', maxWidth: '58%' },
+  divider: { height: 1, backgroundColor: premium.sageSoft },
   description: { ...authType.body },
   status: { ...authType.body, fontSize: 13 },
-  statusReady: { color: authColors.positive },
-  error: { ...authType.body, fontSize: 12, color: authColors.danger },
-  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  statusReady: { color: '#1E7A55' },
+  error: { ...authType.body, fontSize: 12, color: premium.danger },
+  primaryBtn: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, alignItems: 'center', justifyContent: 'center', ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  secondaryBtn: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

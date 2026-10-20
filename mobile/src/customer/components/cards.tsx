@@ -5,9 +5,10 @@ import type { CustomerBookingDto, MarketplaceCardDto } from '../../apiTypes';
 import { bookingStatusLabel } from '../../domain/booking';
 import { distanceLabel } from '../../domain/places';
 import { initials, photoSource } from '../../components/ProfilePhoto';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { formatDateTime } from '../../utils/format';
 import { marketplaceLoyaltyBadges } from '../domain/customerLoyalty';
+import { premium } from '../premiumTheme';
 
 // PROGRAM 2 LOOP 7: small presentational pieces for the customer app,
 // restyled onto experience/authTheme.ts tokens (warm cream, coral, pill
@@ -45,7 +46,7 @@ export function BusinessCard({ card, onPress }: { card: MarketplaceCardDto; onPr
         <BusinessCover uri={card.photoUrl} name={card.name} />
         {card.verified ? (
           <View style={styles.verifiedChip}>
-            <Ionicons name="shield-checkmark" size={12} color={authColors.onCoral} />
+            <Ionicons name="shield-checkmark" size={12} color={premium.onDeep} />
             <Text style={styles.verifiedChipText}>Verified</Text>
           </View>
         ) : null}
@@ -100,7 +101,7 @@ export function ServiceRow({
       <Ionicons
         name={selected ? 'radio-button-on' : 'radio-button-off'}
         size={20}
-        color={selected ? authColors.coral : authColors.inkFaint}
+        color={selected ? premium.deep : premium.inkFaint}
       />
     </Pressable>
   );
@@ -140,43 +141,43 @@ function statusTone(status: CustomerBookingDto['status']) {
 }
 
 function statusTextTone(status: CustomerBookingDto['status']) {
-  if (status === 'CONFIRMED' || status === 'COMPLETED') return { color: authColors.positive };
-  if (status === 'CANCELED' || status === 'NO_SHOW') return { color: authColors.danger };
+  if (status === 'CONFIRMED' || status === 'COMPLETED') return { color: '#1E7A55' };
+  if (status === 'CANCELED' || status === 'NO_SHOW') return { color: premium.danger };
   return { color: attention };
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: premium.line, ...authShadow.card },
   pressed: { opacity: 0.9 },
-  coverWrap: { width: '100%', aspectRatio: 16 / 10, backgroundColor: authColors.line },
+  coverWrap: { width: '100%', aspectRatio: 16 / 10, backgroundColor: premium.line },
   cover: { width: '100%', height: '100%' },
-  coverFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.coralSoft },
-  coverInitials: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 24, color: authColors.coral },
-  verifiedChip: { position: 'absolute', top: authSpace.xs, left: authSpace.xs, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: authColors.coral },
-  verifiedChipText: { ...authType.micro, textTransform: 'none', letterSpacing: 0, fontSize: 10, color: authColors.onCoral },
-  ratingChip: { position: 'absolute', top: authSpace.xs, right: authSpace.xs, paddingHorizontal: 8, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: authColors.surface },
-  ratingChipText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: authColors.ink },
+  coverFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: premium.sageSoft },
+  coverInitials: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 24, color: premium.deep },
+  verifiedChip: { position: 'absolute', top: authSpace.xs, left: authSpace.xs, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: premium.deep },
+  verifiedChipText: { ...authType.micro, textTransform: 'none', letterSpacing: 0, fontSize: 10, color: premium.onDeep },
+  ratingChip: { position: 'absolute', top: authSpace.xs, right: authSpace.xs, paddingHorizontal: 8, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: premium.card },
+  ratingChipText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: premium.ink },
   body: { padding: authSpace.md, gap: authSpace.sm },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
   cardCopy: { flex: 1, minWidth: 0 },
-  logo: { width: 40, height: 40, borderRadius: authRadius.sm, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.coral },
-  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  logo: { width: 40, height: 40, borderRadius: authRadius.sm, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.deep },
+  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   cardMeta: { ...authType.body, fontSize: 12, marginTop: 2 },
-  tagline: { ...authType.body, fontSize: 13, color: authColors.ink },
+  tagline: { ...authType.body, fontSize: 13, color: premium.ink },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: authSpace.xxs },
-  loyaltyBadge: { borderRadius: authRadius.pill, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: authColors.coralSoft, borderWidth: 1, borderColor: authColors.coral },
-  loyaltyBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.coral },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: authColors.lineSoft, paddingTop: authSpace.sm },
+  loyaltyBadge: { borderRadius: authRadius.pill, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: premium.sageSoft, borderWidth: 1, borderColor: premium.deep },
+  loyaltyBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: premium.deep },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: premium.sageSoft, paddingTop: authSpace.sm },
   rating: { ...authType.body, fontSize: 12 },
   cardAction: { ...authType.link },
-  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line },
-  serviceRowSelected: { borderColor: authColors.coral },
-  bookingCard: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, backgroundColor: authColors.surface, borderRadius: authRadius.lg, padding: authSpace.md, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
-  dateBadge: { width: 44, height: 44, borderRadius: authRadius.md, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
-  dateBadgeDay: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.coral, lineHeight: 20 },
-  dateBadgeMonth: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.coral },
+  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line },
+  serviceRowSelected: { borderColor: premium.deep },
+  bookingCard: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, backgroundColor: premium.card, borderRadius: authRadius.lg, padding: authSpace.md, borderWidth: 1, borderColor: premium.line, ...authShadow.card },
+  dateBadge: { width: 44, height: 44, borderRadius: authRadius.md, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  dateBadgeDay: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.deep, lineHeight: 20 },
+  dateBadgeMonth: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: premium.deep },
   statusChip: { borderRadius: authRadius.pill, paddingHorizontal: 9, paddingVertical: 4 },
   statusText: { fontFamily: 'Inter_600SemiBold', fontSize: 11 },
-  when: { ...authType.body, fontSize: 12, color: authColors.ink, marginTop: 2 },
+  when: { ...authType.body, fontSize: 12, color: premium.ink, marginTop: 2 },
 });

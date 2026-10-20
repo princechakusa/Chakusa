@@ -7,7 +7,8 @@ import { useConfirmSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { useExperience } from '../../experience/experienceContext';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authSpace, authType } from '../../experience/authTheme';
+import { premium, premiumSerif } from '../premiumTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -33,12 +34,12 @@ function Divider() {
 function MenuRow({ icon, label, detail, onPress, disabled = false, danger = false }: { icon: IconName; label: string; detail?: string; onPress: () => void; disabled?: boolean; danger?: boolean }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.rowDisabled]}>
-      <View style={[styles.rowIcon, danger && styles.rowIconDanger]}><Ionicons name={icon} size={17} color={danger ? authColors.danger : authColors.coral} /></View>
+      <View style={[styles.rowIcon, danger && styles.rowIconDanger]}><Ionicons name={icon} size={17} color={danger ? premium.danger : premium.deep} /></View>
       <View style={styles.rowCopy}>
         <Text numberOfLines={1} style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
         {detail ? <Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text> : null}
       </View>
-      <Ionicons name="chevron-forward" size={18} color={authColors.inkFaint} />
+      <Ionicons name="chevron-forward" size={18} color={premium.inkFaint} />
     </Pressable>
   );
 }
@@ -57,7 +58,7 @@ export function CustomerAccountScreen() {
   };
 
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>ACCOUNT</Text>
         <Text style={styles.title}>You</Text>
@@ -115,22 +116,22 @@ export function CustomerAccountScreen() {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.md },
-  eyebrow: { ...authType.micro, color: authColors.coral },
-  title: { ...authType.title, marginTop: 2 },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, marginBottom: authSpace.md },
+  eyebrow: { ...authType.micro, letterSpacing: 1, color: premium.inkFaint },
+  title: { fontFamily: premiumSerif, fontSize: 32, lineHeight: 38, color: premium.ink, marginTop: 4 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, marginBottom: authSpace.md, padding: authSpace.md, borderRadius: authRadius.lg, backgroundColor: premium.deep },
   identityCopy: { flex: 1, minWidth: 0 },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink },
-  email: { ...authType.body, fontSize: 13 },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: premium.onDeep },
+  email: { ...authType.body, fontSize: 13, color: premium.onDeepSoft },
   sectionLabel: { ...authType.micro, marginTop: authSpace.md, marginBottom: authSpace.xs },
-  group: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  group: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, paddingHorizontal: authSpace.md },
   row: { minHeight: 52, paddingVertical: authSpace.xs, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
   rowCopy: { flex: 1, minWidth: 0 },
-  rowIconDanger: { backgroundColor: '#FDECEC' },
-  rowLabelDanger: { color: authColors.danger },
-  rowIcon: { width: 30, height: 30, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
+  rowIconDanger: { backgroundColor: '#F6E4E0' },
+  rowLabelDanger: { color: premium.danger },
+  rowIcon: { width: 30, height: 30, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.6 },
   rowDisabled: { opacity: 0.5 },
-  rowLabel: { ...authType.body, fontSize: 14, color: authColors.ink },
-  rowDetail: { ...authType.body, fontSize: 12, lineHeight: 16, color: authColors.inkFaint },
-  divider: { height: 1, backgroundColor: authColors.lineSoft },
+  rowLabel: { ...authType.body, fontSize: 14, color: premium.ink },
+  rowDetail: { ...authType.body, fontSize: 12, lineHeight: 16, color: premium.inkFaint },
+  divider: { height: 1, backgroundColor: premium.sageSoft },
 });

@@ -6,12 +6,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { RewardRedemptionDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate } from '../../utils/format';
 import { redemptionIsUsable, redemptionStatusLabel } from '../domain/customerLoyalty';
 import { loyaltyApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 const TABS = ['active', 'used'] as const;
@@ -42,7 +43,7 @@ export function CustomerRedemptionsScreen() {
   const shown = items.filter((r) => (tab === 'active' ? redemptionIsUsable(r) : !redemptionIsUsable(r)));
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>REWARDS READY</Text>
         <Text style={styles.title}>Your rewards</Text>
@@ -83,7 +84,7 @@ export function CustomerRedemptionsScreen() {
                     <Text style={styles.meta}>{redemption.business?.name ?? ''} · {redemptionStatusLabel(redemption.status)}</Text>
                     {redemption.expiresAt ? <Text style={styles.meta}>Expires {formatDate(redemption.expiresAt)}</Text> : null}
                   </View>
-                  {usable ? <Ionicons name="chevron-forward" size={16} color={authColors.coral} /> : null}
+                  {usable ? <Ionicons name="chevron-forward" size={16} color={premium.deep} /> : null}
                 </Pressable>
               );
             })}
@@ -95,18 +96,18 @@ export function CustomerRedemptionsScreen() {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: authColors.bgSunk, marginBottom: authSpace.sm },
+  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: premium.sageSoft, marginBottom: authSpace.sm },
   segmentItem: { flex: 1, alignItems: 'center', paddingVertical: authSpace.sm, borderRadius: authRadius.md },
-  segmentItemActive: { backgroundColor: authColors.coral },
-  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
-  segmentTextActive: { color: authColors.onCoral },
+  segmentItemActive: { backgroundColor: premium.deep },
+  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.inkSoft },
+  segmentTextActive: { color: premium.onDeep },
   list: { gap: authSpace.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, ...authShadow.card },
+  row: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, ...authShadow.card },
   pressed: { opacity: 0.78 },
   copy: { flex: 1, minWidth: 0, gap: 2 },
-  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  name: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   meta: { ...authType.body, fontSize: 12 },
 });

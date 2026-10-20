@@ -6,11 +6,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerBookingDto } from '../../apiTypes';
 import { partitionBookings } from '../../domain/booking';
-import { authColors, authRadius, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { BookingCard } from '../components/cards';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 const TABS = ['upcoming', 'past'] as const;
@@ -41,7 +42,7 @@ export function CustomerBookingsScreen() {
   const shown = tab === 'upcoming' ? upcoming : past;
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>MY BOOKINGS</Text>
         <Text style={styles.title}>Bookings</Text>
@@ -78,14 +79,14 @@ export function CustomerBookingsScreen() {
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: authColors.bgSunk, marginBottom: authSpace.sm },
+  segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: authRadius.lg, backgroundColor: premium.sageSoft, marginBottom: authSpace.sm },
   segmentItem: { flex: 1, alignItems: 'center', paddingVertical: authSpace.sm, borderRadius: authRadius.md },
-  segmentItemActive: { backgroundColor: authColors.coral },
-  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.inkSoft },
-  segmentTextActive: { color: authColors.onCoral },
+  segmentItemActive: { backgroundColor: premium.deep },
+  segmentText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.inkSoft },
+  segmentTextActive: { color: premium.onDeep },
   list: { gap: authSpace.sm },
   count: { ...authType.body, fontSize: 12 },
 });

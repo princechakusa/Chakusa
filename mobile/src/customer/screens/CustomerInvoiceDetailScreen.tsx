@@ -5,12 +5,13 @@ import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerInvoiceDetailDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { formatDate, formatMoney } from '../../utils/format';
 import { canPayCustomerInvoice, customerInvoiceDetailNote, customerInvoiceHeadline, customerInvoicePaymentLabel, customerInvoiceStatusLabel, isCustomerInvoiceOverdue } from '../domain/customerInvoices';
 import { customerInvoicesApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type DetailRoute = RouteProp<CustomerRootStackParamList, 'CustomerInvoiceDetail'>;
 
@@ -53,7 +54,7 @@ function SectionLabel({ title }: { title: string }) {
 function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
+      {icon ? <Ionicons name={icon} size={17} color={premium.onDeep} /> : null}
       <Text style={styles.primaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -93,15 +94,15 @@ export function CustomerInvoiceDetailScreen() {
     }
   }, [invoiceId, paying]);
 
-  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading invoice…" /></Screen>;
-  if (error && !invoice) return <Screen backgroundColor={authColors.bg}><ErrorState message={error} onRetry={() => void load()} /></Screen>;
-  if (!invoice) return <Screen backgroundColor={authColors.bg}><EmptyState icon="receipt-outline" title="Invoice not found" message="This invoice is no longer available." /></Screen>;
+  if (!loaded) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading invoice…" /></Screen>;
+  if (error && !invoice) return <Screen backgroundColor={premium.bg}><ErrorState message={error} onRetry={() => void load()} /></Screen>;
+  if (!invoice) return <Screen backgroundColor={premium.bg}><EmptyState icon="receipt-outline" title="Invoice not found" message="This invoice is no longer available." /></Screen>;
 
   const overdue = isCustomerInvoiceOverdue(invoice);
   const revision = invoice.revision;
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{invoice.business.name.toUpperCase()}</Text>
@@ -193,37 +194,37 @@ export function CustomerInvoiceDetailScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: authSpace.sm, marginBottom: authSpace.sm },
   headerCopy: { flex: 1, minWidth: 0 },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  pill: { paddingHorizontal: authSpace.sm, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft },
-  pillText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: authColors.coral },
+  pill: { paddingHorizontal: authSpace.sm, paddingVertical: 4, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft },
+  pillText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: premium.deep },
   pillPositive: { backgroundColor: '#EAF9F1' },
-  pillTextPositive: { color: authColors.positive },
+  pillTextPositive: { color: '#1E7A55' },
   pillDanger: { backgroundColor: '#FDECEC' },
-  pillTextDanger: { color: authColors.danger },
+  pillTextDanger: { color: premium.danger },
   pillAttention: { backgroundColor: '#FDF3E4' },
   pillTextAttention: { color: '#B7791F' },
-  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: authColors.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
-  noteCard: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, marginBottom: authSpace.sm, ...authShadow.card },
+  sectionLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink, marginTop: authSpace.md, marginBottom: authSpace.xs },
+  noteCard: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, marginBottom: authSpace.sm, ...authShadow.card },
   note: { ...authType.body, fontSize: 12 },
-  payStatus: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink, textAlign: 'center', marginTop: authSpace.sm },
+  payStatus: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink, textAlign: 'center', marginTop: authSpace.sm },
   payWrap: { marginTop: authSpace.sm, gap: authSpace.xs },
   payNote: { ...authType.body, fontSize: 12, textAlign: 'center' },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, paddingVertical: authSpace.xs, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, paddingHorizontal: authSpace.md, paddingVertical: authSpace.xs, ...authShadow.card },
   infoRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   infoLabel: { ...authType.body, fontSize: 13 },
-  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink },
-  divider: { height: 1, backgroundColor: authColors.lineSoft },
+  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.ink },
+  divider: { height: 1, backgroundColor: premium.sageSoft },
   lineRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: authSpace.sm, gap: authSpace.sm },
   lineMain: { flex: 1 },
-  lineDesc: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  lineDesc: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   lineMeta: { ...authType.body, fontSize: 12, marginTop: 2 },
-  lineTotal: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  body: { ...authType.body, fontSize: 14, color: authColors.ink, paddingVertical: authSpace.sm },
+  lineTotal: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
+  body: { ...authType.body, fontSize: 14, color: premium.ink, paddingVertical: authSpace.sm },
   muted: { ...authType.body, fontSize: 14, paddingVertical: authSpace.sm },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

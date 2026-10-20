@@ -7,9 +7,10 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 import { useConfirmSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { ownerDeletionError } from '../../domain/team';
-import { authColors, authFont, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authFont, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
 import { useCustomerAuth } from '../CustomerAuthContext';
+import { premium } from '../premiumTheme';
 
 type Method = 'password' | 'google' | 'apple';
 
@@ -56,12 +57,12 @@ export function CustomerDeleteAccountScreen() {
   };
 
   return (
-    <Screen backgroundColor={authColors.bg}>
+    <Screen backgroundColor={premium.bg}>
       <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={10} onPress={() => navigation.goBack()} style={styles.back}>
-        <Ionicons name="chevron-back" size={22} color={authColors.ink} />
+        <Ionicons name="chevron-back" size={22} color={premium.ink} />
       </Pressable>
       <View style={styles.hero}>
-        <View style={styles.heroIcon}><Ionicons name="trash-outline" size={26} color={authColors.danger} /></View>
+        <View style={styles.heroIcon}><Ionicons name="trash-outline" size={26} color={premium.danger} /></View>
         <Text style={styles.title}>Delete account</Text>
         <Text style={styles.subtitle}>{user?.email}</Text>
       </View>
@@ -70,7 +71,7 @@ export function CustomerDeleteAccountScreen() {
         <Text style={styles.cardLabel}>WHAT GETS DELETED</Text>
         {DELETED.map((line) => (
           <View key={line} style={styles.item}>
-            <Ionicons name="close-circle" size={18} color={authColors.danger} />
+            <Ionicons name="close-circle" size={18} color={premium.danger} />
             <Text style={styles.itemText}>{line}</Text>
           </View>
         ))}
@@ -82,8 +83,8 @@ export function CustomerDeleteAccountScreen() {
         {hasPassword ? (
           <View style={styles.passwordBlock}>
             <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={18} color={authColors.inkFaint} />
-              <TextInput accessibilityLabel="Your password" autoCapitalize="none" autoCorrect={false} secureTextEntry value={password} onChangeText={setPassword} placeholder="Your password" placeholderTextColor={authColors.inkFaint} style={styles.input} />
+              <Ionicons name="lock-closed-outline" size={18} color={premium.inkFaint} />
+              <TextInput accessibilityLabel="Your password" autoCapitalize="none" autoCorrect={false} secureTextEntry value={password} onChangeText={setPassword} placeholder="Your password" placeholderTextColor={premium.inkFaint} style={styles.input} />
             </View>
             <Pressable accessibilityRole="button" disabled={Boolean(busy) || !password.trim()} onPress={() => void run('password', () => deleteAccountWithPassword(password))} style={({ pressed }) => [styles.danger, (Boolean(busy) || !password.trim()) && styles.disabled, pressed && styles.pressed]}>
               {busy === 'password' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.dangerText}>Delete with password</Text>}
@@ -92,7 +93,7 @@ export function CustomerDeleteAccountScreen() {
         ) : null}
         {google ? (
           <Pressable accessibilityRole="button" disabled={Boolean(busy)} onPress={() => void run('google', deleteAccountWithGoogle)} style={({ pressed }) => [styles.provider, Boolean(busy) && styles.disabled, pressed && styles.pressed]}>
-            {busy === 'google' ? <ActivityIndicator color={authColors.ink} /> : <><Ionicons name="logo-google" size={18} color={authColors.ink} /><Text style={styles.providerText}>Confirm with Google</Text></>}
+            {busy === 'google' ? <ActivityIndicator color={premium.ink} /> : <><Ionicons name="logo-google" size={18} color={premium.ink} /><Text style={styles.providerText}>Confirm with Google</Text></>}
           </Pressable>
         ) : null}
         {apple ? (
@@ -108,26 +109,26 @@ export function CustomerDeleteAccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  back: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
+  back: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: premium.card, borderWidth: 1, borderColor: premium.line },
   hero: { alignItems: 'center', marginTop: authSpace.sm, marginBottom: authSpace.lg },
   heroIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDECEC', alignItems: 'center', justifyContent: 'center', marginBottom: authSpace.sm },
   title: { ...authType.title },
   subtitle: { ...authType.body, marginTop: 2 },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.sm, ...authShadow.card },
   cardLabel: { ...authType.micro },
   item: { flexDirection: 'row', alignItems: 'flex-start', gap: authSpace.xs },
-  itemText: { ...authType.body, color: authColors.ink, flex: 1 },
+  itemText: { ...authType.body, color: premium.ink, flex: 1 },
   note: { ...authType.body, fontSize: 12, lineHeight: 17, marginTop: authSpace.xxs },
   sectionLabel: { ...authType.micro, marginTop: authSpace.lg, marginBottom: authSpace.xs },
   passwordBlock: { gap: authSpace.sm },
-  inputWrap: { minHeight: 52, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bg, paddingHorizontal: authSpace.sm, flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
-  input: { flex: 1, minHeight: 50, fontFamily: authFont.body, fontSize: 15, color: authColors.ink },
-  danger: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.danger, alignItems: 'center', justifyContent: 'center' },
+  inputWrap: { minHeight: 52, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.bg, paddingHorizontal: authSpace.sm, flexDirection: 'row', alignItems: 'center', gap: authSpace.xs },
+  input: { flex: 1, minHeight: 50, fontFamily: authFont.body, fontSize: 15, color: premium.ink },
+  danger: { minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.danger, alignItems: 'center', justifyContent: 'center' },
   dangerText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: '#FFFFFF' },
-  provider: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs },
-  providerText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: authColors.ink },
+  provider: { minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs },
+  providerText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: premium.ink },
   appleButton: { width: '100%', height: 52 },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.7 },
-  error: { ...authType.body, fontSize: 13, color: authColors.danger },
+  error: { ...authType.body, fontSize: 13, color: premium.danger },
 });

@@ -9,10 +9,11 @@ import { ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { BookingAvailabilityDto, CustomerBookingDto } from '../../apiTypes';
 import { bookingActions, bookingStatusLabel, formatSlotTime, groupSlotsByDay, reminderStatusLabel } from '../../domain/booking';
 import { ApiError } from '../../services/api';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { formatDateTime, formatMoney } from '../../utils/format';
 import { bookingApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingDetail'>;
 
@@ -27,7 +28,7 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BookingDetail'>
 function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <Ionicons name={icon} size={18} color={authColors.coral} />
+      <Ionicons name={icon} size={18} color={premium.deep} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
@@ -41,7 +42,7 @@ function Divider() {
 function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
+      {icon ? <Ionicons name={icon} size={17} color={premium.onDeep} /> : null}
       <Text style={styles.primaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -50,7 +51,7 @@ function PrimaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: 
 function SecondaryBtn({ label, icon, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; disabled?: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.secondaryBtn, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.ink} /> : null}
+      {icon ? <Ionicons name={icon} size={17} color={premium.ink} /> : null}
       <Text style={styles.secondaryBtnText}>{label}</Text>
     </Pressable>
   );
@@ -76,7 +77,7 @@ function SelectField({ placeholder, value, options, disabled, onSelect }: { plac
         <Text style={[styles.selectText, !selected && styles.selectPlaceholder]} numberOfLines={1}>
           {selected ? selected.label : placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={18} color={authColors.inkSoft} />
+        <Ionicons name="chevron-down" size={18} color={premium.inkSoft} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.sheetOverlay} onPress={() => setOpen(false)}>
@@ -94,7 +95,7 @@ function SelectField({ placeholder, value, options, disabled, onSelect }: { plac
                     style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}
                   >
                     <Text style={[styles.sheetRowText, isActive && styles.sheetRowTextActive]}>{option.label}</Text>
-                    {isActive ? <Ionicons name="checkmark" size={18} color={authColors.coral} /> : null}
+                    {isActive ? <Ionicons name="checkmark" size={18} color={premium.deep} /> : null}
                   </Pressable>
                 );
               })}
@@ -184,11 +185,11 @@ export function BookingDetailScreen({ route, navigation }: Props) {
     ]);
   };
 
-  if (!loaded) return <Screen backgroundColor={authColors.bg}><LoadingState label="Loading…" /></Screen>;
-  if (error || !booking) return <Screen backgroundColor={authColors.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
+  if (!loaded) return <Screen backgroundColor={premium.bg}><LoadingState label="Loading…" /></Screen>;
+  if (error || !booking) return <Screen backgroundColor={premium.bg}><ErrorState message={error ?? 'Not found.'} onRetry={load} /></Screen>;
 
   return (
-    <Screen backgroundColor={authColors.bg} onRefresh={load}>
+    <Screen backgroundColor={premium.bg} onRefresh={load}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{bookingStatusLabel(booking.status).toUpperCase()}</Text>
         <Text style={styles.title}>{booking.serviceName}</Text>
@@ -243,7 +244,7 @@ export function BookingDetailScreen({ route, navigation }: Props) {
           {actions.canCancel ? <PrimaryBtn icon="close" label="Cancel booking" disabled={busy} onPress={cancel} /> : null}
           {!actions.canReschedule && !actions.canCancel ? (
             <View style={styles.closedRow}>
-              <Ionicons name="information-circle-outline" size={16} color={authColors.inkSoft} />
+              <Ionicons name="information-circle-outline" size={16} color={premium.inkSoft} />
               <Text style={styles.dim}>{actions.reason ?? 'No changes can be made to this booking.'}</Text>
             </View>
           ) : null}
@@ -285,7 +286,7 @@ function ProviderLocationCard({ bookingId, active }: { bookingId: string; active
       <Text style={styles.dim}>Sharing their live location · updated {agoSec < 60 ? `${agoSec}s` : `${Math.round(agoSec / 60)}m`} ago</Text>
       <LeafletMap height={180} center={share} zoom={15} markers={[{ ...share, kind: 'you', label: 'Your provider' }]} accessibilityLabel="Where your provider is now" />
       <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(directionsUrl(share.latitude, share.longitude))} style={styles.locBtn}>
-        <Ionicons name="navigate-outline" size={16} color={authColors.coral} />
+        <Ionicons name="navigate-outline" size={16} color={premium.deep} />
         <Text style={styles.locBtnText}>Open in OpenStreetMap</Text>
       </Pressable>
     </View>
@@ -294,18 +295,18 @@ function ProviderLocationCard({ bookingId, active }: { bookingId: string; active
 
 const styles = StyleSheet.create({
   header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
+  eyebrow: { ...authType.micro, color: premium.deep },
   title: { ...authType.title, marginTop: 2 },
   subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  card: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
+  card: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, paddingHorizontal: authSpace.md, ...authShadow.card },
   infoRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
   infoLabel: { ...authType.body, fontSize: 13, flex: 1 },
-  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: authColors.ink, textAlign: 'right', maxWidth: '58%' },
-  divider: { height: 1, backgroundColor: authColors.lineSoft },
-  locCard: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
+  infoValue: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.ink, textAlign: 'right', maxWidth: '58%' },
+  divider: { height: 1, backgroundColor: premium.sageSoft },
+  locCard: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, gap: authSpace.xs, ...authShadow.card },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
-  locDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: authColors.positive },
-  locTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
+  locDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#1E7A55' },
+  locTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
   locBtn: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs, marginTop: authSpace.xs },
   locBtnText: { ...authType.link },
   notes: { ...authType.body, fontStyle: 'italic' },
@@ -314,20 +315,20 @@ const styles = StyleSheet.create({
   dim: { ...authType.body, fontSize: 12 },
   reschedule: { gap: authSpace.sm },
   groupLabel: { ...authType.body, fontSize: 12 },
-  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: authSpace.md, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  selectText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: authColors.ink, flex: 1 },
-  selectPlaceholder: { color: authColors.inkFaint, fontFamily: 'Inter_400Regular' },
+  select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: authSpace.md, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  selectText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.ink, flex: 1 },
+  selectPlaceholder: { color: premium.inkFaint, fontFamily: 'Inter_400Regular' },
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.45)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '70%', backgroundColor: authColors.surface, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg },
-  sheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: authColors.ink, marginBottom: authSpace.xs },
+  sheet: { maxHeight: '70%', backgroundColor: premium.card, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, padding: authSpace.lg },
+  sheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: premium.ink, marginBottom: authSpace.xs },
   sheetList: { flexGrow: 0 },
-  sheetRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: authColors.lineSoft },
-  sheetRowText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: authColors.ink },
-  sheetRowTextActive: { color: authColors.coral, fontFamily: 'Inter_600SemiBold' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface },
-  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.ink },
+  sheetRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: premium.sageSoft },
+  sheetRowText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: premium.ink },
+  sheetRowTextActive: { color: premium.deep, fontFamily: 'Inter_600SemiBold' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: premium.deep, ...authShadow.cta },
+  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  secondaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.ink },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 });

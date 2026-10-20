@@ -4,10 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CustomerMembershipDto, LoyaltyRewardDto, RewardRedemptionDto, WalletDto } from '../../apiTypes';
 import { formatPoints, membershipStatusLabel, rewardValueLabel, tierProgress } from '../../domain/loyalty';
 import type { LoyaltyAccountSummaryDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { formatDate } from '../../utils/format';
 import { rewardEligibilityReason, redemptionStatusLabel } from '../domain/customerLoyalty';
 import type { HubBusiness } from '../domain/customerLoyalty';
+import { premium } from '../premiumTheme';
 
 // PROGRAM 2 LOOP 8: presentational loyalty pieces. Theme tokens only; all
 // values come from the server. No color-only status - every state also has
@@ -16,7 +17,7 @@ import type { HubBusiness } from '../domain/customerLoyalty';
 export function PointsSummary({ total, caption }: { total: number; caption: string }) {
   return (
     <View style={styles.points} accessibilityLabel={`${formatPoints(total)} total. ${caption}.`}>
-      <View style={styles.pointsIcon}><Ionicons name="sparkles" size={20} color={authColors.coral} /></View>
+      <View style={styles.pointsIcon}><Ionicons name="sparkles" size={20} color={premium.deep} /></View>
       <View style={styles.pointsCopy}>
         <Text style={styles.pointsValue}>{formatPoints(total)}</Text>
         <Text style={styles.pointsCaption}>{caption}</Text>
@@ -38,7 +39,7 @@ export function LoyaltyBusinessCard({ business, onPress }: { business: HubBusine
         <Text style={styles.cardName} numberOfLines={1}>{business.name}</Text>
         <Text style={styles.cardMeta}>{business.tierName} · {formatPoints(business.pointsBalance)}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} />
+      <Ionicons name="chevron-forward" size={16} color={premium.inkFaint} />
     </Pressable>
   );
 }
@@ -78,7 +79,7 @@ export function RewardCard({ reward, currency, onPress }: { reward: LoyaltyRewar
         <Text style={styles.cardMeta}>{rewardValueLabel(reward)}{currency && reward.type === 'fixed_discount' && reward.value != null ? '' : ''} · {formatPoints(reward.pointsCost)}</Text>
         <Text style={[styles.reason, reward.redeemable && styles.reasonReady]}>{reason}</Text>
       </View>
-      <Ionicons name={reward.redeemable ? 'chevron-forward' : 'lock-closed-outline'} size={16} color={reward.redeemable ? authColors.coral : authColors.inkFaint} />
+      <Ionicons name={reward.redeemable ? 'chevron-forward' : 'lock-closed-outline'} size={16} color={reward.redeemable ? premium.deep : premium.inkFaint} />
     </Pressable>
   );
 }
@@ -92,7 +93,7 @@ export function MembershipCard({ membership, onPress }: { membership: CustomerMe
         {membership.plan.discountPercent > 0 ? <Text style={styles.cardMeta}>{membership.plan.discountPercent}% member discount</Text> : null}
         {membership.currentPeriodEnd ? <Text style={styles.cardMeta}>Renews {formatDate(membership.currentPeriodEnd)}</Text> : null}
       </View>
-      {onPress ? <Ionicons name="chevron-forward" size={16} color={authColors.inkFaint} /> : null}
+      {onPress ? <Ionicons name="chevron-forward" size={16} color={premium.inkFaint} /> : null}
     </>
   );
   if (!onPress) return <View style={[styles.card, styles.rewardCard]}>{body}</View>;
@@ -139,41 +140,41 @@ function ReferralStat({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
-  points: { flexDirection: 'row', alignItems: 'center', gap: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, padding: authSpace.lg, ...authShadow.card },
-  pointsIcon: { width: 48, height: 48, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
+  points: { flexDirection: 'row', alignItems: 'center', gap: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.line, padding: authSpace.lg, ...authShadow.card },
+  pointsIcon: { width: 48, height: 48, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
   pointsCopy: { flex: 1, gap: authSpace.xxs },
-  pointsValue: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, color: authColors.ink },
-  pointsCaption: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
-  card: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: authColors.surface, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line },
+  pointsValue: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, color: premium.ink },
+  pointsCaption: { ...authType.body, fontSize: 12, color: premium.inkSoft },
+  card: { flexDirection: 'row', alignItems: 'center', gap: authSpace.sm, padding: authSpace.md, backgroundColor: premium.card, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line },
   rewardCard: { alignItems: 'flex-start' },
   pressed: { opacity: 0.78 },
-  logo: { width: 36, height: 36, borderRadius: authRadius.sm, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.coral },
+  logo: { width: 36, height: 36, borderRadius: authRadius.sm, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.deep },
   cardCopy: { flex: 1, minWidth: 0, gap: 2 },
-  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  cardMeta: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
-  reason: { ...authType.body, fontSize: 12, color: authColors.inkSoft, marginTop: authSpace.xxs },
-  reasonReady: { color: authColors.positive },
+  cardName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
+  cardMeta: { ...authType.body, fontSize: 12, color: premium.inkSoft },
+  reason: { ...authType.body, fontSize: 12, color: premium.inkSoft, marginTop: authSpace.xxs },
+  reasonReady: { color: '#1E7A55' },
   tier: { gap: authSpace.xs },
   tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tierBadge: { paddingHorizontal: authSpace.sm, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft },
-  tierBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: authColors.coral },
-  tierName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  tierNext: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
-  track: { height: 8, borderRadius: authRadius.pill, backgroundColor: authColors.lineSoft, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: authRadius.pill, backgroundColor: authColors.coral },
-  codeCard: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.coral, padding: authSpace.lg, gap: authSpace.xxs, alignItems: 'center', ...authShadow.card },
+  tierBadge: { paddingHorizontal: authSpace.sm, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft },
+  tierBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: premium.deep },
+  tierName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink },
+  tierNext: { ...authType.body, fontSize: 12, color: premium.inkSoft },
+  track: { height: 8, borderRadius: authRadius.pill, backgroundColor: premium.sageSoft, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: authRadius.pill, backgroundColor: premium.deep },
+  codeCard: { backgroundColor: premium.card, borderRadius: authRadius.lg, borderWidth: 1, borderColor: premium.deep, padding: authSpace.lg, gap: authSpace.xxs, alignItems: 'center', ...authShadow.card },
   codeStatusRow: { alignSelf: 'stretch', alignItems: 'flex-end' },
   codeStatusPill: { paddingHorizontal: authSpace.sm, paddingVertical: 3, borderRadius: authRadius.pill, backgroundColor: '#EAF9F1' },
-  codeStatusText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: authColors.positive },
-  codeLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink, marginTop: authSpace.xs },
-  codeBusiness: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
-  codeChip: { marginVertical: authSpace.sm, paddingHorizontal: authSpace.lg, paddingVertical: authSpace.sm, borderRadius: authRadius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: authColors.coral, backgroundColor: authColors.coralSoft },
-  code: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, color: authColors.ink, letterSpacing: 3 },
-  codeMeta: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
-  codeHint: { ...authType.body, fontSize: 12, color: authColors.inkSoft, textAlign: 'center', marginTop: authSpace.xs },
+  codeStatusText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: '#1E7A55' },
+  codeLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: premium.ink, marginTop: authSpace.xs },
+  codeBusiness: { ...authType.body, fontSize: 12, color: premium.inkSoft },
+  codeChip: { marginVertical: authSpace.sm, paddingHorizontal: authSpace.lg, paddingVertical: authSpace.sm, borderRadius: authRadius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: premium.deep, backgroundColor: premium.sageSoft },
+  code: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 22, color: premium.ink, letterSpacing: 3 },
+  codeMeta: { ...authType.body, fontSize: 12, color: premium.inkSoft },
+  codeHint: { ...authType.body, fontSize: 12, color: premium.inkSoft, textAlign: 'center', marginTop: authSpace.xs },
   referral: { flexDirection: 'row', gap: authSpace.sm },
-  referralStat: { flex: 1, backgroundColor: authColors.surface, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, padding: authSpace.md, alignItems: 'center', gap: authSpace.xxs },
-  referralValue: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: authColors.ink },
-  referralLabel: { ...authType.body, fontSize: 12, color: authColors.inkSoft },
+  referralStat: { flex: 1, backgroundColor: premium.card, borderRadius: authRadius.md, borderWidth: 1, borderColor: premium.line, padding: authSpace.md, alignItems: 'center', gap: authSpace.xxs },
+  referralValue: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: premium.ink },
+  referralLabel: { ...authType.body, fontSize: 12, color: premium.inkSoft },
 });

@@ -33,6 +33,9 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 const RADII = [5, 15, 50] as const;
 type Radius = (typeof RADII)[number];
 
+// Where the map opens when the customer has not shared a location.
+const DEFAULT_CENTER = { latitude: -17.8292, longitude: 31.0522 };
+
 export function CustomerExploreScreen() {
   const navigation = useNavigation<Nav>();
   const { width } = useWindowDimensions();
@@ -60,10 +63,12 @@ export function CustomerExploreScreen() {
 
   useEffect(() => {
     marketplaceApi.categories().then((res) => setCategories(res.categories.slice(0, 12))).catch(() => setCategories([]));
-    // Open on the customer's own area when they already allowed location.
+    // Explore opens on the map around the customer: use the location if it is
+    // already allowed, otherwise ask once now (declining keeps the map, centred
+    // on Harare, where Chakusa businesses are).
     void positionIfPermitted().then((position) => {
-      if (!position) return;
-      setOrigin((current) => current ?? { ...position, label: 'Your area', addressLine: null, city: null, region: null });
+      if (position) setOrigin((current) => current ?? { ...position, label: 'Your area', addressLine: null, city: null, region: null });
+      else void useMyLocation();
     });
   }, []);
 
@@ -129,7 +134,7 @@ export function CustomerExploreScreen() {
     ...mapped.map((card) => ({ key: card.slug, card })),
     ...places.map((place) => ({ key: `osm:${place.id}`, place })),
   ], [mapped, places]);
-  const center = origin ?? (mapped[0] ? { latitude: mapped[0].latitude!, longitude: mapped[0].longitude! } : null);
+  const center = origin ?? (mapped[0] ? { latitude: mapped[0].latitude!, longitude: mapped[0].longitude! } : DEFAULT_CENTER);
 
   const selectFromMap = (key: string) => {
     setSelected(key);

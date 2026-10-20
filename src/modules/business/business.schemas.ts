@@ -10,9 +10,17 @@ const countrySchema = z
   .transform((value) => value.trim().toUpperCase())
   .refine(isValidCountryCode, "Must be a valid ISO 3166-1 alpha-2 country code");
 
+// Any zone the runtime can format in. Intl.supportedValuesOf lists only the
+// legacy canonical names (Asia/Calcutta, Europe/Kiev), so it wrongly rejected
+// today's official ones (Asia/Kolkata, Europe/Kyiv).
+export function isValidTimeZone(value: string): boolean {
+  if (!/^[A-Za-z][A-Za-z0-9_+\-/]{1,63}$/.test(value)) return false;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; }
+}
+
 const timezoneSchema = z
   .string()
-  .refine((value) => Intl.supportedValuesOf("timeZone").includes(value), "Must be a valid IANA timezone");
+  .refine(isValidTimeZone, "Must be a valid IANA timezone");
 
 const currencySchema = z
   .string()

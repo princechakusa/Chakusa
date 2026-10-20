@@ -1,5 +1,5 @@
 import { config } from "../../lib/config.js";
-import { createPasswordReset, passwordlessSignInProviders } from "./auth.service.js";
+import { issuePasswordReset, passwordlessSignInProviders } from "./auth.service.js";
 
 /** Whether the API holds the credentials needed to send reset mail. */
 export function outboundEmailConfigured(): boolean {
@@ -19,11 +19,12 @@ async function sendEmail(to: string, subject: string, html: string, text: string
     log?.warn("Email not sent: RESEND_API_KEY or EMAIL_FROM is not set");
     return false;
   }
+  const footer = await emailFooter();
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${config.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: config.EMAIL_FROM, to: [to], subject, html, text }),
+      body: JSON.stringify({ from: config.EMAIL_FROM, to: [to], subject, html: html.replace(FOOTER_SLOT, footer.html), text: text + footer.text }),
     });
     if (!response.ok) log?.warn(`Email "${subject}" rejected by Resend: ${await describeEmailFailure(response)}`);
     return response.ok;
@@ -33,8 +34,38 @@ async function sendEmail(to: string, subject: string, html: string, text: string
   }
 }
 
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/**
+ * Sender identity for the email footer, from the admin console's company
+ * settings (App config), so the name, address and contacts are never baked
+ * into code. The address line is left out until one is set.
+ */
+async function emailFooter(): Promise<{ html: string; text: string }> {
+  let company = { name: "Chakusa", address: null as string | null, website: "https://chakusarecovery.com", support: "support@chakusarecovery.com" };
+  try {
+    // Imported lazily: appConfig.service imports this module.
+    const { getPublicAppConfig } = await import("../appConfig/appConfig.service.js");
+    const cfg = await getPublicAppConfig();
+    company = {
+      name: cfg.company.legalName || cfg.company.copyrightHolder || company.name,
+      address: cfg.company.address?.trim() || null,
+      website: cfg.company.websiteUrl || company.website,
+      support: cfg.links.supportEmail || company.support,
+    };
+  } catch {
+    // Settings unavailable: send with the defaults rather than not at all.
+  }
+  const host = company.website.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const notice = "This is an automated security email about your Chakusa account.";
+  const lines = [company.name, company.address, `${host} · ${company.support}`].filter((line): line is string => Boolean(line));
+  const html = `<div style="border-top:1px solid #E4E2D8;margin-top:32px;padding-top:16px;color:#8C948E;font-size:12px;line-height:1.6"><b style="color:#182B29">${escapeHtml(company.name)}</b><br>${company.address ? `${escapeHtml(company.address)}<br>` : ""}<a href="${escapeHtml(company.website)}" style="color:#8C948E">${escapeHtml(host)}</a> · <a href="mailto:${escapeHtml(company.support)}" style="color:#8C948E">${escapeHtml(company.support)}</a><br>${notice}</div>`;
+  return { html, text: `\n\n--\n${lines.join("\n")}\n${notice}` };
+}
+
+const FOOTER_SLOT = "<!--chakusa-footer-->";
 const wrap = (body: string) =>
-  `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#182B29">${body}<p style="color:#8C948E;font-size:12px;margin-top:32px">Chakusa · chakusarecovery.com</p></div>`;
+  `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#182B29">${body}${FOOTER_SLOT}</div>`;
 
 export async function sendPasswordResetEmail(email: string, token: string, log?: EmailLog): Promise<boolean> {
   const resetUrl = new URL(config.PASSWORD_RESET_URL);
@@ -87,29 +118,28 @@ export async function sendPasswordChangedEmail(email: string): Promise<boolean> 
  */
 export async function requestPasswordReset(email: string, log: EmailLog & { info?: (msg: string) => void }): Promise<void> {
   const normalized = email.trim().toLowerCase();
-  let token: string | null = null;
+  let issued: { token: string; to: string } | null = null;
   try {
-    token = await createPasswordReset(normalized);
+    issued = await issuePasswordReset(normalized);
   } catch {
     log.warn("Password reset request failed");
     return;
   }
-  if (!token) {
+  if (!issued) {
     // No password on this account (Google/Apple): remind the owner by email.
     // The HTTP response is identical either way, so nothing is revealed.
     // The logs never name the address, only which path the request took.
-    const providers = await passwordlessSignInProviders(normalized).catch(() => null);
-    if (!providers?.length) {
+    const reminder = await passwordlessSignInProviders(normalized).catch(() => null);
+    if (!reminder?.providers.length) {
       log.info?.("Password reset: nothing sent (no account with that email, or a recent reset/reminder is still cooling down)");
       return;
     }
-    log.info?.(`Password reset: account signs in with ${providers.join("/")}; sending a sign-in reminder`);
-    void sendSocialSignInReminderEmail(normalized, providers, log).then((ok) => { if (!ok) log.warn("Sign-in reminder email was not delivered"); });
+    log.info?.(`Password reset: account signs in with ${reminder.providers.join("/")}; sending a sign-in reminder`);
+    void sendSocialSignInReminderEmail(reminder.to, reminder.providers, log).then((ok) => { if (!ok) log.warn("Sign-in reminder email was not delivered"); });
     return;
   }
-  const issued = token;
   log.info?.("Password reset: link issued; sending reset email");
-  void sendPasswordResetEmail(normalized, issued, log).then((delivered) => {
+  void sendPasswordResetEmail(issued.to, issued.token, log).then((delivered) => {
     if (!delivered) log.warn("Password reset email was not delivered");
   });
 }

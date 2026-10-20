@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { passwordField, replacementPasswordField, signInPasswordField } from "../../lib/passwordPolicy.js";
 
 const email = z.string().trim().email();
-const password = z.string().min(8, "Password must be at least 8 characters");
+const password = passwordField;
 
 // businessName is required UNLESS invitationToken is present — an invited
 // registration joins the invitation's existing Business rather than
@@ -26,17 +27,17 @@ export const registerSchema = z
   });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
-export const loginSchema = z.object({ email, password: z.string().min(1) });
+export const loginSchema = z.object({ email, password: signInPasswordField });
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 export const logoutSchema = refreshSchema;
 export const forgotPasswordSchema = z.object({ email });
-export const resetPasswordSchema = z.object({ token: z.string().min(1), password });
+export const resetPasswordSchema = z.object({ token: z.string().min(1).max(512), password: replacementPasswordField });
 export const updateProfileSchema = z.object({ fullName: z.string().trim().min(1).max(120) });
-export const changePasswordSchema = z.object({ currentPassword: z.string().min(1).optional(), newPassword: password });
+export const changePasswordSchema = z.object({ currentPassword: signInPasswordField.optional(), newPassword: replacementPasswordField });
 export const deleteAccountSchema = z.union([
-  z.object({ password: z.string().min(1) }),
+  z.object({ password: signInPasswordField }),
   z.object({ googleIdToken: z.string().min(1).max(16_384) }),
   z.object({ apple: z.object({
     challengeId: z.string().uuid(),

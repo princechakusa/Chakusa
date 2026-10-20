@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { normalizeEmail } from "../../lib/email.js";
+import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from "../../lib/loginThrottle.js";
 import { hashPassword, verifyPasswordConstantTime } from "../../lib/password.js";
 import { ensureCustomerProfile, findMatchingBusinessCustomers, linkCustomerToBusiness } from "../../lib/customer/customerContext.js";
 import { createEmailVerification } from "../../lib/customer/emailVerification.js";
@@ -63,17 +64,20 @@ export async function registerCustomer(input: {
 }
 
 export async function loginCustomer(input: { email: string; password: string; attrs?: SessionAttrs }) {
+  assertLoginAllowed(input.email);
   const user = await prisma.user.findUnique({
     where: { normalizedEmail: normalizeEmail(input.email) },
     include: { customerProfile: true },
   });
   const valid = await verifyPasswordConstantTime(user?.passwordHash, input.password);
   if (!user || !valid || user.accountStatus === "DISABLED" || !user.customerProfile) {
+    recordLoginFailure(input.email);
     throw ApiError.auth(401, "AUTH_INVALID_CREDENTIALS", "Invalid email or password");
   }
   if (user.customerProfile.status !== "ACTIVE") {
     throw ApiError.auth(403, "AUTH_ACCOUNT_DISABLED", "This customer account is not active");
   }
+  clearLoginFailures(input.email);
   const { session, refreshToken } = await createSession(user.id, prisma, undefined, { scope: "CUSTOMER", ...input.attrs });
   await prisma.customerProfile.update({ where: { id: user.customerProfile.id }, data: { lastSeenAt: new Date() } });
   return { user, profile: user.customerProfile, session, refreshToken };

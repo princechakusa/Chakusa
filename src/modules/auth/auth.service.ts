@@ -13,6 +13,7 @@ import { appleChallengeHash } from "./appleAuth.js";
 import { decryptProviderCredential, encryptProviderCredential } from "../../lib/providerCredentials.js";
 import { claimInvitationForNewUser } from "../team/teamInvitations.service.js";
 import { recordActivity } from "../../lib/activity.js";
+import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from "../../lib/loginThrottle.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
 import { generatePublicSlug } from "../../lib/publicSlug.js";
 import type { BusinessRole } from "@prisma/client";
@@ -535,6 +536,7 @@ export async function registerUser(input: RegisterInput) {
 }
 
 export async function authenticateUser(input: LoginInput) {
+  assertLoginAllowed(input.email);
   const user = await prisma.user.findUnique({
     where: { normalizedEmail: normalizeEmail(input.email) },
   });
@@ -542,8 +544,10 @@ export async function authenticateUser(input: LoginInput) {
   // doesn't exist, so response timing can't be used to enumerate emails.
   const valid = await verifyPasswordConstantTime(user?.passwordHash, input.password);
   if (!user || !valid || user.accountStatus === "DISABLED") {
+    recordLoginFailure(input.email);
     throw ApiError.auth(401, "AUTH_INVALID_CREDENTIALS", "Invalid email or password");
   }
+  clearLoginFailures(input.email);
   const auth = await createSession(user.id, prisma);
   return { user, ...auth };
 }
@@ -639,17 +643,25 @@ const SOCIAL_NOTICE_COOLDOWN_MS = 10 * 60_000;
  * Google or Apple): the sign-in providers to remind the owner about, or null
  * when the email has no such account or a reminder went out recently.
  */
-export async function passwordlessSignInProviders(email: string): Promise<string[] | null> {
-  const user = await prisma.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) }, select: { id: true, passwordHash: true, authIdentities: { select: { provider: true } } } });
+export async function passwordlessSignInProviders(email: string): Promise<{ providers: string[]; to: string } | null> {
+  const user = await prisma.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) }, select: { id: true, email: true, passwordHash: true, authIdentities: { select: { provider: true } } } });
   if (!user || user.passwordHash || !user.authIdentities.length) return null;
   const last = socialNoticeSentAt.get(user.id);
   if (last && Date.now() - last < SOCIAL_NOTICE_COOLDOWN_MS) return null;
   socialNoticeSentAt.set(user.id, Date.now());
   if (socialNoticeSentAt.size > 5000) socialNoticeSentAt.delete(socialNoticeSentAt.keys().next().value!);
-  return [...new Set(user.authIdentities.map((i) => String(i.provider)))];
+  return { providers: [...new Set(user.authIdentities.map((i) => String(i.provider)))], to: user.email };
 }
 
 export async function createPasswordReset(email: string): Promise<string | null> {
+  return (await issuePasswordReset(email))?.token ?? null;
+}
+
+/**
+ * Issues a reset link and returns it with the address stored on the account,
+ * which is where the link must go (never the text the requester typed).
+ */
+export async function issuePasswordReset(email: string): Promise<{ token: string; to: string } | null> {
   const token = generateOpaqueToken();
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) } });
@@ -671,7 +683,7 @@ export async function createPasswordReset(email: string): Promise<string | null>
         expiresAt: new Date(Date.now() + config.PASSWORD_RESET_TTL_MINUTES * 60_000),
       },
     });
-    return token.raw;
+    return { token: token.raw, to: user.email };
   });
 }
 
@@ -692,7 +704,9 @@ export async function resetPassword(rawToken: string, password: string): Promise
       data: { usedAt: new Date() },
     });
     if (claimed.count !== 1) return "used" as const;
-    const user = await tx.user.update({ where: { id: reset.userId }, data: { passwordHash }, select: { email: true } });
+    // Following the emailed link proves the inbox, so the email counts as verified.
+    const current = await tx.user.findUniqueOrThrow({ where: { id: reset.userId }, select: { emailVerifiedAt: true } });
+    const user = await tx.user.update({ where: { id: reset.userId }, data: { passwordHash, emailVerifiedAt: current.emailVerifiedAt ?? new Date() }, select: { email: true } });
     await tx.authSession.updateMany({
       where: { userId: reset.userId, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: "password_reset" },
@@ -705,6 +719,7 @@ export async function resetPassword(rawToken: string, password: string): Promise
   if (outcome === "invalid") throw ApiError.auth(400, "AUTH_RESET_TOKEN_INVALID", "Invalid password reset token");
   if (outcome === "expired") throw ApiError.auth(400, "AUTH_RESET_TOKEN_EXPIRED", "Password reset token expired");
   if (outcome === "used") throw ApiError.auth(400, "AUTH_RESET_TOKEN_USED", "Password reset token has already been used");
+  clearLoginFailures(outcome.email);
   return outcome;
 }
 

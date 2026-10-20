@@ -29,7 +29,7 @@
     "android": {
       "package": "com.chakusa.mobile",
       "allowBackup": false,
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#FF5C5C",
         "foregroundImage": "./assets/android-icon-foreground.png"

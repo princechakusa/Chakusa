@@ -3,6 +3,7 @@ import type { Plan, SubscriptionStatus } from "@prisma/client";
 import { buildApp, type BuildAppOptions } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
 import { assertDestructiveTestDatabaseAccessAllowed } from "./dbSafetyGuard.js";
+import { resetLoginThrottle } from "../src/lib/loginThrottle.js";
 
 export async function createTestApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = await buildApp(options);
@@ -17,6 +18,7 @@ export async function createTestApp(options: BuildAppOptions = {}): Promise<Fast
  */
 export async function resetDatabase() {
   assertDestructiveTestDatabaseAccessAllowed();
+  resetLoginThrottle();
   // The admin audit ledger is protected by database triggers that reject
   // row-level UPDATE/DELETE. TRUNCATE is used only inside the independently
   // guarded local-test reset path; production application code has no such

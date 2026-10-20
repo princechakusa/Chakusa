@@ -540,6 +540,8 @@ Still open: authenticated device QA (uploads, sign-in, maps, call screening, pus
 
 Until then, sign-in and sign-up work; only self-service reset is unavailable.
 
+**2026-10-20 note:** a send-only Resend key exists on the build machine (user environment variable) - it can be reused for step 2, but its domain status can't be read with a send-only key, so confirm the domain shows *Verified* in the Resend dashboard. Reset is now hardened (per-account cooldown and hourly cap, timing-safe response, other links retired on reset, "password changed" notice, token stripped from the reset page URL).
+
 ## OA-16 — Turn on Google Play Integrity (anti-clone, server side) (2026-10-19) — OPEN
 
 **Status:** OPEN (not blocking; the code ships with `PLAY_INTEGRITY_MODE=off`)
@@ -556,3 +558,17 @@ Until then, sign-in and sign-up work; only self-service reset is unavailable.
 7. Watch the API logs for `app_integrity_unverified` / `app_integrity_rejected` for a few days, then set `PLAY_INTEGRITY_MODE=enforce`.
 
 **Known limit:** the API can't yet tell a clone posing as the website or the iOS app from the real ones. Closing that needs a gateway→API shared secret and Apple App Attest for iOS (backlog).
+
+## OA-17 — Google ratings and "also nearby" places (Google Places API) (2026-10-20) — OPEN
+
+**Status:** OPEN (not blocking; the feature ships switched off and the app hides it).
+
+**What's built:** owners link their Google Business listing (Photos & Google screen); customers then see the live Google rating on the business page, and Explore's list view shows "Also nearby" Google places with attribution. Only the Google place ID is stored; ratings are fetched live and cached in memory for 10 minutes, per Google Maps Platform terms. Google content is never drawn on the OpenStreetMap map.
+
+**Owner steps (paid vendor decision - Google bills per request above the free tier):**
+1. Google Cloud -> project `chakusa-507914` -> enable **Places API (New)** and set a billing budget alert.
+2. Credentials -> create an API key restricted to **Places API (New)** only (server key: restrict by API, not by app).
+3. Render -> `chakusa-api` -> Environment: `GOOGLE_PLACES_API_KEY=<key>`. Redeploy.
+4. In the business app -> More -> Business settings -> Photo gallery & Google rating -> Find -> pick your listing; open your page in the customer app and confirm the Google rating shows.
+
+**Later (optional):** showing every place on the map itself, Google Maps style, needs the Google Maps SDK map (Android + iOS keys) instead of OpenStreetMap - a separate step once the Places key is live.

@@ -308,11 +308,12 @@ test.describe('Business and customer, end to end', () => {
     await expect(card).toBeVisible();
     await button(page, 'Within 15 km').click();
 
-    // Map view: you + the business on OpenStreetMap.
-    await button(page, 'Show on map').click();
+    // Explore is map-first: you + the business on OpenStreetMap, then the list.
     await expectMapRendered(page, page.locator('iframe[data-testid=leaflet-map]').filter({ visible: true }).first());
     await linger(page, 2500);
     await button(page, 'Show as list').click();
+    await expect(button(page, new RegExp(business.name))).toBeVisible();
+    await button(page, 'Show on map').click();
 
     // Search near a named place instead of GPS (Nominatim search).
     await button(page, 'Change location').click();

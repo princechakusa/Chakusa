@@ -631,6 +631,24 @@ export async function revokeAllSessions(userId: string, reason = "logout_all", d
 export const PASSWORD_RESET_COOLDOWN_MS = 60_000;
 export const PASSWORD_RESET_HOURLY_CAP = 5;
 
+const socialNoticeSentAt = new Map<string, number>();
+const SOCIAL_NOTICE_COOLDOWN_MS = 10 * 60_000;
+
+/**
+ * For "forgot password" on an account that has no password (created with
+ * Google or Apple): the sign-in providers to remind the owner about, or null
+ * when the email has no such account or a reminder went out recently.
+ */
+export async function passwordlessSignInProviders(email: string): Promise<string[] | null> {
+  const user = await prisma.user.findUnique({ where: { normalizedEmail: normalizeEmail(email) }, select: { id: true, passwordHash: true, authIdentities: { select: { provider: true } } } });
+  if (!user || user.passwordHash || !user.authIdentities.length) return null;
+  const last = socialNoticeSentAt.get(user.id);
+  if (last && Date.now() - last < SOCIAL_NOTICE_COOLDOWN_MS) return null;
+  socialNoticeSentAt.set(user.id, Date.now());
+  if (socialNoticeSentAt.size > 5000) socialNoticeSentAt.delete(socialNoticeSentAt.keys().next().value!);
+  return [...new Set(user.authIdentities.map((i) => String(i.provider)))];
+}
+
 export async function createPasswordReset(email: string): Promise<string | null> {
   const token = generateOpaqueToken();
   return prisma.$transaction(async (tx) => {

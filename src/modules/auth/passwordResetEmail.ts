@@ -1,5 +1,5 @@
 import { config } from "../../lib/config.js";
-import { createPasswordReset } from "./auth.service.js";
+import { createPasswordReset, passwordlessSignInProviders } from "./auth.service.js";
 
 /** Whether the API holds the credentials needed to send reset mail. */
 export function outboundEmailConfigured(): boolean {
@@ -39,6 +39,20 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   );
 }
 
+/** "Forgot password" on a Google/Apple account: tell the owner how they actually sign in. */
+export async function sendSocialSignInReminderEmail(email: string, providers: string[]): Promise<boolean> {
+  const names = providers.map((p) => (p.toUpperCase() === "GOOGLE" ? "Google" : p.toUpperCase() === "APPLE" ? "Apple" : p)).join(" or ");
+  return sendEmail(
+    email,
+    "How to sign in to Chakusa",
+    wrap(`<h2 style="margin:0 0 12px">You sign in with ${names}</h2>
+<p>Someone (hopefully you) asked to reset the password for this Chakusa account. This account doesn't use a password - it was created with ${names}.</p>
+<p>Open Chakusa and tap <b>Continue with ${names}</b> to sign in.</p>
+<p>If you didn't ask for this, ignore this email - nothing has changed.</p>`),
+    `This Chakusa account signs in with ${names}, not a password. Open Chakusa and tap "Continue with ${names}". If you didn't ask for this, ignore this email.`,
+  );
+}
+
 /** Security notice after a password change, so an account owner learns of a reset they didn't make. */
 export async function sendPasswordChangedEmail(email: string): Promise<boolean> {
   return sendEmail(
@@ -65,7 +79,13 @@ export async function requestPasswordReset(email: string, log: { warn: (msg: str
     log.warn("Password reset request failed");
     return;
   }
-  if (!token) return;
+  if (!token) {
+    // No password on this account (Google/Apple): remind the owner by email.
+    // The HTTP response is identical either way, so nothing is revealed.
+    const providers = await passwordlessSignInProviders(normalized).catch(() => null);
+    if (providers?.length) void sendSocialSignInReminderEmail(normalized, providers).then((ok) => { if (!ok) log.warn("Sign-in reminder email was not delivered"); });
+    return;
+  }
   const issued = token;
   void sendPasswordResetEmail(normalized, issued).then((delivered) => {
     if (!delivered) log.warn("Password reset email was not delivered");

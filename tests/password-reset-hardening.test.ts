@@ -65,4 +65,28 @@ describe("password reset hardening", () => {
     expect(sent[0]!.html).toContain("If you didn't ask for this");
     expect(sent[0]!.text).toMatch(/token=/);
   });
+
+  it("emails a sign-in reminder (not a reset link) to a Google-only account, with the same response, once per 10 minutes", async () => {
+    mutable.RESEND_API_KEY = "re_test"; mutable.EMAIL_FROM = "Chakusa <no-reply@example.com>";
+    const sent: Array<{ to: string[]; subject: string; html: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => { sent.push(JSON.parse(String(init.body))); return new Response("{}", { status: 200 }); }));
+    const user = await prisma.user.create({ data: { email: "social@example.com", normalizedEmail: "social@example.com", fullName: "Social Only", authIdentities: { create: { provider: "GOOGLE", providerSubject: "g-123" } } } });
+    await registerAccount(app, { email: "withpw@example.com" });
+
+    const social = await app.inject({ method: "POST", url: "/auth/forgot-password", payload: { email: "social@example.com" } });
+    const normal = await app.inject({ method: "POST", url: "/auth/forgot-password", payload: { email: "withpw@example.com" } });
+    expect(social.statusCode).toBe(normal.statusCode);
+    expect(social.body).toBe(normal.body);
+
+    await vi.waitFor(() => expect(sent.some((m) => m.to[0] === "social@example.com")).toBe(true));
+    const reminder = sent.find((m) => m.to[0] === "social@example.com")!;
+    expect(reminder.subject).toBe("How to sign in to Chakusa");
+    expect(reminder.html).toContain("Continue with Google");
+    expect(reminder.html).not.toMatch(/token=/);
+    expect(await prisma.passwordResetToken.count({ where: { userId: user.id } })).toBe(0);
+
+    await app.inject({ method: "POST", url: "/auth/forgot-password", payload: { email: "social@example.com" } });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(sent.filter((m) => m.to[0] === "social@example.com")).toHaveLength(1);
+  });
 });

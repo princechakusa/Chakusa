@@ -87,7 +87,7 @@ export function CustomerAuthScreen() {
     if (!email.trim()) { setNotice(null); setError('Enter your email above, then tap Forgot password.'); return; }
     return run('reset', async () => {
       const message = await auth.forgotPassword(email.trim());
-      setNotice(message || 'If that email has an account, a reset link is on its way.');
+      setNotice(message || 'If that email has an account, we have sent instructions to it. Check your inbox.');
     });
   };
 

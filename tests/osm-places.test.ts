@@ -28,7 +28,7 @@ describe("free nearby places (OpenStreetMap) and Google Maps links", () => {
       { type: "node", id: 3, lat: -17.8301, lon: 31.0501, tags: { shop: "beauty", name: "Ada Studio" } },
       { type: "node", id: 4, lat: -17.8300, lon: 31.0500, tags: { shop: "supermarket", name: "Not a service" } },
       { type: "node", id: 5, lat: -17.8300, lon: 31.0500, tags: { shop: "hairdresser" } },
-    ])(...(args as [])); });
+    ])(...(args as unknown as [])); });
     const owner = await registerAccount(app, { businessName: "Ada Studio" });
     await prisma.businessMarketplaceListing.create({ data: { businessId: owner.businessId, latitude: -17.8301, longitude: 31.0501 } });
     const token = await registerCustomer(app);

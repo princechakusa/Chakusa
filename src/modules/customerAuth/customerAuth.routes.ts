@@ -129,7 +129,7 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
   fastify.post("/forgot-password", rl(5, "15 minutes"), async (request, reply) => {
     const input = customerForgotPasswordSchema.parse(request.body);
     await requestPasswordReset(input.email, request.log);
-    reply.send({ message: "If an account exists for that email, a reset link has been sent." });
+    reply.send({ message: "If an account exists for that email, we have sent instructions to it. Check your inbox." });
   });
 
   fastify.post("/reset-password", rl(10, "15 minutes"), async (request, reply) => {

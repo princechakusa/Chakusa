@@ -67,17 +67,21 @@ export function MessageThreadScreen() {
     );
   }, [data]);
   const customer = customerId ? customers.find((c) => c.id === customerId) : null;
-  const clientName = customer?.name ?? 'Conversation';
+  // A Chakusa app customer's question: replies go back in the app (push), not SMS.
+  const inApp = data?.contextType === 'CUSTOMER_APP_INQUIRY';
+  const canReply = inApp || Boolean(customerId);
+  const clientName = customer?.name ?? (inApp ? data?.subject : null) ?? 'Conversation';
   const lastChannel = (data?.messages[data.messages.length - 1]?.channel ?? 'sms').toLowerCase();
   const channel: 'sms' | 'whatsapp' = lastChannel === 'whatsapp' ? 'whatsapp' : 'sms';
 
   const send = async () => {
     const body = draft.trim();
-    if (!body || sending || !customerId) return;
+    if (!body || sending || !canReply) return;
     setSending(true);
     setSendError(null);
     try {
-      await messagingApi.send({ customerId, body, channel });
+      if (inApp) await messagingApi.replyInApp(conversationId, body);
+      else await messagingApi.send({ customerId: customerId!, body, channel });
       setDraft('');
       await load();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
@@ -116,7 +120,7 @@ export function MessageThreadScreen() {
             {clientName}
           </Text>
           <Text numberOfLines={1} style={styles.clientMeta}>
-            {customer?.phone ?? customer?.email ?? `${channel.toUpperCase()} conversation`}
+            {inApp ? 'Chakusa app customer' : customer?.phone ?? customer?.email ?? `${channel.toUpperCase()} conversation`}
           </Text>
         </View>
         {customerId ? (
@@ -177,7 +181,7 @@ export function MessageThreadScreen() {
 
           <View style={styles.composer}>
             {sendError ? <Text style={styles.sendError}>{sendError}</Text> : null}
-            {!customerId ? (
+            {!canReply ? (
               <Text style={styles.composerNote}>
                 This conversation has no linked client, so a reply can't be sent from here yet.
               </Text>
@@ -187,8 +191,8 @@ export function MessageThreadScreen() {
                 <TextInput
                   value={draft}
                   onChangeText={setDraft}
-                  editable={Boolean(customerId) && !sending}
-                  placeholder={`Message over ${channel.toUpperCase()}…`}
+                  editable={canReply && !sending}
+                  placeholder={inApp ? 'Reply in the Chakusa app…' : `Message over ${channel.toUpperCase()}…`}
                   placeholderTextColor={m3.onSurfaceVariant}
                   multiline
                   style={styles.composerInput}
@@ -197,9 +201,9 @@ export function MessageThreadScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Send"
-                disabled={!draft.trim() || sending || !customerId}
+                disabled={!draft.trim() || sending || !canReply}
                 onPress={() => void send()}
-                style={[styles.sendBtn, (!draft.trim() || sending || !customerId) && styles.sendBtnDisabled]}
+                style={[styles.sendBtn, (!draft.trim() || sending || !canReply) && styles.sendBtnDisabled]}
               >
                 <Icon name={sending ? 'hourglass_empty' : 'send'} size={18} color={m3.onPrimary} />
               </Pressable>

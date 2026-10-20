@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { leafletHtml, parseMapMessage, scriptSafeJson } from './leafletHtml';
+import { leafletHtml, parseMapMessage, scriptSafeJson, selectMarkerScript } from './leafletHtml';
 
 describe('leafletHtml', () => {
   const page = leafletHtml({ id: 'm1', center: { latitude: -17.8, longitude: 31.04 }, markers: [{ latitude: -17.8, longitude: 31.04, kind: 'business', label: 'Ada Hair Studio' }], pickable: true });
@@ -36,5 +36,26 @@ describe('parseMapMessage', () => {
     expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'pick', latitude: 91, longitude: 2 }), 'm1')).toBeNull();
     expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'pick', latitude: 1, longitude: 181 }), 'm1')).toBeNull();
     expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 'm1', type: 'unknown' }), 'm1')).toBeNull();
+  });
+});
+
+describe('business pills and selection', () => {
+  const page = leafletHtml({ id: 's1', center: { latitude: 0, longitude: 0 }, selectedKey: 'ada', markers: [{ latitude: 0, longitude: 0, kind: 'business', key: 'ada', badge: '4.8', label: '<img src=x onerror=alert(1)>' }] });
+
+  it('draws tappable business pills with DOM text, never markup from data', () => {
+    expect(page).toContain("send({type:'select',key:m.key})");
+    expect(page).toContain('tx.textContent=');
+    expect(page).not.toContain('<img src=x');
+    expect(page).toContain('"selectedKey":"ada"');
+  });
+
+  it('accepts a select message only with a sane key', () => {
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 's1', type: 'select', key: 'ada' }), 's1')).toMatchObject({ type: 'select', key: 'ada' });
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 's1', type: 'select' }), 's1')).toBeNull();
+    expect(parseMapMessage(JSON.stringify({ source: 'chakusa-map', id: 's1', type: 'select', key: 'x'.repeat(201) }), 's1')).toBeNull();
+  });
+
+  it('builds a selection script that cannot break out of its string', () => {
+    expect(selectMarkerScript('a");alert(1);("')).toContain('"a\\");alert(1);(\\""');
   });
 });

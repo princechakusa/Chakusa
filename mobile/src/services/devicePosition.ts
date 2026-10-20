@@ -21,3 +21,19 @@ export async function currentPosition(): Promise<{ latitude: number; longitude: 
     throw new LocationUnavailableError('Could not find your location right now. Search for a place or drop a pin instead.');
   }
 }
+
+/**
+ * A quick fix only when the person already granted location - never prompts.
+ * Used to open Explore on their area; null when not permitted or unavailable.
+ */
+export async function positionIfPermitted(): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (permission.status !== 'granted') return null;
+    const last = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 });
+    const position = last ?? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    return { latitude: position.coords.latitude, longitude: position.coords.longitude };
+  } catch {
+    return null;
+  }
+}

@@ -10,6 +10,7 @@ import { customerApi, customerAuthApi, legalApi } from './endpoints';
 import { clearPendingIntent } from '../experience/pendingIntentStorage';
 import { clearCustomerSession, getCustomerSession, storeCustomerSession } from './session';
 import { SESSION_RESTORE_TIMEOUT_COPY, SESSION_RESTORE_TIMEOUT_MS } from '../domain/startup';
+import { clearSessionSnapshot, readSessionSnapshot, writeSessionSnapshot } from '../services/sessionSnapshot';
 
 // PROGRAM 2 LOOP 7: customer authentication + secure session.
 //
@@ -69,6 +70,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     restoreAbort.current?.abort();
     const attempt = ++authAttempt.current;
     await clearCustomerSession();
+    await clearSessionSnapshot('customer');
     if (attempt !== authAttempt.current) return;
     // PROGRAM 2 LOOP 10: drop any preserved customer destination on an
     // explicit sign-out / account close - but NOT on 'session-expired',
@@ -100,6 +102,7 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     if (attempt !== authAttempt.current) return;
     setUser(response.user);
     setProfile(response.profile);
+    void writeSessionSnapshot('customer', { user: response.user, profile: response.profile });
     setLastEvent('none');
     setStatus('authenticated');
     void refreshLegalStatus();
@@ -119,19 +122,35 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     }, SESSION_RESTORE_TIMEOUT_MS);
     setStatus('restoring');
     setRestoreError(null);
+    let optimistic = false;
     try {
       const existing = await getCustomerSession();
       if (attempt !== authAttempt.current) return;
       if (!existing) { setStatus('signed-out'); return; }
+      // Open straight into the app from the last-known profile; the server
+      // check below confirms (or ends) the session in the background.
+      const snapshot = await readSessionSnapshot<{ user: CustomerSessionResponse['user']; profile: CustomerSessionResponse['profile'] }>('customer');
+      if (attempt !== authAttempt.current) return;
+      if (snapshot?.user && snapshot.profile) {
+        optimistic = true;
+        clearTimeout(timeout);
+        setUser(snapshot.user);
+        setProfile(snapshot.profile);
+        setStatus('authenticated');
+      }
       const me = await customerAuthApi.me(controller.signal);
       if (attempt !== authAttempt.current) return;
       setUser(me.user);
       setProfile(me.profile);
+      void writeSessionSnapshot('customer', { user: me.user, profile: me.profile });
       setStatus('authenticated');
       void refreshLegalStatus();
     } catch (error) {
       if (attempt !== authAttempt.current) return;
       if (error instanceof ApiError && error.kind === 'unauthorized' && error.code !== 'AUTH_SESSION_CHANGED') { await clearLocal('session-expired'); return; }
+      // Already showing the cached profile: a slow or offline server is not
+      // an error the customer needs to see; requests retry on their own.
+      if (optimistic) { void refreshLegalStatus(); return; }
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.');
       setStatus('restore-error');
     } finally {

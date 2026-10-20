@@ -15,6 +15,8 @@ import { CustomerAssistantScreen } from '../screens/CustomerAssistantScreen';
 import { CustomerAuthScreen } from '../screens/CustomerAuthScreen';
 import { CustomerBookingsScreen } from '../screens/CustomerBookingsScreen';
 import { CustomerExploreScreen } from '../screens/CustomerExploreScreen';
+import { CustomerInquiriesScreen } from '../screens/CustomerInquiriesScreen';
+import { CustomerInquiryThreadScreen } from '../screens/CustomerInquiryThreadScreen';
 import { CustomerHomeScreen } from '../screens/CustomerHomeScreen';
 import { CustomerLegalDocumentScreen } from '../screens/CustomerLegalDocumentScreen';
 import { CustomerLegalGateScreen } from '../screens/CustomerLegalGateScreen';
@@ -42,10 +44,11 @@ const tabIcons: Record<keyof CustomerTabParamList, { active: keyof typeof Ionico
   CustomerHome: { active: 'home', inactive: 'home-outline' },
   CustomerExplore: { active: 'compass', inactive: 'compass-outline' },
   CustomerBookings: { active: 'calendar', inactive: 'calendar-outline' },
+  CustomerMessages: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   CustomerAccount: { active: 'person', inactive: 'person-outline' },
 };
 const tabLabels: Record<keyof CustomerTabParamList, string> = {
-  CustomerHome: 'Home', CustomerExplore: 'Explore', CustomerBookings: 'Bookings', CustomerAccount: 'Account',
+  CustomerHome: 'Home', CustomerExplore: 'Explore', CustomerBookings: 'Bookings', CustomerMessages: 'Messages', CustomerAccount: 'Account',
 };
 
 function CustomerTabBar({ state, navigation }: BottomTabBarProps) {
@@ -83,6 +86,7 @@ function CustomerTabsNavigator() {
       <Tabs.Screen name="CustomerHome" component={CustomerHomeScreen} />
       <Tabs.Screen name="CustomerExplore" component={CustomerExploreScreen} />
       <Tabs.Screen name="CustomerBookings" component={CustomerBookingsScreen} />
+      <Tabs.Screen name="CustomerMessages" component={CustomerInquiriesScreen} />
       <Tabs.Screen name="CustomerAccount" component={CustomerAccountScreen} />
     </Tabs.Navigator>
   );
@@ -137,7 +141,8 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
       ) : (
         <>
           <Stack.Screen name="CustomerTabs" component={CustomerTabsNavigator} options={{ headerShown: false }} />
-          <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} />
+          <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CustomerInquiryThread" component={CustomerInquiryThreadScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BookingFlow" component={BookingFlowScreen} />
           <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
           <Stack.Screen name="CustomerNotifications" component={CustomerNotificationsScreen} />

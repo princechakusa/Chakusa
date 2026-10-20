@@ -52,9 +52,11 @@ describe('resolveInitialExperience', () => {
     expect(resolveInitialExperience({ preference: 'customer', hasBusinessSession: true, hasCustomerSession: true, deepLinkExperience: 'customer', forced: 'business' })).toBe('business');
   });
 
-  it('still resolves a preference even when that session is missing (auth screen then shows)', () => {
-    expect(resolveInitialExperience({ preference: 'customer', hasBusinessSession: true, hasCustomerSession: false })).toBe('customer');
-    expect(resolveInitialExperience({ preference: 'business', hasBusinessSession: false, hasCustomerSession: true })).toBe('business');
+  it('ignores a remembered side that is signed out: the other session opens, or the welcome page', () => {
+    expect(resolveInitialExperience({ preference: 'customer', hasBusinessSession: true, hasCustomerSession: false })).toBe('business');
+    expect(resolveInitialExperience({ preference: 'business', hasBusinessSession: false, hasCustomerSession: true })).toBe('customer');
+    expect(resolveInitialExperience({ preference: 'customer', hasBusinessSession: false, hasCustomerSession: false })).toBe('unselected');
+    expect(resolveInitialExperience({ preference: 'business', hasBusinessSession: false, hasCustomerSession: false })).toBe('unselected');
   });
 });
 

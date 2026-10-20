@@ -23,6 +23,7 @@ import type {
   RewardRedemptionDto, CustomerMembershipDto, MembershipPlanDto,
   ReferralOverviewDto, ReferralCodeDto,
   CustomerInvoiceListResponse, CustomerInvoiceDetailDto, CustomerInvoicePayResult,
+  GoogleNearbyDto, InquiryMessageDto, InquiryThreadDto, InquiryThreadSummaryDto,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -97,6 +98,16 @@ export const marketplaceApi = {
   favourites: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),
   following: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/following'),
   promotions: () => customerHttp.get<MarketplacePromotionDto[]>('/customer/marketplace/promotions'),
+  googleNearby: (lat: number, lng: number, radiusKm = 5, q?: string) =>
+    customerHttp.get<GoogleNearbyDto>(`/customer/marketplace/google-nearby${query({ lat, lng, radiusKm, q })}`),
+};
+
+// Ask the business: one in-app thread per customer per business.
+export const inquiriesApi = {
+  list: () => customerHttp.get<InquiryThreadSummaryDto[]>('/customer/inquiries'),
+  start: (slug: string, body: string) => customerHttp.post<{ threadId: string; message: InquiryMessageDto }>('/customer/inquiries', { slug, body }),
+  get: (id: string) => customerHttp.get<InquiryThreadDto>(`/customer/inquiries/${id}`),
+  send: (id: string, body: string) => customerHttp.post<{ threadId: string; message: InquiryMessageDto }>(`/customer/inquiries/${id}/messages`, { body }),
 };
 
 export const bookingApi = {

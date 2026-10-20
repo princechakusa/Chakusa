@@ -33,6 +33,12 @@ export const businessApi = {
   completeOnboarding: () => api.post<BusinessDto>('/business/onboarding/complete'),
   setLocation: (location: import('../apiTypes').BusinessLocationDto | null) => api.patch<BusinessDto>('/business', { location }),
   exportData: () => api.get<Record<string, unknown>>('/business/export'),
+  gallery: () => api.get<import('../apiTypes').GalleryPhotoDto[]>('/business/gallery'),
+  addGalleryPhoto: (dataBase64: string, caption?: string | null) => api.post<import('../apiTypes').GalleryPhotoDto>('/business/gallery', { dataBase64, caption }),
+  reorderGallery: (ids: string[]) => api.put<import('../apiTypes').GalleryPhotoDto[]>('/business/gallery/order', { ids }),
+  deleteGalleryPhoto: (id: string) => api.delete<void>(`/business/gallery/${id}`),
+  searchGooglePlace: (q: string) => api.get<{ enabled: boolean; places: import('../apiTypes').GooglePlaceDto[] }>(`/business/google-place/search${query({ q })}`),
+  setGooglePlace: (placeId: string | null) => api.put<{ placeId: string | null; google: { rating: number | null; reviewCount: number; mapsUrl: string | null } | null }>('/business/google-place', { placeId }),
 };
 export const calendarApi = {
   listSubscriptions: () => api.get<CalendarSubscriptionDto[]>('/calendar/subscriptions'),
@@ -160,6 +166,9 @@ export interface ConversationSummaryDto {
   lastInboundAt?: string | null;
   lastReadAt?: string | null;
   unread?: boolean;
+  /** CUSTOMER_APP_INQUIRY for a Chakusa app customer's thread (reply in-app). */
+  contextType?: string | null;
+  subject?: string | null;
   messages: Array<{ id: string; body: string; direction: string; channel?: string; status?: string; customerId?: string | null; createdAt?: string }>;
   slas: Array<{ type: string; status: string; dueAt: string }>;
 }
@@ -181,6 +190,7 @@ export interface ConversationDetailDto extends ConversationSummaryDto {
 export const messagingApi = {
   conversations: () => api.get<ConversationSummaryDto[]>('/messages/conversations?limit=50'),
   conversation: (id: string) => api.get<ConversationDetailDto>(`/messages/conversations/${id}`),
+  replyInApp: (id: string, body: string) => api.post<{ id: string; body: string; fromBusiness: boolean; createdAt: string }>(`/messages/conversations/${id}/reply`, { body }),
   send: (body: { customerId: string; body: string; channel?: 'sms' | 'whatsapp' }) =>
     api.post<{ id: string }>('/messages/send', body),
   failures: () => api.get<Array<{id:string;status:string;lastError:string|null;message:{body:string}}>>('/messages/failures'),

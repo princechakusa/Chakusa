@@ -19,6 +19,7 @@ export const customerLinking: LinkingOptions<CustomerRootStackParamList> = {
           CustomerHome: 'home',
           CustomerExplore: 'explore',
           CustomerBookings: 'bookings',
+          CustomerMessages: 'messages',
           CustomerAccount: 'account',
         },
       },

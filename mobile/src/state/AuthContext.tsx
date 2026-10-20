@@ -11,6 +11,13 @@ import { hasCompletedBusinessSetup } from '../domain/authenticationFlow';
 import { PendingLegalDocument, withoutAccepted } from '../domain/legalAcceptance';
 import { clearPendingIntent } from '../experience/pendingIntentStorage';
 import { SESSION_RESTORE_TIMEOUT_COPY, SESSION_RESTORE_TIMEOUT_MS } from '../domain/startup';
+import { clearSessionSnapshot, readSessionSnapshot, writeSessionSnapshot } from '../services/sessionSnapshot';
+
+type BusinessSnapshot = { user: AuthResponse['user']; business: AuthResponse['business']; role: AuthResponse['role'] | null };
+// The logo is a large data URI; the header falls back to initials until /me returns it.
+function snapshotOf(user: AuthResponse['user'], business: AuthResponse['business'], role: AuthResponse['role'] | null): BusinessSnapshot {
+  return { user, business: business ? { ...business, logoDataUrl: null } : business, role };
+}
 
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
@@ -58,6 +65,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     restoreAbort.current?.abort();
     const attempt = ++authAttempt.current;
     await clearStoredSession();
+    await clearSessionSnapshot('business');
     if (attempt !== authAttempt.current) return;
     await preferencesRef.current.activateScope(null, false);
     if (attempt !== authAttempt.current) return;
@@ -83,6 +91,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await storeSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, ownerUserId: response.user.id, ownerBusinessId: response.business?.id }, revision);
     if (attempt !== authAttempt.current) return;
     setUser(response.user); setBusiness(response.business); setRole(response.role ?? null); setStatus('authenticated');
+    void writeSessionSnapshot('business', snapshotOf(response.user, response.business, response.role ?? null));
     void refreshLegalStatus();
   }, [refreshLegalStatus]);
 
@@ -101,10 +110,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus('restore-error');
     }, SESSION_RESTORE_TIMEOUT_MS);
     setStatus('restoring'); setRestoreError(null);
+    let optimistic = false;
     try {
       const existing = await getStoredSession();
       if (attempt !== authAttempt.current) return;
       if (!existing) { setStatus('anonymous'); return; }
+      // Open straight into the app from the last-known account when it
+      // belongs to this stored session; the server confirms in the background.
+      const snapshot = await readSessionSnapshot<BusinessSnapshot>('business');
+      if (attempt !== authAttempt.current) return;
+      if (snapshot?.user && snapshot.user.id === existing.ownerUserId && (!existing.ownerBusinessId || snapshot.business?.id === existing.ownerBusinessId)) {
+        await preferencesRef.current.activateScope(snapshot.user.id, hasCompletedBusinessSetup(snapshot.business), snapshot.business?.industry);
+        if (attempt !== authAttempt.current) return;
+        optimistic = true;
+        clearTimeout(timeout);
+        setUser(snapshot.user); setBusiness(snapshot.business); setRole(snapshot.role ?? null); setStatus('authenticated');
+      }
       const me = await authApi.me(controller.signal);
       if (attempt !== authAttempt.current) return;
       const revision = businessSessionRevision();
@@ -114,10 +135,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await preferencesRef.current.activateScope(me.user.id, hasCompletedBusinessSetup(me.business), me.business?.industry);
       if (attempt !== authAttempt.current) return;
       setUser(me.user); setBusiness(me.business); setRole(me.role); setStatus('authenticated');
+      void writeSessionSnapshot('business', snapshotOf(me.user, me.business, me.role));
       void refreshLegalStatus();
     } catch (error) {
       if (attempt !== authAttempt.current) return;
       if (error instanceof ApiError && error.kind === 'unauthorized' && error.code !== 'AUTH_SESSION_CHANGED') { await clearSession(); return; }
+      if (optimistic) { void refreshLegalStatus(); return; }
       setRestoreError(error instanceof ApiError ? error.message : 'Unable to restore your session.'); setStatus('restore-error');
     } finally {
       clearTimeout(timeout);

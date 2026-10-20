@@ -7,6 +7,7 @@ export type CustomerTabParamList = {
   CustomerHome: undefined;
   CustomerExplore: undefined;
   CustomerBookings: undefined;
+  CustomerMessages: undefined;
   CustomerAccount: undefined;
 };
 
@@ -15,6 +16,8 @@ export type CustomerRootStackParamList = {
   CustomerLegalGate: undefined;
   CustomerTabs: NavigatorScreenParams<CustomerTabParamList> | undefined;
   BusinessProfile: { slug: string };
+  // Ask the business: an existing thread, or a new one opened from a business page.
+  CustomerInquiryThread: { threadId?: string; slug?: string; businessName?: string };
   BookingFlow: { slug: string; serviceId?: string };
   BookingDetail: { bookingId: string };
   CustomerNotifications: undefined;

@@ -364,6 +364,10 @@ export interface MarketplaceCardDto {
   city: string | null;
   region: string | null;
   photo: string | null;
+  /** Up to four gallery photos (API paths or URLs), owner photos first. */
+  photos?: string[];
+  /** True when the business has at least one publicly bookable service. */
+  acceptsOnlineBooking?: boolean;
   verified: boolean;
   featured: boolean;
   // PROGRAM 2 LOOP 5 (surfaced in the customer app by Loop 8): true when the
@@ -428,6 +432,11 @@ export interface MarketplaceBusinessProfileDto {
   address: { line: string | null; city: string | null; region: string | null; country: string | null; latitude: number | null; longitude: number | null };
   openingHours: unknown;
   photos: string[];
+  /** Owner-uploaded gallery with captions, in display order. */
+  gallery?: Array<{ url: string; caption: string | null }>;
+  /** Live Google rating (never stored); show with "Google" attribution. */
+  google?: { rating: number | null; reviewCount: number; mapsUrl: string | null; attribution: string } | null;
+  acceptsOnlineBooking?: boolean;
   socialLinks: Record<string, string>;
   services: Array<{ id: string; name: string; description: string | null; category: string | null; durationMinutes: number; price: number | null; depositAmount: number | null; bookable: boolean }>;
   team: Array<{ name: string; role: string }>;
@@ -1090,3 +1099,16 @@ export interface CustomerInvoiceDetailDto {
   } | null;
 }
 export interface CustomerInvoicePayResult { checkoutUrl: string; }
+
+// --- Ask the business: customer <-> business in-app messaging -----------
+export interface InquiryMessageDto { id: string; body: string; fromBusiness: boolean; createdAt: string; readAt: string | null }
+export interface InquiryBusinessDto { name: string; slug: string | null; photoUrl: string | null }
+export interface InquiryThreadSummaryDto { id: string; business: InquiryBusinessDto | null; lastMessage: InquiryMessageDto | null; unreadCount: number; updatedAt: string }
+export interface InquiryThreadDto { id: string; business: InquiryBusinessDto | null; messages: InquiryMessageDto[] }
+
+// --- Google Places (shown only with "Google" attribution, never on the OSM map)
+export interface GooglePlaceDto { placeId: string; name: string; address: string | null; latitude: number | null; longitude: number | null; rating: number | null; reviewCount: number; category: string | null; mapsUrl: string | null; openNow?: boolean | null }
+export interface GoogleNearbyDto { enabled: boolean; attribution: string; places: GooglePlaceDto[] }
+
+// --- Business gallery ---------------------------------------------------
+export interface GalleryPhotoDto { id: string; position: number; caption: string | null; byteSize: number; createdAt: string; url: string | null }

@@ -62,6 +62,9 @@ export function BusinessSettingsScreen() {
         </View>
         {logoError ? <Text style={logoStyles.error}>{logoError}</Text> : null}
         {logo !== (business?.logoDataUrl ?? null) ? <Text style={logoStyles.hint}>Tap Save business setup to keep this photo.</Text> : null}
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('BusinessGallery')} style={logoStyles.btn}>
+          <Text style={logoStyles.btnText}>Photo gallery & Google rating</Text>
+        </Pressable>
       </View>
     </View>
     {profileUrl ? <View style={styles.shareCard}>

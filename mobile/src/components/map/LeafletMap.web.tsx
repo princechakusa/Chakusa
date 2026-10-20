@@ -9,27 +9,37 @@ import { leafletHtml, parseMapMessage } from './leafletHtml';
 
 let nextId = 0;
 
-export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = 'Map', ...options }: LeafletMapProps) {
+export function LeafletMap({ height = 240, fill = false, style, onPick, onSelect, accessibilityLabel = 'Map', selectedKey, ...options }: LeafletMapProps) {
   const id = useRef(`map-web-${++nextId}`).current;
   const frameRef = useRef<HTMLIFrameElement>(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const selectedRef = useRef(selectedKey);
+  selectedRef.current = selectedKey;
   // Rebuild the page only when what is drawn changes, not on every parent render.
   const drawKey = JSON.stringify([options.center.latitude, options.center.longitude, options.zoom, options.pickable, options.fitMarkers, options.markers ?? []]);
-  const html = useMemo(() => leafletHtml({ ...options, id }), [id, drawKey]);
+  const html = useMemo(() => leafletHtml({ ...options, id, selectedKey: selectedRef.current }), [id, drawKey]);
+
+  useEffect(() => {
+    const frame = frameRef.current?.contentWindow as (Window & { __chakusaSelect?: (key: string) => void }) | null | undefined;
+    if (selectedKey) frame?.__chakusaSelect?.(selectedKey);
+  }, [selectedKey]);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow || event.origin !== window.location.origin) return;
       const message = parseMapMessage(event.data, id);
       if (message?.type === 'pick') onPickRef.current?.({ latitude: message.latitude!, longitude: message.longitude! });
+      if (message?.type === 'select') onSelectRef.current?.(message.key!);
     };
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
   }, [id]);
 
   return (
-    <View style={[styles.frame, { height }, style]}>
+    <View style={[styles.frame, fill ? styles.fill : { height }, style]}>
       <iframe
         ref={frameRef}
         title={accessibilityLabel}
@@ -48,4 +58,5 @@ export function LeafletMap({ height = 240, style, onPick, accessibilityLabel = '
 
 const styles = StyleSheet.create({
   frame: { borderRadius: 18, overflow: 'hidden', backgroundColor: '#F4F1ED' },
+  fill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 0 },
 });

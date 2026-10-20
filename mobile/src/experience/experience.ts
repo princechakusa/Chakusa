@@ -53,7 +53,9 @@ export interface ExperienceResolutionInput {
 export function resolveInitialExperience(input: ExperienceResolutionInput): ExperienceOrUnselected {
   if (input.forced) return input.forced;
   if (input.deepLinkExperience) return input.deepLinkExperience;
-  if (input.preference !== 'unselected') return input.preference;
+  // A remembered choice only reopens a side that is still signed in; a
+  // signed-out launch always starts on the welcome page, never a sign-in form.
+  if (input.preference !== 'unselected' && hasSessionFor(input.preference, input)) return input.preference;
   if (input.hasBusinessSession && !input.hasCustomerSession) return 'business';
   if (input.hasCustomerSession && !input.hasBusinessSession) return 'customer';
   // Both or neither, and nothing else to go on: let the user choose.

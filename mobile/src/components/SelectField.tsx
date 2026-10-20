@@ -41,7 +41,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
       <Text style={theme.label}>{label}</Text>
       <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${selected?.label ?? (value || 'not set')}`} onPress={() => setOpen(true)} style={({ pressed }) => [theme.trigger, styles.trigger, pressed && styles.pressed]}>
         <Text numberOfLines={1} style={[theme.triggerText, styles.triggerText, !value && { color: theme.placeholder }]}>
-          {selected ? selected.label : value || placeholder}
+          {selected ? selected.short ?? selected.label : value || placeholder}
         </Text>
         <Ionicons name="chevron-down" size={18} color={theme.icon} />
       </Pressable>

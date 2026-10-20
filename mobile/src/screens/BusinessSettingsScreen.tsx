@@ -99,12 +99,15 @@ const INDUSTRIES = [
 
 function IndustryField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
-  const current = INDUSTRIES.find((item) => item.toLowerCase() === value.trim().toLowerCase());
+  // Setup saves keys like `hair_salon`; match them to the readable names.
+  const key = value.trim().toLowerCase().replace(/_/g, ' ');
+  const current = INDUSTRIES.find((item) => item.toLowerCase() === key);
+  const readable = key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
   return (
     <View>
       <Text style={styles.label}>Industry</Text>
       <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={[styles.input, styles.selectRow]}>
-        <Text style={current ? styles.selectValue : styles.selectPlaceholder}>{current ?? (value || 'Choose an industry')}</Text>
+        <Text style={current ? styles.selectValue : styles.selectPlaceholder}>{current ?? (readable || 'Choose an industry')}</Text>
         <Text style={styles.selectChevron}>{'▾'}</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>

@@ -2,7 +2,7 @@
 // the same on every phone (Hermes has no Intl.supportedValuesOf); every value
 // is one the API accepts (IANA zone / ISO 4217 code).
 
-export interface SelectOption { value: string; label: string; detail?: string; keywords?: string }
+export interface SelectOption { value: string; label: string; detail?: string; keywords?: string; /** Shown in the closed field when space is tight. */ short?: string }
 
 const ZONES = [
   // Africa
@@ -54,7 +54,7 @@ export const CURRENCIES: SelectOption[] = [
   ['HKD', 'Hong Kong Dollar'], ['JPY', 'Japanese Yen'], ['KRW', 'South Korean Won'], ['SGD', 'Singapore Dollar'], ['MYR', 'Malaysian Ringgit'], ['IDR', 'Indonesian Rupiah'],
   ['THB', 'Thai Baht'], ['PHP', 'Philippine Peso'], ['VND', 'Vietnamese Dong'], ['AUD', 'Australian Dollar'], ['NZD', 'New Zealand Dollar'], ['CAD', 'Canadian Dollar'],
   ['MXN', 'Mexican Peso'], ['BRL', 'Brazilian Real'], ['ARS', 'Argentine Peso'], ['CLP', 'Chilean Peso'], ['COP', 'Colombian Peso'], ['PEN', 'Peruvian Sol'], ['JMD', 'Jamaican Dollar'],
-].map(([value, label]) => ({ value, label: `${value} · ${label}`, keywords: label }));
+].map(([value, label]) => ({ value, label: `${value} · ${label}`, keywords: label, short: value }));
 
 /** BCP 47 codes (2-10 chars, as the API accepts); Zimbabwe's main languages first. */
 export const LANGUAGES: SelectOption[] = [

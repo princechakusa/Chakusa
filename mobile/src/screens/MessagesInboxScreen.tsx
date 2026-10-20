@@ -70,7 +70,8 @@ export function MessagesInboxScreen() {
     (c: ConversationSummaryDto) => {
       const cid = c.messages[0]?.customerId;
       const found = cid ? customers.find((x) => x.id === cid) : null;
-      return found?.name ?? 'Conversation';
+      // A Chakusa app customer's question has no CRM contact yet; its subject is their name.
+      return found?.name ?? (c.contextType === 'CUSTOMER_APP_INQUIRY' && c.subject ? c.subject : 'Conversation');
     },
     [customers],
   );
@@ -166,7 +167,7 @@ export function MessagesInboxScreen() {
                   <View style={styles.convMetaRow}>
                     <View style={styles.channelChip}>
                       <Icon name={CHANNEL_ICON[last?.channel ?? 'sms'] ?? 'chat'} size={12} color={m3.onSecondaryContainer} />
-                      <Text style={styles.channelText}>{(last?.channel ?? 'sms').toUpperCase()}</Text>
+                      <Text style={styles.channelText}>{c.contextType === 'CUSTOMER_APP_INQUIRY' ? 'CHAKUSA APP' : (last?.channel ?? 'sms').toUpperCase()}</Text>
                     </View>
                     {c.assignedMemberId ? (
                       <Text style={styles.assignedText}>Assigned</Text>

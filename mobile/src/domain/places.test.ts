@@ -38,5 +38,5 @@ describe('distanceLabel', () => {
 });
 
 it('links directions to OpenStreetMap', () => {
-  expect(directionsUrl(-17.8, 31.04)).toBe('https://www.openstreetmap.org/directions?to=-17.80000%2C31.04000#map=16/-17.80000/31.04000');
+  expect(directionsUrl(-17.8, 31.04)).toBe('https://www.google.com/maps/dir/?api=1&destination=-17.800000%2C31.040000');
 });

@@ -12,6 +12,8 @@ import {
   listCustomerBookings,
 } from "../../booking/customerBooking.js";
 import { recommendForCustomer } from "./recommendations.js";
+import { toToolParameterSchema } from "../toolSchema.js";
+
 
 // PROGRAM 2 LOOP 4 — Customer AI Assistant tools. These are the ONLY actions
 // the assistant can take. Every one is a thin call into an already-approved
@@ -367,5 +369,5 @@ export function isCustomerAssistantTool(name: string): boolean {
 
 /** Tool schemas exposed to the model (name + JSON-ish description only). */
 export function customerAssistantToolManifest() {
-  return Object.values(tools).map((tool) => ({ name: tool.name, description: tool.description, mutating: tool.mutating }));
+  return Object.values(tools).map((tool) => ({ name: tool.name, description: tool.description, mutating: tool.mutating, schema: toToolParameterSchema(tool.schema) }));
 }

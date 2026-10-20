@@ -46,6 +46,12 @@ export function distanceLabel(km: number | null | undefined): string | null {
 }
 
 /** Directions to a point in OpenStreetMap (free, no key), opened in the browser or maps app. */
+/**
+ * Turn-by-turn directions in Google Maps via Google's official Maps URLs
+ * (https://developers.google.com/maps/documentation/urls/get-started): no
+ * API key, no billing, permitted for any app. Opens the Google Maps app when
+ * installed, otherwise Google Maps on the web; the person picks the mode.
+ */
 export function directionsUrl(latitude: number, longitude: number) {
-  return `https://www.openstreetmap.org/directions?to=${latitude.toFixed(5)}%2C${longitude.toFixed(5)}#map=16/${latitude.toFixed(5)}/${longitude.toFixed(5)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${latitude.toFixed(6)}%2C${longitude.toFixed(6)}`;
 }

@@ -78,7 +78,7 @@ html,body,#map{height:100%;margin:0;background:#F4F1ED}
   function send(msg){ msg.source='chakusa-map'; msg.id=cfg.id; var s=JSON.stringify(msg);
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(s); else if (window.parent) window.parent.postMessage(s,'*'); }
   if (!window.L) { document.body.innerHTML='<p style="font:14px sans-serif;padding:16px">Map could not load. Check your connection.</p>'; send({type:'error'}); return; }
-  var map = L.map('map',{zoomControl:true,attributionControl:true}).setView(cfg.center,cfg.zoom);
+  var map = L.map('map',{zoomControl:false,attributionControl:true}).setView(cfg.center,cfg.zoom);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
   function icon(kind){ return L.divIcon({className:'',html:'<div class="'+(kind==='pin'?'pin':'dot '+kind)+'"></div>',iconSize:kind==='pin'?[26,26]:[16,16],iconAnchor:kind==='pin'?[13,26]:[8,8]}); }
   // A business pill is built with DOM APIs (textContent), never HTML strings.

@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   askBtn: { width: 54, height: 54, borderRadius: 27, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
   bookBtn: { flex: 1, height: 54, borderRadius: 27, backgroundColor: premium.deep, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   bookBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.onDeep },
-  viewer: { flex: 1, backgroundColor: 'rgba(8,14,13,0.96)', justifyContent: 'center' },
+  viewer: { flex: 1, backgroundColor: '#070B0A', justifyContent: 'center' },
   viewerCaption: { fontFamily: 'Inter_500Medium', fontSize: 14, color: '#E8EDE6', textAlign: 'center', marginTop: 12, paddingHorizontal: 24 },
   viewerClose: { position: 'absolute', right: 16, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   reportOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.45)', justifyContent: 'flex-end' },

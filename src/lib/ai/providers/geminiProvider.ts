@@ -1,6 +1,7 @@
 import { config } from "../../config.js";
 import type { AIProvider, AITask, AIToolDeclaration } from "../aiGateway.js";
 import { AIProviderError, createFetchTransport, type ProviderTransport } from "./providerTransport.js";
+import { hasNoParameters } from "../toolSchema.js";
 
 // Google Gemini adapter. Implements the AIProvider contract only - the
 // runtime never imports this file. Generative Language API v1beta
@@ -18,7 +19,9 @@ interface GeminiOptions {
 
 function toGeminiTools(tools: AIToolDeclaration[]) {
   if (!tools.length) return undefined;
-  return [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, ...(tool.description ? { description: tool.description } : {}), parameters: tool.schema ?? { type: "object", properties: {} } })) }];
+  // Gemini rejects an OBJECT with empty `properties` (HTTP 400), so a tool that
+  // takes no arguments is declared without `parameters` at all.
+  return [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, ...(tool.description ? { description: tool.description } : {}), ...(hasNoParameters(tool.schema) ? {} : { parameters: tool.schema }) })) }];
 }
 
 function wantsJson(task: AITask): boolean {

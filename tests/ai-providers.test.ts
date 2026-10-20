@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createOpenAIProvider } from "../src/lib/ai/providers/openaiProvider.js";
 import { createAnthropicProvider } from "../src/lib/ai/providers/anthropicProvider.js";
 import { createGeminiProvider } from "../src/lib/ai/providers/geminiProvider.js";
+import { customerAssistantToolManifest } from "../src/lib/ai/customerAssistant/customerAssistantTools.js";
 import { AIProviderError, createFetchTransport, type ProviderTransport, type TransportRequest } from "../src/lib/ai/providers/providerTransport.js";
 
 function stubTransport(handler: (request: TransportRequest) => { status?: number; json: unknown }): ProviderTransport & { calls: TransportRequest[] } {
@@ -88,7 +89,27 @@ describe("AI provider adapters (LOOP 4)", () => {
       const provider = createGeminiProvider({ apiKey: "gm-test", transport });
       const result = await provider.invoke({ model: "gemini-2.0-flash", task: "conversation", prompt: "book", context: {}, tools: [{ name: "book_appointment", description: "Book it.", schema: { type: "object" } }] });
       expect(result.toolRequests).toEqual([{ name: "book_appointment", arguments: { serviceOfferingId: "abc" } }]);
-      expect((transport.calls[0]?.body as { tools?: unknown[] }).tools).toEqual([{ functionDeclarations: [{ name: "book_appointment", description: "Book it.", parameters: { type: "object" } }] }]);
+      // An argument-free OBJECT is rejected by Gemini (HTTP 400), so it is left out.
+      expect((transport.calls[0]?.body as { tools?: unknown[] }).tools).toEqual([{ functionDeclarations: [{ name: "book_appointment", description: "Book it." }] }]);
+    });
+
+    it("sends the customer assistant's real tool parameters in Gemini's schema subset", async () => {
+      const transport = stubTransport(() => ({ json: { candidates: [{ content: { parts: [{ text: "ok" }] } }] } }));
+      const provider = createGeminiProvider({ apiKey: "gm-test", transport });
+      await provider.invoke({ model: "gemini-3.5-flash-lite", task: "conversation", prompt: "hi", context: {}, tools: customerAssistantToolManifest() });
+      const declarations = (transport.calls[0]?.body as { tools: Array<{ functionDeclarations: Array<{ name: string; parameters?: { type: string; properties: Record<string, unknown>; required?: string[] } }> }> }).tools[0]!.functionDeclarations;
+      expect(declarations.length).toBeGreaterThan(3);
+      const forbidden = /"(additionalProperties|\$schema|default|anyOf|oneOf|const)"/;
+      for (const declaration of declarations) {
+        if (!declaration.parameters) continue;
+        expect(declaration.parameters.type).toBe("object");
+        expect(Object.keys(declaration.parameters.properties).length).toBeGreaterThan(0);
+        expect(JSON.stringify(declaration.parameters)).not.toMatch(forbidden);
+      }
+      const book = declarations.find((d) => d.name === "create_booking")!;
+      expect(book.parameters!.required).toEqual(expect.arrayContaining(["slug", "serviceOfferingId", "startsAt"]));
+      expect(book.parameters!.properties.notes).toEqual({ type: "string" });
+      expect(declarations.find((d) => d.name === "search_businesses")!.parameters!.properties.mode).toMatchObject({ type: "string", enum: expect.arrayContaining(["nearby"]) });
     });
 
     it("requests JSON output for extraction tasks and parses it", async () => {

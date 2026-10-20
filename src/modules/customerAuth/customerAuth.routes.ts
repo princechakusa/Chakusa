@@ -4,7 +4,9 @@ import { ApiError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 import { createAppleChallenge, resetPassword, validateAppleChallenge } from "../auth/auth.service.js";
 import { verifyGoogleIdToken, type GoogleTokenVerifier } from "../auth/googleVerifier.js";
-import { exchangeAppleAuthorizationCode, verifyAppleIdentityToken, type AppleCodeExchanger, type AppleTokenVerifier } from "../auth/appleAuth.js";
+import { exchangeAppleAuthorizationCode, revokeAppleCredential, verifyAppleIdentityToken, type AppleCodeExchanger, type AppleCredentialRevoker, type AppleTokenVerifier } from "../auth/appleAuth.js";
+import { createAccountDeleter } from "../auth/accountDeletion.js";
+import { deleteAccountSchema } from "../auth/auth.schemas.js";
 import { requestPasswordReset, sendPasswordChangedEmail } from "../auth/passwordResetEmail.js";
 import { consumeEmailVerification, createEmailVerification } from "../../lib/customer/emailVerification.js";
 import {
@@ -35,6 +37,7 @@ export interface CustomerAuthRouteOptions {
   googleTokenVerifier?: GoogleTokenVerifier;
   appleTokenVerifier?: AppleTokenVerifier;
   appleCodeExchanger?: AppleCodeExchanger;
+  appleCredentialRevoker?: AppleCredentialRevoker;
 }
 
 const rl = (max: number, timeWindow: string) => ({ config: { rateLimit: { max, timeWindow } } });
@@ -43,6 +46,7 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
   const googleTokenVerifier = options.googleTokenVerifier ?? verifyGoogleIdToken;
   const appleTokenVerifier = options.appleTokenVerifier ?? verifyAppleIdentityToken;
   const appleCodeExchanger = options.appleCodeExchanger ?? exchangeAppleAuthorizationCode;
+  const deleteUserAccount = createAccountDeleter({ googleTokenVerifier, appleTokenVerifier, appleCodeExchanger, appleCredentialRevoker: options.appleCredentialRevoker ?? revokeAppleCredential });
 
   const attrs = (request: FastifyRequest) => ({ ipAddress: request.ip, userAgent: request.headers["user-agent"] ?? null });
   const session = (userId: string, sessionId: string, refreshToken: string) => {
@@ -123,6 +127,17 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
   fastify.delete("/sessions/:id", { preHandler: fastify.authenticateCustomer }, async (request, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
     await revokeCustomerSession(request.customer!.userId, id);
+    reply.status(204).send();
+  });
+
+  // Permanent deletion of the whole account (store requirement), after a
+  // fresh password / Google / Apple confirmation. Same rules as the business
+  // app, including refusing an owner whose business still has active staff.
+  fastify.post("/apple/delete/challenge", { preHandler: fastify.authenticateCustomer, ...rl(5, "15 minutes") }, async (request, reply) =>
+    reply.send(await createAppleChallenge("APPLE_DELETE", request.customer!.userId)));
+
+  fastify.post("/delete-account", { preHandler: fastify.authenticateCustomer, ...rl(5, "15 minutes") }, async (request, reply) => {
+    await deleteUserAccount(request.customer!.userId, deleteAccountSchema.parse(request.body));
     reply.status(204).send();
   });
 

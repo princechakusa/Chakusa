@@ -317,6 +317,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     googleTokenVerifier: options.googleTokenVerifier,
     appleTokenVerifier: options.appleTokenVerifier,
     appleCodeExchanger: options.appleCodeExchanger,
+    appleCredentialRevoker: options.appleCredentialRevoker,
   });
   await app.register(customerPlatformRoutes, { prefix: "/customer" });
   await app.register(marketplaceRoutes, { prefix: "/customer/marketplace" });

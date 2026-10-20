@@ -19,11 +19,6 @@ import {
   authenticateAppleIdentity,
   createAppleChallenge,
   authenticateGoogleIdentity,
-  deleteAccount,
-  deleteAccountWithGoogle,
-  deleteAccountWithApple,
-  getAppleDeletionCredential,
-  getOptionalAppleDeletionCredential,
   getUserContext,
   linkGoogleIdentity,
   linkAppleIdentity,
@@ -33,11 +28,11 @@ import {
   revokeSessionFamily,
   rotateRefreshToken,
   validateAppleChallenge,
-  verifyAccountPassword,
   updateUserProfile,
   changeAccountPassword,
 } from "./auth.service.js";
 import { requestPasswordReset, sendPasswordChangedEmail } from "./passwordResetEmail.js";
+import { createAccountDeleter } from "./accountDeletion.js";
 import { requireFreshGoogleIdentity, verifyGoogleIdToken, type GoogleTokenVerifier } from "./googleVerifier.js";
 import {
   exchangeAppleAuthorizationCode,
@@ -75,6 +70,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
     }
     return tokens;
   };
+  const deleteUserAccount = createAccountDeleter({ googleTokenVerifier, appleTokenVerifier, appleCodeExchanger, appleCredentialRevoker });
   const sessionResponse = (userId: string, sessionId: string, refreshToken: string) => {
     const accessToken = fastify.jwt.sign(
       { userId, sessionId, type: "access" },
@@ -258,38 +254,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
     "/delete-account",
     { preHandler: fastify.authenticate },
     async (request, reply) => {
-      const input = deleteAccountSchema.parse(request.body);
-      if ("password" in input) {
-        await verifyAccountPassword(request.user.userId, input.password);
-        // Only attempt to revoke a linked Apple credential if Apple auth is
-        // still enabled — if it's been disabled, there's no live provider
-        // integration to revoke against, and account deletion must still
-        // proceed via the password path regardless.
-        if (config.APPLE_AUTH_ENABLED) {
-          const apple = await getOptionalAppleDeletionCredential(request.user.userId);
-          if (apple) await appleCredentialRevoker(apple.refreshToken);
-        }
-        await deleteAccount(request.user.userId, input.password);
-      } else if ("googleIdToken" in input) {
-        const verifiedIdentity = await googleTokenVerifier(input.googleIdToken);
-        requireFreshGoogleIdentity(verifiedIdentity);
-        if (config.APPLE_AUTH_ENABLED) {
-          const apple = await getOptionalAppleDeletionCredential(request.user.userId);
-          if (apple) await appleCredentialRevoker(apple.refreshToken);
-        }
-        await deleteAccountWithGoogle(request.user.userId, verifiedIdentity.providerSubject);
-      } else {
-        const proof = { challengeId: input.apple.challengeId, nonce: input.apple.nonce, state: input.apple.state };
-        await validateAppleChallenge(proof, "APPLE_DELETE", request.user.userId);
-        const identity = await appleTokenVerifier(input.apple.identityToken, input.apple.nonce);
-        const stored = await getAppleDeletionCredential(request.user.userId);
-        if (stored.providerSubject !== identity.providerSubject) {
-          throw ApiError.auth(401, "AUTH_REAUTHENTICATION_REQUIRED", "Apple account confirmation failed");
-        }
-        const fresh = await exchangeAndBindAppleCode(input.apple.authorizationCode, input.apple.nonce, identity.providerSubject, identity.email);
-        for (const token of new Set([stored.refreshToken, fresh.refreshToken])) await appleCredentialRevoker(token);
-        await deleteAccountWithApple(request.user.userId, identity.providerSubject, proof);
-      }
+      await deleteUserAccount(request.user.userId, deleteAccountSchema.parse(request.body));
       reply.status(204).send();
     },
   );

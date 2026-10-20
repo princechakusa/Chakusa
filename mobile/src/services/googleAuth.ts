@@ -34,13 +34,16 @@ function configureGoogle() {
   return google;
 }
 
+// Every request forgets the Google account remembered by this app (not the
+// device), so Google always shows its account chooser instead of silently
+// reusing the last account. `fresh: false` keeps the old silent reuse.
 export async function requestGoogleIdToken(options: { fresh?: boolean } = {}): Promise<string | null> {
   const { GoogleSignin, isErrorWithCode, statusCodes } = configureGoogle();
   try {
     if (Platform.OS === 'android') {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }
-    if (options.fresh) await GoogleSignin.signOut();
+    if (options.fresh !== false) await GoogleSignin.signOut().catch(() => undefined);
     const response = await GoogleSignin.signIn();
     if (response.type === 'cancelled') return null;
     if (!response.data.idToken) {

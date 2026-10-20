@@ -12,7 +12,8 @@
 | `7ba51cd` | Google/Apple-only account → "How to sign in" email (no link), 1 per 10 min, identical HTTP reply |
 | `aee36ef` | Customer reply/app copy no longer promise a "reset link" |
 | `d516f14` | Logs which path a reset took and Resend's error (never the address) |
-| this stage | Takeover hardening (below) |
+| `53c302e` | Takeover hardening (below), configurable email footer (admin App config), Android vc4 |
+| `449ef84`, `79f5918` | Android Google sign-in always shows the account chooser (iOS flow unchanged); vc5 |
 
 ## Threat review of the reset/sign-in path
 | Attack | Status |
@@ -34,7 +35,8 @@
 
 ## Tests
 - `tests/account-takeover-hardening.test.ts` (4): per-account lock incl. unknown email, reset clears lock + verifies email, common/oversized passwords refused, mail to stored address.
-- Full backend suite, typecheck, lint: see commit.
+- Full backend suite: 148 files / 1760 tests passed. Mobile: typecheck clean, 64 files / 604 tests passed.
+- Device: signed vc5 APK (Play upload key SHA-256 03:A5:1A:46:...) installed on the Android test phone and launches.
 
 ## Limitations
 - Login lock and reminder throttle are in-process memory (one Render instance today). Move to Redis/DB before scaling out.
@@ -43,7 +45,9 @@
 
 ## Owner actions
 - Run the release build script (needs the upload-key password from the password manager).
-- Upload `chakusa-v1.0.0-vc4-*.aab` to Play Console.
+- Upload `chakusa-v1.0.0-vc5-2026-10-20.aab` to Play Console (supersedes vc4).
+- Set **Registered address** in admin App config to show it in email footers.
+- iOS build 9 predates the map-first Explore; a new iOS build is needed for it (held at owner's request).
 
 ## Next stage
 Controlled production deployment/migration checkpoint before #18.

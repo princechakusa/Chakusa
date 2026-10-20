@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LeafletMap } from '../../components/map/LeafletMap';
 import { LocationPicker } from '../../components/map/LocationPicker';
-import type { GooglePlaceDto, MarketplaceCardDto, MarketplaceCategoryDto } from '../../apiTypes';
+import type { MarketplaceCardDto, MarketplaceCategoryDto, NearbyPlaceDto } from '../../apiTypes';
 import { distanceLabel, type Place } from '../../domain/places';
 import { ApiError } from '../../services/api';
 import { currentPosition, positionIfPermitted } from '../../services/devicePosition';
@@ -22,9 +22,10 @@ type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 // Explore: map first. Every Chakusa business with a pinned location is a
 // rating pill on the map; a swipeable strip of photo cards along the bottom
 // stays in sync with the selected pill. List view shows the same results as
-// full photo cards plus, when Google Places is configured, "Also nearby on
-// Google" (listed with attribution - never drawn on the OpenStreetMap map,
-// per Google's terms).
+// full photo cards. Nearby service places that are not on Chakusa yet come
+// free from OpenStreetMap (grey pins, "© OpenStreetMap contributors"); each
+// opens in Google Maps through a plain Maps link (no API, no cost) and can be
+// invited to Chakusa.
 //
 // The customer's position is used only for the current search and kept in
 // this screen's memory - never stored on the server or device.
@@ -40,7 +41,8 @@ export function CustomerExploreScreen() {
   const [category, setCategory] = useState<string>('all');
   const [categories, setCategories] = useState<MarketplaceCategoryDto[]>([]);
   const [items, setItems] = useState<MarketplaceCardDto[]>([]);
-  const [google, setGoogle] = useState<GooglePlaceDto[]>([]);
+  const [places, setPlaces] = useState<NearbyPlaceDto[]>([]);
+  const [placeOpen, setPlaceOpen] = useState<NearbyPlaceDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [origin, setOrigin] = useState<Place | null>(null);
@@ -52,7 +54,7 @@ export function CustomerExploreScreen() {
   const [picking, setPicking] = useState(false);
   const [draft, setDraft] = useState<Place | null>(null);
   const [draftPending, setDraftPending] = useState(false);
-  const stripRef = useRef<FlatList<MarketplaceCardDto>>(null);
+  const stripRef = useRef<FlatList<StripEntry>>(null);
 
   const cardWidth = Math.min(width - 56, 360);
 
@@ -90,14 +92,14 @@ export function CustomerExploreScreen() {
     return () => clearTimeout(handle);
   }, [load, term]);
 
-  // Google's nearby places, only once there is a real position to search around.
+  // Free nearby places (OpenStreetMap), once there is a real position.
   useEffect(() => {
-    if (!origin) { setGoogle([]); return; }
+    if (!origin) { setPlaces([]); return; }
     const trimmed = term.trim();
     const handle = setTimeout(() => {
-      marketplaceApi.googleNearby(origin.latitude, origin.longitude, Math.min(radiusKm, 15), trimmed.length >= 2 ? trimmed : undefined)
-        .then((res) => setGoogle(res.enabled ? res.places : []))
-        .catch(() => setGoogle([]));
+      marketplaceApi.nearbyPlaces(origin.latitude, origin.longitude, Math.min(radiusKm, 5), trimmed.length >= 2 ? trimmed : undefined)
+        .then((res) => setPlaces(res.places))
+        .catch(() => setPlaces([]));
     }, 500);
     return () => clearTimeout(handle);
   }, [origin, radiusKm, term]);
@@ -119,13 +121,19 @@ export function CustomerExploreScreen() {
   const mapped = useMemo(() => items.filter((card) => typeof card.latitude === 'number' && typeof card.longitude === 'number'), [items]);
   const markers = useMemo(() => [
     ...(origin ? [{ latitude: origin.latitude, longitude: origin.longitude, kind: 'you' as const, label: 'You' }] : []),
+    ...places.map((place) => ({ latitude: place.latitude, longitude: place.longitude, kind: 'business' as const, key: `osm:${place.id}`, label: place.name, muted: true })),
     ...mapped.map((card) => ({ latitude: card.latitude!, longitude: card.longitude!, kind: 'business' as const, key: card.slug, label: card.name, badge: ratingText(card.rating) ?? undefined })),
-  ], [mapped, origin]);
+  ], [mapped, origin, places]);
+  // Map strip: Chakusa businesses first, then free nearby places.
+  const strip = useMemo<StripEntry[]>(() => [
+    ...mapped.map((card) => ({ key: card.slug, card })),
+    ...places.map((place) => ({ key: `osm:${place.id}`, place })),
+  ], [mapped, places]);
   const center = origin ?? (mapped[0] ? { latitude: mapped[0].latitude!, longitude: mapped[0].longitude! } : null);
 
-  const selectFromMap = (slug: string) => {
-    setSelected(slug);
-    const index = mapped.findIndex((card) => card.slug === slug);
+  const selectFromMap = (key: string) => {
+    setSelected(key);
+    const index = strip.findIndex((entry) => entry.key === key);
     if (index >= 0) stripRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
   };
   const open = (slug: string) => navigation.navigate('BusinessProfile', { slug });
@@ -211,18 +219,19 @@ export function CustomerExploreScreen() {
               {viewToggle}
             </View>
             {error ? <Text accessibilityRole="alert" style={styles.errorPill}>{error}</Text> : null}
-            {loaded && !error && !mapped.length ? (
+            {loaded && !error && !strip.length ? (
               <View style={[styles.emptyCard, premiumShadow]}>
                 <Text style={styles.emptyTitle}>{origin ? `Nothing within ${radiusKm} km yet` : 'No businesses on the map yet'}</Text>
                 <Text style={styles.emptyBody}>{origin && radiusKm < 50 ? 'Try a wider distance or another area.' : 'Switch to the list to see every business.'}</Text>
               </View>
             ) : null}
-            {mapped.length ? (
+            {places.length ? <Text style={styles.mapCredit}>Places {OSM_CREDIT}</Text> : null}
+            {strip.length ? (
               <FlatList
                 ref={stripRef}
                 horizontal
-                data={mapped}
-                keyExtractor={(card) => card.slug}
+                data={strip}
+                keyExtractor={(entry) => entry.key}
                 showsHorizontalScrollIndicator={false}
                 snapToInterval={cardWidth + 12}
                 decelerationRate="fast"
@@ -231,10 +240,12 @@ export function CustomerExploreScreen() {
                 onScrollToIndexFailed={() => undefined}
                 onMomentumScrollEnd={(event) => {
                   const index = Math.round(event.nativeEvent.contentOffset.x / (cardWidth + 12));
-                  const card = mapped[Math.max(0, Math.min(index, mapped.length - 1))];
-                  if (card) setSelected(card.slug);
+                  const entry = strip[Math.max(0, Math.min(index, strip.length - 1))];
+                  if (entry) setSelected(entry.key);
                 }}
-                renderItem={({ item }) => <MapCard card={item} width={cardWidth} selected={item.slug === selected} onPress={() => open(item.slug)} />}
+                renderItem={({ item }) => item.card
+                  ? <MapCard card={item.card} width={cardWidth} selected={item.key === selected} onPress={() => open(item.card!.slug)} />
+                  : <PlaceCard place={item.place!} width={cardWidth} selected={item.key === selected} onPress={() => setPlaceOpen(item.place!)} />}
               />
             ) : null}
           </View>
@@ -267,16 +278,18 @@ export function CustomerExploreScreen() {
                 {items.map((card) => <ListCard key={card.slug} card={card} width={width - 32} onPress={() => open(card.slug)} />)}
               </View>
             )}
-          {google.length ? (
+          {places.length ? (
             <View style={styles.googleSection}>
               <Text style={styles.sectionTitle}>Also nearby</Text>
-              <Text style={styles.googleNote}>Not on Chakusa yet · ratings from Google</Text>
-              {google.map((place) => <GooglePlaceRow key={place.placeId} place={place} />)}
+              <Text style={styles.googleNote}>Not on Chakusa yet · {OSM_CREDIT}</Text>
+              {places.map((place) => <PlaceRow key={place.id} place={place} onPress={() => setPlaceOpen(place)} />)}
             </View>
           ) : null}
           {center ? <View style={styles.listToggle}>{viewToggle}</View> : null}
         </ScrollView>
       )}
+
+      <PlaceSheet place={placeOpen} onClose={() => setPlaceOpen(null)} />
 
       <Modal visible={picking} animationType="slide" onRequestClose={() => setPicking(false)}>
         <SafeAreaView style={styles.modal}>
@@ -351,26 +364,95 @@ function ListCard({ card, width, onPress }: { card: MarketplaceCardDto; width: n
   );
 }
 
-function GooglePlaceRow({ place }: { place: GooglePlaceDto }) {
+type StripEntry = { key: string; card?: MarketplaceCardDto; place?: NearbyPlaceDto };
+const OSM_CREDIT = '© OpenStreetMap contributors';
+const INVITE_URL = 'https://chakusarecovery.com';
+
+function PlaceCard({ place, width, selected, onPress }: { place: NearbyPlaceDto; width: number; selected: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="link" accessibilityLabel={`${place.name}. Open in Google Maps`} disabled={!place.mapsUrl} onPress={() => place.mapsUrl && void Linking.openURL(place.mapsUrl)} style={styles.googleRow}>
-      <View style={styles.flex}>
-        <Text style={styles.googleName} numberOfLines={1}>{place.name}</Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>{[place.category, place.address].filter(Boolean).join(' · ')}</Text>
-        {place.rating != null ? (
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={12} color={premium.gold} />
-            <Text style={styles.ratingValue}>{place.rating.toFixed(1)}</Text>
-            <Text style={styles.ratingCount}>({reviewCountText(place.reviewCount)}) on Google</Text>
-          </View>
-        ) : null}
+    <Pressable accessibilityRole="button" accessibilityLabel={`${place.name}, ${place.category}. Not on Chakusa yet`} onPress={onPress} style={[styles.mapCard, { width }, selected && styles.mapCardSelected, premiumShadow]}>
+      <View style={styles.placeIcon}><Ionicons name="storefront-outline" size={28} color={premium.inkSoft} /></View>
+      <View style={styles.mapCardBody}>
+        <Text style={styles.cardName} numberOfLines={1}>{place.name}</Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>{place.category}{place.address ? ` · ${place.address}` : ''}</Text>
+        <Text style={styles.newBadge}>Not on Chakusa yet</Text>
+        <View style={styles.cardActions}>
+          <View style={styles.mapsPill}><Ionicons name="logo-google" size={11} color={premium.deep} /><Text style={styles.mapsPillText}>Maps</Text></View>
+        </View>
       </View>
-      <Ionicons name="open-outline" size={16} color={premium.inkFaint} />
     </Pressable>
   );
 }
 
+function PlaceRow({ place, onPress }: { place: NearbyPlaceDto; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${place.name}. Details`} onPress={onPress} style={styles.googleRow}>
+      <View style={styles.flex}>
+        <Text style={styles.googleName} numberOfLines={1}>{place.name}</Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>{[place.category, place.address].filter(Boolean).join(' · ')}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={premium.inkFaint} />
+    </Pressable>
+  );
+}
+
+/** A place that is not on Chakusa: open it in Google Maps (free link), call, or invite it. */
+function PlaceSheet({ place, onClose }: { place: NearbyPlaceDto | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  if (!place) return null;
+  const invite = () => void Share.share({ message: `I'd love to book ${place.name} on Chakusa - bookings, reminders and messages in one app. ${INVITE_URL}` });
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetOverlay} onPress={onClose} accessibilityLabel="Close">
+        <Pressable style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]} onPress={() => undefined}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.eyebrow}>{place.category.toUpperCase()}</Text>
+          <Text style={styles.sheetTitle}>{place.name}</Text>
+          {place.address ? <Text style={styles.sheetMeta}>{place.address}</Text> : null}
+          {place.openingHours ? <Text style={styles.sheetMeta}>Hours: {place.openingHours}</Text> : null}
+          <View style={styles.notOnChakusa}>
+            <Ionicons name="information-circle-outline" size={16} color={premium.deepSoft} />
+            <Text style={styles.notOnChakusaText}>Not on Chakusa yet, so booking and messages aren't available here.</Text>
+          </View>
+          <Pressable accessibilityRole="link" accessibilityLabel="See reviews on Google Maps" onPress={() => void Linking.openURL(place.googleMapsUrl)} style={styles.sheetPrimary}>
+            <Ionicons name="logo-google" size={16} color={premium.onDeep} />
+            <Text style={styles.sheetPrimaryText}>See reviews on Google Maps</Text>
+          </Pressable>
+          <View style={styles.sheetRow}>
+            {place.phone ? (
+              <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`tel:${place.phone}`)} style={styles.sheetSecondary}>
+                <Ionicons name="call-outline" size={16} color={premium.deep} /><Text style={styles.sheetSecondaryText}>Call</Text>
+              </Pressable>
+            ) : null}
+            <Pressable accessibilityRole="button" onPress={invite} style={styles.sheetSecondary}>
+              <Ionicons name="paper-plane-outline" size={16} color={premium.deep} /><Text style={styles.sheetSecondaryText}>Invite to Chakusa</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.credit}>{OSM_CREDIT}</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
+  placeIcon: { width: 104, height: 118, borderRadius: 14, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  mapsPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: premium.line, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  mapsPillText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: premium.deep },
+  mapCredit: { alignSelf: 'flex-start', marginLeft: 16, fontFamily: 'Inter_400Regular', fontSize: 10, color: premium.inkSoft, backgroundColor: 'rgba(255,253,249,0.85)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(14,17,22,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: premium.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 22, paddingTop: 10, gap: 8 },
+  sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: premium.line, marginBottom: 8 },
+  sheetTitle: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 24, letterSpacing: -0.6, color: premium.ink },
+  sheetMeta: { fontFamily: 'Inter_400Regular', fontSize: 13, color: premium.inkSoft },
+  notOnChakusa: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 12, borderRadius: 14, backgroundColor: premium.sageSoft, marginTop: 4 },
+  notOnChakusaText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, color: premium.deepSoft },
+  sheetPrimary: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', minHeight: 52, borderRadius: 999, backgroundColor: premium.deep, marginTop: 6 },
+  sheetPrimaryText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: premium.onDeep },
+  sheetRow: { flexDirection: 'row', gap: 10 },
+  sheetSecondary: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', minHeight: 48, borderRadius: 999, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.sageSoft },
+  sheetSecondaryText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.deep },
+  credit: { fontFamily: 'Inter_400Regular', fontSize: 10, color: premium.inkFaint, textAlign: 'center', marginTop: 4 },
   screen: { flex: 1, backgroundColor: premium.bg },
   flex: { flex: 1 },
   overlayTop: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, gap: 10 },

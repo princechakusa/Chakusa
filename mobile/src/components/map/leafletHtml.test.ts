@@ -59,3 +59,11 @@ describe('business pills and selection', () => {
     expect(selectMarkerScript('a");alert(1);("')).toContain('"a\\");alert(1);(\\""');
   });
 });
+
+describe('places not on Chakusa', () => {
+  it('draws muted pills for them', () => {
+    const page = leafletHtml({ id: 'p1', center: { latitude: 0, longitude: 0 }, markers: [{ latitude: 0, longitude: 0, kind: 'business', key: 'osm:node/1', label: 'Corner Cuts', muted: true }] });
+    expect(page).toContain("m.muted?'pill muted':'pill'");
+    expect(page).toContain('"muted":true');
+  });
+});

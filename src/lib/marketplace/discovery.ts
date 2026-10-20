@@ -7,6 +7,19 @@ import { displayDistanceKm, haversineKm, type Coordinates } from "./geo.js";
 import { businessPhotoPath } from "../imageDataUrl.js";
 import { galleryPhotoPath } from "./gallery.js";
 import { googleRating } from "./googlePlaces.js";
+import { googleMapsSearchUrl } from "./osmPlaces.js";
+
+const GOOGLE_HOSTS = /^(?:(?:www|maps|search)\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$|^(?:maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+/** The owner's saved Google link, only when it is an https link to a Google host. */
+export function trustedGoogleLink(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && GOOGLE_HOSTS.test(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 // PROGRAM 2 LOOP 2: business discovery. Reads `Business` / `ServiceOffering` /
 // `Feedback` / `BusinessMember` directly; `BusinessMarketplaceListing` is
@@ -349,6 +362,9 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
     },
     // Live from Google, never stored; clients must label it "Google".
     google: google ? { ...google, attribution: "Google" } : null,
+    // Free Google Maps link (no API, no billing): the owner's own Google link
+    // when it really points at Google, otherwise a search for this business.
+    googleMapsUrl: trustedGoogleLink(business.googleReviewLink) ?? googleMapsSearchUrl(business.name, typeof listing?.latitude === "number" && typeof listing?.longitude === "number" ? { latitude: listing.latitude, longitude: listing.longitude } : null, [listing?.addressLine, listing?.city].filter(Boolean).join(", ") || null),
     viewer: { favourite, following },
     loyalty,
     shareUrl: buildShareUrl(business.publicSlug!),

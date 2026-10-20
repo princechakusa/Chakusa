@@ -434,6 +434,8 @@ export interface MarketplaceBusinessProfileDto {
   photos: string[];
   /** Owner-uploaded gallery with captions, in display order. */
   gallery?: Array<{ url: string; caption: string | null }>;
+  /** Free Google Maps link for this business (opens the Maps app or website). */
+  googleMapsUrl?: string;
   /** Live Google rating (never stored); show with "Google" attribution. */
   google?: { rating: number | null; reviewCount: number; mapsUrl: string | null; attribution: string } | null;
   acceptsOnlineBooking?: boolean;
@@ -1112,3 +1114,7 @@ export interface GoogleNearbyDto { enabled: boolean; attribution: string; places
 
 // --- Business gallery ---------------------------------------------------
 export interface GalleryPhotoDto { id: string; position: number; caption: string | null; byteSize: number; createdAt: string; url: string | null }
+
+// --- Free nearby places from OpenStreetMap (not on Chakusa yet) ----------
+export interface NearbyPlaceDto { id: string; name: string; category: string; latitude: number; longitude: number; address: string | null; phone: string | null; website: string | null; openingHours: string | null; googleMapsUrl: string }
+export interface NearbyPlacesDto { attribution: string; places: NearbyPlaceDto[] }

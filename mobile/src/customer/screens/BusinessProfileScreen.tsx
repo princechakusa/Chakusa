@@ -171,6 +171,14 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
             ) : null}
           </View>
 
+          {profile.googleMapsUrl ? (
+            <Pressable accessibilityRole="link" accessibilityLabel="See reviews on Google Maps" onPress={() => void Linking.openURL(profile.googleMapsUrl!)} style={({ pressed }) => [styles.googleLink, pressed && styles.pressed]}>
+              <Ionicons name="logo-google" size={15} color={premium.deep} />
+              <Text style={styles.googleLinkText}>See reviews on Google Maps</Text>
+              <Ionicons name="open-outline" size={14} color={premium.inkFaint} />
+            </Pressable>
+          ) : null}
+
           <View style={styles.quickRow}>
             <QuickAction icon="chatbubble-ellipses-outline" label="Message" onPress={ask} />
             {hasPin ? <QuickAction icon="navigate-outline" label="Directions" onPress={() => void Linking.openURL(directionsUrl(profile.address.latitude!, profile.address.longitude!))} /> : null}
@@ -377,6 +385,8 @@ const styles = StyleSheet.create({
   ratingSource: { fontFamily: 'Inter_400Regular', fontSize: 11, color: premium.inkFaint, textAlign: 'center' },
   googleWord: { fontFamily: 'Inter_600SemiBold', color: premium.google },
   stars: { flexDirection: 'row', gap: 1 },
+  googleLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: 999, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
+  googleLinkText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.deep },
   quickRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 6, paddingVertical: 6 },
   quick: { alignItems: 'center', gap: 6, minWidth: 64 },
   quickIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: premium.sage, alignItems: 'center', justifyContent: 'center' },

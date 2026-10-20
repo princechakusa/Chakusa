@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DISCOVERY_MODES, discoverBusinesses, getMarketplaceBusinessProfile, searchSuggestions } from "../../lib/marketplace/discovery.js";
 import { listCategories, trendingCategories } from "../../lib/marketplace/categories.js";
 import { googlePlacesEnabled, nearbyGooglePlaces } from "../../lib/marketplace/googlePlaces.js";
+import { nearbyOsmPlaces, OSM_ATTRIBUTION, withoutChakusaDuplicates } from "../../lib/marketplace/osmPlaces.js";
 import { prisma } from "../../lib/prisma.js";
 import {
   activePromotions,
@@ -45,6 +46,20 @@ export default async function marketplaceRoutes(fastify: FastifyInstance) {
   fastify.get("/nearby", async (request) => {
     const query = discoverQuery.parse(request.query);
     return discoverBusinesses({ mode: "nearby", lat: query.lat, lng: query.lng, radiusKm: query.radiusKm, categorySlug: query.category, query: query.q, bookableOnly: query.bookableOnly, limit: query.limit, cursor: query.cursor });
+  });
+
+  // Free: service places near the customer from OpenStreetMap that are not on
+  // Chakusa yet. Safe to draw on the OSM map (ODbL, with attribution).
+  fastify.get("/nearby-places", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
+    const query = z.object({ lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180), radiusKm: z.coerce.number().min(0.5).max(50).default(5), q: z.string().trim().max(120).optional() }).parse(request.query);
+    const places = await nearbyOsmPlaces({ latitude: query.lat, longitude: query.lng, radiusKm: query.radiusKm, query: query.q });
+    const span = 0.06;
+    const listings = places.length ? await prisma.businessMarketplaceListing.findMany({
+      where: { latitude: { gte: query.lat - span, lte: query.lat + span }, longitude: { gte: query.lng - span, lte: query.lng + span } },
+      select: { latitude: true, longitude: true, business: { select: { name: true } } },
+      take: 500,
+    }) : [];
+    return { attribution: OSM_ATTRIBUTION, places: withoutChakusaDuplicates(places, listings.map((l) => ({ name: l.business.name, latitude: l.latitude, longitude: l.longitude }))) };
   });
 
   // Places near the customer that are on Google but not (yet) on Chakusa.

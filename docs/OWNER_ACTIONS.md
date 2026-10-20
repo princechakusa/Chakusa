@@ -559,9 +559,9 @@ Until then, sign-in and sign-up work; only self-service reset is unavailable.
 
 **Known limit:** the API can't yet tell a clone posing as the website or the iOS app from the real ones. Closing that needs a gateway→API shared secret and Apple App Attest for iOS (backlog).
 
-## OA-17 — Google ratings and "also nearby" places (Google Places API) (2026-10-20) — OPEN
+## OA-17 — Google ratings and "also nearby" places (Google Places API) (2026-10-20) — OPTIONAL
 
-**Status:** OPEN (not blocking; the feature ships switched off and the app hides it).
+**Status:** OPTIONAL. Decision 2026-10-20: stay free. Nearby places now come from OpenStreetMap (no cost, drawn on the map with attribution) and every business page has a free "See reviews on Google Maps" link (Google Maps URLs, no key). The paid Places integration below stays built but switched off; only revisit when revenue justifies ~US$300-900/month at 1,000 users.
 
 **What's built:** owners link their Google Business listing (Photos & Google screen); customers then see the live Google rating on the business page, and Explore's list view shows "Also nearby" Google places with attribution. Only the Google place ID is stored; ratings are fetched live and cached in memory for 10 minutes, per Google Maps Platform terms. Google content is never drawn on the OpenStreetMap map.
 

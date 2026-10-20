@@ -23,7 +23,7 @@ import type {
   RewardRedemptionDto, CustomerMembershipDto, MembershipPlanDto,
   ReferralOverviewDto, ReferralCodeDto,
   CustomerInvoiceListResponse, CustomerInvoiceDetailDto, CustomerInvoicePayResult,
-  GoogleNearbyDto, InquiryMessageDto, InquiryThreadDto, InquiryThreadSummaryDto,
+  GoogleNearbyDto, NearbyPlacesDto, InquiryMessageDto, InquiryThreadDto, InquiryThreadSummaryDto,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -98,6 +98,8 @@ export const marketplaceApi = {
   favourites: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),
   following: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/following'),
   promotions: () => customerHttp.get<MarketplacePromotionDto[]>('/customer/marketplace/promotions'),
+  nearbyPlaces: (lat: number, lng: number, radiusKm = 5, q?: string) =>
+    customerHttp.get<NearbyPlacesDto>(`/customer/marketplace/nearby-places${query({ lat, lng, radiusKm, q })}`),
   googleNearby: (lat: number, lng: number, radiusKm = 5, q?: string) =>
     customerHttp.get<GoogleNearbyDto>(`/customer/marketplace/google-nearby${query({ lat, lng, radiusKm, q })}`),
 };

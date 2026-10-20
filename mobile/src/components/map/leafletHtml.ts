@@ -12,6 +12,8 @@ export interface MapMarker {
   key?: string;
   /** Short text drawn inside a business pill, e.g. "4.8". */
   badge?: string;
+  /** Draw as a quieter pin (a place that is not on Chakusa yet). */
+  muted?: boolean;
 }
 
 export interface LeafletPageOptions {
@@ -66,6 +68,9 @@ html,body,#map{height:100%;margin:0;background:#F4F1ED}
 .pill .star{color:#C8963E}
 .pill.sel{background:#182F2D;color:#F6F4E9;border-color:#182F2D;transform:translate(-50%,-100%) scale(1.12);z-index:1000}
 .pill.sel::after{border-top-color:#182F2D}.pill.sel .star{color:#E8C36A}
+.pill.muted{background:#EEF1E8;color:#5F6B66;font-weight:600;font-size:11px;padding:4px 8px;box-shadow:0 2px 6px rgba(24,43,41,.12)}
+.pill.muted::after{border-top-color:#EEF1E8}
+.pill.muted.sel{background:#5F6B66;color:#fff;border-color:#5F6B66}.pill.muted.sel::after{border-top-color:#5F6B66}
 </style></head><body><div id="map" role="application" aria-label="Map"></div>
 <script>
 (function(){
@@ -78,7 +83,7 @@ html,body,#map{height:100%;margin:0;background:#F4F1ED}
   function icon(kind){ return L.divIcon({className:'',html:'<div class="'+(kind==='pin'?'pin':'dot '+kind)+'"></div>',iconSize:kind==='pin'?[26,26]:[16,16],iconAnchor:kind==='pin'?[13,26]:[8,8]}); }
   // A business pill is built with DOM APIs (textContent), never HTML strings.
   function pillIcon(m){
-    var el=document.createElement('div'); el.className='pill';
+    var el=document.createElement('div'); el.className=m.muted?'pill muted':'pill';
     if (m.badge){ var st=document.createElement('span'); st.className='star'; st.textContent='★'; el.appendChild(st); }
     var tx=document.createElement('span'); tx.textContent=m.badge||(m.label||'').slice(0,18); el.appendChild(tx);
     return L.divIcon({className:'',html:el,iconSize:null,iconAnchor:[0,0]});

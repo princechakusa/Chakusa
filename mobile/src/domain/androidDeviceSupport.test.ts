@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error - plain JS Expo config plugin
 import { ANDROID_MIN_SDK, OPTIONAL_HARDWARE } from '../../plugins/withAndroidSecurity.js';
 
 // Play excludes every device that lacks a required feature or runs an older

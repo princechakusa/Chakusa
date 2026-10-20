@@ -39,5 +39,6 @@ export type CustomerRootStackParamList = {
   CustomerInvoices: undefined;
   CustomerInvoiceDetail: { invoiceId: string };
   EditCustomerProfile: undefined;
+  CustomerDeleteAccount: undefined;
   CustomerLegalDocument: { type: import('../../apiTypes').LegalDocumentType };
 };

@@ -1,84 +1,81 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import type { CustomerAIConversationDto, CustomerAIMessageDto } from '../../apiTypes';
-import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
+import { ChatComposer, ChatLayout, ChatThread, type ChatMessage } from '../../components/chat/ChatKit';
 import { ApiError } from '../../services/api';
 import { formatDateTime } from '../../utils/format';
+import { customerChatPalette } from '../chatPalette';
+import { useCustomerAuth } from '../CustomerAuthContext';
 import { customerAssistantApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { premium, premiumSerif } from '../premiumTheme';
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerAssistant'>;
 
-// PROGRAM 2 LOOP 7: the Customer AI Assistant entry point. Thin client over
-// `/customer/ai/assistant/*` - the AI Platform runs the turn server-side.
-// Shown only because `/customer/dashboard` reports the entry is enabled
-// (Home guards the link); this screen also degrades gracefully if a call
-// is refused.
-//
-// Visual language matches experience/authTheme.ts, carried over from the
-// auth surfaces per the customer-wide restyle to match the Stitch mockups.
+// The Chakusa assistant. Thin client over /customer/ai/assistant/*: the AI
+// Platform runs each turn server-side and only server-approved tools act.
+// Welcome → chat (WhatsApp-style) → history; failures show a friendly retry,
+// never a raw error code.
 
-function PrimaryBtn({ label, icon, compact, disabled, onPress }: { label: string; icon?: keyof typeof Ionicons.glyphMap; compact?: boolean; disabled?: boolean; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, compact && styles.primaryBtnCompact, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
-      {icon ? <Ionicons name={icon} size={17} color={authColors.onCoral} /> : null}
-      <Text style={styles.primaryBtnText}>{label}</Text>
-    </Pressable>
-  );
+const PROMPTS: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
+  { icon: 'calendar-outline', text: 'When is my next booking?' },
+  { icon: 'cut-outline', text: 'Find a well-rated barber near me' },
+  { icon: 'sparkles-outline', text: 'Recommend somewhere new to try' },
+  { icon: 'heart-outline', text: 'Show my favourite places' },
+];
+
+type Mode = 'chat' | 'history';
+interface Pending { id: string; text: string; at: string; failed: boolean }
+
+function friendly(caught: unknown): string {
+  if (caught instanceof ApiError && caught.code === 'AI_UNAVAILABLE') return 'The assistant is taking a break right now. Try again in a moment.';
+  if (caught instanceof ApiError && caught.status === 429) return 'That was a lot of questions at once. Wait a few seconds and try again.';
+  return 'The assistant could not answer. Check your connection and try again.';
 }
 
-export function CustomerAssistantScreen({ route }: Props) {
-  const initialId = route.params?.conversationId ?? null;
+export function CustomerAssistantScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
+  const { profile, user } = useCustomerAuth();
+  const firstName = (profile?.displayName ?? user?.fullName ?? '').split(' ')[0];
+  const [mode, setMode] = useState<Mode>('chat');
+  const [activeId, setActiveId] = useState<string | null>(route.params?.conversationId ?? null);
   const [conversations, setConversations] = useState<CustomerAIConversationDto[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(initialId);
   const [messages, setMessages] = useState<CustomerAIMessageDto[]>([]);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [ratings, setRatings] = useState<Record<string, -1 | 0 | 1>>({});
-  const [listError, setListError] = useState<string | null>(null);
-  const [threadError, setThreadError] = useState<string | null>(null);
-  const [loadedList, setLoadedList] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const sendingRef = useRef(false);
 
   const loadList = useCallback(async () => {
-    try { setConversations((await customerAssistantApi.listConversations({ limit: 30 })).items); setListError(null); }
-    catch (caught) { setListError(caught instanceof ApiError ? caught.message : 'Could not load your conversations.'); }
-    finally { setLoadedList(true); }
+    try { setConversations((await customerAssistantApi.listConversations({ limit: 30 })).items); } catch { /* history is optional */ }
   }, []);
 
   const loadThread = useCallback(async (id: string) => {
-    setLoadingThread(true);
-    setThreadError(null);
+    setLoadingThread(true); setError(null);
     try {
       const thread = await customerAssistantApi.getConversation(id, { limit: 50 });
       setMessages(thread.messages);
       setRatings(Object.fromEntries(thread.messages.filter((m) => m.rating).map((m) => [m.id, m.rating as -1 | 0 | 1])));
-    } catch (caught) {
-      setThreadError(caught instanceof ApiError ? caught.message : 'Could not load this conversation.');
-    } finally {
-      setLoadingThread(false);
-    }
+    } catch { setError('Could not open this conversation.'); }
+    finally { setLoadingThread(false); }
   }, []);
 
-  const rate = async (messageId: string, rating: -1 | 1) => {
-    const next = ratings[messageId] === rating ? 0 : rating;
-    setRatings((current) => ({ ...current, [messageId]: next }));
-    try { await customerAssistantApi.rateMessage(messageId, next); } catch { /* best-effort */ }
-  };
-
   useEffect(() => { void loadList(); }, [loadList]);
-  useEffect(() => { if (activeId) void loadThread(activeId); else setMessages([]); }, [activeId, loadThread]);
+  useEffect(() => { if (activeId) void loadThread(activeId); }, [activeId, loadThread]);
 
-  const send = async () => {
-    const content = draft.trim();
-    if (!content || sending) return;
-    setSending(true);
-    setThreadError(null);
+  const ask = async (text: string) => {
+    const content = text.trim();
+    if (!content || sendingRef.current) return;
+    sendingRef.current = true; setSending(true); setError(null);
+    setPending({ id: `pending-${Date.now()}`, text: content, at: new Date().toISOString(), failed: false });
+    setDraft('');
     try {
       let id = activeId;
       if (!id) {
@@ -89,130 +86,151 @@ export function CustomerAssistantScreen({ route }: Props) {
       }
       const turn = await customerAssistantApi.sendMessage(id, content);
       setMessages((current) => [...current, turn.userMessage, turn.assistantMessage]);
-      setDraft('');
-      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+      setPending(null);
     } catch (caught) {
-      setThreadError(caught instanceof ApiError ? caught.message : 'The assistant couldn’t respond. Please try again.');
+      setPending((current) => (current ? { ...current, failed: true } : current));
+      setError(friendly(caught));
     } finally {
-      setSending(false);
+      sendingRef.current = false; setSending(false);
     }
   };
 
-  if (activeId === null) {
-    return (
-      <Screen backgroundColor={authColors.bg} refreshing={loadedList && !listError} onRefresh={() => void loadList()}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>ASSISTANT</Text>
-          <Text style={styles.title}>Chakusa assistant</Text>
-          <Text style={styles.subtitle}>Ask about businesses, availability, or your bookings.</Text>
+  const retry = () => { if (pending) { const text = pending.text; setPending(null); void ask(text); } };
+
+  const rate = async (messageId: string, rating: -1 | 1) => {
+    const next = ratings[messageId] === rating ? 0 : rating;
+    setRatings((current) => ({ ...current, [messageId]: next }));
+    try { await customerAssistantApi.rateMessage(messageId, next); } catch { /* best-effort */ }
+  };
+
+  const startNew = () => { setActiveId(null); setMessages([]); setPending(null); setError(null); setMode('chat'); };
+
+  const chat: ChatMessage[] = useMemo(() => {
+    const shown = messages.filter((m) => m.role === 'user' || m.role === 'assistant').map((m): ChatMessage => ({
+      id: m.id,
+      text: m.content,
+      mine: m.role === 'user',
+      at: m.createdAt,
+      footer: m.role === 'assistant' ? (
+        <View style={styles.feedback}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(m.id, 1)}>
+            <Ionicons name={ratings[m.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={14} color={ratings[m.id] === 1 ? premium.deep : premium.inkFaint} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Not helpful" hitSlop={8} onPress={() => void rate(m.id, -1)}>
+            <Ionicons name={ratings[m.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={14} color={ratings[m.id] === -1 ? premium.danger : premium.inkFaint} />
+          </Pressable>
         </View>
-        <PrimaryBtn icon="add" label="New conversation" onPress={() => setActiveId('')} />
-        {!loadedList ? <LoadingState label="Loading…" />
-          : listError ? <ErrorState message={listError} onRetry={() => void loadList()} />
-          : !conversations.length ? <EmptyState icon="chatbubbles-outline" title="No conversations yet" message="Start one to get personalised help finding and booking businesses." />
-          : (
-            <View style={styles.list}>
-              {conversations.map((conversation) => (
-                <Pressable key={conversation.id} accessibilityRole="button" onPress={() => setActiveId(conversation.id)} style={({ pressed }) => [styles.convo, pressed && styles.pressed]}>
-                  <Text style={styles.convoTitle} numberOfLines={1}>{conversation.title ?? 'Conversation'}</Text>
-                  <Text style={styles.convoMeta}>{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'} · {formatDateTime(conversation.lastMessageAt ?? conversation.createdAt)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-      </Screen>
+      ) : undefined,
+    }));
+    return pending ? [...shown, { id: pending.id, text: pending.text, mine: true, at: pending.at, failed: pending.failed }] : shown;
+  }, [messages, pending, ratings]);
+
+  const header = (
+    <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={10} onPress={() => (mode === 'history' ? setMode('chat') : navigation.goBack())} style={styles.headerBtn}>
+        <Ionicons name="chevron-back" size={24} color={premium.ink} />
+      </Pressable>
+      <View style={styles.avatar}><Ionicons name="sparkles" size={18} color={premium.onDeep} /></View>
+      <View style={styles.headerCopy}>
+        <Text style={styles.headerName}>{mode === 'history' ? 'Your conversations' : 'Chakusa assistant'}</Text>
+        <Text style={styles.headerHint}>{sending ? 'typing…' : 'AI helper · can make mistakes'}</Text>
+      </View>
+      {mode === 'chat' ? (
+        <>
+          <Pressable accessibilityRole="button" accessibilityLabel="Conversation history" hitSlop={8} onPress={() => { void loadList(); setMode('history'); }} style={styles.headerBtn}>
+            <Ionicons name="time-outline" size={22} color={premium.ink} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="New conversation" hitSlop={8} onPress={startNew} style={styles.headerBtn}>
+            <Ionicons name="create-outline" size={22} color={premium.ink} />
+          </Pressable>
+        </>
+      ) : null}
+    </View>
+  );
+
+  if (mode === 'history') {
+    return (
+      <ChatLayout palette={customerChatPalette} header={header}>
+        <ScrollView contentContainerStyle={styles.history}>
+          {!conversations.length ? <Text style={styles.historyEmpty}>No conversations yet.</Text> : conversations.map((c) => (
+            <Pressable key={c.id} accessibilityRole="button" onPress={() => { setActiveId(c.id); setPending(null); setMode('chat'); }} style={({ pressed }) => [styles.historyRow, pressed && styles.pressed]}>
+              <View style={styles.historyIcon}><Ionicons name="chatbubble-ellipses-outline" size={18} color={premium.deep} /></View>
+              <View style={styles.flex}>
+                <Text numberOfLines={1} style={styles.historyTitle}>{c.title ?? 'Conversation'}</Text>
+                <Text style={styles.historyMeta}>{formatDateTime(c.lastMessageAt ?? c.createdAt)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={premium.inkFaint} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      </ChatLayout>
     );
   }
 
-  return (
-    <Screen backgroundColor={authColors.bg} scroll={false}>
-      <View style={styles.threadHeader}>
-        <View>
-          <Text style={styles.eyebrow}>ASSISTANT</Text>
-          <Text style={styles.title}>Chakusa assistant</Text>
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="All conversations" hitSlop={8} onPress={() => setActiveId(null)} style={styles.iconBtn}>
-          <Ionicons name="list" size={19} color={authColors.ink} />
-        </Pressable>
+  const welcome = (
+    <ScrollView contentContainerStyle={styles.welcome} keyboardShouldPersistTaps="handled">
+      <View style={styles.hero}>
+        <View style={styles.heroBadge}><Ionicons name="sparkles" size={22} color={premium.gold} /></View>
+        <Text style={styles.heroTitle}>{firstName ? `Hi ${firstName},` : 'Hi there,'}{'\n'}how can I help?</Text>
+        <Text style={styles.heroBody}>Find great places, check your bookings and get ideas, in plain words.</Text>
       </View>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={8}
-      >
-        <ScrollView
-          ref={scrollRef}
-          style={styles.thread}
-          contentContainerStyle={styles.threadContent}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-        >
-          {loadingThread ? <LoadingState label="Loading…" /> : null}
-          {messages.filter((message) => message.role !== 'tool').map((message) => (
-            <View key={message.id} style={message.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant}>
-              <View style={[styles.bubble, message.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
-                <Text style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextUser]}>{message.content}</Text>
-              </View>
-              {message.role === 'assistant' ? (
-                <View style={styles.feedbackRow}>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(message.id, 1)}>
-                    <Ionicons name={ratings[message.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={ratings[message.id] === 1 ? authColors.positive : authColors.inkSoft} />
-                  </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Not helpful" hitSlop={8} onPress={() => void rate(message.id, -1)}>
-                    <Ionicons name={ratings[message.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={15} color={ratings[message.id] === -1 ? authColors.danger : authColors.inkSoft} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          ))}
-          {!loadingThread && !messages.length ? <Text style={styles.hint}>Ask something like “Find a highly-rated barber near me for Saturday morning.”</Text> : null}
-          {threadError ? <Text style={styles.error}>{threadError}</Text> : null}
-        </ScrollView>
-        <View style={styles.composer}>
-          <TextInput
-            style={styles.composerInput}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Message the assistant"
-            placeholderTextColor={authColors.inkFaint}
-            multiline
-          />
-          <PrimaryBtn compact label={sending ? '…' : 'Send'} disabled={sending || !draft.trim()} onPress={() => void send()} />
-        </View>
-      </KeyboardAvoidingView>
-    </Screen>
+      <Text style={styles.promptsLabel}>TRY ASKING</Text>
+      {PROMPTS.map((p) => (
+        <Pressable key={p.text} accessibilityRole="button" disabled={sending} onPress={() => void ask(p.text)} style={({ pressed }) => [styles.prompt, pressed && styles.pressed]}>
+          <View style={styles.promptIcon}><Ionicons name={p.icon} size={17} color={premium.deep} /></View>
+          <Text style={styles.promptText}>{p.text}</Text>
+          <Ionicons name="arrow-up-outline" size={16} color={premium.inkFaint} style={styles.promptArrow} />
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+
+  const errorBar = error ? (
+    <View style={styles.errorBar}>
+      <Ionicons name="cloud-offline-outline" size={16} color={premium.danger} />
+      <Text style={styles.errorText}>{error}</Text>
+      {pending?.failed ? <Pressable accessibilityRole="button" onPress={retry} hitSlop={8}><Text style={styles.retry}>Retry</Text></Pressable> : null}
+    </View>
+  ) : null;
+
+  return (
+    <ChatLayout palette={customerChatPalette} header={header}>
+      {loadingThread ? <ActivityIndicator style={styles.flex} color={premium.deep} /> : (
+        <ChatThread messages={chat} palette={customerChatPalette} typing={sending} empty={welcome} footerNote={errorBar} />
+      )}
+      {!chat.length && errorBar}
+      <ChatComposer value={draft} onChangeText={setDraft} onSend={() => void ask(draft)} sending={sending} placeholder="Ask the assistant" palette={customerChatPalette} />
+    </ChatLayout>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { marginBottom: authSpace.sm },
-  eyebrow: { ...authType.micro, color: authColors.coral },
-  title: { ...authType.title, marginTop: 2 },
-  subtitle: { ...authType.body, fontSize: 13, marginTop: 2 },
-  threadHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: authSpace.sm },
-  iconBtn: { width: 36, height: 36, borderRadius: authRadius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
-  list: { gap: authSpace.xs },
-  convo: { padding: authSpace.md, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.surface, gap: authSpace.xxs, ...authShadow.card },
-  pressed: { opacity: 0.78 },
-  convoTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: authColors.ink },
-  convoMeta: { ...authType.body, fontSize: 12 },
-  thread: { flex: 1 },
-  threadContent: { gap: authSpace.xs, paddingBottom: authSpace.md },
-  bubbleRowUser: { alignItems: 'flex-end' },
-  bubbleRowAssistant: { alignItems: 'flex-start', gap: authSpace.xxs },
-  bubble: { maxWidth: '86%', paddingHorizontal: authSpace.md, paddingVertical: authSpace.sm, borderRadius: authRadius.lg },
-  bubbleUser: { backgroundColor: authColors.coral },
-  bubbleAssistant: { backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
-  bubbleText: { ...authType.body, fontSize: 14, color: authColors.ink },
-  bubbleTextUser: { color: authColors.onCoral },
-  feedbackRow: { flexDirection: 'row', gap: authSpace.sm, paddingLeft: authSpace.sm },
-  hint: { ...authType.body, fontSize: 13, textAlign: 'center', paddingVertical: authSpace.lg },
-  error: { ...authType.body, fontSize: 12, color: authColors.danger },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: authSpace.xs, paddingTop: authSpace.xs, borderTopWidth: 1, borderTopColor: authColors.line },
-  composerInput: { flex: 1, maxHeight: 120, minHeight: 44, borderRadius: authRadius.md, borderWidth: 1, borderColor: authColors.line, backgroundColor: authColors.bgSunk, paddingHorizontal: authSpace.md, paddingTop: authSpace.sm, ...authType.body, fontSize: 15, color: authColors.ink },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: authSpace.xs, minHeight: 52, borderRadius: authRadius.pill, backgroundColor: authColors.coral, ...authShadow.cta },
-  primaryBtnCompact: { minHeight: 44, minWidth: 72, paddingHorizontal: authSpace.md, flex: 0, alignSelf: 'flex-end' },
-  primaryBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: authColors.onCoral },
-  disabled: { opacity: 0.5 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingBottom: 8, backgroundColor: premium.card, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: premium.line },
+  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: premium.deep, alignItems: 'center', justifyContent: 'center' },
+  headerCopy: { flex: 1, marginLeft: 4 },
+  headerName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink },
+  headerHint: { fontFamily: 'Inter_400Regular', fontSize: 11.5, color: premium.inkFaint },
+  welcome: { padding: 16, paddingBottom: 24, gap: 10 },
+  hero: { backgroundColor: premium.deep, borderRadius: 24, padding: 22, marginBottom: 8 },
+  heroBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(246,244,233,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  heroTitle: { fontFamily: premiumSerif, fontSize: 28, lineHeight: 34, color: premium.onDeep },
+  heroBody: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20, color: premium.onDeepSoft, marginTop: 8 },
+  promptsLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 11, letterSpacing: 0.8, color: premium.inkFaint, marginTop: 6, marginLeft: 4 },
+  prompt: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: premium.card, borderRadius: 18, borderWidth: 1, borderColor: premium.line, paddingHorizontal: 14, paddingVertical: 13 },
+  promptIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  promptText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14.5, color: premium.ink },
+  promptArrow: { transform: [{ rotate: '45deg' }] },
+  feedback: { flexDirection: 'row', gap: 14, paddingLeft: 10, paddingTop: 5 },
+  errorBar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'center', backgroundColor: premium.card, borderRadius: 14, borderWidth: 1, borderColor: premium.line, paddingHorizontal: 12, paddingVertical: 9, marginVertical: 8, marginHorizontal: 12 },
+  errorText: { flexShrink: 1, fontFamily: 'Inter_400Regular', fontSize: 13, color: premium.ink },
+  retry: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.deep },
+  history: { padding: 12, gap: 8 },
+  historyEmpty: { fontFamily: 'Inter_400Regular', fontSize: 14, color: premium.inkSoft, textAlign: 'center', marginTop: 40 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: premium.card, borderRadius: 16, borderWidth: 1, borderColor: premium.line, padding: 14 },
+  historyIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  historyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14.5, color: premium.ink },
+  historyMeta: { fontFamily: 'Inter_400Regular', fontSize: 12, color: premium.inkFaint, marginTop: 2 },
+  pressed: { opacity: 0.7 },
 });

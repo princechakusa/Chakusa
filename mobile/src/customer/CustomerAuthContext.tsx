@@ -50,7 +50,10 @@ interface CustomerAuthValue {
   acceptLegalDocument: (type: LegalDocumentType) => Promise<void>;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
-  closeAccount: () => Promise<void>;
+  /** Permanent deletion after a fresh identity check. Google/Apple resolve false if the person cancels. */
+  deleteAccountWithPassword: (password: string) => Promise<void>;
+  deleteAccountWithGoogle: () => Promise<boolean>;
+  deleteAccountWithApple: () => Promise<boolean>;
   acknowledgeEvent: () => void;
 }
 
@@ -216,9 +219,24 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
       catch { /* local sign-out must still succeed while offline */ }
       finally { if (attempt === authAttempt.current) await clearLocal('signed-out'); }
     },
-    closeAccount: async () => {
-      await customerApi.closeAccount();
+    deleteAccountWithPassword: async (password) => {
+      await customerAuthApi.deleteAccount({ password });
       await clearLocal('account-deleted');
+    },
+    deleteAccountWithGoogle: async () => {
+      const idToken = await requestGoogleIdToken({ fresh: true });
+      if (!idToken) return false;
+      await customerAuthApi.deleteAccount({ googleIdToken: idToken });
+      await clearLocal('account-deleted');
+      return true;
+    },
+    deleteAccountWithApple: async () => {
+      const challenge = await customerAuthApi.appleDeleteChallenge();
+      const credential = await requestAppleCredential({ ...challenge });
+      if (!credential) return false;
+      await customerAuthApi.deleteAccount({ apple: { ...credential } });
+      await clearLocal('account-deleted');
+      return true;
     },
     acknowledgeEvent: () => setLastEvent('none'),
   }), [clearLocal, lastEvent, pendingLegalDocuments, profile, refreshLegalStatus, restore, restoreError, runSignIn, status, user]);

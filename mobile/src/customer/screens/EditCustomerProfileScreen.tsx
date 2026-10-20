@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ProfilePhoto } from '../../components/ProfilePhoto';
+import { SelectField, type SelectFieldTheme } from '../../components/SelectField';
+import { timezoneOptions } from '../../domain/regionOptions';
 import { Screen } from '../../components/ui';
 import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { ApiError } from '../../services/api';
@@ -49,6 +51,8 @@ function Field({ label, badge, ...rest }: { label: string; badge?: string } & Re
     </View>
   );
 }
+
+const TIMEZONES = timezoneOptions();
 
 export function EditCustomerProfileScreen({ navigation }: Props) {
   const { profile, user, refreshProfile } = useCustomerAuth();
@@ -128,7 +132,9 @@ export function EditCustomerProfileScreen({ navigation }: Props) {
 
       <SectionCard icon="options" title="Preferences & Privacy">
         <Field label="Preferred language" value={preferredLanguage} onChangeText={setPreferredLanguage} placeholder="en" autoCapitalize="none" accessibilityLabel="Preferred language" />
-        <Field label="Preferred timezone" value={preferredTimezone} onChangeText={setPreferredTimezone} placeholder="Africa/Harare" autoCapitalize="none" accessibilityLabel="Preferred timezone" />
+        <View style={styles.field}>
+          <SelectField label="Preferred time zone" title="Choose your time zone" searchPlaceholder="Search city or region" value={preferredTimezone} options={TIMEZONES} onChange={setPreferredTimezone} placeholder="Choose a time zone" theme={selectTheme} />
+        </View>
       </SectionCard>
 
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -172,3 +178,19 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   error: { ...authType.body, color: authColors.danger, marginTop: authSpace.md },
 });
+
+const selectTheme: SelectFieldTheme = {
+  label: styles.label,
+  trigger: [styles.input, { marginTop: authSpace.xxs }],
+  triggerText: { ...authType.body, color: authColors.ink, fontSize: 15 },
+  placeholder: authColors.inkFaint,
+  icon: authColors.inkSoft,
+  accent: authColors.coral,
+  sheetBg: authColors.surface,
+  ink: authColors.ink,
+  inkSoft: authColors.inkSoft,
+  line: authColors.line,
+  selectedBg: authColors.coralSoft,
+  font: 'Inter_400Regular',
+  fontMedium: 'Inter_600SemiBold',
+};

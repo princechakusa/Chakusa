@@ -52,6 +52,8 @@ export const customerAuthApi = {
   revokeSession: (id: string) => customerHttp.delete<void>(`/customer/auth/sessions/${id}`),
   registerDevice: (token: string, platform: 'ios' | 'android' | 'web') => customerHttp.post<{ id: string }>('/customer/auth/devices', { token, platform }),
   removeDevice: (token: string) => customerHttp.delete<void>(`/customer/auth/devices/${encodeURIComponent(token)}`),
+  appleDeleteChallenge: () => customerHttp.post<{ challengeId: string; nonce: string; state: string; expiresAt: string }>('/customer/auth/apple/delete/challenge', {}),
+  deleteAccount: (body: { password: string } | { googleIdToken: string } | { apple: Record<string, unknown> }) => customerHttp.post<void>('/customer/auth/delete-account', body),
 };
 
 export const customerApi = {

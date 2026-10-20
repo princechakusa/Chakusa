@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useConfirmSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { useExperience } from '../../experience/experienceContext';
 import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
-import { ApiError } from '../../services/api';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import type { CustomerRootStackParamList } from '../navigation/types';
 
@@ -30,12 +30,14 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
-function MenuRow({ icon, label, detail, onPress, disabled = false }: { icon: IconName; label: string; detail?: string; onPress: () => void; disabled?: boolean }) {
+function MenuRow({ icon, label, detail, onPress, disabled = false, danger = false }: { icon: IconName; label: string; detail?: string; onPress: () => void; disabled?: boolean; danger?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.rowDisabled]}>
-      <View style={styles.rowIcon}><Ionicons name={icon} size={17} color={authColors.coral} /></View>
-      <Text style={styles.rowLabel}>{label}</Text>
-      {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.rowDisabled]}>
+      <View style={[styles.rowIcon, danger && styles.rowIconDanger]}><Ionicons name={icon} size={17} color={danger ? authColors.danger : authColors.coral} /></View>
+      <View style={styles.rowCopy}>
+        <Text numberOfLines={1} style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
+        {detail ? <Text numberOfLines={1} style={styles.rowDetail}>{detail}</Text> : null}
+      </View>
       <Ionicons name="chevron-forward" size={18} color={authColors.inkFaint} />
     </Pressable>
   );
@@ -43,25 +45,12 @@ function MenuRow({ icon, label, detail, onPress, disabled = false }: { icon: Ico
 
 export function CustomerAccountScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, profile, logout, closeAccount } = useCustomerAuth();
+  const { user, profile, logout } = useCustomerAuth();
   const { switching, switchExperience } = useExperience();
 
-  const confirmClose = () => {
-    Alert.alert(
-      'Close your account?',
-      'This permanently deletes your Chakusa customer account and cannot be undone.',
-      [
-        { text: 'Keep account', style: 'cancel' },
-        {
-          text: 'Close account',
-          style: 'destructive',
-          onPress: async () => {
-            try { await closeAccount(); }
-            catch (caught) { Alert.alert('Could not close account', caught instanceof ApiError ? caught.message : 'Please try again.'); }
-          },
-        },
-      ],
-    );
+  const { confirm, sheet } = useConfirmSheet();
+  const confirmSignOut = async () => {
+    if (await confirm({ title: 'Sign out?', message: 'You can sign back in any time with the same account.', confirmLabel: 'Yes, sign out', cancelLabel: 'No, stay signed in', destructive: true, icon: 'log-out-outline' })) await logout();
   };
 
   return (
@@ -88,7 +77,7 @@ export function CustomerAccountScreen() {
 
       <SectionLabel title="Billing" />
       <View style={styles.group}>
-        <MenuRow icon="receipt-outline" label="Invoices" detail="Invoices your businesses have sent you" onPress={() => navigation.navigate('CustomerInvoices')} />
+        <MenuRow icon="receipt-outline" label="Invoices" detail="From businesses you visit" onPress={() => navigation.navigate('CustomerInvoices')} />
       </View>
 
       <SectionLabel title="Rewards" />
@@ -112,10 +101,11 @@ export function CustomerAccountScreen() {
 
       <SectionLabel title="Session" />
       <View style={styles.group}>
-        <MenuRow icon="log-out-outline" label="Sign out" onPress={() => void logout()} />
+        <MenuRow icon="log-out-outline" label="Sign out" onPress={() => void confirmSignOut()} />
         <Divider />
-        <MenuRow icon="trash-outline" label="Close account" onPress={confirmClose} />
+        <MenuRow icon="trash-outline" label="Delete account" detail="Permanently erase your account" danger onPress={() => navigation.navigate('CustomerDeleteAccount')} />
       </View>
+      {sheet}
     </Screen>
   );
 }
@@ -130,11 +120,14 @@ const styles = StyleSheet.create({
   email: { ...authType.body, fontSize: 13 },
   sectionLabel: { ...authType.micro, marginTop: authSpace.md, marginBottom: authSpace.xs },
   group: { backgroundColor: authColors.surface, borderRadius: authRadius.lg, borderWidth: 1, borderColor: authColors.line, paddingHorizontal: authSpace.md, ...authShadow.card },
-  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
+  row: { minHeight: 52, paddingVertical: authSpace.xs, flexDirection: 'row', alignItems: 'center', gap: authSpace.sm },
+  rowCopy: { flex: 1, minWidth: 0 },
+  rowIconDanger: { backgroundColor: '#FDECEC' },
+  rowLabelDanger: { color: authColors.danger },
   rowIcon: { width: 30, height: 30, borderRadius: authRadius.pill, backgroundColor: authColors.coralSoft, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.6 },
   rowDisabled: { opacity: 0.5 },
-  rowLabel: { flex: 1, ...authType.body, fontSize: 14, color: authColors.ink },
-  rowDetail: { ...authType.body, fontSize: 12 },
+  rowLabel: { ...authType.body, fontSize: 14, color: authColors.ink },
+  rowDetail: { ...authType.body, fontSize: 12, lineHeight: 16, color: authColors.inkFaint },
   divider: { height: 1, backgroundColor: authColors.lineSoft },
 });

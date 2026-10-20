@@ -33,6 +33,7 @@ import { CustomerReferralsScreen } from '../screens/CustomerReferralsScreen';
 import { CustomerInvoicesScreen } from '../screens/CustomerInvoicesScreen';
 import { CustomerInvoiceDetailScreen } from '../screens/CustomerInvoiceDetailScreen';
 import { EditCustomerProfileScreen } from '../screens/EditCustomerProfileScreen';
+import { CustomerDeleteAccountScreen } from '../screens/CustomerDeleteAccountScreen';
 import { usePendingIntentConsumer } from '../../experience/usePendingIntentConsumer';
 import { navigationRef } from './customerNavigationRef';
 import type { CustomerRootStackParamList, CustomerTabParamList } from './types';
@@ -145,8 +146,8 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
           <Stack.Screen name="CustomerInquiryThread" component={CustomerInquiryThreadScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BookingFlow" component={BookingFlowScreen} />
           <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
-          <Stack.Screen name="CustomerNotifications" component={CustomerNotificationsScreen} />
-          <Stack.Screen name="CustomerAssistant" component={CustomerAssistantScreen} />
+          <Stack.Screen name="CustomerNotifications" component={CustomerNotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CustomerAssistant" component={CustomerAssistantScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CustomerRewards" component={CustomerRewardsScreen} />
           <Stack.Screen name="CustomerLoyaltyBusiness" component={CustomerLoyaltyBusinessScreen} />
           <Stack.Screen name="CustomerLoyaltyHistory" component={CustomerLoyaltyHistoryScreen} />
@@ -159,6 +160,7 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
           <Stack.Screen name="CustomerInvoices" component={CustomerInvoicesScreen} />
           <Stack.Screen name="CustomerInvoiceDetail" component={CustomerInvoiceDetailScreen} />
           <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CustomerDeleteAccount" component={CustomerDeleteAccountScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CustomerLegalDocument" component={CustomerLegalDocumentScreen} />
         </>
       )}

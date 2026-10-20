@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useConfirmSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { legalDocumentLabel } from '../../domain/legalAcceptance';
 import { ApiError } from '../../services/api';
@@ -35,6 +36,10 @@ export function CustomerLegalGateScreen({
   onViewDocument,
 }: { onViewDocument: (type: import('../../apiTypes').LegalDocumentType) => void }) {
   const auth = useCustomerAuth();
+  const { confirm, sheet } = useConfirmSheet();
+  const signOut = async () => {
+    if (await confirm({ title: 'Sign out?', confirmLabel: 'Yes, sign out', cancelLabel: 'No', destructive: true, icon: 'log-out-outline' })) await auth.logout();
+  };
   const [busyType, setBusyType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +69,8 @@ export function CustomerLegalGateScreen({
         </View>
       ))}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <SecondaryBtn fullWidth label="Sign out" onPress={() => void auth.logout()} />
+      <SecondaryBtn fullWidth label="Sign out" onPress={() => void signOut()} />
+      {sheet}
     </Screen>
   );
 }

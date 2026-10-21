@@ -1,10 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, Ref } from 'react';
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller';
 import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   StyleProp,
   StyleSheet,
   Text,
@@ -52,17 +52,24 @@ export function M3Screen({
   scroll = true,
   contentStyle,
   refreshControl,
+  scrollRef,
 }: PropsWithChildren<{
   header?: ReactNode;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: ReactNode;
+  /** Lets a screen scroll programmatically (e.g. to a form it just opened). */
+  scrollRef?: Ref<KeyboardAwareScrollViewRef>;
 }>) {
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       {header}
       {scroll ? (
-        <ScrollView
+        // Keyboard-aware on iOS and Android: the field being typed in scrolls
+        // smoothly above the keyboard (edge-to-edge Android no longer resizes).
+        <KeyboardAwareScrollView
+          ref={scrollRef}
+          bottomOffset={56}
           style={styles.flex}
           contentContainerStyle={[styles.scrollBody, contentStyle]}
           showsVerticalScrollIndicator={false}
@@ -70,7 +77,7 @@ export function M3Screen({
           refreshControl={refreshControl as never}
         >
           {children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       ) : (
         <View style={[styles.flex, styles.scrollBody, contentStyle]}>{children}</View>
       )}

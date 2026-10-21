@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { LoyaltyProgramDto } from '../apiTypes';
 import { ApiError } from '../services/api';
 import { businessLoyaltyApi } from '../services/businessLoyalty';
@@ -95,7 +96,7 @@ export function LoyaltyProgramSettingsScreen({ navigation }: Props) {
 
   return (
     <M3Screen header={header} scroll={false}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={8}>
         <ScrollView style={styles.flex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
             <Text style={styles.title}>Program settings</Text>

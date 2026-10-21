@@ -3,7 +3,8 @@ import { File } from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { parseAppointmentImportText } from '../domain/appointmentsImport';
 import { ApiError } from '../services/api';
 import { appointmentsApi } from '../services/endpoints';
@@ -76,7 +77,7 @@ export function AppointmentsImportScreen() {
 
   return (
     <M3Screen header={header} scroll={false}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={8}>
         <View style={styles.scrollBody}>
           <View style={styles.titleBlock}>
             <Text style={styles.title}>Import appointments</Text>

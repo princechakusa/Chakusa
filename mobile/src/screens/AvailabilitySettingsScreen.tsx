@@ -1,7 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { TeamMemberDto } from '../apiTypes';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { combineLocalDateTime, localDateKey } from '../domain/calendar';
@@ -72,7 +73,7 @@ export function AvailabilitySettingsScreen() {
   const header = <M3Header businessName="Availability" onBack={() => navigation.goBack()} />;
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+    <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={8}>
       <M3Screen header={header}>
         <View style={styles.titleWrap}>
           <Text style={styles.eyebrow}>SCHEDULE</Text>

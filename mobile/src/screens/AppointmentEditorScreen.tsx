@@ -1,7 +1,8 @@
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { AppointmentArrivalState, AppointmentDto, AppointmentStatus, CustomerDto, ServiceOfferingDto, TeamMemberDto } from '../apiTypes';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { combineLocalDateTime, localDateKey, localTime } from '../domain/calendar';
@@ -216,7 +217,7 @@ export function AppointmentEditorScreen() {
   const header = <M3Header businessName={id ? 'Appointment details' : 'Add appointment'} onBack={() => navigation.goBack()} />;
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+    <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={8}>
       <M3Screen header={header}>
         <View style={styles.titleRow}>
           <Text style={styles.eyebrow}>{id ? titleCase(appointment?.status ?? '') : 'NEW APPOINTMENT'}</Text>

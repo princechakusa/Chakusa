@@ -11,6 +11,8 @@ import { authRadius, authSpace, authType } from '../../experience/authTheme';
 import { premium, premiumSerif } from '../premiumTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
 import type { CustomerRootStackParamList } from '../navigation/types';
+import { copyrightLine } from '../../domain/runtimeConfig';
+import { useRuntimeConfig } from '../../services/runtimeConfig';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -47,6 +49,7 @@ function MenuRow({ icon, label, detail, onPress, disabled = false, danger = fals
 export function CustomerAccountScreen() {
   const navigation = useNavigation<Nav>();
   const { user, profile, logout } = useCustomerAuth();
+  const { company } = useRuntimeConfig();
   const { switching, switchExperience } = useExperience();
 
   const { confirm, sheet } = useConfirmSheet();
@@ -109,6 +112,7 @@ export function CustomerAccountScreen() {
         <Divider />
         <MenuRow icon="trash-outline" label="Delete account" detail="Permanently erase your account" danger onPress={() => navigation.navigate('CustomerDeleteAccount')} />
       </View>
+      <Text style={styles.copyright}>{copyrightLine(company)}</Text>
       {sheet}
     </Screen>
   );
@@ -134,4 +138,5 @@ const styles = StyleSheet.create({
   rowLabel: { ...authType.body, fontSize: 14, color: premium.ink },
   rowDetail: { ...authType.body, fontSize: 12, lineHeight: 16, color: premium.inkFaint },
   divider: { height: 1, backgroundColor: premium.sageSoft },
+  copyright: { ...authType.body, fontSize: 12, color: premium.inkFaint, textAlign: 'center', marginTop: authSpace.lg, marginBottom: authSpace.md },
 });

@@ -4,6 +4,8 @@ import { ReactNode, useState } from 'react';
 import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import appConfig from '../../app.json';
 import { formatAppVersion } from '../domain/trustSettings';
+import { copyrightLine } from '../domain/runtimeConfig';
+import { useRuntimeConfig } from '../services/runtimeConfig';
 import { businessApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
 import { useExperience } from '../experience/experienceContext';
@@ -34,6 +36,7 @@ const TONE_FG: Record<MenuTone, string> = {
 export function AccountHubScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { business, user, role, logout, logoutAll } = useAuth();
+  const { company } = useRuntimeConfig();
   const { switching, switchExperience } = useExperience();
   const { confirm, sheet } = useConfirmSheet();
   const confirmSwitch = async () => {
@@ -172,6 +175,7 @@ export function AccountHubScreen() {
         <Icon name="logout" size={20} color={m3.error} />
         <Text style={styles.logoutText}>{sessionAction === 'logout' ? 'Signing out…' : 'Sign out'}</Text>
       </Pressable>
+      <Text style={styles.copyright}>{copyrightLine(company)}</Text>
       {sheet}
     </M3Screen>
   );
@@ -259,4 +263,5 @@ const styles = StyleSheet.create({
 
   logout: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: m3Space.xs, borderRadius: m3Radius.md, backgroundColor: m3.errorContainer },
   logoutText: { ...m3Type.labelLg, color: m3.onErrorContainer },
+  copyright: { ...m3Type.bodySm, color: m3.onSurfaceVariant, textAlign: 'center', marginTop: m3Space.lg, marginBottom: m3Space.md },
 });

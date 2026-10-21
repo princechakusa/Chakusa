@@ -9,6 +9,8 @@ import { legalApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { APPROVED_PUBLIC_DESTINATIONS } from '../domain/trustSettings';
+import { copyrightLine } from '../domain/runtimeConfig';
+import { useRuntimeConfig } from '../services/runtimeConfig';
 
 // #26 — the account-deletion URL and support email a store reviewer follows
 // must be the real production domain. Sourced from the single trust-settings
@@ -81,7 +83,7 @@ export function PublicDocumentScreen({ page }: { page: PublicPage }) {
 function Link({ href, label, primary = false, onPressOverride }: { href: string; label: string; primary?: boolean; onPressOverride?: () => void }) {
   return <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={onPressOverride ?? (() => void Linking.openURL(href))} style={({ pressed }) => [styles.linkButton, primary && styles.primary, pressed && styles.pressed]}><Text style={[styles.linkText, primary && styles.primaryText]}>{label}</Text></Pressable>;
 }
-function Footer() { return <View style={styles.footer}><View style={styles.footerLinks}><Link href={PRIVACY_URL} label="Privacy" /><Link href={TERMS_URL} label="Terms" /><Link href={APPROVED_PUBLIC_DESTINATIONS.support} label="Support" /><Link href={DELETE_URL} label="Delete Account" /></View><Text style={styles.copyright}>© Chakusa</Text></View>; }
+function Footer() { const { company } = useRuntimeConfig(); return <View style={styles.footer}><View style={styles.footerLinks}><Link href={PRIVACY_URL} label="Privacy" /><Link href={TERMS_URL} label="Terms" /><Link href={APPROVED_PUBLIC_DESTINATIONS.support} label="Support" /><Link href={DELETE_URL} label="Delete Account" /></View><Text style={styles.copyright}>{copyrightLine(company)}</Text></View>; }
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: m3.surface },
   scroll: { paddingHorizontal: m3Space.md, paddingTop: m3Space.md, paddingBottom: m3Space.xxl },

@@ -130,11 +130,11 @@ function companyInfo(remote: RemoteAppConfig | null): CompanyInfo {
   };
 }
 
-/** "© 2026 Chakusa" or "© 2026–2027 Chakusa", computed from the current year. */
+/** "© 2026 Chakusa. All rights reserved." (or "© 2026–2027 …"): the year comes from the clock, the holder from runtime config. */
 export function copyrightLine(info: Pick<CompanyInfo, 'copyrightHolder' | 'copyrightStartYear'>, now = new Date()): string {
   const year = now.getFullYear();
   const years = info.copyrightStartYear >= year ? String(year) : `${info.copyrightStartYear}–${year}`;
-  return `© ${years} ${info.copyrightHolder}`;
+  return `© ${years} ${info.copyrightHolder}. All rights reserved.`;
 }
 
 /** Numeric dotted-version compare; missing parts count as 0. Non-numeric input compares as equal. */

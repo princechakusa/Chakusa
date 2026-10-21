@@ -77,7 +77,7 @@ describe('runtime config', () => {
   });
 
   it('computes the copyright range from the current year', () => {
-    expect(copyrightLine({ copyrightHolder: 'Chakusa', copyrightStartYear: 2026 }, new Date('2026-05-01'))).toBe('© 2026 Chakusa');
-    expect(copyrightLine({ copyrightHolder: 'Chakusa', copyrightStartYear: 2026 }, new Date('2028-01-02'))).toBe('© 2026–2028 Chakusa');
+    expect(copyrightLine({ copyrightHolder: 'Chakusa', copyrightStartYear: 2026 }, new Date('2026-05-01'))).toBe('© 2026 Chakusa. All rights reserved.');
+    expect(copyrightLine({ copyrightHolder: 'Chakusa', copyrightStartYear: 2026 }, new Date('2028-01-02'))).toBe('© 2026–2028 Chakusa. All rights reserved.');
   });
 });

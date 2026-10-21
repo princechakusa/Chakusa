@@ -30,8 +30,8 @@ describe("listProviderModels (admin model dropdown)", () => {
     const { calls, fetchImpl } = stubFetch(200, { data: [{ id: "gpt-4o-mini" }, { id: "text-embedding-3-small" }, { id: "whisper-1" }, { id: "dall-e-3" }, { id: "gpt-4o-mini-tts" }, { id: "o4-mini" }, { id: "gpt-4.1-nano" }] });
     const result = await listProviderModels("openai", fetchImpl);
     expect(result.models).toEqual(["gpt-4.1-nano", "gpt-4o-mini", "o4-mini"]);
-    expect(calls[0].url).toBe("https://api.openai.com/v1/models");
-    expect(calls[0].headers.authorization).toBe("Bearer sk-saved");
+    expect(calls[0]?.url).toBe("https://api.openai.com/v1/models");
+    expect(calls[0]?.headers.authorization).toBe("Bearer sk-saved");
   });
 
   it("lists Gemini models that can generate content, without the models/ prefix", async () => {
@@ -39,7 +39,7 @@ describe("listProviderModels (admin model dropdown)", () => {
     const { calls, fetchImpl } = stubFetch(200, { models: [{ name: "models/gemini-2.5-flash", supportedGenerationMethods: ["generateContent"] }, { name: "models/text-embedding-004", supportedGenerationMethods: ["embedContent"] }] });
     const result = await listProviderModels("gemini", fetchImpl);
     expect(result.models).toEqual(["gemini-2.5-flash"]);
-    expect(calls[0].headers["x-goog-api-key"]).toBe("g-key");
+    expect(calls[0]?.headers["x-goog-api-key"]).toBe("g-key");
   });
 
   it("lists Anthropic models with the versioned header", async () => {
@@ -47,7 +47,7 @@ describe("listProviderModels (admin model dropdown)", () => {
     const { calls, fetchImpl } = stubFetch(200, { data: [{ id: "claude-haiku-4-5" }] });
     const result = await listProviderModels("anthropic", fetchImpl);
     expect(result.models).toEqual(["claude-haiku-4-5"]);
-    expect(calls[0].headers["anthropic-version"]).toBe("2023-06-01");
+    expect(calls[0]?.headers["anthropic-version"]).toBe("2023-06-01");
   });
 
   it("explains a rejected key and never echoes it", async () => {

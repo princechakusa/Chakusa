@@ -427,6 +427,20 @@ Android" client now uses the new upload SHA-1, and "Chakusa Android (Play)"
 was created with the Play app-signing SHA-1
 `42:31:19:EE:30:10:8C:7D:B7:CD:01:7E:37:C1:4B:2B:85:F4:78:08`.
 
+**2026-10-21 correction — owner action needed:** that value is the first 20
+bytes of the Play app-signing **SHA-256**, not its SHA-1, so Play installs were
+blocked as "not genuine" (fixed in the app from versionCode 8) and Google
+Sign-In on Play installs cannot work. Read from a Play-installed copy with
+apksigner, the Play app-signing certificate is:
+- SHA-1 `AF:99:0A:BC:23:F8:27:EB:96:20:CB:F3:EF:41:C3:DC:BF:05:6F:F4`
+- SHA-256 `42:31:19:EE:30:10:8C:7D:B7:CD:01:7E:37:C1:4B:2B:85:F4:78:08:8B:8B:39:65:C4:CC:04:28:92:10:4C:C1`
+
+Owner: in Google Cloud (project chakusa-507914) → Credentials → "Chakusa
+Android (Play)", replace the SHA-1 with `AF:99:0A:BC:…:6F:F4`. Always copy
+fingerprints from Play Console → App integrity, or with
+`apksigner verify --print-certs`, and check the length: SHA-1 is 20 bytes,
+SHA-256 is 32.
+
 Original note:
 
 The upload keystore `C:\Users\Dev Prince\.chakusa\android\chakusa-upload.p12`

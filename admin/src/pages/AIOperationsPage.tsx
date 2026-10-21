@@ -17,6 +17,7 @@ const PROVIDERS = [{ id: "openai", label: "OpenAI" }, { id: "anthropic", label: 
 // What the assistants request when routing (src/lib/ai/platformPrompts.ts).
 const CAPABILITIES = ["conversation", "classification", "extraction"] as const;
 const USE_CASES = ["customer_assistant", "customer_agent", "ai_receptionist"] as const;
+const CAPABILITY_LABELS: Record<string, string> = { conversation: "Conversation", classification: "Classification", extraction: "Extraction" };
 const USE_CASE_LABELS: Record<string, string> = { customer_assistant: "Customer assistant", customer_agent: "Customer agent", ai_receptionist: "AI receptionist" };
 
 function ModelRegistrySection() {
@@ -78,21 +79,32 @@ function ModelRegistrySection() {
       ])}
       empty={{ title: "No models registered", description: "Add a provider/model below to make it selectable at runtime." }}
     />
-    {canManage && <form className="setting-row" onSubmit={(event) => { event.preventDefault(); if (form.model && form.capabilities.length && form.approvedUseCases.length) upsert.mutate(); }}>
-      <select aria-label="Provider" value={form.provider} onChange={(event) => setForm((prev) => ({ ...prev, provider: event.target.value, model: "" }))}>
-        {PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
-      </select>
-      <select aria-label="Model" value={form.model} disabled={!available.data?.models.length} onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}>
-        <option value="">{available.isLoading ? "Loading models…" : available.data?.models.length ? "Choose a model" : "No models available"}</option>
-        {available.data?.models.map((model) => <option key={model} value={model}>{model}</option>)}
-      </select>
-      <fieldset className="choice-group"><legend>Capabilities</legend>
-        {CAPABILITIES.map((value) => <label key={value}><input type="checkbox" checked={form.capabilities.includes(value)} onChange={() => toggle("capabilities", value)} /> {value}</label>)}
-      </fieldset>
-      <fieldset className="choice-group"><legend>Used for</legend>
-        {USE_CASES.map((value) => <label key={value}><input type="checkbox" checked={form.approvedUseCases.includes(value)} onChange={() => toggle("approvedUseCases", value)} /> {USE_CASE_LABELS[value]}</label>)}
-      </fieldset>
-      <button type="submit" className="button secondary" disabled={!form.model || !form.capabilities.length || !form.approvedUseCases.length || upsert.isPending}>Add & activate</button>
+    {canManage && <form className="model-form" onSubmit={(event) => { event.preventDefault(); if (form.model && form.capabilities.length && form.approvedUseCases.length) upsert.mutate(); }}>
+      <p className="model-form-title">Add a model</p>
+      <div className="model-form-fields">
+        <label><span>Provider</span>
+          <select value={form.provider} onChange={(event) => setForm((prev) => ({ ...prev, provider: event.target.value, model: "" }))}>
+            {PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
+          </select>
+        </label>
+        <label><span>Model</span>
+          <select value={form.model} disabled={!available.data?.models.length} onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}>
+            <option value="">{available.isLoading ? "Loading models…" : available.data?.models.length ? "Choose a model" : "No models available"}</option>
+            {available.data?.models.map((model) => <option key={model} value={model}>{model}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="model-form-groups">
+        <fieldset className="choice-group"><legend>Capabilities</legend>
+          {CAPABILITIES.map((value) => <label key={value}><input type="checkbox" checked={form.capabilities.includes(value)} onChange={() => toggle("capabilities", value)} /> {CAPABILITY_LABELS[value]}</label>)}
+        </fieldset>
+        <fieldset className="choice-group"><legend>Used for</legend>
+          {USE_CASES.map((value) => <label key={value}><input type="checkbox" checked={form.approvedUseCases.includes(value)} onChange={() => toggle("approvedUseCases", value)} /> {USE_CASE_LABELS[value]}</label>)}
+        </fieldset>
+      </div>
+      <div className="model-form-actions">
+        <button type="submit" className="button primary" disabled={!form.model || !form.capabilities.length || !form.approvedUseCases.length || upsert.isPending}>{upsert.isPending ? "Adding…" : "Add & activate"}</button>
+      </div>
     </form>}
     {canManage && available.data && !available.data.configured && <p className="muted">No {form.provider} API key is saved yet. Add it under Settings → Provider credentials, then come back.</p>}
     {canManage && available.data?.error && <p className="error-copy">{available.data.error}</p>}

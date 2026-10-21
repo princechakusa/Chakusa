@@ -6,6 +6,7 @@ export function initMobileMonitoring() {
   if (!mobileMonitoringConfigured(SENTRY_ENABLED, SENTRY_DSN, process.env.NODE_ENV)) return false;
   Sentry.init({
     dsn: SENTRY_DSN,
+    environment: process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT?.trim() || 'production',
     sendDefaultPii: false,
     tracesSampleRate: 0,
     enableAutoSessionTracking: false,

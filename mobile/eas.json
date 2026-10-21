@@ -39,7 +39,10 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "EXPO_PUBLIC_BILLING_ENABLED": "true",
         "EXPO_PUBLIC_APPLE_PRO_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.pro.monthly",
-        "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly"
+        "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly",
+        "EXPO_PUBLIC_SENTRY_ENABLED": "true",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
       }
     },
     "production-internal": {
@@ -60,7 +63,10 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "EXPO_PUBLIC_BILLING_ENABLED": "true",
         "EXPO_PUBLIC_APPLE_PRO_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.pro.monthly",
-        "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly"
+        "EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly",
+        "EXPO_PUBLIC_SENTRY_ENABLED": "true",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "internal"
       }
     },
     "customer": {
@@ -80,7 +86,10 @@
         "EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED": "false",
         "EXPO_PUBLIC_AUTOMATION_ENABLED": "true",
         "EXPO_PUBLIC_BILLING_ENABLED": "false",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_SENTRY_ENABLED": "true",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "internal"
       }
     }
   },

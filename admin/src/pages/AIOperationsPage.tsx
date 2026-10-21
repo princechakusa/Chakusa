@@ -15,7 +15,7 @@ function ModelRegistrySection() {
   const auth = useAuth(); const client = useQueryClient();
   const canManage = auth.hasPermission("ai.manage");
   const query = useQuery({ queryKey: ["admin-ai-models"], queryFn: () => apiFetch<{ items: AIModel[] }>("/admin/ai/models") });
-  const [form, setForm] = useState({ provider: "openai", model: "", version: "1", capabilities: "chat", approvedUseCases: "customer_agent" });
+  const [form, setForm] = useState({ provider: "openai", model: "", version: "1", capabilities: "conversation,classification,extraction", approvedUseCases: "customer_agent,customer_assistant,ai_receptionist" });
   const upsert = useMutation({
     mutationFn: () => apiFetch("/admin/ai/models", {
       method: "POST",
@@ -66,6 +66,7 @@ function ModelRegistrySection() {
       <select value={form.provider} onChange={(event) => setForm((prev) => ({ ...prev, provider: event.target.value }))}>
         <option value="openai">openai</option>
         <option value="anthropic">anthropic</option>
+        <option value="gemini">gemini</option>
       </select>
       <input placeholder="Model, e.g. gpt-4o-mini" value={form.model} onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))} />
       <input placeholder="Version, e.g. 1" value={form.version} onChange={(event) => setForm((prev) => ({ ...prev, version: event.target.value }))} style={{ maxWidth: 80 }} />

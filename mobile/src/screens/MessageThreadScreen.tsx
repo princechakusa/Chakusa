@@ -22,8 +22,9 @@ const businessChatPalette: ChatPalette = {
   line: m3.surfaceContainerHigh,
   font: { body: 'Inter_400Regular', medium: 'Inter_500Medium', semibold: 'Inter_600SemiBold' },
 };
+// Letters only: a phone-number "name" (+9715…) has no initials, so it gets a person icon.
 function initials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
+  return name.split(/\s+/).map((part) => part.match(/\p{L}/u)?.[0]?.toUpperCase() ?? '').filter(Boolean).slice(0, 2).join('');
 }
 
 export function MessageThreadScreen() {
@@ -113,12 +114,12 @@ export function MessageThreadScreen() {
       </View>
       <View style={styles.clientBar}>
         <View style={styles.clientAvatar}>
-          <Text style={styles.clientInitials}>{initials(clientName)}</Text>
+          {initials(clientName) ? <Text style={styles.clientInitials}>{initials(clientName)}</Text> : <Icon name="person" size={22} color={m3.primary} />}
         </View>
         <View style={styles.flex}>
           <Text numberOfLines={1} style={styles.clientName}>{clientName}</Text>
           <Text numberOfLines={1} style={styles.clientMeta}>
-            {inApp ? 'Chakusa app customer' : customer?.phone ?? customer?.email ?? `${channel.toUpperCase()} conversation`}
+            {inApp ? 'Chakusa app customer' : (customer?.phone && customer.phone !== clientName ? customer.phone : null) ?? customer?.email ?? 'Client conversation'}
           </Text>
         </View>
         {customerId ? (
@@ -150,7 +151,7 @@ export function MessageThreadScreen() {
         onSend={() => void send()}
         sending={sending}
         disabled={!canReply}
-        placeholder={inApp ? 'Reply in the Chakusa app' : `Message over ${channel.toUpperCase()}`}
+        placeholder={inApp ? 'Reply in the Chakusa app' : 'Message'}
         palette={businessChatPalette}
         note={sendError || !canReply ? (
           <Text style={sendError ? styles.sendError : styles.composerNote}>

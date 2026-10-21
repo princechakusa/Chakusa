@@ -188,7 +188,7 @@ export function MessagesInboxScreen() {
           message={
             search || filter !== 'all'
               ? 'Try a different search or filter.'
-              : 'Client messages across SMS and WhatsApp land here.'
+              : 'Messages from your clients land here.'
           }
         />
       )}

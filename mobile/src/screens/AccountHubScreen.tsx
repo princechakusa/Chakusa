@@ -109,7 +109,7 @@ export function AccountHubScreen() {
       </M3Card>
 
       <MenuSection title="Inbox & reputation">
-        <MenuRow icon="forum" tone="primary" title="Messages" detail="Client conversations across SMS and WhatsApp" onPress={() => navigation.navigate('Messages')} />
+        <MenuRow icon="forum" tone="primary" title="Messages" detail="Your client conversations" onPress={() => navigation.navigate('Messages')} />
         <MenuRow icon="star" tone="secondary" title="Reviews & ratings" detail="Requests, public reviews and private feedback" onPress={() => navigation.navigate('Main', { screen: 'Reviews' })} last />
       </MenuSection>
 

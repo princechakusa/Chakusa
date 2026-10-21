@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { listAIProviderIds, registerAIProvider } from "./aiGateway.js";
+import { listAIProviderIds, registerAIProvider, unregisterAIProvider } from "./aiGateway.js";
 import { createFakeAIProvider, FAKE_AI_PROVIDER_ID } from "./fakeAIProvider.js";
 import { openAIProviderFromConfig } from "./providers/openaiProvider.js";
 import { anthropicProviderFromConfig } from "./providers/anthropicProvider.js";
@@ -36,4 +36,18 @@ export function registerBuiltInAIProviders(overrides: AIProviderKeyOverrides = {
   if (anthropic && !listAIProviderIds().includes(anthropic.id)) registerAIProvider(anthropic);
   const gemini = geminiProviderFromConfig(overrides.GEMINI_API_KEY);
   if (gemini && !listAIProviderIds().includes(gemini.id)) registerAIProvider(gemini);
+}
+
+/** The vendor adapters whose keys can be changed at runtime. */
+export const REAL_AI_PROVIDER_IDS = ["openai", "anthropic", "gemini"] as const;
+
+/**
+ * Rebuilds the vendor adapters with the current keys, so an AI key saved or
+ * cleared in the admin console takes effect immediately - no restart, no
+ * redeploy, no Render env edit. Admin keys win over env vars; clearing one
+ * falls back to the env var (or removes the provider if there is none).
+ */
+export function reloadBuiltInAIProviders(overrides: AIProviderKeyOverrides = {}) {
+  for (const id of REAL_AI_PROVIDER_IDS) unregisterAIProvider(id);
+  registerBuiltInAIProviders(overrides);
 }

@@ -44,7 +44,10 @@ import {
   listPlatformProviderSecrets,
   setPlatformProviderSecret,
   clearPlatformProviderSecret,
+  loadPlatformProviderSecretOverrides,
 } from "../../lib/platformProviderSecrets.js";
+import { reloadBuiltInAIProviders } from "../../lib/ai/registerProviders.js";
+
 import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
 import { getOutboxStatus } from "./outboxRead.service.js";
 import { getPlatformWorkflow, listPlatformWorkflowExecutions, listPlatformWorkflows, retryPlatformWorkflowExecution } from "./workflowAdmin.service.js";
@@ -201,6 +204,12 @@ function requireRefreshCookie(request: FastifyRequest): string {
 async function requireSupportViewsEnabled() {
   const row = await prisma.platformSetting.findUnique({ where: { key: "support_read_only_impersonation" }, select: { value: true } });
   if (row?.value === false) throw ApiError.forbidden("Read-only support views are switched off in platform settings");
+}
+
+/** An AI key saved/cleared in the admin console is used from the next request. */
+async function applyAIKeyChange() {
+  const overrides = await loadPlatformProviderSecretOverrides();
+  reloadBuiltInAIProviders({ OPENAI_API_KEY: overrides.OPENAI_API_KEY, ANTHROPIC_API_KEY: overrides.ANTHROPIC_API_KEY, GEMINI_API_KEY: overrides.GEMINI_API_KEY });
 }
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -587,6 +596,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const input = z.object({ value: z.string().trim().min(1).max(4000) }).parse(request.body);
     await setPlatformProviderSecret(request.params.key, input.value, request.admin!.userId);
     await recordAdminAudit({ actor: request.admin!, action: "PROVIDER_SECRET_SET", targetType: "provider_secret", targetId: request.params.key, context: auditContext(request) });
+    await applyAIKeyChange();
     reply.code(204).send();
   });
   fastify.delete<{ Params: { key: string } }>("/provider-secrets/:key", { preHandler: fastify.authenticateAdmin }, async (request, reply) => {
@@ -595,6 +605,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     if (!isPlatformProviderSecretKey(request.params.key)) throw ApiError.badRequest("Unsupported provider secret key");
     await clearPlatformProviderSecret(request.params.key);
     await recordAdminAudit({ actor: request.admin!, action: "PROVIDER_SECRET_CLEARED", targetType: "provider_secret", targetId: request.params.key, context: auditContext(request) });
+    await applyAIKeyChange();
     reply.code(204).send();
   });
 

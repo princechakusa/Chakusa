@@ -15,6 +15,7 @@ export interface AIToolDeclaration { name: string; description?: string; schema:
 const providers = new Map<string, AIProvider>();
 export function registerAIProvider(provider: AIProvider) { providers.set(provider.id, provider); }
 export function clearAIProviders() { providers.clear(); }
+export function unregisterAIProvider(id: string) { providers.delete(id); }
 export function listAIProviderIds() { return [...providers.keys()]; }
 
 // LOOP 3B-1: routeAI() will only execute a prompt that resolves to an

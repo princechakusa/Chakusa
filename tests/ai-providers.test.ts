@@ -3,6 +3,8 @@ import { createOpenAIProvider } from "../src/lib/ai/providers/openaiProvider.js"
 import { createAnthropicProvider } from "../src/lib/ai/providers/anthropicProvider.js";
 import { createGeminiProvider } from "../src/lib/ai/providers/geminiProvider.js";
 import { customerAssistantToolManifest } from "../src/lib/ai/customerAssistant/customerAssistantTools.js";
+import { reloadBuiltInAIProviders } from "../src/lib/ai/registerProviders.js";
+import { listAIProviderIds } from "../src/lib/ai/aiGateway.js";
 import { AIProviderError, createFetchTransport, type ProviderTransport, type TransportRequest } from "../src/lib/ai/providers/providerTransport.js";
 
 function stubTransport(handler: (request: TransportRequest) => { status?: number; json: unknown }): ProviderTransport & { calls: TransportRequest[] } {
@@ -163,4 +165,15 @@ describe("AI provider adapters (LOOP 4)", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("runtime key changes", () => {
+    it("an AI key saved or cleared in the admin console applies without a restart", () => {
+      reloadBuiltInAIProviders({ GEMINI_API_KEY: "admin-set-key" });
+      expect(listAIProviderIds()).toContain("gemini");
+      reloadBuiltInAIProviders({});
+      // No env key in tests: clearing the admin key removes the provider.
+      expect(listAIProviderIds()).not.toContain("gemini");
+    });
+  });
 });
+

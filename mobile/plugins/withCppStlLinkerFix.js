@@ -1,4 +1,4 @@
-import { withAppBuildGradle } from '@expo/config-plugins';
+import { withAppBuildGradle, withProjectBuildGradle } from '@expo/config-plugins';
 
 // Windows-specific NDK linking regression: shared libraries that only
 // depend on *static* prefab libraries (fbjni, folly_runtime, glog, jsi,
@@ -24,7 +24,40 @@ import { withAppBuildGradle } from '@expo/config-plugins';
 // Clang) — 27.x is react-native 0.86's real requirement, not the problem.
 const LINKER_FLAG = '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--no-as-needed -lc++_shared';
 
+// Native libraries that build their own .so in their own Gradle module hit
+// the same regression (react-native-worklets: undefined std::__ndk1 /
+// operator new / __cxa_* at link). The app-level hook above never reaches a
+// library module, so apply the same flag to each one through its own
+// finalizeDsl, which runs after the library has declared its CMake args.
+const NATIVE_LIBRARY_MODULES = ['react-native-worklets', 'react-native-reanimated'];
+const LIBRARY_MARKER = '// chakusa: c++_shared for native library modules';
+
+function withLibraryCppStlLinkerFix(config) {
+  return withProjectBuildGradle(config, (config) => {
+    let contents = config.modResults.contents;
+    if (contents.includes(LIBRARY_MARKER)) return config;
+    contents += `
+
+${LIBRARY_MARKER}
+subprojects { sub ->
+    if (${JSON.stringify(NATIVE_LIBRARY_MODULES)}.contains(sub.name)) {
+        sub.plugins.withId("com.android.library") {
+            sub.androidComponents {
+                finalizeDsl { extension ->
+                    extension.defaultConfig.externalNativeBuild.cmake.arguments.add("${LINKER_FLAG}")
+                }
+            }
+        }
+    }
+}
+`;
+    config.modResults.contents = contents;
+    return config;
+  });
+}
+
 function withCppStlLinkerFix(config) {
+  config = withLibraryCppStlLinkerFix(config);
   return withAppBuildGradle(config, (config) => {
     let contents = config.modResults.contents;
 

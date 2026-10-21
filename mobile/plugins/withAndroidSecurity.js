@@ -31,7 +31,7 @@ export default function withAndroidSecurity(config) {
     // Android 7 (API 24) is React Native's floor. Raising it to 29 cut ~30% of
     // phones from Play; the server (auth, Play Integrity) stays the security
     // boundary, so older devices are supported again.
-    const properties = { 'android.enableMinifyInReleaseBuilds': 'true', 'android.enableShrinkResourcesInReleaseBuilds': 'true', 'android.minSdkVersion': String(ANDROID_MIN_SDK) };
+    const properties = { 'android.enableMinifyInReleaseBuilds': 'true', 'android.enableShrinkResourcesInReleaseBuilds': 'true', 'android.minSdkVersion': String(ANDROID_MIN_SDK), 'org.gradle.jvmargs': '-Xmx3072m -XX:MaxMetaspaceSize=512m' };
     for (const [key, value] of Object.entries(properties)) {
       config.modResults = config.modResults.filter((entry) => entry.type !== 'property' || entry.key !== key);
       config.modResults.push({ type: 'property', key, value });

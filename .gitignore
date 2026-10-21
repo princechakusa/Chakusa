@@ -24,3 +24,6 @@ coverage/
 
 # Personal Claude Code settings (permission overrides, etc.) — machine-local only.
 .claude/settings.local.json
+
+# Local release artifacts (AAB/APK) - never commit
+/builds/

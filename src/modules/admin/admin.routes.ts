@@ -47,6 +47,7 @@ import {
   loadPlatformProviderSecretOverrides,
 } from "../../lib/platformProviderSecrets.js";
 import { reloadBuiltInAIProviders } from "../../lib/ai/registerProviders.js";
+import { LISTABLE_AI_PROVIDERS, listProviderModels } from "../../lib/ai/providerModels.js";
 
 import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
 import { getOutboxStatus } from "./outboxRead.service.js";
@@ -614,6 +615,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   const aiRead = { preHandler: fastify.authenticateAdmin } as const;
   fastify.get("/ai/providers", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIProviders()); });
   fastify.get("/ai/models", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send({ items: await adminAIModels() }); });
+  // Models the saved provider key can use, for the registry dropdown. Calls the
+  // vendor with the server-held key, so it needs `ai.manage`.
+  fastify.get<{ Params: { provider: string } }>("/ai/providers/:provider/models", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "ai.manage");
+    const provider = z.enum(LISTABLE_AI_PROVIDERS).parse(request.params.provider);
+    reply.send(await listProviderModels(provider));
+  });
   fastify.post("/ai/models", aiRead, async (request, reply) => {
     fastify.requireAdminPermission(request, "ai.manage");
     await fastify.requireAdminCsrf(request);

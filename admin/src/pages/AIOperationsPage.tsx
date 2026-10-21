@@ -11,11 +11,27 @@ interface Memory { retrievals: number; avgLatencyMs: number; avgCompressionRatio
 interface Policy { totalDecisions: number; byOutcome: Record<string, number>; activePolicies: number; draftPolicies: number; denialRate: number }
 interface AIModel { id: string; provider: string; model: string; version: string; capabilities: string[]; approvedUseCases: string[]; status: "ACTIVE" | "DISABLED" | "DEPRECATED"; healthStatus: string }
 
+interface ProviderModels { provider: string; configured: boolean; models: string[]; error?: string }
+
+const PROVIDERS = [{ id: "openai", label: "OpenAI" }, { id: "anthropic", label: "Anthropic" }, { id: "gemini", label: "Google Gemini" }] as const;
+// What the assistants request when routing (src/lib/ai/platformPrompts.ts).
+const CAPABILITIES = ["conversation", "classification", "extraction"] as const;
+const USE_CASES = ["customer_assistant", "customer_agent", "ai_receptionist"] as const;
+const USE_CASE_LABELS: Record<string, string> = { customer_assistant: "Customer assistant", customer_agent: "Customer agent", ai_receptionist: "AI receptionist" };
+
 function ModelRegistrySection() {
   const auth = useAuth(); const client = useQueryClient();
   const canManage = auth.hasPermission("ai.manage");
   const query = useQuery({ queryKey: ["admin-ai-models"], queryFn: () => apiFetch<{ items: AIModel[] }>("/admin/ai/models") });
-  const [form, setForm] = useState({ provider: "openai", model: "", version: "1", capabilities: "conversation,classification,extraction", approvedUseCases: "customer_agent,customer_assistant,ai_receptionist" });
+  const [form, setForm] = useState({ provider: "openai", model: "", version: "1", capabilities: [...CAPABILITIES] as string[], approvedUseCases: [...USE_CASES] as string[] });
+  // Models the saved key can actually use, straight from the provider.
+  const available = useQuery({
+    queryKey: ["admin-ai-provider-models", form.provider],
+    queryFn: () => apiFetch<ProviderModels>(`/admin/ai/providers/${form.provider}/models`),
+    enabled: canManage,
+  });
+  const toggle = (field: "capabilities" | "approvedUseCases", value: string) =>
+    setForm((prev) => ({ ...prev, [field]: prev[field].includes(value) ? prev[field].filter((item) => item !== value) : [...prev[field], value] }));
   const upsert = useMutation({
     mutationFn: () => apiFetch("/admin/ai/models", {
       method: "POST",
@@ -23,8 +39,8 @@ function ModelRegistrySection() {
         provider: form.provider.trim(),
         model: form.model.trim(),
         version: form.version.trim(),
-        capabilities: form.capabilities.split(",").map((value) => value.trim()).filter(Boolean),
-        approvedUseCases: form.approvedUseCases.split(",").map((value) => value.trim()).filter(Boolean),
+        capabilities: form.capabilities,
+        approvedUseCases: form.approvedUseCases,
         status: "ACTIVE",
       }),
     }),
@@ -41,7 +57,7 @@ function ModelRegistrySection() {
   return <section className="panel table-panel">
     <div className="panel-heading"><div><p className="eyebrow">Model registry</p><h2>Which model actually answers</h2></div></div>
     <p className="muted">
-      The provider (OpenAI/Anthropic) must have its API key set under Settings → Provider credentials, or the
+      The provider (OpenAI, Anthropic or Gemini) must have its API key set under Settings → Provider credentials, or the
       matching Render env var, before a model here can actually respond. Only one ACTIVE model per capability is
       used by routing.
     </p>
@@ -62,18 +78,24 @@ function ModelRegistrySection() {
       ])}
       empty={{ title: "No models registered", description: "Add a provider/model below to make it selectable at runtime." }}
     />
-    {canManage && <form className="setting-row" onSubmit={(event) => { event.preventDefault(); if (form.model.trim()) upsert.mutate(); }}>
-      <select value={form.provider} onChange={(event) => setForm((prev) => ({ ...prev, provider: event.target.value }))}>
-        <option value="openai">openai</option>
-        <option value="anthropic">anthropic</option>
-        <option value="gemini">gemini</option>
+    {canManage && <form className="setting-row" onSubmit={(event) => { event.preventDefault(); if (form.model && form.capabilities.length && form.approvedUseCases.length) upsert.mutate(); }}>
+      <select aria-label="Provider" value={form.provider} onChange={(event) => setForm((prev) => ({ ...prev, provider: event.target.value, model: "" }))}>
+        {PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
       </select>
-      <input placeholder="Model, e.g. gpt-4o-mini" value={form.model} onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))} />
-      <input placeholder="Version, e.g. 1" value={form.version} onChange={(event) => setForm((prev) => ({ ...prev, version: event.target.value }))} style={{ maxWidth: 80 }} />
-      <input placeholder="Capabilities, comma-separated" value={form.capabilities} onChange={(event) => setForm((prev) => ({ ...prev, capabilities: event.target.value }))} />
-      <input placeholder="Approved use cases, comma-separated" value={form.approvedUseCases} onChange={(event) => setForm((prev) => ({ ...prev, approvedUseCases: event.target.value }))} />
-      <button type="submit" className="button secondary" disabled={!form.model.trim() || upsert.isPending}>Add & activate</button>
+      <select aria-label="Model" value={form.model} disabled={!available.data?.models.length} onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}>
+        <option value="">{available.isLoading ? "Loading models…" : available.data?.models.length ? "Choose a model" : "No models available"}</option>
+        {available.data?.models.map((model) => <option key={model} value={model}>{model}</option>)}
+      </select>
+      <fieldset className="choice-group"><legend>Capabilities</legend>
+        {CAPABILITIES.map((value) => <label key={value}><input type="checkbox" checked={form.capabilities.includes(value)} onChange={() => toggle("capabilities", value)} /> {value}</label>)}
+      </fieldset>
+      <fieldset className="choice-group"><legend>Used for</legend>
+        {USE_CASES.map((value) => <label key={value}><input type="checkbox" checked={form.approvedUseCases.includes(value)} onChange={() => toggle("approvedUseCases", value)} /> {USE_CASE_LABELS[value]}</label>)}
+      </fieldset>
+      <button type="submit" className="button secondary" disabled={!form.model || !form.capabilities.length || !form.approvedUseCases.length || upsert.isPending}>Add & activate</button>
     </form>}
+    {canManage && available.data && !available.data.configured && <p className="muted">No {form.provider} API key is saved yet. Add it under Settings → Provider credentials, then come back.</p>}
+    {canManage && available.data?.error && <p className="error-copy">{available.data.error}</p>}
     {(upsert.error instanceof Error || setStatus.error instanceof Error) && <p className="error-copy">{((upsert.error ?? setStatus.error) as Error).message}</p>}
   </section>;
 }

@@ -13,7 +13,7 @@ function sentry(routes: Record<string, { status?: number; json: unknown }>) {
     calls.push({ url, method: init.method ?? "GET", headers: init.headers, body: init.body });
     // Most specific route wins, like a real router.
     const key = Object.keys(routes).filter((path) => url.includes(path)).sort((x, y) => y.length - x.length)[0];
-    const route = key ? routes[key] : { status: 404, json: {} };
+    const route = (key ? routes[key] : undefined) ?? { status: 404, json: {} };
     const status = route.status ?? 200;
     return { ok: status < 300, status, json: async () => route.json };
   };
@@ -63,7 +63,7 @@ describe("Sentry issues for the admin console", () => {
       "/issues/900/": { json: { id: "900", title: "TypeError", project: { slug: "mobile" } } },
     });
     const detail = await getSentryIssue("900", fetchImpl);
-    expect(detail.exception[0].frames[0]).toEqual({ file: "Home.tsx", fn: "render", line: 88, inApp: true });
+    expect(detail.exception[0]?.frames[0]).toEqual({ file: "Home.tsx", fn: "render", line: 88, inApp: true });
     expect(detail.release).toBe("1.0.0+8");
     expect(detail.environment).toBe("production");
     expect(detail.tags.map((tag) => tag.key)).toEqual(["environment", "os"]);

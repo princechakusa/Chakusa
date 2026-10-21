@@ -17,6 +17,9 @@ export const PLATFORM_PROVIDER_SECRET_KEYS = [
   "TWILIO_FROM_NUMBER",
   "TWILIO_MESSAGING_SERVICE_SID",
   "TWILIO_WHATSAPP_FROM",
+  // Read-only Sentry API token for the admin Issues page (scopes: org:read,
+  // project:read, event:read; event:write to resolve/ignore from the console).
+  "SENTRY_AUTH_TOKEN",
 ] as const;
 
 export type PlatformProviderSecretKey = (typeof PLATFORM_PROVIDER_SECRET_KEYS)[number];

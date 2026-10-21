@@ -48,6 +48,7 @@ import {
 } from "../../lib/platformProviderSecrets.js";
 import { reloadBuiltInAIProviders } from "../../lib/ai/registerProviders.js";
 import { LISTABLE_AI_PROVIDERS, listProviderModels } from "../../lib/ai/providerModels.js";
+import { getSentryIssue, listSentryIssues, SENTRY_ISSUE_STATUSES, SENTRY_PERIODS, SentryUnavailableError, setSentryIssueStatus } from "../../lib/sentryIssues.js";
 
 import { getAutomationFoundationStatus } from "../automation/automationFoundation.js";
 import { getOutboxStatus } from "./outboxRead.service.js";
@@ -637,6 +638,32 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const updated = await adminSetAIModelStatus(request.params.id, input.status, input.healthStatus);
     await recordAdminAudit({ actor: request.admin!, action: "AI_MODEL_STATUS_CHANGED", targetType: "ai_model", targetId: updated.id, newValue: { status: updated.status, healthStatus: updated.healthStatus }, context: auditContext(request) });
     reply.send(updated);
+  });
+  // Issues: Sentry errors from the apps and API, read live from Sentry with
+  // the encrypted SENTRY_AUTH_TOKEN. Viewing needs support.read; changing an
+  // issue's status needs support.manage and is audited.
+  const sentryFailure = (error: unknown) => {
+    if (error instanceof SentryUnavailableError) throw ApiError.serviceUnavailable(error.message);
+    throw error;
+  };
+  fastify.get("/issues", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "support.read");
+    const query = z.object({ status: z.enum(SENTRY_ISSUE_STATUSES).default("unresolved"), period: z.enum(SENTRY_PERIODS).default("14d"), project: z.string().trim().max(100).optional(), search: z.string().trim().max(200).optional() }).parse(request.query);
+    reply.send(await listSentryIssues(query).catch(sentryFailure));
+  });
+  fastify.get<{ Params: { id: string } }>("/issues/:id", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "support.read");
+    const id = z.string().regex(/^\d{1,20}$/).parse(request.params.id);
+    reply.send(await getSentryIssue(id).catch(sentryFailure));
+  });
+  fastify.put<{ Params: { id: string } }>("/issues/:id/status", aiRead, async (request, reply) => {
+    fastify.requireAdminPermission(request, "support.manage");
+    await fastify.requireAdminCsrf(request);
+    const id = z.string().regex(/^\d{1,20}$/).parse(request.params.id);
+    const { status } = z.object({ status: z.enum(SENTRY_ISSUE_STATUSES) }).parse(request.body);
+    await setSentryIssueStatus(id, status).catch(sentryFailure);
+    await recordAdminAudit({ actor: request.admin!, action: "SENTRY_ISSUE_STATUS_CHANGED", targetType: "sentry_issue", targetId: id, newValue: { status }, context: auditContext(request) });
+    reply.send({ id, status });
   });
   fastify.get("/ai/routing", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send(await adminAIRoutingRules()); });
   fastify.get("/ai/prompt-packages", aiRead, async (request, reply) => { fastify.requireAdminPermission(request, "platform.read"); reply.send({ items: await adminAIPromptPackages() }); });

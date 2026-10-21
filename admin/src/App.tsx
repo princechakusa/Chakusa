@@ -23,6 +23,7 @@ const CommunicationsPage = lazy(() => import("./pages/CommunicationsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
+const IssuesPage = lazy(() => import("./pages/IssuesPage"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -58,6 +59,7 @@ export default function App() {
       <Route path="support" element={<SupportPage />} />
       <Route path="feedback" element={<FeedbackPage />} />
       <Route path="audit" element={<AuditPage />} />
+      <Route path="issues" element={<IssuesPage />} />
       <Route path="legal" element={<LegalPage />} />
       <Route path="security" element={<SecurityPage />} />
       <Route path="settings" element={<SettingsPage />} />

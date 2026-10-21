@@ -63,3 +63,24 @@ main{min-height:calc(100vh - 68px)}.page{max-width:1480px;margin:0 auto;padding:
 .choice-group input{accent-color:var(--brand);width:15px;height:15px}
 .model-form-actions{display:flex;justify-content:flex-end}
 @media (max-width:760px){.model-form-fields,.model-form-groups{grid-template-columns:1fr}}
+
+/* Issues (Sentry) page and detail drawer. */
+.issues-metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:15px}
+.issue-title{max-width:440px}.issue-title strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.issues-settings-link{text-align:center;margin:0 0 24px}
+.dialog-backdrop:has(.issue-drawer){place-items:stretch end;padding:0}
+.issue-drawer{width:min(640px,100%);height:100vh;overflow:auto;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow)}
+.issue-drawer-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--surface);border-bottom:1px solid var(--border-subtle)}
+.issue-drawer-title{flex:1;min-width:0}.issue-drawer-title strong,.issue-drawer-title span{display:block}.issue-drawer-title strong{font-size:13px;overflow-wrap:anywhere}.issue-drawer-title span{font-size:10px;color:var(--muted);margin-top:3px}
+.issue-drawer-body{padding-bottom:24px}
+.issue-stack{margin:8px 20px 0;border:1px solid var(--border-subtle);border-radius:10px;overflow:hidden}
+.issue-stack h3{margin:0;padding:12px 14px;font-size:12px;background:var(--danger-soft);color:var(--danger);overflow-wrap:anywhere}
+.issue-stack ol{list-style:none;margin:0;padding:0;max-height:340px;overflow:auto}
+.issue-stack li{display:grid;gap:2px;padding:8px 14px;border-top:1px solid var(--border-subtle);font-size:11px;color:var(--muted)}
+.issue-stack li code{color:var(--text);font-size:11px}.issue-stack li span{overflow-wrap:anywhere}
+.issue-stack li.in-app{background:var(--brand-soft)}.issue-stack li.in-app code{color:var(--brand);font-weight:700}
+.issue-tags{display:flex;flex-wrap:wrap;gap:6px;margin:14px 20px 0}
+.issue-tags span{font-size:10px;border:1px solid var(--border);border-radius:999px;padding:4px 8px;color:var(--muted)}.issue-tags b{color:var(--text)}
+.issue-actions{display:flex;flex-wrap:wrap;gap:8px;margin:18px 20px 0}
+.error-copy{color:var(--danger);font-size:11px;margin:10px 20px 0}
+@media (max-width:900px){.issues-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}

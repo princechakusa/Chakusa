@@ -1,5 +1,5 @@
 import {
-  BarChart3, Bot, Building2, CalendarDays, ChevronDown, CircleHelp, CreditCard, FileClock, Gift, LayoutDashboard,
+  BarChart3, Bot, Bug, Building2, CalendarDays, ChevronDown, CircleHelp, CreditCard, FileClock, Gift, LayoutDashboard,
   LogOut, Menu, MessageSquareText, Moon, Scale, Search, Settings, ShieldCheck, ShoppingBag, Sun, Users, Workflow, X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -20,6 +20,7 @@ const navigation = [
   { to: "/ai", label: "AI operations", icon: Bot, permission: "platform.read" },
   { to: "/automation", label: "Automation", icon: Workflow, permission: "automation.read" },
   { to: "/communications", label: "Communications", icon: MessageSquareText, permission: "communication.read" },
+  { to: "/issues", label: "Issues", icon: Bug, permission: "support.read" },
   { to: "/support", label: "Support", icon: CircleHelp, permission: "support.read" },
   { to: "/feedback", label: "Beta feedback", icon: MessageSquareText, permission: "feedback.read" },
   { to: "/audit", label: "Audit log", icon: FileClock, permission: "audit.read" },

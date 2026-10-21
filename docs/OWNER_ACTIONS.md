@@ -436,7 +436,7 @@ apksigner, the Play app-signing certificate is:
 - SHA-256 `42:31:19:EE:30:10:8C:7D:B7:CD:01:7E:37:C1:4B:2B:85:F4:78:08:8B:8B:39:65:C4:CC:04:28:92:10:4C:C1`
 
 Owner: in Google Cloud (project chakusa-507914) → Credentials → "Chakusa
-Android (Play)", replace the SHA-1 with `AF:99:0A:BC:…:6F:F4`. Always copy
+Android (Play)", replace the SHA-1 with `AF:99:0A:BC:…:6F:F4`. **Done 2026-10-21** (owner saved it; verified on reload). Always copy
 fingerprints from Play Console → App integrity, or with
 `apksigner verify --print-certs`, and check the length: SHA-1 is 20 bytes,
 SHA-256 is 32.

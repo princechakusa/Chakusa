@@ -68,7 +68,8 @@
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:watch": "node e2e/watch.mjs",
     "e2e:build": "node e2e/build-web.mjs",
-    "e2e:serve": "node e2e/serve-web.mjs"
+    "e2e:serve": "node e2e/serve-web.mjs",
+    "ios:release": "node scripts/ios-release.mjs"
   },
   "private": true,
   "overrides": {

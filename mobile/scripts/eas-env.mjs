@@ -11,7 +11,7 @@
 //
 // Usage: node scripts/eas-env.mjs <profile> [--cwd <dir>] -- <command> [args...]
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -41,7 +41,17 @@ console.log(`[eas-env] ${profile}: applying ${Object.keys(profileEnv).length} va
 // Windows needs a shell to resolve .cmd shims (gradlew.bat, npx.cmd), and a
 // shell concatenates arguments, so quote each one explicitly.
 const quote = (value) => (/^[\w./:=@-]+$/.test(value) ? value : `"${value.replace(/"/g, '\\"')}"`);
+// A wrapper script in --cwd (gradlew / gradlew.bat) is resolved to an absolute
+// path: cmd.exe skips the current directory when
+// NoDefaultCurrentDirectoryInExePath is set (Git Bash, Claude Code), and POSIX
+// shells never search it, so a bare `gradlew` fails with "not recognized".
+const resolveLocal = (name) => {
+  const candidates = process.platform === 'win32' ? [`${name}.bat`, `${name}.cmd`, name] : [name];
+  const found = candidates.map((candidate) => resolve(cwd, candidate)).find((path) => existsSync(path) && statSync(path).isFile());
+  return found ?? name;
+};
+const executable = /[\\/]/.test(command) ? command : resolveLocal(command);
 const child = process.platform === 'win32'
-  ? spawn([command, ...commandArgs].map(quote).join(' '), { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit', shell: true })
-  : spawn(command, commandArgs, { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit' });
+  ? spawn([executable, ...commandArgs].map(quote).join(' '), { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit', shell: true })
+  : spawn(executable, commandArgs, { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit' });
 child.on('exit', (code, signal) => process.exit(signal ? 1 : code ?? 1));

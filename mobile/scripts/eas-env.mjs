@@ -11,8 +11,8 @@
 //
 // Usage: node scripts/eas-env.mjs <profile> [--cwd <dir>] -- <command> [args...]
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,7 +51,32 @@ const resolveLocal = (name) => {
   return found ?? name;
 };
 const executable = /[\\/]/.test(command) ? command : resolveLocal(command);
+
+// Gradle compiles with the JVM it runs on; a JRE in JAVA_HOME (no javac) fails
+// deep in the build with "does not provide the required capabilities:
+// [JAVA_COMPILER]". Fall back to an installed JDK 17 and say so.
+const childEnv = { ...process.env, ...profileEnv };
+const javac = process.platform === 'win32' ? 'javac.exe' : 'javac';
+const hasJavac = (home) => Boolean(home) && existsSync(join(home, 'bin', javac));
+if (/gradlew/i.test(executable) && !hasJavac(childEnv.JAVA_HOME)) {
+  const jdkRoots = process.platform === 'win32'
+    ? ['C:\\Program Files\\Eclipse Adoptium', 'C:\\Program Files\\Java', 'C:\\Program Files\\Microsoft']
+    : ['/usr/lib/jvm', '/Library/Java/JavaVirtualMachines'];
+  const jdks = jdkRoots
+    .filter((dir) => existsSync(dir))
+    .flatMap((dir) => readdirSync(dir).map((name) => join(dir, name)))
+    .flatMap((home) => [home, join(home, 'Contents', 'Home')])
+    .filter((home) => /jdk-?17|17.*jdk/i.test(home) && hasJavac(home));
+  const studioJbr = 'C:\\Program Files\\Android\\Android Studio\\jbr';
+  if (process.platform === 'win32' && hasJavac(studioJbr)) jdks.push(studioJbr);
+  if (!jdks.length) {
+    console.error(`[eas-env] JAVA_HOME (${childEnv.JAVA_HOME ?? 'unset'}) has no javac and no JDK 17 was found. Install a JDK 17 and point JAVA_HOME at it.`);
+    process.exit(2);
+  }
+  console.log(`[eas-env] JAVA_HOME (${childEnv.JAVA_HOME ?? 'unset'}) is not a JDK; using ${jdks[0]}`);
+  childEnv.JAVA_HOME = jdks[0];
+}
 const child = process.platform === 'win32'
-  ? spawn([executable, ...commandArgs].map(quote).join(' '), { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit', shell: true })
-  : spawn(executable, commandArgs, { cwd, env: { ...process.env, ...profileEnv }, stdio: 'inherit' });
+  ? spawn([executable, ...commandArgs].map(quote).join(' '), { cwd, env: childEnv, stdio: 'inherit', shell: true })
+  : spawn(executable, commandArgs, { cwd, env: childEnv, stdio: 'inherit' });
 child.on('exit', (code, signal) => process.exit(signal ? 1 : code ?? 1));

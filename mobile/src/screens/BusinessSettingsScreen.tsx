@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { pickProfileImage, ProfileImageError } from '../services/pickProfileImage';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { MessageTone } from '../apiTypes';
 import { PrimaryButton } from '../components/ui';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +22,7 @@ import { businessApi, paymentsApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
 import { colors, radius, spacing, typography } from '../theme';
 import { titleCase } from '../utils/format';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 export function BusinessSettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -110,7 +111,7 @@ function IndustryField({ value, onChange }: { value: string; onChange: (value: s
         <Text style={current ? styles.selectValue : styles.selectPlaceholder}>{current ?? (readable || 'Choose an industry')}</Text>
         <Text style={styles.selectChevron}>{'▾'}</Text>
       </Pressable>
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <KeyboardModal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.sheetOverlay} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>Choose an industry</Text>
@@ -132,7 +133,7 @@ function IndustryField({ value, onChange }: { value: string; onChange: (value: s
             </ScrollView>
           </Pressable>
         </Pressable>
-      </Modal>
+      </KeyboardModal>
     </View>
   );
 }

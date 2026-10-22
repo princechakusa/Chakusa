@@ -1,7 +1,7 @@
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { AudienceCenterDto, CustomerDto, SmartAudienceKey } from '../apiTypes';
@@ -13,6 +13,7 @@ import { colors, radius, spacing, typography } from '../theme';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { MainTabParamList, RootStackParamList } from '../types';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
@@ -188,7 +189,7 @@ export function CustomersScreen() {
         ) : null}
       </M3Screen>
 
-      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
+      <KeyboardModal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
         <Pressable style={styles.overlay} onPress={() => !saving && setShowCreate(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>New client</Text>
@@ -201,7 +202,7 @@ export function CustomersScreen() {
             <SecondaryButton disabled={saving} fullWidth label="Cancel" onPress={() => setShowCreate(false)} />
           </Pressable>
         </Pressable>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ReviewRequestDto, ReviewStatus } from '../apiTypes';
@@ -12,6 +12,7 @@ import { colors, radius, spacing, typography } from '../theme';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { MainTabParamList, RootStackParamList } from '../types';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 const filters = ['all', 'pending', 'sent', 'opened', 'reviewed', 'feedback_received'] as const;
 type Filter = (typeof filters)[number];
@@ -281,7 +282,7 @@ export function ReviewsScreen() {
         )}
       </M3Screen>
 
-      <Modal visible={creating} transparent animationType="slide" onRequestClose={() => setCreating(false)}>
+      <KeyboardModal visible={creating} transparent animationType="slide" onRequestClose={() => setCreating(false)}>
         <Pressable style={styles.overlay} onPress={() => !saving && setCreating(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>New review request</Text>
@@ -300,7 +301,7 @@ export function ReviewsScreen() {
             <SecondaryButton disabled={saving} fullWidth label="Cancel" onPress={() => setCreating(false)} />
           </Pressable>
         </Pressable>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

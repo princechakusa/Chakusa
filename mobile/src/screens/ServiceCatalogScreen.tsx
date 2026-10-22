@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { ServiceOfferingDto, TeamMemberDto } from '../apiTypes';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { ApiError } from '../services/api';
@@ -12,6 +12,7 @@ import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } f
 import { useAuth } from '../state/AuthContext';
 import { RootStackParamList } from '../types';
 import { formatMoney } from '../utils/format';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 interface Draft { name: string; description: string; category: string; sortOrder: string; duration: string; preparation: string; cleanup: string; price: string; deposit: string; active: boolean; publiclyBookable: boolean; memberIds: string[] }
 const blank: Draft = { name: '', description: '', category: '', sortOrder: '0', duration: '60', preparation: '0', cleanup: '0', price: '', deposit: '', active: true, publiclyBookable: true, memberIds: [] };
@@ -278,7 +279,7 @@ export function ServiceCatalogScreen() {
         )}
       </M3Screen>
 
-      <Modal visible={Boolean(editing)} transparent animationType="slide" onRequestClose={() => !saving && setEditing(null)}>
+      <KeyboardModal visible={Boolean(editing)} transparent animationType="slide" onRequestClose={() => !saving && setEditing(null)}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -318,7 +319,7 @@ export function ServiceCatalogScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

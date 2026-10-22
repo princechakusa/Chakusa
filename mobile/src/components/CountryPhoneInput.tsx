@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, spacing, typography } from '../theme';
+import { KeyboardModal } from './KeyboardModal';
 
 interface Country { code: string; name: string; dial: string; }
 const countries: Country[] = [
@@ -37,7 +38,7 @@ export function CountryPhoneInput({ value, onChange, onCountryChange, label = 'P
   const choose = (next: Country) => { setCountry(next); onCountryChange?.(next.code); onChange(normalizePhone(next.dial, local)); setOpen(false); setSearch(''); };
 
   return <View><Text style={styles.label}>{label}</Text><View style={styles.field}><Pressable accessibilityRole="button" accessibilityLabel={`Country, ${country.name} ${country.dial}`} onPress={() => setOpen(true)} style={styles.countryButton}><Text style={styles.flag}>{countryFlag(country.code)}</Text><Text style={styles.dial}>{country.dial}</Text><Ionicons name="chevron-down" size={16} color={colors.textSecondary} /></Pressable><View style={styles.divider} /><TextInput accessibilityLabel={`${label} number`} keyboardType="phone-pad" value={local} onChangeText={text => onChange(normalizePhone(country.dial, text))} placeholder="Phone number" placeholderTextColor={colors.textSecondary} style={styles.input} /></View>
-    <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.title}>Choose country</Text><Pressable accessibilityRole="button" accessibilityLabel="Close country list" onPress={() => setOpen(false)} style={styles.close}><Ionicons name="close" size={24} color={colors.text} /></Pressable></View><View style={styles.search}><Ionicons name="search" size={19} color={colors.textSecondary} /><TextInput autoFocus value={search} onChangeText={setSearch} placeholder="Search country or dial code" placeholderTextColor={colors.textSecondary} style={styles.searchInput} /></View><ScrollView style={styles.list} keyboardShouldPersistTaps="handled">{visible.map(item => <Pressable key={item.code} onPress={() => choose(item)} style={styles.countryRow}><Text style={styles.rowFlag}>{countryFlag(item.code)}</Text><Text style={styles.countryName}>{item.name}</Text><Text style={styles.countryDial}>{item.dial}</Text>{country.code === item.code ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}</Pressable>)}</ScrollView></SafeAreaView></Modal>
+    <KeyboardModal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.title}>Choose country</Text><Pressable accessibilityRole="button" accessibilityLabel="Close country list" onPress={() => setOpen(false)} style={styles.close}><Ionicons name="close" size={24} color={colors.text} /></Pressable></View><View style={styles.search}><Ionicons name="search" size={19} color={colors.textSecondary} /><TextInput autoFocus value={search} onChangeText={setSearch} placeholder="Search country or dial code" placeholderTextColor={colors.textSecondary} style={styles.searchInput} /></View><ScrollView style={styles.list} keyboardShouldPersistTaps="handled">{visible.map(item => <Pressable key={item.code} onPress={() => choose(item)} style={styles.countryRow}><Text style={styles.rowFlag}>{countryFlag(item.code)}</Text><Text style={styles.countryName}>{item.name}</Text><Text style={styles.countryDial}>{item.dial}</Text>{country.code === item.code ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}</Pressable>)}</ScrollView></SafeAreaView></KeyboardModal>
   </View>;
 }
 

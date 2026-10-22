@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto } from '../apiTypes';
 import { PUBLIC_WEB_ORIGIN } from '../domain/trustSettings';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
@@ -31,6 +31,7 @@ import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { RootStackParamList } from '../types';
 import { formatDate } from '../utils/format';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Team'>;
 
@@ -315,7 +316,7 @@ export function TeamScreen({ navigation }: Props) {
         ) : null}
       </M3Screen>
 
-      <Modal visible={inviteOpen} transparent animationType="fade" onRequestClose={() => setInviteOpen(false)}>
+      <KeyboardModal visible={inviteOpen} transparent animationType="fade" onRequestClose={() => setInviteOpen(false)}>
         <View style={styles.overlay}>
           <View accessibilityViewIsModal style={styles.dialog}>
             <Text style={styles.dialogTitle}>Invite team member</Text>
@@ -342,9 +343,9 @@ export function TeamScreen({ navigation }: Props) {
             <SecondaryButton fullWidth disabled={Boolean(mutation)} label="Cancel" onPress={() => setInviteOpen(false)} />
           </View>
         </View>
-      </Modal>
+      </KeyboardModal>
 
-      <Modal visible={Boolean(transferTarget)} transparent animationType="fade" onRequestClose={() => setTransferTarget(null)}>
+      <KeyboardModal visible={Boolean(transferTarget)} transparent animationType="fade" onRequestClose={() => setTransferTarget(null)}>
         <View style={styles.overlay}>
           <View accessibilityViewIsModal style={styles.dialog}>
             <Text style={styles.dialogTitle}>Transfer business ownership</Text>
@@ -369,7 +370,7 @@ export function TeamScreen({ navigation }: Props) {
             <SecondaryButton fullWidth disabled={Boolean(mutation)} label="Cancel" onPress={() => setTransferTarget(null)} />
           </View>
         </View>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

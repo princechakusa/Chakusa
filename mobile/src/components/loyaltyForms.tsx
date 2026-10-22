@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { PrimaryButton, SecondaryButton } from './ui';
 import { colors, radius, spacing, typography } from '../theme';
+import { KeyboardModal } from './KeyboardModal';
 
 // PROGRAM 2 LOOP 6: shared form primitives for the business loyalty screens,
 // built on the existing ui.tsx components + theme tokens. No new design
@@ -99,7 +100,7 @@ export function FormModal({ visible, title, busy, onClose, onSubmit, submitLabel
   visible: boolean; title: string; busy: boolean; onClose: () => void; onSubmit: () => void; submitLabel: string; children: ReactNode;
 }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={() => !busy && onClose()}>
+    <KeyboardModal visible={visible} transparent animationType="slide" onRequestClose={() => !busy && onClose()}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -110,7 +111,7 @@ export function FormModal({ visible, title, busy, onClose, onSubmit, submitLabel
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </KeyboardModal>
   );
 }
 

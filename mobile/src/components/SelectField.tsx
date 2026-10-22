@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
+import { FlatList, Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SelectOption } from '../domain/regionOptions';
+import { KeyboardModal } from './KeyboardModal';
 
 export interface SelectFieldTheme {
   label: StyleProp<TextStyle>; trigger: StyleProp<ViewStyle>; triggerText: StyleProp<TextStyle>; placeholder: string; icon: string;
@@ -46,7 +47,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
         <Ionicons name="chevron-down" size={18} color={theme.icon} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
+      <KeyboardModal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
         <Pressable accessibilityLabel="Close" style={styles.backdrop} onPress={close} />
         <View style={[styles.sheet, { backgroundColor: theme.sheetBg, paddingBottom: insets.bottom + 8 }]}>
           <View style={[styles.grabber, { backgroundColor: theme.line }]} />
@@ -76,7 +77,7 @@ export function SelectField({ label, value, options, onChange, placeholder = 'Se
             }}
           />
         </View>
-      </Modal>
+      </KeyboardModal>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   canActOnQuote,
@@ -60,7 +61,7 @@ export function PublicQuoteScreen({ token }: { token: string | null }) {
 
   return (
     <SafeAreaView style={styles.page}>
-      <ScrollView contentContainerStyle={styles.shell}>
+      <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.shell}>
         <Text style={styles.brand}>CHAKUSA</Text>
         <View style={styles.card} accessibilityLiveRegion="polite">
           {view.kind === 'loading' ? (
@@ -155,7 +156,7 @@ export function PublicQuoteScreen({ token }: { token: string | null }) {
           ) : null}
         </View>
         <Text style={styles.footer}>Quotes powered by Chakusa</Text>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

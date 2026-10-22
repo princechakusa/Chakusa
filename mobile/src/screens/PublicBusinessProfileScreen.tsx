@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { canSubmitContact, errorViewState, publicProfileShareMessage, publicProfileWhatsAppGreeting, PublicBusinessProfileViewState, workingHoursSummary } from '../domain/publicBusinessProfile';
 import { ApiError } from '../services/api';
@@ -94,7 +95,7 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
     try { await Share.share({ message: publicProfileShareMessage(details.name, window.location.href) }); } catch { /* dismissed */ }
   };
 
-  return <SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled"><View style={styles.shell}><Text style={styles.brand}>CHAKUSA</Text><View style={styles.card} accessibilityLiveRegion="polite">
+  return <SafeAreaView style={styles.page}><KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled"><View style={styles.shell}><Text style={styles.brand}>CHAKUSA</Text><View style={styles.card} accessibilityLiveRegion="polite">
     {view.kind === 'loading' ? <State icon="hourglass-outline" title="Loading business page…"><ActivityIndicator color={colors.primary} accessibilityLabel="Loading business page" /></State> : null}
     {view.kind === 'network-error' ? <State icon="cloud-offline-outline" title="We couldn’t load this page" body="Check your connection and try again."><Action label="Try again" onPress={() => void load()} /></State> : null}
     {view.kind === 'invalid' ? <State icon="link-outline" title="This business page is unavailable." body="Please check the link you received." /> : null}
@@ -133,7 +134,7 @@ export function PublicBusinessProfileScreen({ slug }: { slug: string | null }) {
       <Text style={styles.label}>Message <Text style={styles.optional}>(optional)</Text></Text><TextInput accessibilityLabel="Optional message" editable={view.kind !== 'submitting'} maxLength={2000} multiline onChangeText={setMessage} placeholder="Tell them a bit more…" placeholderTextColor={colors.tabInactive} style={styles.input} value={message} />
       <Action disabled={!canSubmitContact(view, name, phone)} label={view.kind === 'submitting' ? 'Sending…' : 'Send'} onPress={() => void submit()} />
     </View> : null}
-  </View><Text style={styles.footer}>Powered by Chakusa</Text></View></ScrollView></SafeAreaView>;
+  </View><Text style={styles.footer}>Powered by Chakusa</Text></View></KeyboardAwareScrollView></SafeAreaView>;
 }
 
 function State({ icon, title, body, children }: { icon: keyof typeof Ionicons.glyphMap; title: string; body?: string; children?: React.ReactNode }) { return <View style={styles.state}><Ionicons name={icon} size={42} color={colors.primary} /><Text style={styles.title}>{title}</Text>{body ? <Text style={styles.body}>{body}</Text> : null}{children}</View>; }

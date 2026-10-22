@@ -4,12 +4,12 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "../services/api";
 import {
@@ -159,7 +159,7 @@ export function PublicBookingManagementScreen({
   };
   return (
     <SafeAreaView style={styles.page}>
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={styles.shell}
         keyboardShouldPersistTaps="handled"
       >
@@ -290,7 +290,7 @@ export function PublicBookingManagementScreen({
           ) : null}
         </View>
         <Text style={styles.footer}>Powered by Chakusa</Text>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

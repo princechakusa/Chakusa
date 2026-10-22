@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../state/AuthContext';
@@ -14,6 +14,7 @@ import {
 } from '../services/endpoints';
 import { ApiError } from '../services/api';
 import { RootStackParamList } from '../types';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -130,7 +131,7 @@ function AddItemModal({ visible, onClose, onSaved }: { visible: boolean; onClose
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <KeyboardModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => undefined}>
           <Text style={styles.sheetTitle}>New inventory item</Text>
@@ -154,7 +155,7 @@ function AddItemModal({ visible, onClose, onSaved }: { visible: boolean; onClose
           </Pressable>
         </Pressable>
       </Pressable>
-    </Modal>
+    </KeyboardModal>
   );
 }
 
@@ -197,7 +198,7 @@ function ItemDetailModal({ itemId, canAdjust, onClose, onChanged }: { itemId: st
   };
 
   return (
-    <Modal visible={itemId !== null} transparent animationType="slide" onRequestClose={onClose}>
+    <KeyboardModal visible={itemId !== null} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => undefined}>
           {loading || !detail ? <M3Loading label="Loading..." /> : (
@@ -244,7 +245,7 @@ function ItemDetailModal({ itemId, canAdjust, onClose, onChanged }: { itemId: st
           )}
         </Pressable>
       </Pressable>
-    </Modal>
+    </KeyboardModal>
   );
 }
 

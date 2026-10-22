@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PrimaryButton, SecondaryButton } from '../components/ui';
 import { CountryPhoneInput } from '../components/CountryPhoneInput';
 import { LeadDto, LeadStatus } from '../apiTypes';
@@ -14,6 +14,7 @@ import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { MainTabParamList, RootStackParamList } from '../types';
 import { titleCase } from '../utils/format';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 const filters = ['all', 'new', 'contacted', 'booked', 'won', 'lost'] as const;
 type Filter = (typeof filters)[number];
@@ -262,7 +263,7 @@ export function LeadsScreen() {
         ) : null}
       </M3Screen>
 
-      <Modal visible={creating} transparent animationType="slide" onRequestClose={() => setCreating(false)}>
+      <KeyboardModal visible={creating} transparent animationType="slide" onRequestClose={() => setCreating(false)}>
         <Pressable style={styles.overlay} onPress={() => !saving && setCreating(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>Missed-call lead</Text>
@@ -312,7 +313,7 @@ export function LeadsScreen() {
             <SecondaryButton disabled={saving} fullWidth label="Cancel" onPress={() => setCreating(false)} />
           </Pressable>
         </Pressable>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

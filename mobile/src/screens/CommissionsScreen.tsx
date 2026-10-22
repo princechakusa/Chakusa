@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../state/AuthContext';
@@ -9,6 +9,7 @@ import { CommissionBasis, CommissionReportDto, CommissionRuleDto, commissionsApi
 import { ServiceOfferingDto, TeamMemberDto } from '../apiTypes';
 import { ApiError } from '../services/api';
 import { RootStackParamList } from '../types';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -206,7 +207,7 @@ function RuleEditor({ visible, members, services, defaultCurrency, onClose, onSa
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <KeyboardModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => undefined}>
           <Text style={styles.sheetTitle}>New commission rule</Text>
@@ -246,7 +247,7 @@ function RuleEditor({ visible, members, services, defaultCurrency, onClose, onSa
           </Pressable>
         </Pressable>
       </Pressable>
-    </Modal>
+    </KeyboardModal>
   );
 }
 

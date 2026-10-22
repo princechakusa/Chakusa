@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AudienceCenterDto, CustomerProfileDto } from '../apiTypes';
 import { CustomerTags } from '../components/CustomerTags';
 import { PrimaryButton } from '../components/ui';
@@ -17,6 +17,7 @@ import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Chip, Icon, M3Card, M3Empty, M3Error, M3Header, M3Loading, M3Screen, SectionTitle } from '../experience/businessKit';
 import { RootStackParamList, TimelineItem } from '../types';
 import { formatDate, formatMoney, titleCase } from '../utils/format';
+import { KeyboardModal } from '../components/KeyboardModal';
 
 function initials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
@@ -346,7 +347,7 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
         </View>
       </M3Screen>
 
-      <Modal visible={editing} transparent animationType="slide" onRequestClose={() => setEditing(false)}>
+      <KeyboardModal visible={editing} transparent animationType="slide" onRequestClose={() => setEditing(false)}>
         <Pressable style={styles.overlay} onPress={() => !saving && setEditing(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetContent}>
@@ -360,7 +361,7 @@ export function CustomerProfileScreen({ route, navigation }: Props) {
             </ScrollView>
           </Pressable>
         </Pressable>
-      </Modal>
+      </KeyboardModal>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { setPublicWebOrigin } from "../../lib/publicWebOrigin.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { outboundEmailConfigured } from "../auth/passwordResetEmail.js";
@@ -142,6 +143,11 @@ function resolve(rows: Awaited<ReturnType<typeof storedValues>>) {
   return out;
 }
 
+/** The admin "Website" setting (or its default): the origin of every public link. */
+export async function loadPublicWebsiteUrl(): Promise<string> {
+  return resolve(await storedValues())["app.website_url"] as string;
+}
+
 /** Public payload for the apps. Contains no secrets and nothing tenant-specific. */
 export async function getPublicAppConfig() {
   const rows = await storedValues();
@@ -230,5 +236,9 @@ export async function updateAdminAppConfig(actor: AdminAuditActor, key: string, 
       context,
     }, tx);
     return { key, value: value ?? def.default, isDefault: value === null || !saved };
+  }).then((result) => {
+    // Public links switch to the new website immediately.
+    if (key === "app.website_url") setPublicWebOrigin(String(result.value));
+    return result;
   });
 }

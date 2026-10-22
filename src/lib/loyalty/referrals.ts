@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
-import { config } from "../config.js";
 import { recordCustomerActivity } from "../customer/customerContext.js";
 import { earnPoints } from "./pointsEngine.js";
 import { getLoyaltyProgram } from "./program.js";
 import { notifyLoyalty } from "./notifications.js";
+import { publicWebOrigin } from "../publicWebOrigin.js";
 
 // PROGRAM 2 LOOP 5: referral codes, invite links and tracking. A customer's
 // code is stable per (customer, business|null). A referral is created when a
@@ -37,7 +37,7 @@ export async function getOrCreateReferralCode(customerProfileId: string, busines
         refereePoints: 0,
       },
     }));
-  const base = config.PUBLIC_REVIEW_BASE_URL?.replace(/\/$/, "") ?? "https://chakusa.app";
+  const base = publicWebOrigin() ?? "http://localhost:19006";
   return { id: code.id, code: code.code, businessId: code.businessId, uses: code.uses, inviteUrl: `${base}/invite/${code.code}` };
 }
 

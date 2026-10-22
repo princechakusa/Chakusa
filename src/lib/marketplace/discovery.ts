@@ -1,13 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
-import { config } from "../config.js";
 import { mapIndustryToCategory } from "./categories.js";
 import { displayDistanceKm, haversineKm, type Coordinates } from "./geo.js";
 import { businessPhotoPath } from "../imageDataUrl.js";
 import { galleryPhotoPath } from "./gallery.js";
 import { googleRating } from "./googlePlaces.js";
 import { googleMapsSearchUrl } from "./osmPlaces.js";
+import { publicWebOrigin } from "../publicWebOrigin.js";
 
 const GOOGLE_HOSTS = /^(?:(?:www|maps|search)\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$|^(?:maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
 /** The owner's saved Google link, only when it is an https link to a Google host. */
@@ -373,7 +373,7 @@ export async function getMarketplaceBusinessProfile(slug: string, viewer?: { cus
 }
 
 export function buildShareUrl(slug: string): string {
-  const base = config.PUBLIC_REVIEW_BASE_URL?.replace(/\/$/, "") ?? "https://chakusa.app";
+  const base = publicWebOrigin() ?? "http://localhost:19006";
   return `${base}/b/${slug}`;
 }
 

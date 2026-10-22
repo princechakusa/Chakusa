@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { publicWebOrigin } from "../publicWebOrigin.js";
 
 // PROGRAM 3 LOOP 3G: the ONE place the customer-facing quote URL shape
 // (`<base>/q/<rawToken>`) is assembled - every caller (the send / revise /
@@ -14,6 +15,6 @@ import { config } from "../config.js";
 const DEV_DEFAULT_PUBLIC_QUOTE_BASE_URL = "http://localhost:19006";
 
 export function buildPublicQuoteUrl(rawToken: string): string {
-  const base = (config.PUBLIC_QUOTE_BASE_URL ?? config.PUBLIC_REVIEW_BASE_URL ?? DEV_DEFAULT_PUBLIC_QUOTE_BASE_URL).replace(/\/+$/, "");
+  const base = (config.PUBLIC_QUOTE_BASE_URL ?? publicWebOrigin() ?? DEV_DEFAULT_PUBLIC_QUOTE_BASE_URL).replace(/\/+$/, "");
   return `${base}/q/${rawToken}`;
 }

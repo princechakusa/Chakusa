@@ -1,4 +1,4 @@
-import { config } from "./config.js";
+import { publicWebOrigin } from "./publicWebOrigin.js";
 
 // Only used when PUBLIC_REVIEW_BASE_URL is unset — production requires the
 // real env var (see config.ts), so this only ever fires in local dev/test,
@@ -12,6 +12,6 @@ const DEV_DEFAULT_PUBLIC_REVIEW_BASE_URL = "http://localhost:19006";
  * consistent with whatever path the public frontend is actually built at.
  */
 export function buildPublicReviewUrl(rawToken: string): string {
-  const base = (config.PUBLIC_REVIEW_BASE_URL ?? DEV_DEFAULT_PUBLIC_REVIEW_BASE_URL).replace(/\/+$/, "");
+  const base = (publicWebOrigin() ?? DEV_DEFAULT_PUBLIC_REVIEW_BASE_URL).replace(/\/+$/, "");
   return `${base}/r/${rawToken}`;
 }

@@ -1,4 +1,4 @@
-import { config } from "./config.js";
+import { publicWebOrigin } from "./publicWebOrigin.js";
 
 // Shares the customer web origin with review/quote/invoice links
 // (PUBLIC_REVIEW_BASE_URL). Production requires it (see config.ts); this
@@ -19,7 +19,7 @@ export interface PublicBookingLinkOptions {
  * the public booking POST for privacy-safe attribution.
  */
 export function buildPublicBookingUrl(slug: string, options: PublicBookingLinkOptions = {}): string {
-  const base = (config.PUBLIC_REVIEW_BASE_URL ?? DEV_DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const base = (publicWebOrigin() ?? DEV_DEFAULT_BASE_URL).replace(/\/+$/, "");
   const params = new URLSearchParams();
   if (options.serviceOfferingId) params.set("service", options.serviceOfferingId);
   if (options.source) params.set("src", options.source);
@@ -28,5 +28,5 @@ export function buildPublicBookingUrl(slug: string, options: PublicBookingLinkOp
 }
 
 export function publicBookingBaseConfigured(): boolean {
-  return Boolean(config.PUBLIC_REVIEW_BASE_URL);
+  return Boolean(publicWebOrigin());
 }

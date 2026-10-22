@@ -1,3 +1,5 @@
+import { setPublicWebOrigin } from "./lib/publicWebOrigin.js";
+import { loadPublicWebsiteUrl } from "./modules/appConfig/appConfig.service.js";
 import { buildApp } from "./app.js";
 import { config } from "./lib/config.js";
 import { prisma } from "./lib/prisma.js";
@@ -61,6 +63,17 @@ async function main() {
   } catch (err) {
     app.log.error(err, "could not ensure default legal documents");
     captureUnexpectedError(err);
+  }
+
+  // Public links (shop pages, booking, reviews, invites) use the admin
+  // "Website" setting, so a wrong PUBLIC_REVIEW_BASE_URL can't leak into them.
+  if (config.NODE_ENV === "production") {
+    try {
+      setPublicWebOrigin(await loadPublicWebsiteUrl());
+    } catch (err) {
+      app.log.error(err, "could not load the public website setting; using PUBLIC_REVIEW_BASE_URL");
+      captureUnexpectedError(err);
+    }
   }
 
   // Env-only AI setup: register OPENAI_DEFAULT_MODEL when no model is active yet.

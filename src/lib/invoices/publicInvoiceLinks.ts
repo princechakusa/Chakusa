@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { publicWebOrigin } from "../publicWebOrigin.js";
 
 // PROGRAM 3 / Invoicing I4: the ONE place the customer-facing invoice URL
 // shape (`<base>/i/<rawToken>`) is assembled - mirrors publicQuoteLinks.
@@ -9,6 +10,6 @@ import { config } from "../config.js";
 const DEV_DEFAULT_PUBLIC_INVOICE_BASE_URL = "http://localhost:19006";
 
 export function buildPublicInvoiceUrl(rawToken: string): string {
-  const base = (config.PUBLIC_INVOICE_BASE_URL ?? config.PUBLIC_REVIEW_BASE_URL ?? DEV_DEFAULT_PUBLIC_INVOICE_BASE_URL).replace(/\/+$/, "");
+  const base = (config.PUBLIC_INVOICE_BASE_URL ?? publicWebOrigin() ?? DEV_DEFAULT_PUBLIC_INVOICE_BASE_URL).replace(/\/+$/, "");
   return `${base}/i/${rawToken}`;
 }

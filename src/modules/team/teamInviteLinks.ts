@@ -1,4 +1,4 @@
-import { config } from "../../lib/config.js";
+import { publicWebOrigin } from "../../lib/publicWebOrigin.js";
 
 // Same fallback rationale as publicReviewLinks.ts's
 // DEV_DEFAULT_PUBLIC_REVIEW_BASE_URL — only ever used in local dev/test.
@@ -13,6 +13,6 @@ const DEV_DEFAULT_PUBLIC_BASE_URL = "http://localhost:19006";
  * frontend for reviews and team invites are different deployments.
  */
 export function buildTeamInviteUrl(rawToken: string): string {
-  const base = (config.PUBLIC_REVIEW_BASE_URL ?? DEV_DEFAULT_PUBLIC_BASE_URL).replace(/\/+$/, "");
+  const base = (publicWebOrigin() ?? DEV_DEFAULT_PUBLIC_BASE_URL).replace(/\/+$/, "");
   return `${base}/team-invite/${rawToken}`;
 }

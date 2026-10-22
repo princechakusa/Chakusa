@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LeafletMap } from '../../components/map/LeafletMap';
@@ -16,6 +16,7 @@ import { PhotoCarousel } from '../components/PhotoCarousel';
 import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 import { premium, premiumSerif, premiumShadow, ratingText, reviewCountText } from '../premiumTheme';
+import { KeyboardModal } from '../../components/KeyboardModal';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
@@ -296,14 +297,14 @@ export function CustomerExploreScreen() {
 
       <PlaceSheet place={placeOpen} onClose={() => setPlaceOpen(null)} />
 
-      <Modal visible={picking} animationType="slide" onRequestClose={() => setPicking(false)}>
+      <KeyboardModal visible={picking} animationType="slide" onRequestClose={() => setPicking(false)}>
         <SafeAreaView style={styles.modal}>
           <View style={styles.modalHead}>
             <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setPicking(false)} hitSlop={8}><Ionicons name="close" size={24} color={premium.ink} /></Pressable>
             <Text style={styles.modalTitle}>Search near…</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Use my location" onPress={() => { setPicking(false); void useMyLocation(); }} hitSlop={8}><Ionicons name="locate" size={22} color={premium.deep} /></Pressable>
           </View>
-          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+          <View style={styles.flex}>
             <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
               <LocationPicker value={draft} onChange={setDraft} onLookupChange={setDraftPending} mapHeight={320} hint="Tap the map to search around that spot." />
             </ScrollView>
@@ -312,9 +313,9 @@ export function CustomerExploreScreen() {
                 <Text style={styles.primaryText}>Search here</Text>
               </Pressable>
             </View>
-          </KeyboardAvoidingView>
+          </View>
         </SafeAreaView>
-      </Modal>
+      </KeyboardModal>
     </View>
   );
 }

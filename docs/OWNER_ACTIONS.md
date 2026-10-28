@@ -383,7 +383,7 @@ only the owner can make:
    text (`app.json`, `expo-location`) now lists all three uses. Reflect
    them in Apple App Privacy and Play Data safety.
 
-## OA-10 — Twilio toll-free verification resubmission (2026-10-14) — SUBMITTED, awaiting Twilio review
+## OA-10 — Twilio toll-free verification resubmission (2026-10-14) — REJECTED again 2026-10-28 (30474, 30513); fixed in code, resubmit before 2026-11-09. See `docs/progress/2026-10-28-twilio-toll-free-30474-30513.md`
 
 **Resubmitted 2026-10-14** (inside the priority-review window) with the owner's
 Terms/STI-PA attestation. Console status: "verification in progress". Twilio

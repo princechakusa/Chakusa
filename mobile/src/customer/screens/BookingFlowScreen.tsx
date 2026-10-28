@@ -231,7 +231,7 @@ export function BookingFlowScreen({ route, navigation }: Props) {
         >
           <Ionicons name={smsConsent ? 'checkbox' : 'square-outline'} size={22} color={smsConsent ? premium.deep : premium.inkFaint} />
           <Text style={styles.consentText}>
-            Text me about this appointment. I agree to receive appointment text messages (confirmations, reminders and updates) from {services?.businessName ?? 'this business'} via Chakusa at the phone number on my account. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking. See chakusarecovery.com/sms.
+            Text messages: I agree to receive SMS text messages from Chakusa on behalf of {services?.businessName ?? 'this business'} about my appointments (booking confirmations, reminders, reschedule or cancellation notices and arrival updates) at the mobile number on my account. These are not marketing messages. Message frequency varies, usually 1 to 5 per appointment. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking. See chakusarecovery.com/sms.
           </Text>
         </Pressable>
       ) : null}

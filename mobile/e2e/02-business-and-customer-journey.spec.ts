@@ -360,6 +360,7 @@ test.describe('Business and customer, end to end', () => {
     // Appointment-text consent starts unticked and is the customer's own choice (Twilio toll-free verification).
     const smsConsent = page.getByTestId('sms-consent').filter({ visible: true });
     await expect(smsConsent).toHaveAttribute('aria-checked', 'false');
+    await expect(smsConsent).toContainText('from Chakusa on behalf of');
     await expect(smsConsent).toContainText('Reply STOP to opt out, HELP for help');
     await smsConsent.click();
     await expect(smsConsent).toHaveAttribute('aria-checked', 'true');

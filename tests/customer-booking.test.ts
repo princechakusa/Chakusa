@@ -117,7 +117,7 @@ describe("Customer Booking & Calendar Platform (Program 2, Loop 3)", () => {
         ["SMS", "APPOINTMENT_TEXTS", false, "customer_app_booking"],
       ]);
       expect((events[0]!.evidence as { appointmentId: string }).appointmentId).toBe(yesRes.json().appointment.id);
-      expect((events[0]!.evidence as { disclosure: string }).disclosure).toContain("from Consent Salon via Chakusa");
+      expect((events[0]!.evidence as { disclosure: string }).disclosure).toContain("from Chakusa on behalf of Consent Salon");
     });
 
     it("auto-assigns an available staff member when none is chosen", async () => {

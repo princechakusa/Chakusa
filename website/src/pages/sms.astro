@@ -9,7 +9,7 @@ import LegalToc from "../components/legal/LegalToc.astro";
 // smsConsentDisclosure() in src/lib/messaging/smsConsent.ts.
 const title = "SMS Terms & Opt-In | Chakusa";
 const description = "How customers opt in to appointment text messages sent through Chakusa, what they receive, how often, and how to stop them with STOP or get help with HELP.";
-const lastUpdated = "2026-10-14";
+const lastUpdated = "2026-10-28";
 
 const hero = {
   title: "Appointment text messages",
@@ -30,13 +30,13 @@ const toc: Array<[string, string]> = [
   ["contact", "9. Contact"],
 ];
 
-const disclosure = "I agree to receive appointment text messages (confirmations, reminders and updates) from [Business name] via Chakusa at the phone number on my account. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.";
+const disclosure = "Text messages: I agree to receive SMS text messages from Chakusa on behalf of [Business name] about my appointments (booking confirmations, reminders, reschedule or cancellation notices and arrival updates) at the mobile number on my account. These are not marketing messages. Message frequency varies, usually 1 to 5 per appointment. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.";
 
 const samples = [
-  "Ada Hair Studio: your Haircut appointment is booked for Oct 21, 2026, 2:00 PM. Reply STOP to opt out.",
-  "Ada Hair Studio: reminder that your Haircut appointment is at Oct 21, 2026, 2:00 PM.",
-  "Ada Hair Studio: your Haircut appointment was moved to Oct 22, 2026, 10:00 AM.",
-  "Ada Hair Studio: your Haircut provider is on the way.",
+  "Chakusa for Ada Hair Studio: your Haircut appointment is booked for Oct 21, 2026, 2:00 PM. Reply STOP to opt out.",
+  "Chakusa for Ada Hair Studio: reminder that your Haircut appointment is at Oct 21, 2026, 2:00 PM.",
+  "Chakusa for Ada Hair Studio: your Haircut appointment was moved to Oct 22, 2026, 10:00 AM.",
+  "Chakusa for Ada Hair Studio: your Haircut provider is on the way.",
 ];
 ---
 <LegalLayout {title} {description} current="sms" {hero}>
@@ -47,17 +47,13 @@ const samples = [
       <section id="program">
         <h2>1. The SMS program</h2>
         <p><strong>Program name:</strong> Chakusa Appointment Notifications.</p>
-        <p>Chakusa (chakusarecovery.com) is software that independent service businesses, such as salons, barbers and car washes, use to take bookings. When you book with one of these businesses through Chakusa and agree to texts, that business sends you transactional messages about your appointment through Chakusa. Messages come from the business's Chakusa number, including our toll-free number <strong>+1 (844) 604-1271</strong>, and start with the business's name.</p>
+        <p>Chakusa (chakusarecovery.com) is software that independent service businesses, such as salons, barbers and car washes, use to take bookings. When you book with one of these businesses through Chakusa and agree to texts, that business sends you transactional messages about your appointment through Chakusa. Chakusa runs the opt-in and writes the message templates. Messages are sent by Chakusa from our toll-free number <strong>+1 (844) 604-1271</strong> and start with "Chakusa for" and the business's name.</p>
         <p>We do not send marketing or promotional text messages through this program.</p>
       </section>
 
       <section id="optin">
         <h2>2. How you opt in</h2>
-        <p>You opt in yourself, in the Chakusa app, on the last step of booking an appointment ("Review &amp; confirm"). Under the booking summary there is a checkbox that is <strong>unticked by default</strong>. Texts are only sent if you tick it. You can book without ticking it.</p>
-        <figure class="sms__shot">
-          <img src="/sms/booking-consent.png" width="390" height="1100" loading="lazy" alt="The Chakusa app's Review and confirm booking step for an example business, Ada Hair Studio. Below the booking summary is an unticked checkbox reading: Text me about this appointment. I agree to receive appointment text messages (confirmations, reminders and updates) from Ada Hair Studio via Chakusa at the phone number on my account. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking. See chakusarecovery.com/sms. Below it is the Confirm booking button." />
-          <figcaption>The consent step in the Chakusa app, shown with the box unticked as every customer first sees it. Ada Hair Studio is an example business; the business's own name appears in its place.</figcaption>
-        </figure>
+        <p>You opt in yourself, in the Chakusa app, on the last step of booking an appointment ("Review &amp; confirm"). Under the booking summary there is a separate "Text messages" checkbox, apart from the Terms and Privacy Policy acceptance, that is <strong>unticked by default</strong>. Texts are only sent if you tick it. You can book without ticking it.</p>
         <p>Exact consent wording shown to the customer:</p>
         <blockquote class="sms__quote">{disclosure}</blockquote>
         <p>We record each choice, ticked or not, with the time, the business, the booking it was made on and the version of this wording. If you don't tick the box, that business won't send you automated appointment texts.</p>

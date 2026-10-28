@@ -8,10 +8,13 @@ import { prisma } from "../prisma.js";
 
 export const SMS_CONSENT_CHANNEL = "SMS";
 export const SMS_CONSENT_PURPOSE = "APPOINTMENT_TEXTS";
-export const SMS_CONSENT_DISCLOSURE_VERSION = "2026-10-14";
+export const SMS_CONSENT_DISCLOSURE_VERSION = "2026-10-28";
+
+/** Every appointment text names Chakusa as the sender, then the business it is sent for. */
+export const smsSender = (businessName: string) => `Chakusa for ${businessName}`;
 
 export function smsConsentDisclosure(businessName: string) {
-  return `I agree to receive appointment text messages (confirmations, reminders and updates) from ${businessName} via Chakusa at the phone number on my account. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.`;
+  return `Text messages: I agree to receive SMS text messages from Chakusa on behalf of ${businessName} about my appointments (booking confirmations, reminders, reschedule or cancellation notices and arrival updates) at the mobile number on my account. These are not marketing messages. Message frequency varies, usually 1 to 5 per appointment. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.`;
 }
 
 export async function recordSmsConsent(input: {

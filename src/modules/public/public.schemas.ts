@@ -12,7 +12,7 @@ export const submitPublicFeedbackSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
 });
-export type SubmitPublicFeedbackInput = z.infer<typeof submitPublicFeedbackSchema>;
+export type SubmitPublicFeedbackInput = z.input<typeof submitPublicFeedbackSchema>;
 
 export const submitPublicContactSchema = z.object({
   name: z.string().trim().min(1).max(200),

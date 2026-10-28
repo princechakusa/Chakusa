@@ -60,10 +60,10 @@ export const safetyPolicySchema = z.object({
 });
 
 export const policyDocumentSchema = z.object({
-  confidence: confidencePolicySchema.default({}),
-  business: businessPolicySchema.default({}),
-  customer: customerPolicySchema.default({}),
-  safety: safetyPolicySchema.default({}),
+  confidence: confidencePolicySchema.prefault({}),
+  business: businessPolicySchema.prefault({}),
+  customer: customerPolicySchema.prefault({}),
+  safety: safetyPolicySchema.prefault({}),
 });
 export type PolicyDocument = z.infer<typeof policyDocumentSchema>;
 

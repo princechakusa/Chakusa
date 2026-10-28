@@ -64,6 +64,7 @@ import type { AppleStoreClient } from "./lib/billing/appleAppStoreClient.js";
 import type { GooglePlayClient } from "./lib/billing/googlePlayClient.js";
 import { assertValidAppleRootCertificates } from "./lib/billing/jws.js";
 import type { MessagingProvider } from "./lib/messaging/messagingProvider.js";
+import type { MetaWhatsAppProvider } from "./lib/messaging/metaWhatsAppProvider.js";
 import type { StripePaymentProvider } from "./lib/payments/stripeProvider.js";
 import paymentRoutes from "./modules/payments/payments.routes.js";
 import weeklyReportRoutes from "./modules/weeklyReports/weeklyReports.routes.js";
@@ -98,6 +99,7 @@ export interface BuildAppOptions {
   /** Test-only injection — see team.routes.ts's TeamRoutesOptions. */
   teamInvitationEmailSender?: TeamInvitationEmailSender;
   messagingProvider?: MessagingProvider;
+  metaWhatsAppProvider?: MetaWhatsAppProvider;
   stripePaymentProvider?: StripePaymentProvider;
   /** Test-only injection — see appIntegrity.routes.ts. */
   integrityDecoder?: IntegrityDecoder;
@@ -391,6 +393,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
     appleStoreClient: options.appleStoreClient,
     googlePlayClient: options.googlePlayClient,
     messagingProvider: options.messagingProvider,
+    metaWhatsAppProvider: options.metaWhatsAppProvider,
     stripePaymentProvider: options.stripePaymentProvider,
   });
 

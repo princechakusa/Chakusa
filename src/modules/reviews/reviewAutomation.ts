@@ -10,7 +10,7 @@ import { recordActivity } from "../../lib/activity.js";
 import { captureUnexpectedError } from "../../lib/sentry.js";
 import { generatePublicReviewLink } from "./reviews.service.js";
 import type { MessagingChannel, MessagingProvider } from "../../lib/messaging/messagingProvider.js";
-import { defaultTwilioProvider } from "../../lib/messaging/twilioProvider.js";
+import { defaultMessagingProvider } from "../../lib/messaging/defaultMessagingProvider.js";
 import { reviewRequestWhatsAppTemplate } from "../../lib/messaging/whatsappTemplates.js";
 
 /**
@@ -45,7 +45,7 @@ async function reviewRequestChannel(businessId: string, customerId: string, prov
 const MAX_COMPLETION_AGE_MS = 30 * 86_400_000; // don't chase very old completions
 const MIN_COMPLETION_AGE_MS = 60 * 60_000; // never within the hour
 
-export async function sendDueReviewRequests(provider: MessagingProvider = defaultTwilioProvider, batchSize = 50, now = new Date()) {
+export async function sendDueReviewRequests(provider: MessagingProvider = defaultMessagingProvider, batchSize = 50, now = new Date()) {
   const candidates = await prisma.appointment.findMany({
     where: {
       status: "COMPLETED",

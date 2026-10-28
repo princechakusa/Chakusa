@@ -5,6 +5,8 @@ import { realAppleStoreClient, type AppleStoreClient } from "../../lib/billing/a
 import { realGooglePlayClient, type GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
 import { verifyGoogleRtdnAuthorization } from "./googleRtdnAuth.js";
 import { defaultTwilioProvider } from "../../lib/messaging/twilioProvider.js";
+import { defaultMetaWhatsAppProvider, type MetaWhatsAppProvider } from "../../lib/messaging/metaWhatsAppProvider.js";
+import { config } from "../../lib/config.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
 import { prisma } from "../../lib/prisma.js";
 import { defaultStripePaymentProvider, type StripePaymentProvider } from "../../lib/payments/stripeProvider.js";
@@ -20,6 +22,8 @@ export interface WebhookRoutesOptions {
   appleStoreClient?: AppleStoreClient;
   googlePlayClient?: GooglePlayClient;
   messagingProvider?: MessagingProvider;
+  /** Test-only injection point for the Meta WhatsApp Cloud API adapter. */
+  metaWhatsAppProvider?: MetaWhatsAppProvider;
   stripePaymentProvider?: StripePaymentProvider;
 }
 
@@ -54,6 +58,7 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
   const appleStoreClient = options.appleStoreClient ?? realAppleStoreClient;
   const googlePlayClient = options.googlePlayClient ?? realGooglePlayClient;
   const messagingProvider = options.messagingProvider ?? defaultTwilioProvider;
+  const metaProvider = options.metaWhatsAppProvider ?? defaultMetaWhatsAppProvider;
   const stripePaymentProvider = options.stripePaymentProvider ?? defaultStripePaymentProvider;
 
   fastify.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
@@ -64,6 +69,43 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     const headers = new Headers();
     for (const [key, value] of Object.entries(request.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(",") : value);
     return { headers, url: `${request.protocol}://${request.hostname}${request.url}` };
+  };
+
+  // Shared by every provider's inbound webhook: record the message against each
+  // business that has this customer, give the AI agent one turn, honour STOP.
+  const processInbound = async (event: { from: string; body: string; channel: "sms" | "whatsapp"; receivedAt: Date }, provider: { id: string }, rawProviderMessageId: string | undefined) => {
+    const phone = event.from.replace(/^whatsapp:/, "");
+    const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { id: true, businessId: true } });
+    const providerMessageId = rawProviderMessageId ?? createHash("sha256").update(`${phone}:${event.receivedAt.toISOString()}:${event.body}`).digest("hex");
+    // LOOP 4 + #18: the inbound message is durably recorded (idempotent on the
+    // provider message id — a Twilio retry returns the existing row, no
+    // duplicate, no conversation re-bump). On a fresh delivery only, the AI
+    // Customer Agent gets a turn for any business that has opted in. A retry
+    // skips the AI trigger entirely (it is also idempotent, but there is no
+    // reason to re-run the gates). A failure never blocks the ack.
+    // The Chakusa sender is shared by every business, so a number saved by
+    // several businesses must not get an AI answer from each. The AI turn
+    // goes to the business that last messaged this customer (the one they
+    // are replying to); with a single match, that one.
+    const lastOutbound = customers.length > 1
+      ? await prisma.message.findFirst({ where: { customerId: { in: customers.map((row) => row.id) }, direction: "OUTBOUND", status: { not: "draft" } }, orderBy: { createdAt: "desc" }, select: { customerId: true } })
+      : null;
+    const aiCustomerId = customers.length === 1 ? customers[0]?.id : lastOutbound?.customerId;
+    for (const customer of customers) {
+      const inbound = await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: provider.id, providerMessageId });
+      if (inbound.replayed || !inbound.conversationId || customer.id !== aiCustomerId) continue;
+      try {
+        await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
+      } catch (error) {
+        captureUnexpectedError(error);
+      }
+    }
+    if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(event.body.trim().toUpperCase())) {
+      for (const { businessId } of customers) {
+        const channel = event.channel === "whatsapp" ? "WHATSAPP" : "SMS";
+        await prisma.customerOptOut.upsert({ where: { businessId_phone_channel: { businessId, phone, channel } }, create: { businessId, phone, channel, source: "provider_webhook" }, update: { source: "provider_webhook" } });
+      }
+    }
   };
 
   fastify.post("/twilio/status", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
@@ -85,39 +127,34 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
     const event = messagingProvider.parseInboundWebhook(request.body, context.headers);
     if (!event) throw ApiError.badRequest("Invalid inbound event");
-    const phone = event.from.replace(/^whatsapp:/, "");
-    const customers = await prisma.customer.findMany({ where: { phoneE164: phone }, select: { id: true, businessId: true } });
-    const providerMessageId = typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : createHash("sha256").update(`${phone}:${event.receivedAt.toISOString()}:${event.body}`).digest("hex");
-    // LOOP 4 + #18: the inbound message is durably recorded (idempotent on the
-    // provider message id — a Twilio retry returns the existing row, no
-    // duplicate, no conversation re-bump). On a fresh delivery only, the AI
-    // Customer Agent gets a turn for any business that has opted in. A retry
-    // skips the AI trigger entirely (it is also idempotent, but there is no
-    // reason to re-run the gates). A failure never blocks the ack.
-    // The Chakusa sender is shared by every business, so a number saved by
-    // several businesses must not get an AI answer from each. The AI turn
-    // goes to the business that last messaged this customer (the one they
-    // are replying to); with a single match, that one.
-    const lastOutbound = customers.length > 1
-      ? await prisma.message.findFirst({ where: { customerId: { in: customers.map((row) => row.id) }, direction: "OUTBOUND", status: { not: "draft" } }, orderBy: { createdAt: "desc" }, select: { customerId: true } })
-      : null;
-    const aiCustomerId = customers.length === 1 ? customers[0]?.id : lastOutbound?.customerId;
-    for (const customer of customers) {
-      const inbound = await recordInboundMessage({ businessId: customer.businessId, customerId: customer.id, from: phone, channel: event.channel, body: event.body, provider: messagingProvider.id, providerMessageId });
-      if (inbound.replayed || !inbound.conversationId || customer.id !== aiCustomerId) continue;
-      try {
-        await handleInboundAIMessage({ businessId: customer.businessId, conversationId: inbound.conversationId, customerId: customer.id, providerMessageId, channel: event.channel, body: event.body });
-      } catch (error) {
-        captureUnexpectedError(error);
-      }
-    }
-    if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(event.body.trim().toUpperCase())) {
-      for (const { businessId } of customers) {
-        const channel = event.channel === "whatsapp" ? "WHATSAPP" : "SMS";
-        await prisma.customerOptOut.upsert({ where: { businessId_phone_channel: { businessId, phone, channel } }, create: { businessId, phone, channel, source: "provider_webhook" }, update: { source: "provider_webhook" } });
-      }
-    }
+    await processInbound(event, messagingProvider, typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : undefined);
     reply.type("text/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+  });
+
+  // Meta WhatsApp Cloud API. GET answers Meta's one-time subscription check;
+  // POST carries inbound messages and delivery statuses, authenticated by the
+  // X-Hub-Signature-256 HMAC over the raw body (keyed by the app secret).
+  fastify.get("/meta/whatsapp", async (request, reply) => {
+    const query = request.query as Record<string, string | undefined>;
+    if (query["hub.mode"] === "subscribe" && config.META_WHATSAPP_VERIFY_TOKEN && query["hub.verify_token"] === config.META_WHATSAPP_VERIFY_TOKEN && query["hub.challenge"]) {
+      return reply.type("text/plain").send(query["hub.challenge"]);
+    }
+    throw ApiError.auth(403, "AUTH_TOKEN_INVALID", "Invalid webhook verification");
+  });
+
+  fastify.post("/meta/whatsapp", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const context = webhookContext(request);
+    if (!request.rawBody || !metaProvider.verifyWebhookSignature(request.rawBody, context.headers)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
+    for (const event of metaProvider.parseDeliveryWebhooks(request.body)) {
+      const eventId = createHash("sha256").update(`${event.providerMessageId}:${event.status}:${event.occurredAt.toISOString()}:${event.errorCode ?? ""}`).digest("hex");
+      const recorded = await recordDeliveryReceipt({ provider: metaProvider.id, providerEventId: eventId, providerMessageId: event.providerMessageId, status: event.status, occurredAt: event.occurredAt, errorCode: event.errorCode, payload: request.body });
+      if (!recorded) {
+        const status = event.status === "delivered" ? "delivered" : event.status === "failed" ? "failed" : "sent";
+        await prisma.message.updateMany({ where: { providerMessageId: event.providerMessageId }, data: { status, providerErrorCode: event.errorCode ?? null, deliveredAt: event.status === "delivered" ? event.occurredAt : null } });
+      }
+    }
+    for (const event of metaProvider.parseInboundWebhooks(request.body)) await processInbound(event, metaProvider, event.providerMessageId);
+    reply.send({ received: true });
   });
 
   fastify.post("/stripe", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {

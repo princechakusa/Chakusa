@@ -8,6 +8,7 @@ import { messagingBudgetAvailable } from "./messagingBudget.js";
 import { sendOutboundMessage } from "./messagingService.js";
 import type { MessagingProvider } from "./messagingProvider.js";
 import { getMessagingProvider } from "./providerRegistry.js";
+import { metaWhatsAppActive } from "./defaultMessagingProvider.js";
 import { smsConsentDeclined } from "./smsConsent.js";
 import { UTC_NOW } from "../sqlTime.js";
 
@@ -59,7 +60,7 @@ export async function enqueueMessage(request: MessagingRequest, plan: Plan, stat
     if (preference && !preference.marketingConsent) throw ApiError.forbidden("Marketing consent is not active for this customer");
   }
   const route = await prisma.messagingChannelAccount.findFirst({ where: { businessId: request.businessId, channel, status: "ACTIVE", deletedAt: null }, include: { senders: { where: { status: "ACTIVE", deletedAt: null, OR: [{ countryCode }, { countryCode: null }] }, orderBy: { createdAt: "asc" }, take: 1 } }, orderBy: { createdAt: "asc" } });
-  const providerId = route?.provider ?? "twilio";
+  const providerId = route?.provider ?? (channel === "whatsapp" && metaWhatsAppActive() ? "meta_whatsapp" : "twilio");
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.message.findUnique({ where: { idempotencyKey: request.idempotencyKey }, include: { dispatches: true } });

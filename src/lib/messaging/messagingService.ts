@@ -1,11 +1,11 @@
-import { defaultTwilioProvider } from "./twilioProvider.js";
+import { defaultMessagingProvider } from "./defaultMessagingProvider.js";
 import type { MessagingProvider, OutboundMessage, SendResult } from "./messagingProvider.js";
 import { prisma } from "../prisma.js";
 
 // Swap this to select a different provider; nothing outside this module
 // should ever import twilioProvider.ts directly — mirrors
 // src/lib/push/pushService.ts's defaultProvider/ExpoPushProvider split.
-const defaultProvider: MessagingProvider = defaultTwilioProvider;
+const defaultProvider: MessagingProvider = defaultMessagingProvider;
 
 /**
  * The one function the rest of Chakusa calls to actually send an outbound

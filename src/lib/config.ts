@@ -160,6 +160,20 @@ export const envSchema = z.object({
   // Review request: {{1}} = customer first name, {{2}} = business name, {{3}} = review link.
   TWILIO_WHATSAPP_REVIEW_REQUEST_CONTENT_SID: z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^HX[0-9a-fA-F]{32}$/).optional()),
   TWILIO_STATUS_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
+  // Meta WhatsApp Cloud API, called directly (src/lib/messaging/metaWhatsAppProvider.ts).
+  // WhatsApp only; it replaces Twilio for the whatsapp channel when enabled.
+  // Templates are referred to by their Meta template name. Missed call:
+  // {{1}} = business name. Review request: {{1}} = customer first name,
+  // {{2}} = business name, {{3}} = review link.
+  META_WHATSAPP_ENABLED: booleanFlag,
+  META_WHATSAPP_ACCESS_TOKEN: optionalSecret,
+  META_WHATSAPP_PHONE_NUMBER_ID: optionalSecret,
+  META_WHATSAPP_APP_SECRET: optionalSecret,
+  META_WHATSAPP_VERIFY_TOKEN: optionalSecret,
+  META_WHATSAPP_MISSED_CALL_TEMPLATE: optionalSecret,
+  META_WHATSAPP_REVIEW_REQUEST_TEMPLATE: optionalSecret,
+  META_WHATSAPP_TEMPLATE_LANGUAGE: z.string().min(2).default("en"),
+  META_GRAPH_API_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v25.0"),
   TWILIO_MONTHLY_MESSAGE_LIMIT: z.coerce.number().int().positive().default(1000),
   STRIPE_PAYMENTS_ENABLED: booleanFlag,
   STRIPE_SECRET_KEY: optionalSecret,
@@ -393,6 +407,11 @@ export const envSchema = z.object({
     }
     if (!env.TWILIO_FROM_NUMBER && !env.TWILIO_MESSAGING_SERVICE_SID) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["TWILIO_FROM_NUMBER"], message: "Either TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID is required in production when TWILIO_ENABLED=true" });
+    }
+  }
+  if (env.META_WHATSAPP_ENABLED) {
+    if (!env.META_WHATSAPP_ACCESS_TOKEN || !env.META_WHATSAPP_PHONE_NUMBER_ID || !env.META_WHATSAPP_APP_SECRET || !env.META_WHATSAPP_VERIFY_TOKEN) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["META_WHATSAPP_ACCESS_TOKEN"], message: "META_WHATSAPP_ACCESS_TOKEN, META_WHATSAPP_PHONE_NUMBER_ID, META_WHATSAPP_APP_SECRET and META_WHATSAPP_VERIFY_TOKEN are all required in production when META_WHATSAPP_ENABLED=true" });
     }
   }
   if (env.STRIPE_PAYMENTS_ENABLED) {

@@ -588,3 +588,26 @@ Until then, sign-in and sign-up work; only self-service reset is unavailable.
 4. In the business app -> More -> Business settings -> Photo gallery & Google rating -> Find -> pick your listing; open your page in the customer app and confirm the Google rating shows.
 
 **Later (optional):** showing every place on the map itself, Google Maps style, needs the Google Maps SDK map (Android + iOS keys) instead of OpenStreetMap - a separate step once the Places key is live.
+
+## OA-12 — Meta WhatsApp Cloud API go-live (2026-10-28)
+
+The adapter is shipped and off by default (`docs/progress/2026-10-28-meta-whatsapp-cloud-api.md`).
+The Meta app "Chakusa" (app id 986964310502058) exists in the PaMarket App portfolio with a
+test number. To go live the owner must:
+
+1. In Meta Business Settings → Users → System users, add a system user for Chakusa,
+   assign it the Chakusa app and the WhatsApp account with full control, and generate a
+   **permanent token** with `whatsapp_business_messaging` and `whatsapp_business_management`.
+   (A temporary token from the Quickstart expires in 24 hours and is not enough.)
+2. Copy the **App secret** (App settings → Basic). Meta asks for the Facebook password.
+3. Add a real business WhatsApp number (Step 2 Production setup) and note its phone number ID.
+4. Submit message templates for missed-call and review-request (names as set below),
+   and wait for Meta's approval.
+5. Set on Render: `META_WHATSAPP_ENABLED=true`, `META_WHATSAPP_ACCESS_TOKEN`,
+   `META_WHATSAPP_PHONE_NUMBER_ID`, `META_WHATSAPP_APP_SECRET`, a long random
+   `META_WHATSAPP_VERIFY_TOKEN`, `META_WHATSAPP_MISSED_CALL_TEMPLATE`,
+   `META_WHATSAPP_REVIEW_REQUEST_TEMPLATE`.
+6. In the Meta app → WhatsApp → Configuration set the webhook callback URL to
+   `https://chakusa-api.onrender.com/webhooks/meta/whatsapp` with the same verify token, and
+   subscribe to `messages`.
+7. Optional: complete Meta business verification to raise sending limits.

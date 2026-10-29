@@ -632,12 +632,16 @@ test number. To go live the owner must:
 2. **Apple Business → Agreements:** accept the updated Paid Applications Schedule (Account Holder),
    or Apple will not let the subscriptions be submitted.
 3. **Apple:** add a display name, description and review screenshot to Starter (needed for review).
-4. **Render → chakusa-api → Environment:** `APPLE_STARTER_MONTHLY_PRODUCT_ID=com.chakusa.mobile.starter.monthly`,
-   `GOOGLE_STARTER_MONTHLY_PRODUCT_ID=com.chakusa.mobile.starter.monthly`,
-   `GOOGLE_PRO_MONTHLY_PRODUCT_ID=com.chakusa.mobile.pro.monthly`,
-   `GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID=com.chakusa.mobile.business.monthly`. Google purchases are
-   only verified if Google billing is also configured there (`GOOGLE_BILLING_ENABLED` and its
-   service account).
+4. ~~Render product IDs~~ **Done 2026-10-29** (agent, owner's request): `APPLE_STARTER_MONTHLY_PRODUCT_ID`
+   and `GOOGLE_STARTER/PRO/BUSINESS_MONTHLY_PRODUCT_ID` added; deploy live, `/health` 200.
+5. **Google billing on the server is not configured.** Render has `GOOGLE_BILLING_ENABLED` but no
+   `GOOGLE_PLAY_PACKAGE_NAME`, `GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL`,
+   `GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64`, `GOOGLE_RTDN_SERVICE_ACCOUNT_EMAIL` or
+   `GOOGLE_RTDN_AUDIENCE`, so Android purchases cannot be verified and will not unlock plans. Create a
+   Google Cloud service account, grant it access in Play Console → Users and permissions (view
+   financial data, manage orders and subscriptions), set those variables, then
+   `GOOGLE_BILLING_ENABLED=true`. The server refuses to start in production if any are missing while
+   it is true.
 
 The original steps follow.
 

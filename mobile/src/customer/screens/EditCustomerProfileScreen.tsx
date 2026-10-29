@@ -53,7 +53,6 @@ function Field({ label, badge, ...rest }: { label: string; badge?: string } & Re
   );
 }
 
-const TIMEZONES = timezoneOptions();
 
 export function EditCustomerProfileScreen({ navigation }: Props) {
   const { profile, user, refreshProfile } = useCustomerAuth();
@@ -136,7 +135,7 @@ export function EditCustomerProfileScreen({ navigation }: Props) {
           <SelectField label="Preferred language" title="Choose your language" searchPlaceholder="Search language" value={preferredLanguage} options={LANGUAGES} onChange={setPreferredLanguage} placeholder="Choose a language" theme={selectTheme} />
         </View>
         <View style={styles.field}>
-          <SelectField label="Preferred time zone" title="Choose your time zone" searchPlaceholder="Search city or region" value={preferredTimezone} options={TIMEZONES} onChange={setPreferredTimezone} placeholder="Choose a time zone" theme={selectTheme} />
+          <SelectField label="Preferred time zone" title="Choose your time zone" searchPlaceholder="Search city or region" value={preferredTimezone} options={timezoneOptions()} onChange={setPreferredTimezone} placeholder="Choose a time zone" theme={selectTheme} />
         </View>
       </SectionCard>
 

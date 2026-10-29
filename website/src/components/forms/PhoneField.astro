@@ -1,0 +1,81 @@
+---
+// Phone input with a country-code picker covering every country the API
+// accepts. The text input keeps the real `name` and always ends up holding an
+// international number (+<code><number>), so existing FormData readers and
+// code that sets `.value` keep working unchanged.
+import { COUNTRIES } from "../../scripts/regionData.generated";
+
+interface Props { label: string; name?: string; required?: boolean; optional?: boolean; autocomplete?: string; placeholder?: string }
+const { label, name = "phone", required = false, optional = false, autocomplete = "tel", placeholder = "Phone number" } = Astro.props;
+---
+<label class="phone-field-label">{label}{optional ? <span> Optional</span> : null}
+  <span class="phone-field" data-phone-field>
+    <select data-phone-country aria-label={`${label} country code`}>
+      {COUNTRIES.map((c) => <option value={c.code} data-dial={c.dial}>{c.name} ({c.dial})</option>)}
+    </select>
+    <input name={name} type="tel" inputmode="tel" autocomplete={autocomplete} maxlength="40" placeholder={placeholder} required={required} data-phone-input />
+  </span>
+</label>
+
+<script>
+  import { COUNTRIES, MAIN_COUNTRY_FOR_DIAL } from "../../scripts/regionData.generated";
+
+  const byCode = new Map(COUNTRIES.map((c) => [c.code, c]));
+  const byDialLength = COUNTRIES.slice().sort((a, b) => b.dial.length - a.dial.length);
+  const guessCountry = () => {
+    const region = (navigator.languages?.[0] || navigator.language || "").split("-")[1]?.toUpperCase();
+    return region && byCode.has(region) ? region : "ZW";
+  };
+  const countryFor = (value: string, current: string) => {
+    const match = byDialLength.find((c) => value.startsWith(c.dial));
+    if (!match) return null;
+    if (byCode.get(current)?.dial === match.dial) return current;
+    return MAIN_COUNTRY_FOR_DIAL[match.dial] ?? match.code;
+  };
+  const digits = (value: string) => value.replace(/\D/g, "");
+
+  document.querySelectorAll<HTMLElement>("[data-phone-field]").forEach((field) => {
+    const select = field.querySelector<HTMLSelectElement>("[data-phone-country]")!;
+    const input = field.querySelector<HTMLInputElement>("[data-phone-input]")!;
+    select.value = guessCountry();
+    const dial = () => byCode.get(select.value)?.dial ?? "+263";
+
+    // Number typed or filled by the page with a "+" prefix: follow its country.
+    const syncFromInput = () => {
+      const value = input.value.trim();
+      if (!value.startsWith("+")) return;
+      const code = countryFor(value.replace(/[^\d+]/g, ""), select.value);
+      if (code && code !== select.value) select.value = code;
+    };
+    // A local number ("0771 234 567") becomes +263771234567 using the picked country.
+    const normalize = () => {
+      const value = input.value.trim();
+      if (!value) return;
+      input.value = value.startsWith("+") ? `+${digits(value)}` : `${dial()}${digits(value).replace(/^0+/, "")}`;
+    };
+
+    select.addEventListener("change", () => {
+      const value = input.value.trim();
+      if (!value) return;
+      const old = byDialLength.find((c) => value.replace(/[^\d+]/g, "").startsWith(c.dial));
+      const national = old ? digits(value).slice(old.dial.length - 1) : digits(value).replace(/^0+/, "");
+      input.value = `${dial()}${national}`;
+    });
+    input.addEventListener("input", syncFromInput);
+    input.addEventListener("focus", syncFromInput);
+    input.addEventListener("blur", normalize);
+    // Runs before the page's own submit handler so FormData sees the E.164 value.
+    document.addEventListener("submit", (event) => { if (event.target instanceof HTMLFormElement && event.target.contains(input)) normalize(); }, true);
+    // Pages fill saved numbers in after load; pick their country up once they have.
+    let checks = 0;
+    const settle = window.setInterval(() => { syncFromInput(); if (++checks > 20 || input.value) window.clearInterval(settle); }, 250);
+  });
+</script>
+
+<style>
+  .phone-field { display: flex; gap: .5rem; align-items: stretch; width: 100%; }
+  .phone-field select { flex: 0 0 auto; max-width: 9.5rem; min-width: 0; }
+  .phone-field input { flex: 1 1 auto; min-width: 0; }
+  .phone-field-label > span:first-of-type:not(.phone-field) { font-weight: 400; opacity: .7; }
+  @media (max-width: 30rem) { .phone-field select { max-width: 7.5rem; } }
+</style>

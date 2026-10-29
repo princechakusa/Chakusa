@@ -1,0 +1,110 @@
+#!/usr/bin/env node
+// Generates the static country / currency / time zone lists used by the mobile
+// app and the website. They are static because Hermes (React Native) has no
+// Intl.supportedValuesOf and only partial Intl.DisplayNames, and the website
+// needs them without a network call.
+//
+// Sources: libphonenumber-js (the same metadata the API validates phone numbers
+// with, so every dial code here is one the backend understands) and Node's full
+// ICU for names. Run after upgrading libphonenumber-js or Node:
+//
+//   node scripts/generate-region-data.mjs
+import { createRequire } from "node:module";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const { getCountries, getCountryCallingCode } = require("libphonenumber-js");
+const metadata = require("libphonenumber-js/metadata.min.json");
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+const currencyNames = new Intl.DisplayNames(["en"], { type: "currency" });
+
+// libphonenumber lists some non-sovereign codes without a stable ISO name; these
+// read better in a picker than ICU's long forms.
+const NAME_OVERRIDES = {
+  AC: "Ascension Island", XK: "Kosovo", CD: "Congo (DRC)", CG: "Congo (Republic)", CZ: "Czechia", MK: "North Macedonia",
+  TR: "Türkiye", SZ: "Eswatini", CV: "Cape Verde", CI: "Côte d'Ivoire", HK: "Hong Kong", MO: "Macao", PS: "Palestine",
+  FK: "Falkland Islands", MM: "Myanmar", LA: "Laos", KP: "North Korea", KR: "South Korea", RU: "Russia", SY: "Syria",
+  TZ: "Tanzania", VA: "Vatican City", VN: "Vietnam", BO: "Bolivia", VE: "Venezuela", IR: "Iran", MD: "Moldova",
+  FM: "Micronesia", BN: "Brunei", GB: "United Kingdom", US: "United States", AE: "United Arab Emirates",
+};
+
+// Shown first in the picker: the markets Chakusa launches in (southern & eastern
+// Africa, the Gulf), then the largest others. Everything else follows A-Z.
+const FEATURED = [
+  "ZW", "ZA", "BW", "ZM", "MZ", "NA", "MW", "KE", "UG", "TZ", "RW", "ET", "NG", "GH", "EG", "MA",
+  "AE", "SA", "QA", "KW", "BH", "OM", "GB", "US", "CA", "AU", "NZ", "IE", "DE", "FR", "ES", "IT", "NL", "PT", "IN", "SG", "MY", "PH",
+];
+
+const countries = getCountries().map((code) => ({
+  code,
+  name: NAME_OVERRIDES[code] ?? regionNames.of(code) ?? code,
+  dial: `+${getCountryCallingCode(code)}`,
+}));
+const byCode = new Map(countries.map((c) => [c.code, c]));
+const featured = FEATURED.filter((c) => byCode.has(c)).map((c) => byCode.get(c));
+const rest = countries.filter((c) => !FEATURED.includes(c.code)).sort((a, b) => a.name.localeCompare(b.name, "en"));
+const COUNTRIES = [...featured, ...rest];
+
+// Calling codes shared by several countries (+1, +44, +7 ...): libphonenumber
+// lists the main country first.
+const MAIN_COUNTRY_FOR_DIAL = {};
+for (const [dial, list] of Object.entries(metadata.country_calling_codes)) {
+  if (list.length > 1) MAIN_COUNTRY_FOR_DIAL[`+${dial}`] = list[0];
+}
+
+const CURRENCY_FIRST = [
+  "USD", "ZWG", "ZAR", "BWP", "ZMW", "MZN", "NAD", "MWK", "KES", "UGX", "TZS", "RWF", "ETB", "NGN", "GHS", "XOF", "XAF",
+  "EGP", "MAD", "AOA", "CDF", "MUR", "EUR", "GBP", "AED", "SAR", "QAR", "KWD", "BHD", "OMR",
+];
+const allCurrencies = Intl.supportedValuesOf("currency").map((code) => ({ code, name: currencyNames.of(code) ?? code }));
+const currencyByCode = new Map(allCurrencies.map((c) => [c.code, c]));
+const CURRENCIES = [
+  ...CURRENCY_FIRST.filter((c) => currencyByCode.has(c)).map((c) => currencyByCode.get(c)),
+  ...allCurrencies.filter((c) => !CURRENCY_FIRST.includes(c.code)).sort((a, b) => a.name.localeCompare(b.name, "en")),
+].map((c) => [c.code, c.name]);
+
+const ZONES_FIRST = [
+  "Africa/Harare", "Africa/Johannesburg", "Africa/Lusaka", "Africa/Maputo", "Africa/Gaborone", "Africa/Windhoek", "Africa/Blantyre", "Africa/Lubumbashi",
+  "Africa/Nairobi", "Africa/Kampala", "Africa/Dar_es_Salaam", "Africa/Addis_Ababa", "Africa/Kigali", "Africa/Lagos", "Africa/Accra", "Africa/Abidjan",
+  "Africa/Dakar", "Africa/Cairo", "Africa/Casablanca", "Africa/Algiers", "Africa/Tunis", "Africa/Khartoum", "Africa/Luanda", "Africa/Kinshasa", "Africa/Douala",
+  "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Kuwait", "Asia/Bahrain", "Asia/Muscat", "Europe/London", "Europe/Paris", "Europe/Berlin", "America/New_York",
+];
+// Official names that today's runtimes accept but Intl.supportedValuesOf omits.
+const ZONES_EXTRA = ["Asia/Kolkata", "Europe/Kyiv", "Asia/Ho_Chi_Minh", "America/Argentina/Buenos_Aires", "UTC"];
+const allZones = [...new Set([...Intl.supportedValuesOf("timeZone"), ...ZONES_EXTRA])]
+  .filter((zone) => { try { new Intl.DateTimeFormat("en-US", { timeZone: zone }); return true; } catch { return false; } });
+const ZONES = [...new Set([...ZONES_FIRST.filter((z) => allZones.includes(z)), ...allZones.sort()])];
+
+const header = `// GENERATED by scripts/generate-region-data.mjs - do not edit by hand.
+// Re-run \`node scripts/generate-region-data.mjs\` after upgrading libphonenumber-js or Node.
+`;
+const json = (value) => JSON.stringify(value).replace(/\],\[/g, "],\n  [").replace(/\},\{/g, "},\n  {");
+
+const countryBlock = `export interface RegionCountry { code: string; name: string; dial: string }
+/** Every country libphonenumber knows. Launch markets first, then A-Z. */
+export const COUNTRIES: RegionCountry[] = ${json(COUNTRIES)};
+/** Calling codes shared by several countries, mapped to the main one. */
+export const MAIN_COUNTRY_FOR_DIAL: Record<string, string> = ${JSON.stringify(MAIN_COUNTRY_FOR_DIAL)};
+`;
+
+const write = (relative, content) => {
+  const target = resolve(root, relative);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content, "utf8");
+  console.log(`wrote ${relative} (${content.length} bytes)`);
+};
+
+write("mobile/src/domain/regionData.generated.ts", `${header}
+${countryBlock}
+/** ISO 4217 [code, name]. Launch-market currencies first, then A-Z. */
+export const CURRENCY_ENTRIES: Array<[string, string]> = ${json(CURRENCIES)};
+/** IANA zones. Launch-market zones first, then A-Z. */
+export const ZONE_NAMES: string[] = ${JSON.stringify(ZONES)};
+`);
+write("website/src/scripts/regionData.generated.ts", `${header}
+${countryBlock}`);
+console.log(`${COUNTRIES.length} countries, ${CURRENCIES.length} currencies, ${ZONES.length} time zones, ${Object.keys(MAIN_COUNTRY_FOR_DIAL).length} shared dial codes`);

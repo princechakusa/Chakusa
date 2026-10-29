@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type { ProductSubscription, Purchase } from 'expo-iap';
 import { APPLE_BUSINESS_MONTHLY_PRODUCT_ID, APPLE_PRO_MONTHLY_PRODUCT_ID, APPLE_STARTER_MONTHLY_PRODUCT_ID, BILLING_ENABLED, GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID, GOOGLE_PRO_MONTHLY_PRODUCT_ID, GOOGLE_STARTER_MONTHLY_PRODUCT_ID } from '../config';
-import { BILLING_PLANS, billingErrorKind, billingMessage, BillingPlan, BillingPlatform, canNativeSubscribe, isEntitledStatus, planName, productIdForPlatform } from '../domain/billing';
+import { androidOfferToken, BILLING_PLANS, billingErrorKind, billingMessage, BillingPlan, BillingPlatform, canNativeSubscribe, isEntitledStatus, planName, productIdForPlatform } from '../domain/billing';
 import { ApiError } from '../services/api';
 import { subscriptionApi } from '../services/endpoints';
 import { useAuth } from './AuthContext';
@@ -126,7 +126,7 @@ function NativeBillingProvider({ children }: PropsWithChildren) {
     if (!selected) { setError(`Chakusa ${planName(plan)} is not available from the store right now.`); return; }
     setPurchasingPlan(plan); setError(null); setMessage(null);
     try {
-      const offerToken = selected.platform === 'android' ? selected.subscriptionOffers.find((offer) => offer.offerTokenAndroid)?.offerTokenAndroid : undefined;
+      const offerToken = selected.platform === 'android' ? androidOfferToken(selected.subscriptionOffers) : undefined;
       await requestPurchase({ type: 'subs', request: platform === 'ios' ? { apple: { sku: selected.id } } : { google: { skus: [selected.id], subscriptionOffers: offerToken ? [{ sku: selected.id, offerToken }] : [] } } });
     } catch (caught) {
       setPurchasingPlan(null);

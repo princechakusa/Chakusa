@@ -61,3 +61,12 @@ export function billingMessage(kind: BillingErrorKind) {
   return ({ canceled: null, pending: 'Your purchase is pending approval from the store.', 'already-owned': 'This subscription is already owned. Use Restore Purchases to connect it.', 'product-unavailable': 'This plan is not available from this store account right now.', 'store-unavailable': 'The store is unavailable. Please try again.', network: 'Couldn’t reach the store. Check your connection and try again.', verification: 'Your purchase was received, but Chakusa could not confirm it yet.', conflict: 'This subscription is already connected to another Chakusa business.', unknown: 'The purchase could not be completed. Please try again.' } as const)[kind];
 }
 export function productIdForPlatform(platform: BillingPlatform, appleId: string, googleId: string) { return platform === 'ios' ? appleId : platform === 'android' ? googleId : ''; }
+
+type AndroidOffer = { offerTokenAndroid?: string | null; pricingPhasesAndroid?: { pricingPhaseList: { priceAmountMicros: string }[] } | null };
+
+/** Google Play lists only the offers this customer is eligible for; prefer one with a free phase (the trial), else the base plan. */
+export function androidOfferToken(offers: AndroidOffer[] | null | undefined) {
+  const usable = (offers ?? []).filter((offer) => offer.offerTokenAndroid);
+  const trial = usable.find((offer) => offer.pricingPhasesAndroid?.pricingPhaseList.some((phase) => Number(phase.priceAmountMicros) === 0));
+  return (trial ?? usable[0])?.offerTokenAndroid ?? undefined;
+}

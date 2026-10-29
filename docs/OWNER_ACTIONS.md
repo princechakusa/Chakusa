@@ -612,7 +612,34 @@ test number. To go live the owner must:
    subscribe to `messages`.
 7. Optional: complete Meta business verification to raise sending limits.
 
-## OA-18 — Starter plan and new prices in App Store Connect and Google Play (2026-10-29) — OPEN
+## OA-18 — Starter plan and new prices in App Store Connect and Google Play (2026-10-29) — MOSTLY DONE
+
+**Done by the agent with the owner signed in (2026-10-29):**
+- **Apple:** Starter `com.chakusa.mobile.starter.monthly` created at level 4 (below Pro 3, Business 2),
+  $3.00 with a free 1-week introductory offer (all 175 countries, no end date). Pro changed
+  $14.99 → **$8.00**, Business $29.99 → **$13.00** (Apple has exact price points, so the admin
+  console's 3 / 8 / 13 already match).
+- **Google Play:** subscriptions `com.chakusa.mobile.starter.monthly` / `.pro.monthly` /
+  `.business.monthly`, each with an active monthly auto-renewing base plan `monthly` at $3 / $8 / $13
+  (178 countries, local prices from USD). Starter has an active offer `free-trial-7d`: 7 days free,
+  new customers who never had any Chakusa subscription.
+- `mobile/eas.json` now carries `EXPO_PUBLIC_GOOGLE_*_MONTHLY_PRODUCT_ID`; the Android app prefers
+  the free-trial offer when Google lists it.
+
+**Still the owner's:**
+1. **Apple → Pro and Business → Introductory Offers:** remove the old "Free for the first 2 weeks"
+   offers (the app gives a trial on Starter only). The agent's permission policy blocked deletions.
+2. **Apple Business → Agreements:** accept the updated Paid Applications Schedule (Account Holder),
+   or Apple will not let the subscriptions be submitted.
+3. **Apple:** add a display name, description and review screenshot to Starter (needed for review).
+4. **Render → chakusa-api → Environment:** `APPLE_STARTER_MONTHLY_PRODUCT_ID=com.chakusa.mobile.starter.monthly`,
+   `GOOGLE_STARTER_MONTHLY_PRODUCT_ID=com.chakusa.mobile.starter.monthly`,
+   `GOOGLE_PRO_MONTHLY_PRODUCT_ID=com.chakusa.mobile.pro.monthly`,
+   `GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID=com.chakusa.mobile.business.monthly`. Google purchases are
+   only verified if Google billing is also configured there (`GOOGLE_BILLING_ENABLED` and its
+   service account).
+
+The original steps follow.
 
 The apps and website now sell three plans: **Starter $3, Pro $8, Business $13** a
 month, with a **7-day free trial on Starter only**. The apps show the store's own

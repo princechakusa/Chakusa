@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { billingErrorKind, billingMessage, canNativeSubscribe, effectivePlan, isEntitledStatus, planAction, planName, planRank, subscriptionPeriodCopy, subscriptionStatusLabel } from './billing';
+import { androidOfferToken, billingErrorKind, billingMessage, canNativeSubscribe, effectivePlan, isEntitledStatus, planAction, planName, planRank, subscriptionPeriodCopy, subscriptionStatusLabel } from './billing';
 
 const subscription = { status: 'ACTIVE' as const, cancelAtPeriodEnd: false, currentPeriodEnd: '2026-08-30T00:00:00.000Z', trialEndsAt: null };
 describe('native billing product rules', () => {
@@ -19,4 +19,19 @@ describe('native billing product rules', () => {
   it('maps already-owned and cross-business conflict safely', () => { expect(billingErrorKind('already-owned')).toBe('already-owned'); expect(billingErrorKind(undefined, true)).toBe('conflict'); expect(billingMessage('conflict')).not.toContain('business ID'); });
   it('formats cancellation, renewal, and trial server truth', () => { expect(subscriptionStatusLabel({ ...subscription, cancelAtPeriodEnd: true })).toContain('Active until'); expect(subscriptionPeriodCopy(subscription)).toContain('Renews on'); expect(subscriptionPeriodCopy({ ...subscription, status: 'TRIALING', trialEndsAt: '2026-08-20T00:00:00.000Z' })).toContain('Trial ends'); });
   it('allows native purchase only on iOS and Android', () => { expect(canNativeSubscribe('ios')).toBe(true); expect(canNativeSubscribe('android')).toBe(true); expect(canNativeSubscribe('web')).toBe(false); });
+});
+
+describe('androidOfferToken', () => {
+  const phases = (...micros: string[]) => ({ pricingPhaseList: micros.map((priceAmountMicros) => ({ priceAmountMicros })) });
+  it('prefers the free-trial offer when Google lists one', () => {
+    expect(androidOfferToken([{ offerTokenAndroid: 'base', pricingPhasesAndroid: phases('3000000') }, { offerTokenAndroid: 'trial', pricingPhasesAndroid: phases('0', '3000000') }])).toBe('trial');
+  });
+  it('falls back to the base plan when the customer is not eligible for a trial', () => {
+    expect(androidOfferToken([{ offerTokenAndroid: 'base', pricingPhasesAndroid: phases('8000000') }])).toBe('base');
+  });
+  it('returns undefined without usable offers', () => {
+    expect(androidOfferToken([])).toBeUndefined();
+    expect(androidOfferToken(undefined)).toBeUndefined();
+    expect(androidOfferToken([{ offerTokenAndroid: null }])).toBeUndefined();
+  });
 });

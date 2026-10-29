@@ -25,7 +25,7 @@
 // - The "Dean Kowalski" testimonial with photo - a fabricated identity.
 //   Removed, not replaced with a different fabricated one.
 // - "Start 30-Day Business Trial" and "Put busywork on autopilot" -
-//   the real trial is 14 days, not 30, and sending is never fully
+//   the real trial length comes from the admin console, and sending is never fully
 //   autonomous; replaced.
 export const automationHero = {
   badge: "Practical workflows",

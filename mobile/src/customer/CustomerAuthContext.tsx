@@ -42,14 +42,16 @@ interface CustomerAuthValue {
   legalAcceptanceRequired: boolean;
   restore: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (input: { email: string; password: string; fullName: string }) => Promise<void>;
-  signInWithGoogle: () => Promise<boolean>;
-  signInWithApple: () => Promise<boolean>;
+  registerWithEmail: (input: { email: string; password: string; fullName: string; ageConfirmed: boolean }) => Promise<void>;
+  signInWithGoogle: (ageConfirmed: boolean) => Promise<boolean>;
+  signInWithApple: (ageConfirmed: boolean) => Promise<boolean>;
   forgotPassword: (email: string) => Promise<string>;
   refreshLegalStatus: () => Promise<void>;
-  acceptLegalDocument: (type: LegalDocumentType) => Promise<void>;
+  acceptLegalDocument: (type: LegalDocumentType, ageConfirmed?: boolean) => Promise<void>;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
+  /** Signs out of every device: revokes all of this account's sessions, then clears this one. */
+  logoutAll: () => Promise<void>;
   /** Permanent deletion after a fresh identity check. Google/Apple resolve false if the person cancels. */
   deleteAccountWithPassword: (password: string) => Promise<void>;
   deleteAccountWithGoogle: () => Promise<boolean>;
@@ -186,25 +188,25 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
     restore,
     loginWithEmail: (email, password) => runSignIn(() => customerAuthApi.login({ email, password })),
     registerWithEmail: (input) => runSignIn(() => customerAuthApi.register(input)),
-    signInWithGoogle: async () => {
+    signInWithGoogle: async (ageConfirmed) => {
       const attempt = ++authAttempt.current;
       const idToken = await requestGoogleIdToken();
       if (!idToken || attempt !== authAttempt.current) return false;
-      await runSignIn(() => customerAuthApi.google(idToken), attempt);
+      await runSignIn(() => customerAuthApi.google(idToken, ageConfirmed), attempt);
       return attempt === authAttempt.current;
     },
-    signInWithApple: async () => {
+    signInWithApple: async (ageConfirmed) => {
       const attempt = ++authAttempt.current;
       const challenge = await customerAuthApi.appleChallenge();
       const credential = await requestAppleCredential({ ...challenge });
       if (!credential || attempt !== authAttempt.current) return false;
-      await runSignIn(() => customerAuthApi.apple({ ...credential }), attempt);
+      await runSignIn(() => customerAuthApi.apple({ ...credential, ageConfirmed }), attempt);
       return attempt === authAttempt.current;
     },
     forgotPassword: async (email) => (await customerAuthApi.forgotPassword(email)).message,
     refreshLegalStatus,
-    acceptLegalDocument: async (type) => {
-      await legalApi.customerAccept(type, { source: 'app' });
+    acceptLegalDocument: async (type, ageConfirmed) => {
+      await legalApi.customerAccept(type, { source: 'app', ageConfirmed });
       setPendingLegalDocuments((current) => withoutAccepted(current, type));
     },
     refreshProfile: async () => {
@@ -217,6 +219,11 @@ export function CustomerAuthProvider({ children }: PropsWithChildren) {
       const session = await getCustomerSession();
       try { if (session) await customerAuthApi.logout(session.refreshToken); }
       catch { /* local sign-out must still succeed while offline */ }
+      finally { if (attempt === authAttempt.current) await clearLocal('signed-out'); }
+    },
+    logoutAll: async () => {
+      const attempt = ++authAttempt.current;
+      try { await customerAuthApi.logoutAll(); }
       finally { if (attempt === authAttempt.current) await clearLocal('signed-out'); }
     },
     deleteAccountWithPassword: async (password) => {

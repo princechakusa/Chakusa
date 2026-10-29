@@ -25,9 +25,9 @@
 //   named per-industry columns; described that way instead.
 // - "Import instantly from iOS, Google Contacts, and Square" - no such
 //   integration exists; the real import path is a CSV upload.
-// - "Free 30-Day Business Trial" - the real trial is 14 days, not 30,
+// - "Free 30-Day Business Trial" - the real trial length is admin-configured,
 //   and there is no permanent free plan; real plans are Starter / Pro
-//   / Business, each with a 14-day free trial (see src/data/pricing.ts).
+//   / Business; Starter has a free trial (see src/data/pricingDefaults.ts).
 export const customersHero = {
   badge: "One record per customer",
   title: "Every visit adds to the same customer record.",

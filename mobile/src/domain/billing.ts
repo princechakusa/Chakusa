@@ -1,18 +1,42 @@
 import { SubscriptionStatusDto, SubscriptionStatusValue } from '../apiTypes';
 
 export type BillingPlatform = 'ios' | 'android' | 'web' | 'unsupported';
-export type BillingPlan = 'PRO' | 'BUSINESS';
+export type BillingPlan = 'STARTER' | 'PRO' | 'BUSINESS';
+export type ServerPlan = 'FREE' | BillingPlan;
 export type BillingErrorKind = 'canceled' | 'pending' | 'already-owned' | 'product-unavailable' | 'store-unavailable' | 'network' | 'verification' | 'conflict' | 'unknown';
 
+/** Lowest to highest; mirrors the API's PLAN_ORDER (src/lib/entitlements.ts). */
+export const PLAN_ORDER: readonly ServerPlan[] = ['FREE', 'STARTER', 'PRO', 'BUSINESS'];
+export const BILLING_PLANS: readonly BillingPlan[] = ['STARTER', 'PRO', 'BUSINESS'];
+export const planRank = (plan: ServerPlan | null) => (plan ? PLAN_ORDER.indexOf(plan) : 0);
+export const planName = (plan: ServerPlan | null) => ({ FREE: 'Free', STARTER: 'Starter', PRO: 'Pro', BUSINESS: 'Business' } as const)[plan ?? 'FREE'];
+
 export function isEntitledStatus(status: SubscriptionStatusValue | null) { return status === 'ACTIVE' || status === 'TRIALING' || status === 'GRACE_PERIOD'; }
-export function canSubscribe(plan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null) { return plan !== 'BUSINESS' && (plan === 'FREE' || status === 'EXPIRED' || status === 'CANCELED'); }
-export function canPurchasePlan(currentPlan: 'FREE' | 'PRO' | 'BUSINESS' | null, status: SubscriptionStatusValue | null, targetPlan: BillingPlan) {
-  if (currentPlan === 'BUSINESS' && isEntitledStatus(status)) return false;
-  if (currentPlan === 'PRO' && isEntitledStatus(status)) return targetPlan === 'BUSINESS';
-  return currentPlan === 'FREE' || status === 'EXPIRED' || status === 'CANCELED';
+
+/** The plan someone actually has the benefit of right now (an expired Pro is Free). */
+export function effectivePlan(plan: ServerPlan | null, status: SubscriptionStatusValue | null): ServerPlan { return plan && plan !== 'FREE' && isEntitledStatus(status) ? plan : 'FREE'; }
+
+/**
+ * What the button on a plan card does. New subscribers and upgrades buy in
+ * the app; a downgrade is a store-managed change (both stores apply it at the
+ * next renewal), so it opens the store's subscription settings.
+ */
+export type PlanAction = 'current' | 'subscribe' | 'upgrade' | 'downgrade';
+export function planAction(plan: ServerPlan | null, status: SubscriptionStatusValue | null, target: BillingPlan): PlanAction {
+  const current = effectivePlan(plan, status);
+  if (current === target) return 'current';
+  if (current === 'FREE') return 'subscribe';
+  return planRank(target) > planRank(current) ? 'upgrade' : 'downgrade';
+}
+/** One-line plan summary for menus: "Pro", "Starter trial", "Pro - payment issue", "Free". */
+export function planSummary(plan: ServerPlan | null, status: SubscriptionStatusValue | null): string {
+  const current = effectivePlan(plan, status);
+  if (current === 'FREE') return plan && plan !== 'FREE' ? 'Free (subscription ended)' : 'Free';
+  if (status === 'TRIALING') return `${planName(current)} trial`;
+  if (status === 'GRACE_PERIOD') return `${planName(current)} - payment issue`;
+  return planName(current);
 }
 export function canNativeSubscribe(platform: BillingPlatform) { return platform === 'ios' || platform === 'android'; }
-export function checkoutPrice(displayPrice?: string | null) { return displayPrice?.trim() || null; }
 export function subscriptionStatusLabel(subscription: Pick<SubscriptionStatusDto, 'status'|'cancelAtPeriodEnd'|'currentPeriodEnd'>) {
   if (subscription.status === 'ACTIVE' && subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd) return `Active until ${formatBillingDate(subscription.currentPeriodEnd)}`;
   return ({ ACTIVE: 'Active', TRIALING: 'Trial', GRACE_PERIOD: 'Payment issue', EXPIRED: 'Expired', CANCELED: 'Canceled' } as const)[subscription.status];
@@ -34,8 +58,6 @@ export function billingErrorKind(code?: string, backendConflict = false): Billin
   return 'unknown';
 }
 export function billingMessage(kind: BillingErrorKind) {
-  return ({ canceled: null, pending: 'Your purchase is pending approval from the store.', 'already-owned': 'This subscription is already owned. Use Restore Purchases to connect it.', 'product-unavailable': 'Chakusa Pro is not available from this store account right now.', 'store-unavailable': 'The store is unavailable. Please try again.', network: 'Couldn’t reach the store. Check your connection and try again.', verification: 'Your purchase was received, but Chakusa could not confirm it yet.', conflict: 'This subscription is already connected to another Chakusa business.', unknown: 'The purchase could not be completed. Please try again.' } as const)[kind];
+  return ({ canceled: null, pending: 'Your purchase is pending approval from the store.', 'already-owned': 'This subscription is already owned. Use Restore Purchases to connect it.', 'product-unavailable': 'This plan is not available from this store account right now.', 'store-unavailable': 'The store is unavailable. Please try again.', network: 'Couldn’t reach the store. Check your connection and try again.', verification: 'Your purchase was received, but Chakusa could not confirm it yet.', conflict: 'This subscription is already connected to another Chakusa business.', unknown: 'The purchase could not be completed. Please try again.' } as const)[kind];
 }
-export function productConfigured(platform: BillingPlatform, appleId: string, googleId: string) { return platform === 'ios' ? Boolean(appleId) : platform === 'android' ? Boolean(googleId) : false; }
 export function productIdForPlatform(platform: BillingPlatform, appleId: string, googleId: string) { return platform === 'ios' ? appleId : platform === 'android' ? googleId : ''; }
-export function verifyPayload(platform: BillingPlatform, proof: string) { return platform === 'ios' ? { transactionId: proof } : { purchaseToken: proof }; }

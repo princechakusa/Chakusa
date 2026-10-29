@@ -1,4 +1,5 @@
 ---
+import TrialDays from "../components/pricing/TrialDays.astro";
 // For businesses. 2026-09 rebuild: the Stitch version shipped a fabricated
 // testimonial (named owner, photo, quotes, "+38% Repeat Clients"), invented
 // dashboard metrics and customer reviews, and described an AI that replies
@@ -55,7 +56,7 @@ const steps = [
             <Button href="/pricing" variant="secondary">See pricing</Button>
           </div>
           <ul class="hero2__trust">
-            <li><StoryIcon name="event_available" class="hero2__trust-icon" />14-day free trial</li>
+            <li><StoryIcon name="event_available" class="hero2__trust-icon" /><span><TrialDays />-day free trial</span></li>
             <li><StoryIcon name="shield" class="hero2__trust-icon" />Nothing sends without you</li>
             <li><StoryIcon name="account_box" class="hero2__trust-icon" />Your customers stay yours</li>
           </ul>
@@ -130,7 +131,7 @@ const steps = [
     <section class="biz-cta container" aria-labelledby="biz-cta-title">
       <div class="biz-cta__panel" data-spotlight>
         <h2 id="biz-cta-title">Try it with your next enquiry.</h2>
-        <p>Set up in one sitting. 14 days free, then choose the plan that fits.</p>
+        <p>Set up in one sitting. <span><TrialDays /> days free, then choose the plan that fits.</span></p>
         <div class="hero2__actions"><Button href="/get-started">Start free trial</Button><Button href="/pricing" variant="secondary">See pricing</Button></div>
       </div>
     </section>

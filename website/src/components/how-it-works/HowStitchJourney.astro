@@ -15,7 +15,7 @@ const pairs = customerJourney.map((c, i) => ({ c, b: businessJourney[i] }));
     <h2 id="parallel-title">Every step, from both sides at once.</h2>
   </header>
   <div class="hsync__tabs" role="tablist" aria-label="Journey step">
-    {pairs.map(({ c, b }, i) => <button type="button" role="tab" id={`hsync-tab-${i}`} aria-controls="hsync-panel" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} data-i={i}>
+    {pairs.map(({ c }, i) => <button type="button" role="tab" id={`hsync-tab-${i}`} aria-controls="hsync-panel" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} data-i={i}>
       <b>{c.number}</b><span>{c.label}</span><i class="hsync__bar"><i></i></i>
     </button>)}
   </div>

@@ -3,6 +3,7 @@ import { AuthChallengePurpose, Prisma, type AuthSession, type AuthSessionScope }
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword, verifyPassword, verifyPasswordConstantTime } from "../../lib/password.js";
 import { ApiError } from "../../lib/errors.js";
+import { MINIMUM_AGE } from "../../lib/legal/legalDocuments.service.js";
 import { normalizeEmail } from "../../lib/email.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
 import { config } from "../../lib/config.js";
@@ -152,7 +153,20 @@ async function joinInvitedBusinessIfTokenPresent(
   );
 }
 
-export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentity, invitationToken?: string, serializationRetries = 0) {
+export interface SignInOptions {
+  invitationToken?: string;
+  /** The person's "I am 18 or older" tick; required only when the sign-in creates a new account. */
+  ageConfirmed?: boolean;
+}
+
+/** No account is created for anyone who has not confirmed they are MINIMUM_AGE or older. */
+export function assertAgeConfirmedForNewAccount(ageConfirmed: boolean | undefined) {
+  if (ageConfirmed !== true) {
+    throw ApiError.auth(400, "AGE_CONFIRMATION_REQUIRED", `You must be ${MINIMUM_AGE} or older to create a Chakusa account. Tick the box to confirm your age.`);
+  }
+}
+
+export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentity, options: SignInOptions = {}, serializationRetries = 0) {
   try {
     return await prisma.$transaction(async (tx) => {
       const linked = await tx.authIdentity.findUnique({
@@ -180,12 +194,14 @@ export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentit
         );
       }
 
+      assertAgeConfirmedForNewAccount(options.ageConfirmed);
       const user = await tx.user.create({
         data: {
           email: identity.email,
           normalizedEmail,
           passwordHash: null,
           emailVerifiedAt: new Date(),
+          ageConfirmedAt: new Date(),
           fullName: identity.fullName,
           authIdentities: {
             create: {
@@ -197,13 +213,13 @@ export async function authenticateGoogleIdentity(identity: VerifiedGoogleIdentit
           },
         },
       });
-      await joinInvitedBusinessIfTokenPresent(tx, invitationToken, normalizedEmail, user.id);
+      await joinInvitedBusinessIfTokenPresent(tx, options.invitationToken, normalizedEmail, user.id);
       const auth = await createSession(user.id, tx);
       return { user, isNewUser: true, ...auth };
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
-      return authenticateGoogleIdentity(identity, invitationToken, serializationRetries + 1);
+      return authenticateGoogleIdentity(identity, options, serializationRetries + 1);
     }
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
       throw error;
@@ -296,7 +312,7 @@ export async function authenticateAppleIdentity(
   refreshToken: string,
   proof: AppleChallengeProof,
   name?: { givenName?: string | null; familyName?: string | null },
-  invitationToken?: string,
+  options: SignInOptions = {},
   serializationRetries = 0,
 ) {
   const encryptedRefreshToken = encryptProviderCredential(refreshToken);
@@ -320,11 +336,13 @@ export async function authenticateAppleIdentity(
       if (await tx.user.findUnique({ where: { normalizedEmail } })) {
         throw ApiError.auth(409, "ACCOUNT_LINK_REQUIRED", "An account with this email already exists. Sign in, then link Apple in Settings.");
       }
+      assertAgeConfirmedForNewAccount(options.ageConfirmed);
       const user = await tx.user.create({ data: {
         email: normalizedEmail,
         normalizedEmail,
         passwordHash: null,
         emailVerifiedAt: new Date(),
+        ageConfirmedAt: new Date(),
         fullName: appleDisplayName(identity.email, name),
         authIdentities: { create: {
           provider: "APPLE",
@@ -335,12 +353,12 @@ export async function authenticateAppleIdentity(
           credentialUpdatedAt: new Date(),
         } },
       } });
-      await joinInvitedBusinessIfTokenPresent(tx, invitationToken, normalizedEmail, user.id);
+      await joinInvitedBusinessIfTokenPresent(tx, options.invitationToken, normalizedEmail, user.id);
       return { user, isNewUser: true, ...await createSession(user.id, tx) };
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && serializationRetries < 2) {
-      return authenticateAppleIdentity(identity, refreshToken, proof, name, invitationToken, serializationRetries + 1);
+      return authenticateAppleIdentity(identity, refreshToken, proof, name, options, serializationRetries + 1);
     }
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
     throw ApiError.auth(409, "AUTH_IDENTITY_CONFLICT", "Apple identity could not be created safely");
@@ -478,7 +496,7 @@ async function registerInvitedUser(
   if (claim.outcome !== "claimed") throw invitationClaimError(claim.outcome);
 
   const user = await tx.user.create({
-    data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName },
+    data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName, ageConfirmedAt: new Date() },
   });
   await tx.businessMember.create({
     data: { businessId: claim.businessId, userId: user.id, role: claim.role, status: "ACTIVE" },
@@ -493,6 +511,7 @@ async function registerInvitedUser(
 }
 
 export async function registerUser(input: RegisterInput) {
+  assertAgeConfirmedForNewAccount(input.ageConfirmed);
   const normalizedEmail = normalizeEmail(input.email);
   const passwordHash = await hashPassword(input.password);
 
@@ -521,7 +540,7 @@ export async function registerUser(input: RegisterInput) {
     // registerSchema's superRefine (required whenever invitationToken is
     // absent).
     const user = await tx.user.create({
-      data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName },
+      data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName, ageConfirmedAt: new Date() },
     });
     const business = await tx.business.create({
       data: { ownerId: user.id, name: input.businessName!, industry: input.industry, publicSlug },

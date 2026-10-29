@@ -48,7 +48,7 @@ describe("Apple authentication", () => {
 
   async function credential(token = "valid", path = "/auth/apple/challenge", accessToken?: string, code = "code-1") {
     const issued = await challenge(path, accessToken);
-    return { ...issued, identityToken: token, authorizationCode: code, givenName: "Apple", familyName: "Person" };
+    return { ...issued, identityToken: token, authorizationCode: code, givenName: "Apple", familyName: "Person", ageConfirmed: true };
   }
 
   it("creates an Apple-only user, preserves relay email, and uses Chakusa sessions", async () => {
@@ -67,7 +67,7 @@ describe("Apple authentication", () => {
     // given user+app; a real subsequent login (or a user who denied the
     // name prompt) presents exactly this shape — no givenName/familyName.
     const issued = await challenge();
-    const payload = { ...issued, identityToken: "valid", authorizationCode: "code-1" };
+    const payload = { ...issued, identityToken: "valid", authorizationCode: "code-1", ageConfirmed: true };
     const response = await app.inject({ method: "POST", url: "/auth/apple", payload });
     expect(response.statusCode).toBe(200);
     expect(response.json().user.fullName).toBe("relay");
@@ -108,7 +108,7 @@ describe("Apple authentication", () => {
 
   it("rejects altered, expired, and reused server challenges", async () => {
     const altered = await credential();
-    expect((await app.inject({ method: "POST", url: "/auth/apple", payload: { ...altered, state: `${altered.state}x` } })).json().error.code).toBe("APPLE_CHALLENGE_INVALID");
+    expect((await app.inject({ method: "POST", url: "/auth/apple", payload: { ageConfirmed: true, ...altered, state: `${altered.state}x` } })).json().error.code).toBe("APPLE_CHALLENGE_INVALID");
 
     const expired = await credential();
     await prisma.authChallenge.update({ where: { id: expired.challengeId }, data: { expiresAt: new Date(0) } });
@@ -208,7 +208,7 @@ describe("Apple authentication", () => {
   it("does not delete when Apple credential revocation fails", async () => {
     const failing = await createTestApp({ appleTokenVerifier: verifier, appleCodeExchanger: exchanger, appleCredentialRevoker: async () => { throw ApiError.auth(502, "APPLE_REVOCATION_FAILED", "failed"); } });
     const signInChallenge = (await failing.inject({ method: "POST", url: "/auth/apple/challenge" })).json();
-    const auth = await failing.inject({ method: "POST", url: "/auth/apple", payload: { ...signInChallenge, identityToken: "valid", authorizationCode: "code-1" } });
+    const auth = await failing.inject({ method: "POST", url: "/auth/apple", payload: { ageConfirmed: true, ...signInChallenge, identityToken: "valid", authorizationCode: "code-1" } });
     const deleteChallenge = (await failing.inject({ method: "POST", url: "/auth/apple/delete/challenge", headers: authHeader(auth.json().accessToken) })).json();
     const response = await failing.inject({ method: "POST", url: "/auth/delete-account", headers: authHeader(auth.json().accessToken), payload: { apple: { ...deleteChallenge, identityToken: "valid", authorizationCode: "delete-code" } } });
     expect(response.statusCode).toBe(502);

@@ -83,7 +83,7 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
   fastify.post("/google", rl(20, "15 minutes"), async (request, reply) => {
     const input = customerGoogleSchema.parse(request.body);
     const identity = await googleTokenVerifier(input.idToken);
-    const result = await customerGoogleSignIn(identity, attrs(request));
+    const result = await customerGoogleSignIn(identity, attrs(request), input.ageConfirmed);
     const ctx = await getCustomerAuthContext(result.user.id);
     reply.send({ ...session(result.user.id, result.session.id, result.refreshToken), ...publicCustomer(ctx), isNewUser: result.isNewUser });
   });
@@ -100,7 +100,7 @@ export default async function customerAuthRoutes(fastify: FastifyInstance, optio
     if (exchanged.providerSubject !== identity.providerSubject || exchanged.email.toLowerCase() !== identity.email.toLowerCase()) {
       throw ApiError.auth(401, "APPLE_CODE_INVALID", "Apple authorization code does not match the presented identity");
     }
-    const result = await customerAppleSignIn(identity, tokens.refreshToken, proof, input, attrs(request));
+    const result = await customerAppleSignIn(identity, tokens.refreshToken, proof, input, attrs(request), input.ageConfirmed);
     const ctx = await getCustomerAuthContext(result.user.id);
     reply.send({ ...session(result.user.id, result.session.id, result.refreshToken), ...publicCustomer(ctx), isNewUser: result.isNewUser });
   });

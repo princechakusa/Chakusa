@@ -28,6 +28,8 @@ export let GOOGLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_GO
 export let APPLE_AUTH_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED);
 export let EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_EMAIL_ENABLED ?? process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED);
 export let PASSWORD_RESET_EMAIL_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_PASSWORD_RESET_EMAIL_ENABLED ?? process.env.EXPO_PUBLIC_EMAIL_ENABLED);
+// Whether the API can send SMS/WhatsApp at all; the live value comes from /app-config.
+export let OUTBOUND_MESSAGING_AVAILABLE = true;
 export let AUTOMATION_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_AUTOMATION_ENABLED);
 export let BILLING_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_BILLING_ENABLED);
 export const SENTRY_ENABLED = publicFeatureEnabled(process.env.EXPO_PUBLIC_SENTRY_ENABLED);
@@ -41,6 +43,8 @@ export const APPLE_PRO_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_APPLE_PRO_MO
 export const GOOGLE_PRO_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_GOOGLE_PRO_MONTHLY_PRODUCT_ID?.trim() ?? '';
 export const APPLE_BUSINESS_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_APPLE_BUSINESS_MONTHLY_PRODUCT_ID?.trim() ?? '';
 export const GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID?.trim() ?? '';
+export const APPLE_STARTER_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_APPLE_STARTER_MONTHLY_PRODUCT_ID?.trim() ?? '';
+export const GOOGLE_STARTER_MONTHLY_PRODUCT_ID = process.env.EXPO_PUBLIC_GOOGLE_STARTER_MONTHLY_PRODUCT_ID?.trim() ?? '';
 export let PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL?.trim() || APPROVED_PUBLIC_DESTINATIONS.privacy;
 export let TERMS_OF_USE_URL = process.env.EXPO_PUBLIC_TERMS_OF_USE_URL?.trim() || APPROVED_PUBLIC_DESTINATIONS.terms;
 export let SUPPORT_URL = process.env.EXPO_PUBLIC_SUPPORT_URL?.trim() || APPROVED_PUBLIC_DESTINATIONS.support;
@@ -53,7 +57,7 @@ export const DELETE_ACCOUNT_URL = APPROVED_PUBLIC_DESTINATIONS.deleteAccount;
 // next render, with no change to the importing screens. Native identifiers
 // (API URL, OAuth client IDs, store product IDs, Sentry) stay build-time.
 export const BUILD_DEFAULTS: BuildDefaults = {
-  automation: AUTOMATION_ENABLED, billing: BILLING_ENABLED, emailAuth: EMAIL_ENABLED, passwordReset: PASSWORD_RESET_EMAIL_ENABLED,
+  automation: AUTOMATION_ENABLED, billing: BILLING_ENABLED, emailAuth: EMAIL_ENABLED, passwordReset: PASSWORD_RESET_EMAIL_ENABLED, outboundMessaging: OUTBOUND_MESSAGING_AVAILABLE,
   googleSignIn: GOOGLE_AUTH_ENABLED, appleSignIn: APPLE_AUTH_ENABLED,
   supportEmail: SUPPORT_EMAIL, supportUrl: SUPPORT_URL, privacyUrl: PRIVACY_POLICY_URL, termsUrl: TERMS_OF_USE_URL,
 };
@@ -63,6 +67,7 @@ export function applyRuntimeConfig(c: EffectiveConfig) {
   BILLING_ENABLED = c.billing;
   EMAIL_ENABLED = c.emailAuth;
   PASSWORD_RESET_EMAIL_ENABLED = c.passwordReset;
+  OUTBOUND_MESSAGING_AVAILABLE = c.outboundMessaging;
   GOOGLE_AUTH_ENABLED = c.googleSignIn;
   APPLE_AUTH_ENABLED = c.appleSignIn;
   SOCIAL_SIGN_IN = socialSignInProviders({ platform: Platform.OS, googleEnabled: GOOGLE_AUTH_ENABLED, googleWebClientId: GOOGLE_WEB_CLIENT_ID, appleEnabled: APPLE_AUTH_ENABLED });

@@ -99,8 +99,17 @@ describe("generateBusinessCoaching", () => {
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
     expect(insight?.priority).toBe("critical");
-    expect(insight?.evidence).toContain("$600.00 outstanding");
+    expect(insight?.evidence).toContain("$600 outstanding");
     expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: "outstanding_payments" });
+  });
+
+  it("writes amounts in the business's own currency", () => {
+    const input = { ...baseInput(), currency: "EUR" };
+    input.summary.recoveredRevenue = { total: 2000, missedCall: 0, comebackCompletedCount: 0, outstanding: 1614, appointmentCollected: 0, appointmentOutstanding: 0 };
+    addAudience(input, "outstanding_payments", { totalCustomers: 2, outstandingPayments: 1614 });
+
+    const insight = generateBusinessCoaching(input).find((i) => i.key === "outstanding_revenue");
+    expect(insight?.context).toBe("€1,614 from won jobs has not been marked as paid.");
   });
 
   it("generates a high (not critical) outstanding_revenue insight when under half is unpaid", () => {
@@ -218,7 +227,7 @@ describe("generateBusinessCoaching", () => {
     addAudience(input, key, { label, totalCustomers: 2, revenue: 2400, averageValue: 1200 });
 
     const insight = generateBusinessCoaching(input).find((i) => i.key === `${key}_audience`);
-    expect(insight?.evidence).toEqual([`2 customers in ${label}`, "$2400.00 total value", "Average value: $1200.00"]);
+    expect(insight?.evidence).toEqual([`2 customers in ${label}`, "$2,400 total value", "Average value: $1,200"]);
     expect(insight?.actionLink).toEqual({ kind: "audience", audienceKey: key });
     expect(insight?.priority).toBe("low");
   });

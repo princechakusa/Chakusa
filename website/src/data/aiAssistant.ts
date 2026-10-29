@@ -30,8 +30,8 @@
 //   removed.
 // - "Book a Live Walkthrough" - no such scheduling flow is confirmed to
 //   exist; CTA points to the real get-started flow and product page
-//   instead, and describes a 14-day free trial, not a permanent free
-//   plan.
+//   instead, and describes a time-limited free trial (length set in the admin
+//   console), not a permanent free plan.
 export const aiHero = {
   badge: "AI with human oversight",
   title: "An AI assistant for customer conversations, with your rules and a human in the loop.",

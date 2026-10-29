@@ -35,10 +35,10 @@ const query = (values: Record<string, string | number | boolean | undefined>) =>
 };
 
 export const customerAuthApi = {
-  register: (body: { email: string; password: string; fullName: string; displayName?: string; phone?: string }) =>
+  register: (body: { email: string; password: string; fullName: string; displayName?: string; phone?: string; ageConfirmed: boolean }) =>
     customerHttp.post<CustomerSessionResponse>('/customer/auth/register', body, 'none'),
   login: (body: { email: string; password: string }) => customerHttp.post<CustomerSessionResponse>('/customer/auth/login', body, 'none'),
-  google: (idToken: string) => customerHttp.post<CustomerSessionResponse>('/customer/auth/google', { idToken }, 'none'),
+  google: (idToken: string, ageConfirmed?: boolean) => customerHttp.post<CustomerSessionResponse>('/customer/auth/google', { idToken, ageConfirmed }, 'none'),
   appleChallenge: () => customerHttp.post<{ challengeId: string; nonce: string; state: string; expiresAt: string }>('/customer/auth/apple/challenge', {}, 'none'),
   apple: (body: Record<string, unknown>) => customerHttp.post<CustomerSessionResponse>('/customer/auth/apple', body, 'none'),
   refresh: (refreshToken: string) => customerHttp.post<{ accessToken: string; refreshToken: string; expiresIn: number }>('/customer/auth/refresh', { refreshToken }, 'none'),
@@ -156,7 +156,7 @@ export const customerAssistantApi = {
 export const legalApi = {
   document: (type: LegalDocumentType) => customerHttp.get<LegalDocumentDto>(`/legal/documents/${type}`, 'none'),
   customerStatus: () => customerHttp.get<LegalAcceptanceStatusDto>('/customer/legal/status'),
-  customerAccept: (type: LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
+  customerAccept: (type: LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean }; ageConfirmed?: boolean } = { source: 'app' }) =>
     customerHttp.post<{ id: string }>('/customer/legal/accept', { type, ...body }),
 };
 

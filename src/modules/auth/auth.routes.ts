@@ -122,7 +122,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
     async (request, reply) => {
       const input = googleAuthSchema.parse(request.body);
       const verifiedIdentity = await googleTokenVerifier(input.idToken);
-      const { user, session, refreshToken, isNewUser } = await authenticateGoogleIdentity(verifiedIdentity, input.invitationToken);
+      const { user, session, refreshToken, isNewUser } = await authenticateGoogleIdentity(verifiedIdentity, { invitationToken: input.invitationToken, ageConfirmed: input.ageConfirmed });
       const { user: contextUser, business, role } = await getUserContext(user.id);
       reply.send({
         ...sessionResponse(user.id, session.id, refreshToken),
@@ -177,7 +177,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Auth
       await validateAppleChallenge(proof, "APPLE_SIGN_IN");
       const identity = await appleTokenVerifier(input.identityToken, input.nonce);
       const tokens = await exchangeAndBindAppleCode(input.authorizationCode, input.nonce, identity.providerSubject, identity.email);
-      const result = await authenticateAppleIdentity(identity, tokens.refreshToken, proof, input, input.invitationToken);
+      const result = await authenticateAppleIdentity(identity, tokens.refreshToken, proof, input, { invitationToken: input.invitationToken, ageConfirmed: input.ageConfirmed });
       const context = await getUserContext(result.user.id);
       reply.send({ ...sessionResponse(result.user.id, result.session.id, result.refreshToken), ...context, isNewUser: result.isNewUser });
     },

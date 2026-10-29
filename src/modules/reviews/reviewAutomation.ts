@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { isEntitled } from "../../lib/entitlements.js";
+import { isSubscriptionEntitled } from "../../lib/entitlements.js";
 import { messagingBudgetAvailable } from "../../lib/messaging/messagingBudget.js";
 import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import { parsePhoneNumber } from "../../lib/phone.js";
@@ -70,7 +70,7 @@ export async function sendDueReviewRequests(provider: MessagingProvider = defaul
     const business = appointment.business;
     const customer = appointment.customer;
     if (!customer?.phoneE164) continue;
-    if (!business.subscription || !isEntitled(business.subscription.plan, business.subscription.status, "OUTBOUND_MESSAGING")) continue;
+    if (!business.subscription || !isSubscriptionEntitled(business.subscription, "OUTBOUND_MESSAGING")) continue;
 
     // Due only once the business's configured delay has elapsed since the end.
     if (appointment.endsAt.getTime() + business.reviewRequestDelayHours * 3_600_000 > now.getTime()) continue;

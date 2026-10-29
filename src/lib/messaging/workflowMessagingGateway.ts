@@ -1,4 +1,5 @@
 import type { MessageType } from "@prisma/client";
+import { resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../entitlements.js";
 import type { IdempotentActionGateway } from "../automation/defaultActions.js";
 import { PermanentActionError } from "../automation/actionRegistry.js";
 import { prisma } from "../prisma.js";
@@ -15,8 +16,9 @@ export class WorkflowMessagingGateway implements IdempotentActionGateway {
       const template = await prisma.messagingTemplateVersion.findFirst({ where: { id: String(config.templateVersionId), status: "PUBLISHED", template: { OR: [{ businessId: context.businessId }, { businessId: null }], deletedAt: null } } });
       if (!template) throw new PermanentActionError("messaging_template_not_published");
     }
-    const subscription = await prisma.subscription.findUnique({ where: { businessId: context.businessId }, select: { plan: true, status: true } });
+    const subscription = await prisma.subscription.findUnique({ where: { businessId: context.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
     if (!subscription) throw new PermanentActionError("messaging_subscription_required");
-    return enqueueMessage({ businessId: context.businessId, customerId, body: String(config.body), messageType: String(config.messageType ?? "custom") as MessageType, channel: config.channel === "whatsapp" ? "whatsapp" : "sms", purpose: config.purpose === "MARKETING" ? "MARKETING" : config.purpose === "TRANSACTIONAL" ? "TRANSACTIONAL" : "SERVICE", actorType: "AUTOMATION", idempotencyKey, correlationId: context.executionId, causationId: context.nodeId }, subscription.plan, subscription.status);
+    const { plan, status } = resolveSubscription(subscription);
+    return enqueueMessage({ businessId: context.businessId, customerId, body: String(config.body), messageType: String(config.messageType ?? "custom") as MessageType, channel: config.channel === "whatsapp" ? "whatsapp" : "sms", purpose: config.purpose === "MARKETING" ? "MARKETING" : config.purpose === "TRANSACTIONAL" ? "TRANSACTIONAL" : "SERVICE", actorType: "AUTOMATION", idempotencyKey, correlationId: context.executionId, causationId: context.nodeId }, plan, status);
   }
 }

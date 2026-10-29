@@ -139,7 +139,7 @@ describe("Invoicing: create from accepted quote (Program 3, Invoicing I3)", () =
     expect((await app.inject({ method: "POST", url: `/invoices/from-quote/${q2.quoteId}`, headers: authHeader(owner.token) })).statusCode).toBe(403);
 
     expect((await app.inject({ method: "POST", url: `/invoices/from-quote/${q2.quoteId}` })).statusCode).toBe(401);
-    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
+    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
     expect((await app.inject({ method: "POST", url: `/invoices/from-quote/${q2.quoteId}`, headers: authHeader(cust.json().accessToken) })).statusCode).toBe(401);
   });
 });

@@ -70,7 +70,7 @@ Depending on where you are, you may have rights to access, correct, export, or d
 Reference: European Commission on data protection (GDPR) - https://commission.europa.eu/law/law-topic/data-protection_en · California Attorney General on the CCPA - https://oag.ca.gov/privacy/ccpa
 
 Children's privacy
-Chakusa is not directed at children, and we don't knowingly collect personal data from anyone under 16.
+Chakusa is for people aged 18 and over. Everyone confirms they are 18 or older when they create an account, and we don't knowingly collect personal data from anyone under 18. If you believe someone under 18 has an account, contact us and we will close it and delete their data.
 
 Security
 Passwords are hashed, never stored in plain text. Sessions are rotated and scoped separately for business accounts, customer accounts, and internal admin access. Any linked sign-in credentials are encrypted at rest. Internal access to production data is limited to what's needed to operate the service, and administrative actions are logged.
@@ -85,7 +85,7 @@ Contact
 To exercise a data right or ask a question about this policy: privacy@chakusarecovery.com.`;
 
 const TERMS_OF_SERVICE = `Agreement
-By creating a Chakusa account, business or customer, you agree to these terms. If you're creating a business account on behalf of a business, you're confirming you have the authority to bind that business to them. You must be of legal age to enter into a contract in your jurisdiction.
+By creating a Chakusa account, business or customer, you agree to these terms. If you're creating a business account on behalf of a business, you're confirming you have the authority to bind that business to them. You must be at least 18 years old, and of legal age to enter into a contract where you live, to create or use a Chakusa account. You confirm this when you sign up.
 
 Two kinds of accounts
 Chakusa serves two roles, which can be held by the same person:

@@ -18,8 +18,8 @@
 //   small nested preview panel, a bottom stat row) is reproduced; the
 //   specific fabricated numbers/dialogue inside it are not.
 // - The final CTA's "14-day free trial" was removed at Stage 3 because
-//   no trial existed yet. Superseded: a real 14-day free trial now
-//   applies to all three plans (see src/data/pricing.ts), so this
+//   no trial existed yet. Superseded: a real Starter free trial now
+//   exists (see src/data/pricingDefaults.ts), so this
 //   claim is no longer fabricated where it appears elsewhere on the
 //   site.
 
@@ -84,5 +84,5 @@ export const finalCta = {
   title: "The modern standard for local service commerce.",
   body: "Whether you're looking for a trusted local service or ready to run your business on one connected platform, Chakusa is ready.",
   customer: { title: "Looking for a trusted service?", copy: "Explore local businesses with real reviews and upfront information.", label: "Explore local businesses" },
-  business: { title: "Run a local business?", copy: "Try Starter free for 14 days. Capture enquiries, manage bookings, and bring customers back.", label: "Start free trial" },
+  business: { title: "Run a local business?", copy: "Try Starter free first. Capture enquiries, manage bookings, and bring customers back.", label: "Start free trial" },
 };

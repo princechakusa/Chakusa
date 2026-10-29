@@ -15,7 +15,7 @@ export const adminAnalyticsQuerySchema = z.object({
 
 export const adminBusinessListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
-  plan: z.enum(["FREE", "PRO", "BUSINESS"]).optional(),
+  plan: z.enum(["FREE", "STARTER", "PRO", "BUSINESS"]).optional(),
   subscriptionStatus: z.enum(["ACTIVE", "TRIALING", "GRACE_PERIOD", "EXPIRED", "CANCELED"]).optional(),
   platformStatus: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
   sort: z.enum(["newest", "oldest", "name"]).default("newest"),
@@ -31,7 +31,7 @@ export const adminUserListQuerySchema = z.object({
 
 export const adminSubscriptionListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
-  plan: z.enum(["FREE", "PRO", "BUSINESS"]).optional(),
+  plan: z.enum(["FREE", "STARTER", "PRO", "BUSINESS"]).optional(),
   status: z.enum(["ACTIVE", "TRIALING", "GRACE_PERIOD", "EXPIRED", "CANCELED"]).optional(),
   ...pagination,
 });

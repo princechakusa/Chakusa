@@ -51,6 +51,28 @@ function GoogleGlyph() {
 }
 
 /** An inline, shaking alert. Rendered close to the controls that raised it. */
+/** The required "I am 18 or older" tick shown on every sign-in and sign-up form. */
+export function AgeConfirmation({ checked, disabled, onChange }: { checked: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <Pressable
+      testID="age-confirmation"
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked, disabled }}
+      aria-checked={checked}
+      accessibilityLabel="I confirm I am 18 or older"
+      disabled={disabled}
+      hitSlop={6}
+      onPress={() => onChange(!checked)}
+      style={styles.ageRow}
+    >
+      <View style={[styles.ageBox, checked && styles.ageBoxChecked]}>
+        {checked ? <Ionicons name="checkmark" size={15} color={authColors.onCoral} /> : null}
+      </View>
+      <Text style={styles.ageText}>I confirm I am 18 or older</Text>
+    </Pressable>
+  );
+}
+
 export function AuthError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
@@ -214,6 +236,10 @@ const styles = StyleSheet.create({
   dimmed: { opacity: 0.5 },
   error: { flexDirection: 'row', alignItems: 'flex-start', gap: authSpace.xs, padding: authSpace.sm, borderRadius: authRadius.md, backgroundColor: '#FDECEC', borderWidth: 1, borderColor: '#F6CFCF' },
   errorText: { ...authType.body, fontSize: 13, lineHeight: 19, color: authColors.danger, flex: 1 },
+  ageRow: { flexDirection: 'row', alignItems: 'center', gap: authSpace.xs, minHeight: 44 },
+  ageBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#9AA79A', alignItems: 'center', justifyContent: 'center', backgroundColor: authColors.surface },
+  ageBoxChecked: { backgroundColor: '#182F2D', borderColor: '#182F2D' },
+  ageText: { ...authType.body, fontSize: 14, color: authColors.ink, flex: 1 },
   segment: { flexDirection: 'row', gap: authSpace.xxs, padding: authSpace.xxs, borderRadius: 16, backgroundColor: '#E8ECE1' },
   segmentPill: { position: 'absolute', top: authSpace.xxs, bottom: authSpace.xxs, left: authSpace.xxs, borderRadius: 12, backgroundColor: '#244638' },
   segmentItem: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 12, gap: 2 },

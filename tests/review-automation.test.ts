@@ -204,7 +204,7 @@ describe("review response workflow + metrics (#20)", () => {
     expect(stored.respondedAt).not.toBeNull();
     expect(stored.respondedByUserId).toBe(b.userId);
 
-    const customer = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `pub-${Date.now()}@ex.com`, password: "password123", fullName: "Public Viewer" } }).then(r => r.json());
+    const customer = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `pub-${Date.now()}@ex.com`, password: "password123", fullName: "Public Viewer" } }).then(r => r.json());
     const profile = await app.inject({ method: "GET", url: `/customer/marketplace/businesses/${b.slug}`, headers: authHeader(customer.accessToken) }).then(r => r.json());
     const shown = profile.reviewsSummary.recent.find((r: { comment: string }) => r.comment === "slow service");
     expect(shown.response).toContain("added staff");

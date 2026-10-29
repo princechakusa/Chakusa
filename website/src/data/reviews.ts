@@ -19,9 +19,9 @@
 //   Replaced with one clearly-labeled illustrative example, no invented
 //   identity or photo attached.
 // - "14-day fully featured testbed" - reworded because it implied a
-//   no-strings-attached testbed rather than the real 14-day free
+//   no-strings-attached testbed rather than the real free
 //   trial that converts to a paid plan; real plans are Starter / Pro
-//   / Business, each with a 14-day free trial (see src/data/pricing.ts).
+//   / Business; Starter has a free trial (see src/data/pricingDefaults.ts).
 export const reviewsHero = {
   badge: "Reviews, without the gate",
   title: "Every customer gets asked. Every answer goes public.",

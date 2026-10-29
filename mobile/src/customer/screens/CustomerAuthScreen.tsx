@@ -5,8 +5,8 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PRIVACY_POLICY_URL, SOCIAL_SIGN_IN, SUPPORT_EMAIL, TERMS_OF_USE_URL } from '../../config';
-import { emailPasswordProblem } from '../../domain/authenticationFlow';
-import { AuthError, AuthInput, AuthModeTabs, ExperienceSegment, OrDivider, SocialButtons, type SocialProvider } from '../../experience/AuthParts';
+import { AGE_CONFIRMATION_MESSAGE, emailPasswordProblem } from '../../domain/authenticationFlow';
+import { AgeConfirmation, AuthError, AuthInput, AuthModeTabs, ExperienceSegment, OrDivider, SocialButtons, type SocialProvider } from '../../experience/AuthParts';
 import { EntryHeader, EntryIntro, EntryBenefits, entryStyles } from '../../experience/AuthEntry';
 import { PressableScale, Reveal } from '../../experience/motion';
 import { authColors, authRadius, authSpace, authType } from '../../experience/authTheme';
@@ -33,6 +33,7 @@ export function CustomerAuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<SocialProvider | 'email' | 'reset' | null>(null);
@@ -55,6 +56,8 @@ export function CustomerAuthScreen() {
 
   const run = async (kind: SocialProvider | 'email' | 'reset', work: () => Promise<unknown>) => {
     if (inFlight.current || auth.status === 'authenticating') return;
+    // Nobody signs in or creates an account without confirming they are 18 or older.
+    if (kind !== 'reset' && !ageConfirmed) { setNotice(null); setError(AGE_CONFIRMATION_MESSAGE); return; }
     inFlight.current = true;
     setError(null);
     setNotice(null);
@@ -75,7 +78,7 @@ export function CustomerAuthScreen() {
     const problem = emailPasswordProblem({ email, password, registering, fullName });
     if (problem) { setError(problem); return; }
     return run('email', () => registering
-      ? auth.registerWithEmail({ email: email.trim(), password, fullName: fullName.trim() })
+      ? auth.registerWithEmail({ email: email.trim(), password, fullName: fullName.trim(), ageConfirmed })
       : auth.loginWithEmail(email.trim(), password));
   };
 
@@ -153,6 +156,8 @@ export function CustomerAuthScreen() {
                 )}
               </View>
 
+              <AgeConfirmation checked={ageConfirmed} disabled={busy} onChange={(next) => { setAgeConfirmed(next); clearMessages(); }} />
+
               <PressableScale
                 testID="auth-submit"
                 accessibilityRole="button"
@@ -178,7 +183,7 @@ export function CustomerAuthScreen() {
               {SOCIAL_SIGN_IN.any ? (
                 <>
                   <OrDivider label="or continue with" />
-                  <SocialButtons pending={pending === 'google' || pending === 'apple' ? pending : null} disabled={busy} onGoogle={() => void run('google', auth.signInWithGoogle)} onApple={() => void run('apple', auth.signInWithApple)} />
+                  <SocialButtons pending={pending === 'google' || pending === 'apple' ? pending : null} disabled={busy} onGoogle={() => void run('google', () => auth.signInWithGoogle(ageConfirmed))} onApple={() => void run('apple', () => auth.signInWithApple(ageConfirmed))} />
                 </>
               ) : null}
             </View>

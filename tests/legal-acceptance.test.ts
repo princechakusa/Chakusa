@@ -26,7 +26,7 @@ import { createTestApp, authHeader, registerAccount, resetDatabase } from "./hel
 
 async function registerCustomer(app: FastifyInstance, overrides: Partial<{ email: string }> = {}) {
   const email = overrides.email ?? `legal-cust-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email, password: "password123", fullName: "Legal Test Customer" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email, password: "password123", fullName: "Legal Test Customer" } });
   if (res.statusCode !== 201) throw new Error(`customer register failed: ${res.body}`);
   const body = res.json();
   return { email, token: body.accessToken as string, profileId: body.profile.id as string, userId: body.user.id as string };
@@ -139,6 +139,33 @@ describe("legal document platform", () => {
     });
   });
 
+  describe("18+ confirmation on the Terms", () => {
+    it("refuses a Terms acceptance without the 18+ confirmation and records it when given", async () => {
+      const session = await admin(app);
+      await publishVersion(app, session, "TERMS_OF_SERVICE");
+      const customer = await registerCustomer(app);
+
+      for (const payload of [{ type: "TERMS_OF_SERVICE" }, { type: "TERMS_OF_SERVICE", ageConfirmed: false }]) {
+        const refused = await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload });
+        expect(refused.statusCode).toBe(400);
+      }
+      expect(await prisma.legalAcceptanceEvent.count()).toBe(0);
+
+      const accepted = await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true } });
+      expect(accepted.statusCode).toBe(200);
+      const event = await prisma.legalAcceptanceEvent.findFirstOrThrow();
+      expect(event.metadata).toEqual({ ageConfirmed: true, minimumAge: 18 });
+    });
+
+    it("does not ask for the confirmation on other documents", async () => {
+      const session = await admin(app);
+      await publishVersion(app, session, "PRIVACY_POLICY");
+      const account = await registerAccount(app);
+      const accepted = await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "PRIVACY_POLICY" } });
+      expect(accepted.statusCode).toBe(200);
+    });
+  });
+
   describe("customer acceptance", () => {
     it("lists a document as pending until the customer accepts the currently published version", async () => {
       const session = await admin(app);
@@ -151,7 +178,7 @@ describe("legal document platform", () => {
       const pendingTypes = before.json().pending.map((p: { type: string }) => p.type).sort();
       expect(pendingTypes).toEqual(["AI_DISCLOSURE", "PRIVACY_POLICY", "TERMS_OF_SERVICE"]);
 
-      const accept = await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE", source: "onboarding" } });
+      const accept = await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true, source: "onboarding" } });
       expect(accept.statusCode).toBe(200);
 
       const after = await app.inject({ method: "GET", url: "/customer/legal/status", headers: authHeader(customer.token) });
@@ -178,8 +205,8 @@ describe("legal document platform", () => {
       const session = await admin(app);
       await publishVersion(app, session, "TERMS_OF_SERVICE");
       const customer = await registerCustomer(app);
-      await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE" } });
-      await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE" } });
+      await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true } });
+      await app.inject({ method: "POST", url: "/customer/legal/accept", headers: authHeader(customer.token), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true } });
       const events = await prisma.legalAcceptanceEvent.findMany({ where: { userId: customer.userId } });
       expect(events).toHaveLength(2);
     });
@@ -216,7 +243,7 @@ describe("legal document platform", () => {
       const session = await admin(app);
       await publishVersion(app, session, "TERMS_OF_SERVICE");
       const account = await registerAccount(app);
-      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "TERMS_OF_SERVICE" } });
+      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true } });
       const event = await prisma.legalAcceptanceEvent.findFirstOrThrow({ where: { userId: account.userId } });
       expect(event.scope).toBe("BUSINESS");
     });
@@ -226,7 +253,7 @@ describe("legal document platform", () => {
       await publishVersion(app, session, "TERMS_OF_SERVICE");
       await publishVersion(app, session, "PRIVACY_POLICY");
       const account = await registerAccount(app);
-      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "TERMS_OF_SERVICE" } });
+      await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "TERMS_OF_SERVICE", ageConfirmed: true } });
       await app.inject({ method: "POST", url: "/business/legal/accept", headers: authHeader(account.accessToken), payload: { type: "PRIVACY_POLICY" } });
 
       const history = await app.inject({ method: "GET", url: "/business/legal/history", headers: authHeader(account.accessToken) });

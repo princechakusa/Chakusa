@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
-import { isEntitled } from "../entitlements.js";
+import { isSubscriptionEntitled, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { createAutomationRun } from "../../modules/automation/automation.service.js";
 import { buildCustomerRetentionDedupeKey, buildLeadCreatedDedupeKey, buildLeadFollowUpDedupeKey, buildReviewRequestFollowUpDedupeKey } from "./dedupeKey.js";
@@ -34,9 +34,9 @@ export async function scheduleMissedCallFollowUp(businessId: string, lead: Lead)
     if (!business || business.platformStatus !== "ACTIVE") return;
     const subscription = await prisma.subscription.findUnique({
       where: { businessId },
-      select: { plan: true, status: true },
+      select: SUBSCRIPTION_ENTITLEMENT_SELECT,
     });
-    if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) return;
+    if (!subscription || !isSubscriptionEntitled(subscription, "AUTOMATION")) return;
 
     // At most one rule per channel exists (unique businessId+trigger+channel).
     // Each enabled channel (SMS and/or WhatsApp) sends its own follow-up, so
@@ -107,8 +107,8 @@ export async function sweepLeadFollowUps(now: Date = new Date()): Promise<void> 
 
   for (const rule of rules) {
     try {
-      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: { plan: true, status: true } });
-      if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) continue;
+      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+      if (!subscription || !isSubscriptionEntitled(subscription, "AUTOMATION")) continue;
 
       const config = rule.config as { leadStatuses?: LeadStatus[] } | null;
       const statuses = config?.leadStatuses && config.leadStatuses.length > 0 ? config.leadStatuses : DEFAULT_LEAD_FOLLOW_UP_STATUSES;
@@ -154,8 +154,8 @@ export async function sweepCustomerRetention(now: Date = new Date()): Promise<vo
 
   for (const rule of rules) {
     try {
-      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: { plan: true, status: true } });
-      if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) continue;
+      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+      if (!subscription || !isSubscriptionEntitled(subscription, "AUTOMATION")) continue;
 
       const business = await prisma.business.findUnique({ where: { id: rule.businessId }, select: { reminderDays: true } });
       const config = rule.config as { minDaysSinceVisit?: number } | null;
@@ -196,8 +196,8 @@ export async function sweepReviewRequestFollowUps(now: Date = new Date()): Promi
   const rules = await prisma.automationRule.findMany({ where: { triggerType: "REVIEW_REQUEST_FOLLOW_UP", enabled: true, channel: "SMS", business: { platformStatus: "ACTIVE" } } });
   for (const rule of rules) {
     try {
-      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: { plan: true, status: true } });
-      if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) continue;
+      const subscription = await prisma.subscription.findUnique({ where: { businessId: rule.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+      if (!subscription || !isSubscriptionEntitled(subscription, "AUTOMATION")) continue;
       const cutoff = new Date(now.getTime() - rule.delaySeconds * 1000);
       const requests = await prisma.reviewRequest.findMany({
         where: { businessId: rule.businessId, customerId: { not: null }, status: { in: ["sent", "opened"] }, sentAt: { not: null, lte: cutoff }, publicTokenConsumedAt: null },

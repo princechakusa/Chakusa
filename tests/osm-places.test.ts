@@ -8,7 +8,7 @@ import { createTestApp, registerAccount, resetDatabase } from "./helpers.js";
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
 async function registerCustomer(app: FastifyInstance) {
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`, password: "password123", fullName: "Casey" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`, password: "password123", fullName: "Casey" } });
   return res.json().accessToken as string;
 }
 

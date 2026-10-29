@@ -448,6 +448,16 @@ No declaration should claim a feature/control exists unless the shipped app actu
   fixed 9 defects, including web `Alert.alert` being a no-op.
 - Report: `docs/progress/2026-09-26-auth-fix-motion-location-e2e.md`.
 
+**2026-10-29 progress (within #26):**
+- Plans are Starter / Pro / Business, with prices and trial days set in the admin
+  console (App configuration), never in code. Starter has a 7-day trial.
+- New Subscription and Business Insights screens.
+- Subscription-bypass hardening: every limit and feature check uses the
+  effective plan (a lapsed or stale subscription counts as Free), and
+  ambiguous store product IDs fail closed. Store setup is OA-18; the
+  production store environment switch is OA-20.
+- Report: `docs/progress/2026-10-29-starter-plan-pricing-insights.md`.
+
 ---
 
 # 9. POST-V1 / CONTROLLED EXPANSION BACKLOG

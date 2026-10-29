@@ -35,6 +35,10 @@
 .pr-plan__tagline{margin:.6rem 0 1.25rem;color:var(--body-text);font-size:.82rem;line-height:1.5;min-height:3.6rem}
 .pr-plan__price{display:flex;align-items:baseline;gap:.4rem;margin:0;font-family:var(--font-heading);font-size:2.75rem;font-weight:700;line-height:1;color:var(--heading)}
 .pr-plan__price em{font-family:var(--font);font-style:normal;font-size:.75rem;font-weight:600;color:var(--body-text)}
+.pr-plan__trial{display:inline-flex;align-items:center;gap:.4rem;align-self:flex-start;margin:.65rem 0 0;padding:.3rem .7rem;border-radius:999px;background:var(--surface-soft,rgba(0,102,108,.1));color:var(--secondary,#00666c);font-size:.72rem;font-weight:700}
+.pr-plan__trial[hidden]{display:none}
+.pr-plan__trial svg{width:14px;height:14px;flex:none}
+.pr-plan__trial span{white-space:nowrap}
 .pr-plan__note{margin:.5rem 0 1.5rem;color:var(--body-text);font-size:.72rem;line-height:1.5}
 .pr-plan__included{margin:1.25rem 0 .75rem;padding-top:1.25rem;border-top:1px solid var(--hairline);color:var(--heading);font-size:.72rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .pr-plan ul{list-style:none;display:grid;gap:.75rem;margin:0 0 1.75rem;padding:0}

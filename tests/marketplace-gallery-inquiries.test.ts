@@ -13,7 +13,7 @@ const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a
 
 async function registerCustomer(app: FastifyInstance, fullName = "Casey Customer") {
   const email = `cust-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email, password: "password123", fullName } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email, password: "password123", fullName } });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.body}`);
   const body = res.json();
   return { token: body.accessToken as string, profileId: body.profile.id as string };

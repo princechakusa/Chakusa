@@ -37,6 +37,7 @@ const legalAcceptSchema = z.object({
   // "customize" as the source value plus these booleans covers the brief's
   // required cookie-consent actions without a second consent mechanism.
   cookiePreferences: cookiePreferencesSchema.optional(),
+  ageConfirmed: z.boolean().optional(),
 });
 
 export default async function customerRoutes(fastify: FastifyInstance) {
@@ -92,6 +93,7 @@ export default async function customerRoutes(fastify: FastifyInstance) {
       device: request.headers["user-agent"],
       ipAddress: request.ip,
       cookiePreferences: input.cookiePreferences,
+      ageConfirmed: input.ageConfirmed,
       sessionId: request.customer!.sessionId,
     });
   });

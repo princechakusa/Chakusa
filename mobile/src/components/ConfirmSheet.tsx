@@ -74,6 +74,62 @@ function ConfirmSheet({ options, onSettle }: { options: ConfirmOptions | null; o
   );
 }
 
+export type SignOutChoice = 'device' | 'all';
+
+/**
+ * Sign out, asking where: this device, or every device. Shared by the business
+ * and customer apps so both offer the same choice in the same place.
+ *
+ *   const { chooseSignOut, sheet } = useSignOutSheet();
+ *   const choice = await chooseSignOut(); // 'device' | 'all' | null (cancelled)
+ */
+export function useSignOutSheet() {
+  const [open, setOpen] = useState(false);
+  const resolver = useRef<((value: SignOutChoice | null) => void) | null>(null);
+  const settle = useCallback((value: SignOutChoice | null) => {
+    resolver.current?.(value);
+    resolver.current = null;
+    setOpen(false);
+  }, []);
+  const chooseSignOut = useCallback(() => new Promise<SignOutChoice | null>((resolve) => {
+    resolver.current?.(null);
+    resolver.current = resolve;
+    setOpen(true);
+  }), []);
+  const sheet = <SignOutSheet open={open} onSettle={settle} />;
+  return { chooseSignOut, sheet };
+}
+
+function SignOutSheet({ open, onSettle }: { open: boolean; onSettle: (value: SignOutChoice | null) => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={open} transparent animationType="fade" statusBarTranslucent onRequestClose={() => onSettle(null)}>
+      <Pressable accessibilityLabel="Dismiss" style={styles.backdrop} onPress={() => onSettle(null)} />
+      {open ? (
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, authSpace.md) + authSpace.xs }]} accessibilityViewIsModal>
+          <View style={styles.grabber} />
+          <View style={[styles.iconWrap, { backgroundColor: '#FDECEC' }]}>
+            <Ionicons name="log-out-outline" size={26} color={authColors.danger} />
+          </View>
+          <Text accessibilityRole="header" style={styles.title}>Sign out?</Text>
+          <Text style={styles.message}>Sign out of this device only, or of every device where you use Chakusa.</Text>
+          <View style={styles.actions}>
+            <Pressable accessibilityRole="button" onPress={() => onSettle('device')} style={({ pressed }) => [styles.button, { backgroundColor: authColors.danger }, pressed && styles.pressed]}>
+              <Text style={styles.confirmText}>Sign out of this device</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => onSettle('all')} style={({ pressed }) => [styles.button, styles.outline, pressed && styles.pressed]}>
+              <Text style={styles.outlineText}>Sign out of all devices</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => onSettle(null)} style={({ pressed }) => [styles.button, styles.cancel, pressed && styles.pressed]}>
+              <Text style={styles.cancelText}>Stay signed in</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(14,17,22,0.45)' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: authColors.surface, borderTopLeftRadius: authRadius.xl, borderTopRightRadius: authRadius.xl, paddingHorizontal: authSpace.lg, paddingTop: authSpace.xs, alignItems: 'center' },
@@ -87,4 +143,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.75 },
   confirmText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: '#FFFFFF' },
   cancelText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: authColors.ink },
+  outline: { borderWidth: 1.5, borderColor: authColors.danger, backgroundColor: authColors.surface },
+  outlineText: { fontFamily: authFont.bodySemibold, fontSize: 15, color: authColors.danger },
 });

@@ -7,6 +7,7 @@ const client = realm === "client";
   <label>{client ? "Email address" : "Business email"}<input name="email" type="email" inputmode="email" autocomplete="username" maxlength="254" placeholder={client ? "you@example.com" : "owner@business.com"} required /></label>
   <label>Password<span class="password-field"><input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="256" placeholder="Enter your password" required /><button type="button" data-password-toggle aria-label="Show password">Show</button></span></label>
   <label class="remember"><input name="remember" type="checkbox" /> <span>Remember this device for 30 days</span></label>
+  <label class="legal-check"><input name="ageConfirmed" type="checkbox" required /><span>I confirm I am 18 or older.</span></label>
   <label class="legal-check" data-legal-consent hidden><input name="acceptedLegal" type="checkbox" /><span>I agree to the <a href="/terms" target="_blank">Terms of Service</a>, <a href="/privacy" target="_blank">Privacy Policy</a>, and <a href="/ai-disclosure" target="_blank">AI Disclosure</a>.</span></label>
   <div class="turnstile-slot" data-turnstile aria-label="Security check"></div>
   <button class={`auth-submit auth-submit--${realm}`} type="submit" disabled><span>{client ? "Sign in as client" : "Sign in as business"}</span><span aria-hidden="true">→</span></button>

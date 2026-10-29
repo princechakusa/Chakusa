@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useConfirmSheet } from '../../components/ConfirmSheet';
+import { useConfirmSheet, useSignOutSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { useExperience } from '../../experience/experienceContext';
@@ -48,16 +48,19 @@ function MenuRow({ icon, label, detail, onPress, disabled = false, danger = fals
 
 export function CustomerAccountScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, profile, logout } = useCustomerAuth();
+  const { user, profile, logout, logoutAll } = useCustomerAuth();
   const { company } = useRuntimeConfig();
   const { switching, switchExperience } = useExperience();
 
   const { confirm, sheet } = useConfirmSheet();
+  const { chooseSignOut, sheet: signOutSheet } = useSignOutSheet();
   const confirmSwitch = async () => {
     if (await confirm({ title: 'Switch to business?', message: 'You will go to your Chakusa business tools: bookings, customers and growth. You can switch back any time.', confirmLabel: 'Yes, switch', cancelLabel: 'No, stay here', icon: 'swap-horizontal-outline' })) await switchExperience('business');
   };
   const confirmSignOut = async () => {
-    if (await confirm({ title: 'Sign out?', message: 'You can sign back in any time with the same account.', confirmLabel: 'Yes, sign out', cancelLabel: 'No, stay signed in', destructive: true, icon: 'log-out-outline' })) await logout();
+    const choice = await chooseSignOut();
+    if (choice === 'all') await logoutAll().catch(() => undefined);
+    else if (choice === 'device') await logout();
   };
 
   return (
@@ -114,6 +117,7 @@ export function CustomerAccountScreen() {
       </View>
       <Text style={styles.copyright}>{copyrightLine(company)}</Text>
       {sheet}
+      {signOutSheet}
     </Screen>
   );
 }

@@ -611,3 +611,109 @@ test number. To go live the owner must:
    `https://chakusa-api.onrender.com/webhooks/meta/whatsapp` with the same verify token, and
    subscribe to `messages`.
 7. Optional: complete Meta business verification to raise sending limits.
+
+## OA-18 — Starter plan and new prices in App Store Connect and Google Play (2026-10-29) — OPEN
+
+The apps and website now sell three plans: **Starter $3, Pro $8, Business $13** a
+month, with a **7-day free trial on Starter only**. The apps show the store's own
+price and trial; the website and the plan cards' fallback copy read the admin
+console (Settings → App configuration: "Starter/Pro/Business price", "free trial
+days"). Keep those settings equal to what you set in the stores. Only you can do
+these steps:
+
+1. **App Store Connect** → Chakusa → Subscriptions → the existing subscription group:
+   - Create the auto-renewable subscription **Starter**, product ID
+     `com.chakusa.mobile.starter.monthly`, 1 month. Put it at the lowest level of
+     the group (Business highest, then Pro, then Starter), so Apple treats
+     Starter → Pro → Business as upgrades.
+   - Set base prices: Starter **$3**, Pro (`com.chakusa.mobile.pro.monthly`) **$8**,
+     Business (`com.chakusa.mobile.business.monthly`) **$13**. Apple uses its
+     nearest price point (e.g. $2.99 / $7.99 / $12.99), so set the admin-console
+     prices to whatever Apple shows.
+   - On Starter, add an **Introductory Offer → Free → 7 days** for new subscribers.
+   - Add review screenshots/metadata so Starter can be submitted with the next build.
+2. **Google Play Console** → Chakusa → Monetize → Subscriptions:
+   - Create a **Starter** subscription with a monthly base plan, and set base prices
+     Starter **$3**, Pro **$8**, Business **$13** (Play converts per country).
+   - On Starter's base plan add an **offer: free trial, 7 days, new customers only**.
+   - **Send engineering the Google product IDs** for Starter, Pro and Business. The
+     Android build reads `EXPO_PUBLIC_GOOGLE_STARTER/PRO/BUSINESS_MONTHLY_PRODUCT_ID`;
+     these are not in `mobile/eas.json` yet, so Android purchases stay off until
+     they are added.
+3. **Render → chakusa-api → Environment** once the products exist:
+   `APPLE_STARTER_MONTHLY_PRODUCT_ID=com.chakusa.mobile.starter.monthly` and
+   `GOOGLE_STARTER_MONTHLY_PRODUCT_ID=<the Play product ID>` (plus
+   `GOOGLE_PRO_MONTHLY_PRODUCT_ID` / `GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID` if not set).
+   Until then the server refuses Starter purchases (fails closed), so no one can get
+   Starter without it existing in the store. Each product ID must be different: if
+   two plans share an ID the server refuses both rather than unlock the higher plan.
+4. The Starter migration (`20261029120000_starter_plan`, adds one enum value) is
+   additive and runs with the normal `prisma migrate deploy` on the next deploy.
+
+## OA-19 — Rotate the two tokens that were pasted into chat (2026-10-29) — OPEN
+
+Two credentials were pasted into an engineering chat. Neither is in git, but treat
+them as exposed:
+
+1. **Meta WhatsApp webhook verify token.** Pick a new random value, set it in Render
+   (`META_WHATSAPP_VERIFY_TOKEN`), then in Meta for Developers → Chakusa → WhatsApp →
+   Configuration → Webhook → Edit, enter the same value and verify again.
+2. **PaMarket AMOS user token.** Revoke it wherever it was issued and create a new
+   one; update whatever uses it.
+
+## OA-20 — Store environment for real purchases before public launch (2026-10-29) — DECISION
+
+The API grants a plan only from purchases whose store environment matches
+`APPLE_STORE_ENVIRONMENT` (it governs Apple and Google). The default is `SANDBOX`, so
+while it is unset, free sandbox purchases (TestFlight testers, Play license
+testers) unlock real plans and production purchases are refused. Before public
+sale, set `APPLE_STORE_ENVIRONMENT=PRODUCTION` in Render. Note Apple's App Review
+buys in sandbox against the live server; if a review build needs to test
+purchases, keep `SANDBOX` until approval and switch right after, or ask
+engineering to add a reviewer-only sandbox allowance.
+
+## OA-21 — Before submitting builds for store review: messaging and reviewer notes (2026-10-29) — OPEN
+
+Production WhatsApp runs on Meta's **test** number, which can only message the
+verified test recipients. A reviewer who sends a review or comeback campaign to
+any other number would see failed messages.
+
+1. **Render → chakusa-api → Environment:** set `META_WHATSAPP_ENABLED=false` until the
+   real business number is registered (OA-12). With no sender configured, the API
+   now tells the apps (`/app-config` → `features.outboundMessaging: false`) and the
+   apps switch to "Prepare messages" (the owner sends from their own phone) instead
+   of queueing sends that would fail. SMS is already off.
+2. **Review notes** (App Store Connect → App Review Information; Play Console → App
+   content → App access): give the demo business login and add: "Messages are
+   prepared in the app and sent by the business owner from their own phone.
+   Automatic WhatsApp sending is switched on per business once its WhatsApp
+   Business number is verified."
+3. The Starter, Pro and Business in-app purchases must exist and be attached to the
+   iOS build before submission (OA-18), or Apple rejects the build.
+
+## OA-22 — 18+ age confirmation: deploy order, legal versions, store declarations (2026-10-29) — OPEN
+
+1. **Deploy order:** deploy the Cloudflare auth gateway (`cloudflare/auth-gateway`, `wrangler deploy`)
+   **before** the API change reaches Render. The new gateway sends `ageConfirmed` (the old API
+   ignores it); the new API refuses website sign-ups from the old gateway.
+2. **Admin console → Legal:** publish new versions of the **Terms of Service** and **Privacy
+   Policy** from the updated default text (18+), with "requires re-acceptance" on, so every existing
+   user confirms they are 18 or older the next time they open the app.
+3. **App Store Connect → App Information → Age Rating:** answer the questionnaire honestly
+   (customers message businesses; marketplace contact with businesses). **Play Console → App
+   content → Target audience:** 18 and over only, not appealing to children.
+4. Before a US launch, ask a lawyer whether any state app-store age law (e.g. Texas, Utah,
+   Louisiana) needs the stores' age-signal APIs on top of the 18+ confirmation.
+
+## OA-23 — Map tiles for production traffic (2026-10-29) — DECISION
+
+The apps draw maps with Leaflet on the public OpenStreetMap tile server (`tile.openstreetmap.org`)
+with the required "© OpenStreetMap contributors" attribution. That server's usage policy allows
+light use only, and it may block heavy or unidentified traffic. Before real launch traffic, pick a
+tile provider (for example MapTiler, Stadia Maps or Thunderforest; most have a free tier) and give
+engineering the tile URL and key; only the one tile URL in `mobile/src/components/map/leafletHtml.ts`
+changes. Already compliant and unchanged: directions open Google Maps with a public Maps URL
+(`google.com/maps/dir/?api=1`), which needs no API key and no Google map in the app; address search
+uses Nominatim at most once a second, cached, with an identifying User-Agent, and since 2026-10-29
+only when the person presses Search (Nominatim forbids search-as-you-type); Google Places ratings
+(off unless `GOOGLE_PLACES_API_KEY` is set) are never stored and never drawn on the OSM map.

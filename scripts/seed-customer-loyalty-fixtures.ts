@@ -66,7 +66,7 @@ async function main() {
   console.log(`[seed-customer-loyalty-fixtures] customer=${profile.id} business=${business.id}`);
 
   // Loyalty program (idempotent - one per business)
-  const program = await prisma.loyaltyProgram.upsert({
+  await prisma.loyaltyProgram.upsert({
     where: { businessId: business.id },
     update: {},
     create: {

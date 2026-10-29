@@ -45,7 +45,7 @@ describe("Google authentication", () => {
   afterAll(async () => { await app.close(); await prisma.$disconnect(); });
 
   it("creates a provider-only user and an existing Chakusa refresh session", async () => {
-    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
+    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body).toMatchObject({ isNewUser: true, business: null, role: null, tokenType: "Bearer" });
@@ -61,8 +61,8 @@ describe("Google authentication", () => {
   });
 
   it("authenticates the same linked Google subject without creating another user", async () => {
-    const first = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
-    const second = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
+    const first = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
+    const second = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
     expect(second.statusCode).toBe(200);
     expect(second.json().user.id).toBe(first.json().user.id);
     expect(second.json().isNewUser).toBe(false);
@@ -72,14 +72,14 @@ describe("Google authentication", () => {
   });
 
   it.each(["malformed", "invalid-signature"])("rejects an invalid Google token: %s", async (idToken) => {
-    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken } });
+    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken } });
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe("GOOGLE_TOKEN_INVALID");
   });
 
   it("fails clearly when Google server credentials are missing", async () => {
     const unconfiguredApp = await createTestApp();
-    const response = await unconfiguredApp.inject({ method: "POST", url: "/auth/google", payload: { idToken: "not-trusted" } });
+    const response = await unconfiguredApp.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "not-trusted" } });
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe("GOOGLE_AUTH_NOT_CONFIGURED");
     await unconfiguredApp.close();
@@ -93,7 +93,7 @@ describe("Google authentication", () => {
     // is checked before any HTTP call.
     expect(config.GOOGLE_AUTH_ENABLED).toBe(false);
     const unconfiguredApp = await createTestApp();
-    const response = await unconfiguredApp.inject({ method: "POST", url: "/auth/google", payload: { idToken: "irrelevant" } });
+    const response = await unconfiguredApp.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "irrelevant" } });
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe("GOOGLE_AUTH_NOT_CONFIGURED");
     await unconfiguredApp.close();
@@ -151,7 +151,7 @@ describe("Google authentication", () => {
 
   it("requires explicit linking when a verified Google email matches an existing account", async () => {
     await registerAccount(app, { email: "shared@example.com" });
-    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "shared-email" } });
+    const response = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "shared-email" } });
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe("ACCOUNT_LINK_REQUIRED");
     expect(await prisma.authIdentity.count()).toBe(0);
@@ -166,7 +166,7 @@ describe("Google authentication", () => {
     expect(linked.statusCode).toBe(200);
     expect(linked.json()).toMatchObject({ provider: "GOOGLE", providerEmail: "shared@example.com" });
 
-    const signIn = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "shared-email" } });
+    const signIn = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "shared-email" } });
     expect(signIn.statusCode).toBe(200);
     expect(signIn.json().user.id).toBe(account.userId);
     expect(signIn.json().business.id).toBe(account.businessId);
@@ -210,7 +210,7 @@ describe("Google authentication", () => {
   });
 
   it("allows a new Google user to continue through business onboarding", async () => {
-    const auth = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
+    const auth = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
     expect(auth.json().business).toBeNull();
     const business = await app.inject({
       method: "POST", url: "/business", headers: authHeader(auth.json().accessToken), payload: { name: "Google Business", industry: "salon" },
@@ -221,7 +221,7 @@ describe("Google authentication", () => {
   });
 
   it("deletes a provider-only account after fresh Google reauthentication", async () => {
-    const auth = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
+    const auth = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
     const response = await app.inject({
       method: "POST",
       url: "/auth/delete-account",
@@ -234,11 +234,11 @@ describe("Google authentication", () => {
   });
 
   it("preserves tenant isolation between Google users", async () => {
-    const first = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "valid-new" } });
+    const first = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "valid-new" } });
     await app.inject({ method: "POST", url: "/business", headers: authHeader(first.json().accessToken), payload: { name: "First" } });
     const customer = await app.inject({ method: "POST", url: "/customers", headers: authHeader(first.json().accessToken), payload: { name: "Private Customer" } });
 
-    const second = await app.inject({ method: "POST", url: "/auth/google", payload: { idToken: "second-google" } });
+    const second = await app.inject({ method: "POST", url: "/auth/google", payload: { ageConfirmed: true, idToken: "second-google" } });
     await app.inject({ method: "POST", url: "/business", headers: authHeader(second.json().accessToken), payload: { name: "Second" } });
     const forbidden = await app.inject({ method: "GET", url: `/customers/${customer.json().id}`, headers: authHeader(second.json().accessToken) });
     expect(forbidden.statusCode).toBe(404);
@@ -261,7 +261,7 @@ describe("Google authentication", () => {
     const businessCountBefore = await prisma.business.count();
     const response = await app.inject({
       method: "POST", url: "/auth/google",
-      payload: { idToken: "invited-google", invitationToken: invite.json().token },
+      payload: { ageConfirmed: true, idToken: "invited-google", invitationToken: invite.json().token },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().isNewUser).toBe(true);
@@ -286,7 +286,7 @@ describe("Google authentication", () => {
 
     const response = await app.inject({
       method: "POST", url: "/auth/google",
-      payload: { idToken: "invited-google", invitationToken: invite.json().token },
+      payload: { ageConfirmed: true, idToken: "invited-google", invitationToken: invite.json().token },
     });
     expect(response.statusCode).toBe(404);
     expect(await prisma.user.count({ where: { normalizedEmail: "invited-google@example.com" } })).toBe(0);

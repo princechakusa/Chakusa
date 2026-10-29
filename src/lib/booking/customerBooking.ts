@@ -1,4 +1,5 @@
 import type { AppointmentStatus } from "@prisma/client";
+import { resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT, type SubscriptionEntitlementRow } from "../entitlements.js";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
 import { calculateAvailability } from "../../modules/availability/availability.service.js";
@@ -27,7 +28,7 @@ async function resolveBookableBusiness(slug: string) {
       id: true, ownerId: true, name: true, timezone: true, currency: true,
       cancellationNoticeMinutes: true, defaultAppointmentReminderMinutes: true,
       marketplaceListing: { select: { listed: true, discoverable: true } },
-      subscription: { select: { plan: true } },
+      subscription: { select: SUBSCRIPTION_ENTITLEMENT_SELECT },
     },
   });
   if (!business) throw ApiError.notFound("Business not found");
@@ -89,14 +90,14 @@ export async function getBookingAvailability(slug: string, input: { serviceOffer
  * row every downstream system (appointments, conversations, AI memory) is
  * already keyed on — see the schema comment on CustomerBusinessLink.
  */
-async function ensureBusinessCustomer(customerProfileId: string, business: { id: string; ownerId: string; subscription: { plan: string } | null }) {
+async function ensureBusinessCustomer(customerProfileId: string, business: { id: string; ownerId: string; subscription: SubscriptionEntitlementRow | null }) {
   const link = await prisma.customerBusinessLink.findUnique({
     where: { customerProfileId_businessId: { customerProfileId, businessId: business.id } },
     select: { businessCustomerId: true },
   });
   if (link?.businessCustomerId) return link.businessCustomerId;
 
-  const plan = (business.subscription?.plan ?? "FREE") as never;
+  const { plan } = resolveSubscription(business.subscription);
   const profile = await prisma.customerProfile.findUniqueOrThrow({
     where: { id: customerProfileId },
     select: { displayName: true, phone: true, phoneE164: true, user: { select: { fullName: true, email: true } } },

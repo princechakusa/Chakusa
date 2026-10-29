@@ -31,7 +31,7 @@ async function draftInvoice(app: FastifyInstance, token: string, over: Record<st
 }
 
 async function registerCustomerToken(app: FastifyInstance) {
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c${Date.now()}${Math.random().toString(36).slice(2)}@x.com`, password: "password123", fullName: "C" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c${Date.now()}${Math.random().toString(36).slice(2)}@x.com`, password: "password123", fullName: "C" } });
   return res.json().accessToken as string;
 }
 

@@ -31,7 +31,7 @@ describe("runtime app config", () => {
     const body = res.json();
     expect(body.schemaVersion).toBe(1);
     // Matches today's production builds: automation hidden, email auth off.
-    expect(body.features).toEqual({ automation: true, billing: true, emailAuth: false, passwordReset: false, googleSignIn: true, appleSignIn: true });
+    expect(body.features).toEqual({ automation: true, billing: true, emailAuth: false, passwordReset: false, googleSignIn: true, appleSignIn: true, outboundMessaging: false });
     expect(body.links.privacyUrl).toBe("https://chakusarecovery.com/privacy");
     expect(body.app).toEqual({ minSupportedVersion: null, notice: null, maintenance: false });
     expect(body.company).toMatchObject({ copyrightHolder: "Chakusa", copyrightStartYear: 2026, legalName: null });

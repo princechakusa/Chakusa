@@ -1,20 +1,18 @@
-// MARKETING PRICING PRESENTATION - deliberately separate from live
-// billing implementation (no billing/entitlement enforcement is being
-// built or changed by this file). There is no permanent free plan:
-// all three tiers are presented as a 14-day free trial followed by a
-// paid subscription (Starter at a fixed $9.99/month; Pro and Business
-// at a store-billed, localized price). This is a marketing-copy
-// change only - it does NOT reflect src/lib/entitlements.ts's current
-// PLAN_LIMITS (still "free" there) and does NOT imply the
-// billing/trial/entitlement architecture has been built; that is
-// separate, later work. Feature limits below are otherwise unchanged
-// and still mirror entitlements.ts pending that later work.
+// MARKETING PRICING PRESENTATION. Prices and trial lengths are NOT written
+// here: they come from the admin console's App configuration (see
+// pricingDefaults.ts). What each plan includes mirrors the API's entitlement
+// tables (src/lib/entitlements.ts) and is refreshed from GET /plans in the
+// browser; the lists below are the fallback until that loads.
+import { formatPlanPrice, PRICING_FALLBACK, type PlanKey } from "./pricingDefaults";
+
 export interface PricingTier {
+  plan: PlanKey;
   name: string;
   // Stitch's exact per-card secondary chip badge ("Solo Pro," "High
   // Capacity," "Multi-Location"), sitting beside the tier name.
   chip: string;
   tagline: string;
+  /** Fallback only; the live price is applied by siteConfig.ts. */
   price: string;
   priceNote?: string;
   // Stitch's "EVERYTHING IN [PRIOR TIER], PLUS" / "INCLUDED OPERATIONAL
@@ -29,30 +27,33 @@ export interface PricingTier {
 
 export const pricingTiers: PricingTier[] = [
   {
+    plan: "STARTER",
     name: "Starter",
     chip: "Solo Pro",
     tagline: "For independent barbers, mobile detailers, freelance photographers, and solo trade technicians.",
-    price: "$9.99",
-    priceNote: "per month, after a 14-day free trial. Cancel anytime.",
+    price: formatPlanPrice(PRICING_FALLBACK.monthly.STARTER, PRICING_FALLBACK.currency),
+    priceNote: "per month. Cancel anytime.",
     includedLabel: "Included operational tools",
     features: [
-      "Up to 40 leads a month",
-      "Up to 40 review requests a month",
-      "Up to 200 customers",
-      "Up to 40 open reminders",
-      "1 custom message template per type",
+      "Up to 150 leads a month",
+      "Up to 150 review requests a month",
+      "Up to 1,000 customers",
+      "Up to 150 open reminders",
+      "3 custom message templates per type",
+      "Extended activity history",
       "1 team seat",
     ],
     ctaLabel: "Get started with Starter",
     ctaHref: "/get-started",
-    ctaFootnote: "First 14 days free",
+    ctaFootnote: "Free trial included",
   },
   {
+    plan: "PRO",
     name: "Pro",
     chip: "High Capacity",
     tagline: "For multi-chair salons, automotive service centers, wellness studios, and small dispatched crews.",
-    price: "See store price",
-    priceNote: "First 14 days free, then billed through the App Store or Google Play. The store's localized price is the purchase authority. Cancel anytime.",
+    price: formatPlanPrice(PRICING_FALLBACK.monthly.PRO, PRICING_FALLBACK.currency),
+    priceNote: "per month, billed through the App Store or Google Play in your local currency. Cancel anytime.",
     includedLabel: "Everything in Starter, plus",
     features: [
       "Unlimited leads, review requests, customers, and reminders",
@@ -63,15 +64,16 @@ export const pricingTiers: PricingTier[] = [
     ],
     ctaLabel: "Choose Pro",
     ctaHref: "/get-started",
-    ctaFootnote: "First 14 days free",
+    ctaFootnote: "Billed by your app store",
     featured: true,
   },
   {
+    plan: "BUSINESS",
     name: "Business",
     chip: "Multi-Location",
     tagline: "For trade franchises, multi-location studio operations, and teams with more than one person answering the phone.",
-    price: "See store price",
-    priceNote: "First 14 days free, then billed through the App Store or Google Play. The store's localized price is the purchase authority. Cancel anytime.",
+    price: formatPlanPrice(PRICING_FALLBACK.monthly.BUSINESS, PRICING_FALLBACK.currency),
+    priceNote: "per month, billed through the App Store or Google Play in your local currency. Cancel anytime.",
     includedLabel: "Everything in Pro, plus",
     features: [
       "Everything in Pro",
@@ -79,6 +81,6 @@ export const pricingTiers: PricingTier[] = [
     ],
     ctaLabel: "Choose Business",
     ctaHref: "/get-started",
-    ctaFootnote: "First 14 days free",
+    ctaFootnote: "Billed by your app store",
   },
 ];

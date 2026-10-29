@@ -2,6 +2,7 @@ import { setPublicWebOrigin } from "../../lib/publicWebOrigin.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { outboundEmailConfigured } from "../auth/passwordResetEmail.js";
+import { outboundMessagingConfigured } from "../../lib/messaging/defaultMessagingProvider.js";
 import { recordAdminAudit, type AdminAuditActor, type AdminAuditContext } from "../admin/adminAudit.service.js";
 
 // Runtime app configuration: values the mobile app reads at launch instead
@@ -21,7 +22,7 @@ import { recordAdminAudit, type AdminAuditActor, type AdminAuditContext } from "
 // - Links are https and restricted to approved hosts, so a mistaken or
 //   compromised admin edit cannot point legal/support links off-domain.
 
-export type AppConfigKind = "boolean" | "url" | "email" | "version" | "text" | "year" | "phone";
+export type AppConfigKind = "boolean" | "url" | "email" | "version" | "text" | "year" | "phone" | "price" | "days" | "currency";
 
 interface AppConfigDefinition {
   key: string;
@@ -57,6 +58,16 @@ export const APP_CONFIG_DEFINITIONS = [
   { key: "app.company_address", kind: "text", default: null, label: "Registered address", description: "Shown in legal footers when set." },
   { key: "app.copyright_holder", kind: "text", default: "Chakusa", label: "Copyright holder", description: "Name in the © line." },
   { key: "app.copyright_start_year", kind: "year", default: "2026", label: "Copyright start year", description: "The © line shows this year, or a range up to the current year (e.g. 2026–2027), computed when the page loads." },
+  // Website pricing page. In the apps the App Store / Google Play price is
+  // always the one shown and charged (localized per country); these are the
+  // reference prices the website lists, so they must match the store base price.
+  { key: "app.price_currency", kind: "currency", default: "USD", label: "Website price currency", description: "ISO currency code for the website's plan prices, e.g. USD." },
+  { key: "app.price_starter_monthly", kind: "price", default: "3", label: "Starter price (website)", description: "Monthly Starter price shown on the website. Keep it equal to the App Store / Google Play base price." },
+  { key: "app.price_pro_monthly", kind: "price", default: "8", label: "Pro price (website)", description: "Monthly Pro price shown on the website. Keep it equal to the App Store / Google Play base price." },
+  { key: "app.price_business_monthly", kind: "price", default: "13", label: "Business price (website)", description: "Monthly Business price shown on the website. Keep it equal to the App Store / Google Play base price." },
+  { key: "app.trial_days_starter", kind: "days", default: "7", label: "Starter free trial (days)", description: "Free-trial days advertised for Starter. Must match the Starter introductory offer in App Store Connect and Play Console. 0 = no trial." },
+  { key: "app.trial_days_pro", kind: "days", default: "0", label: "Pro free trial (days)", description: "Free-trial days advertised for Pro. Must match the store offer. 0 = no trial." },
+  { key: "app.trial_days_business", kind: "days", default: "0", label: "Business free trial (days)", description: "Free-trial days advertised for Business. Must match the store offer. 0 = no trial." },
   { key: "app.notice", kind: "text", default: null, label: "In-app notice", description: "Short message shown at the top of the app (max 160 characters). Leave empty for none." },
 ] as const satisfies readonly AppConfigDefinition[];
 
@@ -112,6 +123,21 @@ export function normalizeAppConfigValue(key: string, value: unknown): boolean | 
       if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw ApiError.badRequest("Use international format, e.g. +263771234567");
       return phone;
     }
+    case "price": {
+      const price = String(value).trim().replace(/^\$/, "");
+      if (!/^\d{1,4}(\.\d{1,2})?$/.test(price)) throw ApiError.badRequest("Enter a price like 3 or 7.99");
+      return String(Number(price));
+    }
+    case "days": {
+      const days = String(value).trim();
+      if (!/^\d{1,3}$/.test(days) || Number(days) > 365) throw ApiError.badRequest("Enter a number of days from 0 to 365");
+      return String(Number(days));
+    }
+    case "currency": {
+      const code = String(value).trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(code)) throw ApiError.badRequest("Use a 3-letter currency code like USD");
+      return code;
+    }
     case "text": {
       if (typeof value !== "string") throw ApiError.badRequest("Expected text");
       const text = value.replace(/\s+/g, " ").trim();
@@ -164,6 +190,10 @@ export async function getPublicAppConfig() {
       passwordReset: (v["app.email_auth_enabled"] as boolean) && outboundEmailConfigured(),
       googleSignIn: v["app.google_sign_in_enabled"] as boolean,
       appleSignIn: v["app.apple_sign_in_enabled"] as boolean,
+      // Whether the API can deliver SMS/WhatsApp at all. When it cannot, the
+      // apps prepare messages for the owner to send instead of queueing sends
+      // that would fail. Plan entitlement is still checked separately.
+      outboundMessaging: outboundMessagingConfigured(),
     },
     links: {
       supportEmail: v["app.support_email"] as string,
@@ -187,6 +217,19 @@ export async function getPublicAppConfig() {
       facebookUrl: (v["app.facebook_url"] as string | null) ?? null,
       tiktokUrl: (v["app.tiktok_url"] as string | null) ?? null,
       linkedinUrl: (v["app.linkedin_url"] as string | null) ?? null,
+    },
+    pricing: {
+      currency: v["app.price_currency"] as string,
+      monthly: {
+        STARTER: Number(v["app.price_starter_monthly"]),
+        PRO: Number(v["app.price_pro_monthly"]),
+        BUSINESS: Number(v["app.price_business_monthly"]),
+      },
+      trialDays: {
+        STARTER: Number(v["app.trial_days_starter"]),
+        PRO: Number(v["app.trial_days_pro"]),
+        BUSINESS: Number(v["app.trial_days_business"]),
+      },
     },
     app: {
       minSupportedVersion: (v["app.min_supported_version"] as string | null) ?? null,

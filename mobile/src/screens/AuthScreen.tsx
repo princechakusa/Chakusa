@@ -6,8 +6,8 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PRIVACY_POLICY_URL, SOCIAL_SIGN_IN, TERMS_OF_USE_URL } from '../config';
-import { emailPasswordProblem } from '../domain/authenticationFlow';
-import { AuthError, AuthInput, AuthModeTabs, ExperienceSegment, OrDivider, SocialButtons, type SocialProvider } from '../experience/AuthParts';
+import { AGE_CONFIRMATION_MESSAGE, emailPasswordProblem } from '../domain/authenticationFlow';
+import { AgeConfirmation, AuthError, AuthInput, AuthModeTabs, ExperienceSegment, OrDivider, SocialButtons, type SocialProvider } from '../experience/AuthParts';
 import { EntryHeader, EntryIntro, EntryBenefits, entryStyles } from '../experience/AuthEntry';
 import { PressableScale, Reveal } from '../experience/motion';
 import { authColors, authRadius, authSpace, authType } from '../experience/authTheme';
@@ -35,6 +35,7 @@ export function AuthScreen({ navigation, route }: NativeStackScreenProps<RootSta
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<SocialProvider | 'email' | null>(null);
   // A ref, not state: a second tap can land before the re-render that
@@ -48,6 +49,8 @@ export function AuthScreen({ navigation, route }: NativeStackScreenProps<RootSta
 
   const run = async (kind: SocialProvider | 'email', work: () => Promise<unknown>) => {
     if (inFlight.current) return;
+    // Nobody signs in or creates an account without confirming they are 18 or older.
+    if (!ageConfirmed) { setError(AGE_CONFIRMATION_MESSAGE); return; }
     inFlight.current = true;
     setError(null);
     setPending(kind);
@@ -67,7 +70,7 @@ export function AuthScreen({ navigation, route }: NativeStackScreenProps<RootSta
     const problem = emailPasswordProblem({ email, password, registering, fullName, businessName, needsBusinessName: true });
     if (problem) { setError(problem); return; }
     return run('email', () => registering
-      ? auth.register({ email: email.trim(), password, fullName: fullName.trim(), businessName: businessName.trim() })
+      ? auth.register({ email: email.trim(), password, fullName: fullName.trim(), businessName: businessName.trim(), ageConfirmed })
       : auth.login(email.trim(), password));
   };
 
@@ -134,6 +137,8 @@ export function AuthScreen({ navigation, route }: NativeStackScreenProps<RootSta
                 )}
               </View>
 
+              <AgeConfirmation checked={ageConfirmed} disabled={busy} onChange={(next) => { setAgeConfirmed(next); clearError(); }} />
+
               <PressableScale
                 testID="auth-submit"
                 accessibilityRole="button"
@@ -159,7 +164,7 @@ export function AuthScreen({ navigation, route }: NativeStackScreenProps<RootSta
               {SOCIAL_SIGN_IN.any ? (
                 <>
                   <OrDivider label="or continue with" />
-                  <SocialButtons pending={pending === 'email' ? null : pending} disabled={busy} onGoogle={() => void run('google', () => auth.googleSignIn())} onApple={() => void run('apple', () => auth.appleSignIn())} />
+                  <SocialButtons pending={pending === 'email' ? null : pending} disabled={busy} onGoogle={() => void run('google', () => auth.googleSignIn(undefined, ageConfirmed))} onApple={() => void run('apple', () => auth.appleSignIn(undefined, ageConfirmed))} />
                 </>
               ) : null}
             </View>

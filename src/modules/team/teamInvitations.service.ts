@@ -5,7 +5,7 @@ import { recordActivity } from "../../lib/activity.js";
 import { normalizeEmail } from "../../lib/email.js";
 import { config } from "../../lib/config.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
-import { assertUnderLimit, getPlanLimits, withLimitCheck } from "../../lib/entitlements.js";
+import { assertUnderLimit, getPlanLimits, resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT, withLimitCheck } from "../../lib/entitlements.js";
 import type { CreateInvitationInput } from "./team.schemas.js";
 
 /**
@@ -200,8 +200,8 @@ export async function acceptTeamInvitation(rawToken: string, userId: string): Pr
 
     // Re-read plan freshly rather than trusting anything captured earlier
     // in this request — it lives on a related row, not the invitation.
-    const subscription = await tx.subscription.findUnique({ where: { businessId: invitation.businessId }, select: { plan: true } });
-    const plan = subscription?.plan ?? "FREE";
+    const subscription = await tx.subscription.findUnique({ where: { businessId: invitation.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+    const { plan } = resolveSubscription(subscription);
     const seatLimit = getPlanLimits(plan).staffSeats;
     const current = await tx.businessMember.count({ where: { businessId: invitation.businessId, status: "ACTIVE" } });
     if (seatLimit !== null && current >= seatLimit) {
@@ -278,8 +278,8 @@ export async function claimInvitationForNewUser(
   // exists to someone registering under the wrong email.
   if (invitation.invitedEmail !== normalizedEmail) return { outcome: "email-mismatch" };
 
-  const subscription = await tx.subscription.findUnique({ where: { businessId: invitation.businessId }, select: { plan: true } });
-  const plan = subscription?.plan ?? "FREE";
+  const subscription = await tx.subscription.findUnique({ where: { businessId: invitation.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+  const { plan } = resolveSubscription(subscription);
   const seatLimit = getPlanLimits(plan).staffSeats;
   const current = await tx.businessMember.count({ where: { businessId: invitation.businessId, status: "ACTIVE" } });
   if (seatLimit !== null && current >= seatLimit) return { outcome: "seats-full" };

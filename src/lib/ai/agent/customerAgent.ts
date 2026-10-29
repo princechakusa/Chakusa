@@ -1,4 +1,5 @@
 import type { Plan, SubscriptionStatus } from "@prisma/client";
+import { resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../../entitlements.js";
 import { prisma } from "../../prisma.js";
 import { captureUnexpectedError } from "../../sentry.js";
 import { enqueueMessage } from "../../messaging/messagingPlatform.js";
@@ -262,9 +263,8 @@ export async function handleInboundAIMessage(input: {
   if (!conversation) return { handled: false, reason: "conversation_not_found" };
   if (conversation.automationMode !== "AUTOMATED") return { handled: false, reason: "human_owned" };
 
-  const subscription = await prisma.subscription.findUnique({ where: { businessId: input.businessId }, select: { plan: true, status: true } });
-  const plan: Plan = subscription?.plan ?? "FREE";
-  const status: SubscriptionStatus = subscription?.status ?? "ACTIVE";
+  const subscription = await prisma.subscription.findUnique({ where: { businessId: input.businessId }, select: SUBSCRIPTION_ENTITLEMENT_SELECT });
+  const { plan, status } = resolveSubscription(subscription);
 
   // #15 + #16: business opt-in + per-channel toggle + AI_RECEPTIONIST
   // entitlement + schedule mode (AFTER_HOURS_ONLY only answers outside the

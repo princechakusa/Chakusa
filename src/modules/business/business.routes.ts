@@ -22,6 +22,7 @@ const legalAcceptSchema = z.object({
   platform: z.string().trim().max(40).optional(),
   source: z.string().trim().max(60).default("app"),
   cookiePreferences: cookiePreferencesSchema.optional(),
+  ageConfirmed: z.boolean().optional(),
 });
 
 export default async function businessRoutes(fastify: FastifyInstance) {
@@ -83,6 +84,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
       device: request.headers["user-agent"],
       ipAddress: request.ip,
       cookiePreferences: input.cookiePreferences,
+      ageConfirmed: input.ageConfirmed,
     });
   });
 

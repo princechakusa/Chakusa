@@ -1,5 +1,4 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../lib/errors.js";
 import { withLimitCheck } from "../../lib/entitlements.js";
 import { parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";

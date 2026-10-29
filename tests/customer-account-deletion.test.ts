@@ -4,7 +4,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { createTestApp, registerAccount, resetDatabase } from "./helpers.js";
 
 async function registerCustomer(app: FastifyInstance, email: string) {
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email, password: "Sturdy-pass-71", fullName: "Dee Leet" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email, password: "Sturdy-pass-71", fullName: "Dee Leet" } });
   if (res.statusCode !== 201) throw new Error(res.body);
   return res.json() as { accessToken: string; user: { id: string } };
 }

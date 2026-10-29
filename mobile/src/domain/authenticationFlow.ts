@@ -51,6 +51,9 @@ export function emailPasswordProblem(input: { email: string; password: string; r
   return null;
 }
 
+/** Everyone using Chakusa must be 18 or older; asked on every sign-in and sign-up. */
+export const AGE_CONFIRMATION_MESSAGE = 'Confirm you are 18 or older to continue.';
+
 export function hasCompletedBusinessSetup(business: BusinessDto | null) {
   return Boolean(business?.onboardingCompletedAt);
 }

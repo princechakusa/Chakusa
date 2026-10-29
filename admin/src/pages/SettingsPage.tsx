@@ -16,7 +16,7 @@ function PlatformSettingsSection() {
   return <section className="panel settings-list">{query.data.items.map((setting) => { const enabled = setting.value === true; return <div className="setting-row" key={setting.key}><div className="setting-icon"><SlidersHorizontal size={17} /></div><div className="setting-copy"><strong>{setting.key.replaceAll("_", " ")}</strong><span>{setting.description}</span></div><StatusBadge value={enabled ? "enabled" : "disabled"} /><button className={`button ${enabled ? "danger-outline" : "secondary"}`} disabled={!auth.hasPermission("settings.manage") || mutation.isPending} onClick={() => mutation.mutate({ key: setting.key, enabled: !enabled })}>{enabled ? "Disable" : "Enable"}</button></div>; })}{mutation.error instanceof Error && <p className="error-copy">{mutation.error.message}</p>}</section>;
 }
 
-interface AppConfigItem { key: string; kind: "boolean" | "url" | "email" | "version" | "text"; label: string; description: string; value: boolean | string | null; defaultValue: boolean | string | null; isDefault: boolean; updatedAt: string | null }
+interface AppConfigItem { key: string; kind: "boolean" | "url" | "email" | "version" | "text" | "year" | "phone" | "price" | "days" | "currency"; label: string; description: string; value: boolean | string | null; defaultValue: boolean | string | null; isDefault: boolean; updatedAt: string | null }
 
 // Runtime app configuration: read by the mobile app at launch (GET
 // /app-config), so these take effect without a new app build or store

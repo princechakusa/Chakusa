@@ -1,12 +1,11 @@
 import type { Plan } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { planRank } from "../entitlements.js";
 
 // Owner-granted complimentary plans (COMPLIMENTARY_PLAN_GRANTS), for the
 // owner's own testing and comped accounts while store products are not yet
 // sellable. Applied at startup. Store-managed subscriptions (provider set)
 // are never touched, and a plan is only ever raised, never lowered.
-
-const RANK: Record<Plan, number> = { FREE: 0, PRO: 1, BUSINESS: 2 };
 
 export function parseComplimentaryGrants(raw: string | undefined) {
   if (!raw) return [];
@@ -14,7 +13,7 @@ export function parseComplimentaryGrants(raw: string | undefined) {
     const at = part.lastIndexOf(":");
     const email = part.slice(0, at).trim().toLowerCase();
     const plan = part.slice(at + 1).trim().toUpperCase();
-    return at > 0 && email.includes("@") && (plan === "PRO" || plan === "BUSINESS") ? [{ email, plan: plan as Plan }] : [];
+    return at > 0 && email.includes("@") && (plan === "STARTER" || plan === "PRO" || plan === "BUSINESS") ? [{ email, plan: plan as Plan }] : [];
   });
 }
 
@@ -27,7 +26,7 @@ export async function applyComplimentaryPlans(raw: string | undefined) {
     for (const business of businesses) {
       const current = business.subscription;
       if (current?.provider) continue;
-      if (current && current.status === "ACTIVE" && RANK[current.plan] >= RANK[grant.plan]) continue;
+      if (current && current.status === "ACTIVE" && planRank(current.plan) >= planRank(grant.plan)) continue;
       await prisma.subscription.upsert({
         where: { businessId: business.id },
         create: { businessId: business.id, plan: grant.plan, status: "ACTIVE" },

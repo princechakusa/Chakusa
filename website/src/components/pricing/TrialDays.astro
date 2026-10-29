@@ -1,0 +1,8 @@
+---
+// The number of free-trial days for a plan. The text is the build fallback; the
+// live value (admin console → App configuration) replaces it in the browser.
+import { PRICING_FALLBACK, type PlanKey } from "../../data/pricingDefaults";
+interface Props { plan?: PlanKey }
+const { plan = "STARTER" } = Astro.props;
+---
+<span data-cfg-trial-days={plan}>{PRICING_FALLBACK.trialDays[plan]}</span>

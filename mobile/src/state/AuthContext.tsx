@@ -22,11 +22,11 @@ function snapshotOf(user: AuthResponse['user'], business: AuthResponse['business
 type AuthStatus = 'restoring' | 'restore-error' | 'anonymous' | 'authenticated';
 interface AuthValue {
   status: AuthStatus; restoreError: string | null; user: UserDto | null; business: BusinessDto | null; role: string | null; isOnboarded: boolean;
-  pendingLegalDocuments: PendingLegalDocument[]; refreshLegalStatus: () => Promise<void>; acceptLegalDocument: (type: LegalDocumentType) => Promise<void>;
+  pendingLegalDocuments: PendingLegalDocument[]; refreshLegalStatus: () => Promise<void>; acceptLegalDocument: (type: LegalDocumentType, ageConfirmed?: boolean) => Promise<void>;
   restore: () => Promise<void>; login: (email: string, password: string) => Promise<void>;
-  register: (input: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string }) => Promise<void>;
-  googleSignIn: (invitationToken?: string) => Promise<boolean>; linkGoogle: () => Promise<boolean>;
-  appleSignIn: (invitationToken?: string) => Promise<boolean>; linkApple: () => Promise<boolean>;
+  register: (input: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string; ageConfirmed: boolean }) => Promise<void>;
+  googleSignIn: (invitationToken: string | undefined, ageConfirmed: boolean) => Promise<boolean>; linkGoogle: () => Promise<boolean>;
+  appleSignIn: (invitationToken: string | undefined, ageConfirmed: boolean) => Promise<boolean>; linkApple: () => Promise<boolean>;
   logout: () => Promise<void>; logoutAll: () => Promise<void>; forgotPassword: (email: string) => Promise<string>;
   resetPassword: (token: string, password: string) => Promise<string>; deleteAccount: (password: string) => Promise<void>;
   deleteAccountWithGoogle: () => Promise<boolean>;
@@ -149,8 +149,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [clearSession, refreshLegalStatus]);
   useEffect(() => { void restore(); return () => { authAttempt.current++; restoreAbort.current?.abort(); }; }, [restore]);
 
-  const acceptLegalDocument = useCallback(async (type: LegalDocumentType) => {
-    await legalApi.businessAccept(type);
+  const acceptLegalDocument = useCallback(async (type: LegalDocumentType, ageConfirmed?: boolean) => {
+    await legalApi.businessAccept(type, { source: 'app', ageConfirmed });
     setPendingLegalDocuments(current => withoutAccepted(current, type));
   }, []);
 
@@ -160,9 +160,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     pendingLegalDocuments, refreshLegalStatus, acceptLegalDocument,
     login: async (email, password) => { const attempt = ++authAttempt.current; await applySession(await authApi.login({ email, password }), attempt); },
     register: async input => { const attempt = ++authAttempt.current; await applySession(await authApi.register(input), attempt); },
-    googleSignIn: async invitationToken => { const attempt = ++authAttempt.current; const idToken = await requestGoogleIdToken(); if (!idToken || attempt !== authAttempt.current) return false; await applySession(await authApi.google(idToken, invitationToken), attempt); return attempt === authAttempt.current; },
+    googleSignIn: async (invitationToken, ageConfirmed) => { const attempt = ++authAttempt.current; const idToken = await requestGoogleIdToken(); if (!idToken || attempt !== authAttempt.current) return false; await applySession(await authApi.google(idToken, invitationToken, ageConfirmed), attempt); return attempt === authAttempt.current; },
     linkGoogle: async () => { const idToken = await requestGoogleIdToken({ fresh: true }); if (!idToken) return false; await authApi.linkGoogle(idToken); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'GOOGLE' as const])] } : current); return true; },
-    appleSignIn: async invitationToken => { const attempt = ++authAttempt.current; const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential || attempt !== authAttempt.current) return false; await applySession(await authApi.apple({ ...credential, invitationToken }), attempt); return attempt === authAttempt.current; },
+    appleSignIn: async (invitationToken, ageConfirmed) => { const attempt = ++authAttempt.current; const challenge = await authApi.appleChallenge(); const credential = await requestAppleCredential(challenge); if (!credential || attempt !== authAttempt.current) return false; await applySession(await authApi.apple({ ...credential, invitationToken, ageConfirmed }), attempt); return attempt === authAttempt.current; },
     linkApple: async () => { const challenge = await authApi.appleLinkChallenge(); const credential = await requestAppleCredential(challenge); if (!credential) return false; await authApi.linkApple(credential); setUser(current => current ? { ...current, authProviders: [...new Set([...(current.authProviders ?? []), 'APPLE' as const])] } : current); return true; },
     logout: async () => { const attempt = ++authAttempt.current; const session = await getStoredSession(); try { await unregisterPushBeforeLogout(); } catch { /* Device removal is best effort. */ } try { if (session) await authApi.logout(session.refreshToken); } catch { /* Local sign-out must still succeed while offline. */ } finally { if (attempt === authAttempt.current) { void clearPendingIntent(); await clearSession(); } } },
     logoutAll: async () => { const attempt = ++authAttempt.current; try { await unregisterPushBeforeLogout(); } catch { /* Device removal must not block session revocation. */ } try { await authApi.logoutAll(); } finally { if (attempt === authAttempt.current) { void clearPendingIntent(); await clearSession(); } } },

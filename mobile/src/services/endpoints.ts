@@ -1,4 +1,4 @@
-import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CreateInvoiceBody, CreateQuoteBody, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, InvoiceDetailDto, InvoiceListResponse, InvoiceMutationResult, InvoicePaymentLinkResult, InvoicePaymentTransactionDto, InvoiceStatus, PublicTeamInvitationDto, QuoteDetailDto, QuoteDocumentStatus, QuoteDocumentType, QuoteListResponse, QuoteMutationResult, ReminderDto, ReviewRequestDto, ReviseQuoteBody, ServiceOfferingDto, UpdateInvoiceBody, SubscriptionStatusDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, UpdateQuoteBody, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
+import { AttentionCategory, AttentionPageDto, AudienceCenterDto, AuthResponse, AutomationChannel, AutomationFoundationDto, AutomationRuleDto, AutomationRunHistoryDto, AutomationTriggerType, BetaFeedbackCategory, BetaFeedbackDto, BulkImportCustomersResultDto, BusinessCoachingDto, BusinessDto, BusinessInsightsDto, CalendarSubscriptionDto, CreatedTeamInvitationDto, CreateInvoiceBody, CreateQuoteBody, CustomerDto, CustomerListResponse, CustomerProfileDto, DashboardSummaryDto, FeedbackDto, LeadDto, LeadListResponse, LeadPaymentStatus, LeadStatus, MeResponse, MessageTemplateDto, InvoiceDetailDto, InvoiceListResponse, InvoiceMutationResult, InvoicePaymentLinkResult, InvoicePaymentTransactionDto, InvoiceStatus, PublicTeamInvitationDto, QuoteDetailDto, QuoteDocumentStatus, QuoteDocumentType, QuoteListResponse, QuoteMutationResult, ReminderDto, ReviewRequestDto, ReviseQuoteBody, ServiceOfferingDto, UpdateInvoiceBody, SubscriptionStatusDto, PlansDto, SupportTicketCategory, SupportTicketDto, TeamInvitationDto, TeamMemberDto, TeamSeatSummaryDto, UpdateQuoteBody, ValueCenterDto, WeeklyOwnerReportDto, WorkflowAnalyticsDto, WorkflowDto, WorkflowExecutionDto, WorkflowTemplateDto } from '../apiTypes';
 import { api } from './api';
 import type { AiConversationRunDto, AiValueCenterDto, AiHealthDto, AiEvaluationRunDto } from '../apiTypes';
 import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
@@ -6,12 +6,12 @@ import { AppleChallenge, AppleCredentialPayload } from './appleAuth';
 const query = (values: Record<string, string | number | undefined>) => { const params = new URLSearchParams(); Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); }); const encoded = params.toString(); return encoded ? `?${encoded}` : ''; };
 
 export const authApi = {
-  register: (body: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string }) => api.post<AuthResponse>('/auth/register', body, 'none'),
+  register: (body: { email: string; password: string; fullName: string; businessName?: string; industry?: string; invitationToken?: string; ageConfirmed: boolean }) => api.post<AuthResponse>('/auth/register', body, 'none'),
   login: (body: { email: string; password: string }) => api.post<AuthResponse>('/auth/login', body, 'none'),
-  google: (idToken: string, invitationToken?: string) => api.post<AuthResponse>('/auth/google', { idToken, invitationToken }, 'none'),
+  google: (idToken: string, invitationToken?: string, ageConfirmed?: boolean) => api.post<AuthResponse>('/auth/google', { idToken, invitationToken, ageConfirmed }, 'none'),
   linkGoogle: (idToken: string) => api.post<{ provider: 'GOOGLE'; providerEmail: string; linkedAt: string }>('/auth/google/link', { idToken }),
   appleChallenge: () => api.post<AppleChallenge>('/auth/apple/challenge', {}, 'none'),
-  apple: (body: AppleCredentialPayload & { invitationToken?: string }) => api.post<AuthResponse>('/auth/apple', body, 'none'),
+  apple: (body: AppleCredentialPayload & { invitationToken?: string; ageConfirmed?: boolean }) => api.post<AuthResponse>('/auth/apple', body, 'none'),
   appleLinkChallenge: () => api.post<AppleChallenge>('/auth/apple/link/challenge', {}),
   linkApple: (body: AppleCredentialPayload) => api.post<{ provider: 'APPLE'; providerEmail: string; linkedAt: string }>('/auth/apple/link', body),
   appleDeleteChallenge: () => api.post<AppleChallenge>('/auth/apple/delete/challenge', {}),
@@ -206,6 +206,8 @@ export const subscriptionApi = {
   getStatus: () => api.get<SubscriptionStatusDto>('/subscription/status'),
   verifyApple: (transactionId: string) => api.post<SubscriptionStatusDto>('/subscription/apple/verify', { transactionId }),
   verifyGoogle: (purchaseToken: string) => api.post<SubscriptionStatusDto>('/subscription/google/verify', { purchaseToken }),
+  /** Public plan catalog (features + limits) from the API's entitlement tables. */
+  plans: () => api.get<PlansDto>('/plans'),
 };
 export const automationApi = {
   foundationStatus: () => api.get<AutomationFoundationDto>('/automation/foundation/status'),
@@ -308,10 +310,10 @@ import type {
 } from '../apiTypes';
 
 export const customerAuthApi = {
-  register: (body: { email: string; password: string; fullName: string; displayName?: string; phone?: string }) =>
+  register: (body: { email: string; password: string; fullName: string; displayName?: string; phone?: string; ageConfirmed: boolean }) =>
     api.post<CustomerSessionResponse>('/customer/auth/register', body, 'none'),
   login: (body: { email: string; password: string }) => api.post<CustomerSessionResponse>('/customer/auth/login', body, 'none'),
-  google: (idToken: string) => api.post<CustomerSessionResponse>('/customer/auth/google', { idToken }, 'none'),
+  google: (idToken: string, ageConfirmed?: boolean) => api.post<CustomerSessionResponse>('/customer/auth/google', { idToken, ageConfirmed }, 'none'),
   appleChallenge: () => api.post<{ challengeId: string; nonce: string; state: string }>('/customer/auth/apple/challenge', {}, 'none'),
   apple: (body: Record<string, unknown>) => api.post<CustomerSessionResponse>('/customer/auth/apple', body, 'none'),
   refresh: (refreshToken: string) => api.post<{ accessToken: string; refreshToken: string; expiresIn: number }>('/customer/auth/refresh', { refreshToken }, 'none'),
@@ -450,9 +452,9 @@ export const legalApi = {
   document: (type: import('../apiTypes').LegalDocumentType) =>
     api.get<import('../apiTypes').LegalDocumentDto>(`/legal/documents/${type}`, 'none'),
   customerStatus: () => api.get<import('../apiTypes').LegalAcceptanceStatusDto>('/customer/legal/status'),
-  customerAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
+  customerAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean }; ageConfirmed?: boolean } = { source: 'app' }) =>
     api.post<{ id: string }>('/customer/legal/accept', { type, ...body }),
   businessStatus: () => api.get<import('../apiTypes').LegalAcceptanceStatusDto>('/business/legal/status'),
-  businessAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean } } = { source: 'app' }) =>
+  businessAccept: (type: import('../apiTypes').LegalDocumentType, body: { source: string; cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean }; ageConfirmed?: boolean } = { source: 'app' }) =>
     api.post<{ id: string }>('/business/legal/accept', { type, ...body }),
 };

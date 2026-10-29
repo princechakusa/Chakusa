@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LegalDocumentType } from '../apiTypes';
 import { legalDocumentLabel } from '../domain/legalAcceptance';
+import { AGE_CONFIRMATION_MESSAGE } from '../domain/authenticationFlow';
+import { AgeConfirmation } from '../experience/AuthParts';
 import { sectionsFromMarkdown } from '../domain/publicDocument';
 import { PrimaryButton, Screen } from '../components/ui';
 import { ApiError } from '../services/api';
@@ -23,6 +25,8 @@ export function LegalAcceptanceScreen() {
   const [content, setContent] = useState<{ title: string; sections: ReturnType<typeof sectionsFromMarkdown> } | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [ageError, setAgeError] = useState(false);
 
   const load = useCallback(async (type: LegalDocumentType) => {
     setContent(null); setLoadError(false);
@@ -35,10 +39,12 @@ export function LegalAcceptanceScreen() {
 
   if (!current) return null; // AppNavigator switches away as soon as the list empties.
 
+  const needsAge = current.type === 'TERMS_OF_SERVICE';
   const accept = async () => {
     if (accepting) return;
+    if (needsAge && !ageConfirmed) { setAgeError(true); return; }
     setAccepting(true);
-    try { await acceptLegalDocument(current.type); }
+    try { await acceptLegalDocument(current.type, needsAge ? ageConfirmed : undefined); }
     catch (error) { if (!(error instanceof ApiError)) throw error; }
     finally { setAccepting(false); }
   };
@@ -57,6 +63,7 @@ export function LegalAcceptanceScreen() {
         {section.bullets ? <View style={styles.list}>{section.bullets.map((item, i) => <View key={i} style={styles.listRow}><Text style={styles.bullet}>•</Text><Text style={styles.listText}>{item}</Text></View>)}</View> : null}
       </View>)}
     </ScrollView></View> : null}
+    {content && needsAge ? <View style={styles.age}><AgeConfirmation checked={ageConfirmed} disabled={accepting} onChange={(next) => { setAgeConfirmed(next); setAgeError(false); }} />{ageError ? <Text accessibilityRole="alert" style={styles.ageError}>{AGE_CONFIRMATION_MESSAGE}</Text> : null}</View> : null}
     {content ? <PrimaryButton fullWidth disabled={accepting} label={accepting ? 'Saving…' : 'I have read and agree'} onPress={() => void accept()} /> : null}
   </Screen>;
 }
@@ -75,4 +82,6 @@ const styles = StyleSheet.create({
   listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   bullet: { ...typography.body, color: colors.primary },
   listText: { ...typography.body, color: colors.textSecondary, flex: 1 },
+  age: { marginTop: spacing.md, marginBottom: spacing.sm, gap: spacing.xs },
+  ageError: { ...typography.body, color: colors.negative },
 });

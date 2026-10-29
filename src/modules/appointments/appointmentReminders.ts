@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { sendPushToUser } from "../../lib/push/pushService.js";
 import type { PushProvider } from "../../lib/push/pushProvider.js";
-import { isEntitled } from "../../lib/entitlements.js";
+import { isSubscriptionEntitled } from "../../lib/entitlements.js";
 import { parsePhoneNumber } from "../../lib/phone.js";
 import { sendOutboundMessage } from "../../lib/messaging/messagingService.js";
 import type { MessagingProvider } from "../../lib/messaging/messagingProvider.js";
@@ -16,7 +16,7 @@ const messageTypes: Record<AppointmentMessageKind, MessageType> = { confirmation
 
 export async function sendCustomerAppointmentMessage(appointmentId: string, kind: AppointmentMessageKind, provider?: MessagingProvider) {
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } }, paymentTransactions: { where: { status: "pending", checkoutUrl: { not: null } }, orderBy: { createdAt: "desc" }, take: 1 } } });
-  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
+  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isSubscriptionEntitled(appointment.business.subscription, "OUTBOUND_MESSAGING")) return false;
   if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
   // #17: the no-show follow-up is off unless the business opts in. Every
   // other gate (live business, entitlement, budget, opt-out, one-time claim)
@@ -59,7 +59,7 @@ type AppointmentArrivalState = "ON_MY_WAY" | "RUNNING_LATE" | "ARRIVED";
  */
 export async function sendAppointmentArrivalMessage(appointmentId: string, state: AppointmentArrivalState, provider?: MessagingProvider) {
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { customer: true, business: { include: { subscription: true } } } });
-  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isEntitled(appointment.business.subscription.plan, appointment.business.subscription.status, "OUTBOUND_MESSAGING")) return false;
+  if (!appointment?.customer?.phoneE164 || appointment.business.platformStatus !== "ACTIVE" || !appointment.business.subscription || !isSubscriptionEntitled(appointment.business.subscription, "OUTBOUND_MESSAGING")) return false;
   if (!(await messagingBudgetAvailable(appointment.businessId)).available) return false;
   const optedOut = await prisma.customerOptOut.findFirst({ where: { businessId: appointment.businessId, phone: appointment.customer.phoneE164, channel: { in: ["SMS", "ALL"] } } });
   if (optedOut) return false;

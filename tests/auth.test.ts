@@ -23,7 +23,7 @@ describe("auth", () => {
     const response = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: {
+      payload: { ageConfirmed: true,
         email: "owner@example.com",
         password: "password123",
         fullName: "Owner Person",
@@ -50,7 +50,7 @@ describe("auth", () => {
     const response = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: {
+      payload: { ageConfirmed: true,
         email: "dupe@example.com",
         password: "password123",
         fullName: "Someone Else",
@@ -66,7 +66,7 @@ describe("auth", () => {
     const response = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email: "not-an-email", password: "short" },
+      payload: { ageConfirmed: true, email: "not-an-email", password: "short" },
     });
 
     expect(response.statusCode).toBe(400);

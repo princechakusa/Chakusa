@@ -1,3 +1,4 @@
+import { planRank } from "../entitlements.js";
 import { Prisma, type Plan, type SubscriptionEnvironment, type SubscriptionProvider, type SubscriptionStatus } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../errors.js";
@@ -183,7 +184,7 @@ function subscriptionEventType(existing: { plan: Plan; status: SubscriptionStatu
   if (existing.status !== "CANCELED" && next.status === "CANCELED") return "CANCELLATION";
   if (existing.status !== "GRACE_PERIOD" && next.status === "GRACE_PERIOD") return "GRACE_PERIOD";
   if (["EXPIRED", "CANCELED"].includes(existing.status) && next.status === "ACTIVE") return "REACTIVATION";
-  if (existing.plan !== next.plan) return ["FREE", "PRO", "BUSINESS"].indexOf(next.plan) > ["FREE", "PRO", "BUSINESS"].indexOf(existing.plan) ? "UPGRADE" : "DOWNGRADE";
+  if (existing.plan !== next.plan) return planRank(next.plan) > planRank(existing.plan) ? "UPGRADE" : "DOWNGRADE";
   if (existing.plan === "FREE" && next.plan !== "FREE") return "SUBSCRIPTION_STARTED";
   return null;
 }

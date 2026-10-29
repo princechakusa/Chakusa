@@ -1,8 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type { BusinessRole } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.js";
-import { createSession } from "../src/modules/auth/auth.service.js";
 import { authHeader, createTestApp, registerAccount, resetDatabase, setPlan, setSubscriptionStatus } from "./helpers.js";
 import { sendCustomerAppointmentMessage, sendDueCustomerAppointmentMessages } from "../src/modules/appointments/appointmentReminders.js";
 import { handleInboundAIMessage } from "../src/lib/ai/agent/customerAgent.js";
@@ -20,14 +18,6 @@ function fakeProvider(accept = true) {
     verifyWebhookSignature: () => false,
   };
   return { provider, calls };
-}
-
-async function memberToken(app: FastifyInstance, businessId: string, role: BusinessRole) {
-  const email = `${role.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2)}@ex.com`;
-  const user = await prisma.user.create({ data: { email, normalizedEmail: email.toLowerCase(), fullName: `${role}`, passwordHash: null } });
-  await prisma.businessMember.create({ data: { businessId, userId: user.id, role, status: "ACTIVE" } });
-  const { session } = await createSession(user.id, prisma);
-  return app.jwt.sign({ userId: user.id, sessionId: session.id, type: "access" }, { expiresIn: 900 });
 }
 
 describe("no-show automation (#17)", () => {

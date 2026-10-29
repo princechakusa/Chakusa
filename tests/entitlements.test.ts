@@ -472,7 +472,8 @@ describe("entitlements", () => {
       limit: 40,
       current: 40,
       plan: "FREE",
-      requiredPlan: "PRO",
+      // Free's next plan up is Starter.
+      requiredPlan: "STARTER",
     });
   });
 

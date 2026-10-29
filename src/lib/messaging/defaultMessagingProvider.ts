@@ -8,6 +8,12 @@ export function metaWhatsAppActive(): boolean {
   return Boolean(config.META_WHATSAPP_ENABLED) && defaultMetaWhatsAppProvider.isConfigured();
 }
 
+/** True when the API can actually deliver an outbound SMS or WhatsApp message (a sender is enabled and configured). */
+export function outboundMessagingConfigured(): boolean {
+  if (metaWhatsAppActive()) return true;
+  return Boolean(config.TWILIO_ENABLED && config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN && (config.TWILIO_FROM_NUMBER || config.TWILIO_MESSAGING_SERVICE_SID || config.TWILIO_WHATSAPP_FROM));
+}
+
 /**
  * The app-wide default sender: WhatsApp goes through Meta's Cloud API when it
  * is enabled and configured, everything else (SMS, and WhatsApp when Meta is

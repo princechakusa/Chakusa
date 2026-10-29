@@ -130,7 +130,7 @@ describe("Business quote cancel (Program 3, Loop 3F.1)", () => {
     const account = await businessAccount(app);
     const { quoteId } = await sendQuote(app, account.token);
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/cancel` })).statusCode).toBe(401);
-    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
+    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
     const res = await app.inject({ method: "POST", url: `/quotes/${quoteId}/cancel`, headers: authHeader(cust.json().accessToken) });
     expect(res.statusCode).toBe(401);
   });

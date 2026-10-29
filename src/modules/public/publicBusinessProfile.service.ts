@@ -5,6 +5,7 @@ import { LEAD_SOURCE_PUBLIC_PROFILE } from "../../lib/leadSources.js";
 import type { SubmitPublicContactInput } from "./public.schemas.js";
 import type { CreatePublicBookingInput, ReschedulePublicBookingInput } from "./public.schemas.js";
 import type { Business } from "@prisma/client";
+import { resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../../lib/entitlements.js";
 import { calculateAvailability } from "../availability/availability.service.js";
 import { createAppointment, transitionAppointment, updateAppointment } from "../appointments/appointments.service.js";
 import { generateOpaqueToken, parseOpaqueToken, tokenHashMatches } from "../../lib/authTokens.js";
@@ -148,9 +149,9 @@ export async function submitPublicContactForm(
 
   const subscription = await prisma.subscription.findUnique({
     where: { businessId: business.id },
-    select: { plan: true },
+    select: SUBSCRIPTION_ENTITLEMENT_SELECT,
   });
-  const plan = subscription?.plan ?? "FREE";
+  const { plan } = resolveSubscription(subscription);
 
   const customer = await findOrCreateCustomerByPhone(business.id, business.ownerId, input.phone, plan);
   if (customer.created) {

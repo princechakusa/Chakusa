@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { getPlanLimits, hasFeature, startOfCurrentUtcMonth, startOfNextUtcMonth } from "../../lib/entitlements.js";
+import { getPlanLimits, hasFeature, resolveSubscription, startOfCurrentUtcMonth, startOfNextUtcMonth } from "../../lib/entitlements.js";
 import { verifyAppleTransaction, verifyGoogleSubscription, type ReconcileOutcome } from "../../lib/billing/subscriptionReconciliation.js";
 import { realAppleStoreClient, type AppleStoreClient } from "../../lib/billing/appleAppStoreClient.js";
 import { realGooglePlayClient, type GooglePlayClient } from "../../lib/billing/googlePlayClient.js";
@@ -102,8 +102,11 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
     console.error(`[subscription] business ${businessId} has no Subscription row — defaulting to FREE/ACTIVE`);
   }
 
-  const plan = subscription?.plan ?? "FREE";
-  const status = subscription?.status ?? "ACTIVE";
+  // `plan` reports what was bought (so the app can say "your Pro plan
+  // expired"); every feature and limit below comes from the effective plan,
+  // which is FREE once the subscription has lapsed.
+  const purchasedPlan = subscription?.plan ?? "FREE";
+  const { plan, status } = resolveSubscription(subscription);
 
   const limits = getPlanLimits(plan);
   const periodStart = startOfCurrentUtcMonth();
@@ -135,7 +138,7 @@ export async function getSubscriptionStatus(businessId: string): Promise<Subscri
   }
 
   return {
-    plan,
+    plan: purchasedPlan,
     status,
     provider: subscription?.provider ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,

@@ -123,7 +123,8 @@ async function callApi(env, path, { method = "GET", body, accessToken } = {}) {
 // or an unreachable status endpoint can never produce a session (fail closed).
 async function settleLegalAcceptance(env, realm, accessToken, acceptedLegal, source) {
   if (acceptedLegal === true) {
-    await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source, platform: "web" }, accessToken })));
+    // ageConfirmed is only reached once the request already passed requireAgeConfirmed.
+    await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source, platform: "web", ageConfirmed: true }, accessToken })));
   }
   const { response, payload } = await callApi(env, `${legalBase(realm)}/status`, { accessToken });
   if (!response.ok || !Array.isArray(payload.pending)) return "unavailable";
@@ -137,6 +138,13 @@ async function refuseSession(env, realm, refreshToken, outcome, origin) {
     : json({ error: "Sign-in is temporarily unavailable." }, 503, origin);
 }
 
+// Everyone using Chakusa must be 18 or older; the website asks on every sign-up
+// and sign-in, and the API refuses to create an account without it.
+const AGE_REQUIRED_MESSAGE = "Confirm you are 18 or older to continue.";
+function requireAgeConfirmed(input, origin) {
+  return input?.ageConfirmed === true ? null : json({ error: AGE_REQUIRED_MESSAGE, code: "AGE_CONFIRMATION_REQUIRED" }, 400, origin);
+}
+
 function validEmail(value) { return typeof value === "string" && value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()); }
 function validPassword(value, registration = false) { return typeof value === "string" && value.length <= 256 && value.length >= (registration ? 12 : 1); }
 
@@ -148,6 +156,8 @@ async function authenticate(request, env, origin, action) {
   if (!["client", "business"].includes(realm) || !validEmail(input?.email) || !validPassword(input?.password, registration) || typeof input?.turnstileToken !== "string") {
     return json({ error: registration ? "Check the account details and try again." : "Check your sign-in details and try again." }, 400, origin);
   }
+  const ageRefusal = requireAgeConfirmed(input, origin);
+  if (ageRefusal) return ageRefusal;
   if (registration) {
     if (input.acceptedLegal !== true || typeof input.fullName !== "string" || input.fullName.trim().length < 1 || input.fullName.trim().length > 120) return json({ error: "Complete every required field and accept the legal documents." }, 400, origin);
     if (realm === "business" && (typeof input.businessName !== "string" || input.businessName.trim().length < 1 || input.businessName.trim().length > 200)) return json({ error: "Enter your business name." }, 400, origin);
@@ -158,8 +168,8 @@ async function authenticate(request, env, origin, action) {
 
   const body = registration
     ? realm === "business"
-      ? { email: input.email.trim().toLowerCase(), password: input.password, fullName: input.fullName.trim(), businessName: input.businessName.trim(), industry: typeof input.industry === "string" ? input.industry.trim() : undefined }
-      : { email: input.email.trim().toLowerCase(), password: input.password, fullName: input.fullName.trim(), displayName: typeof input.displayName === "string" ? input.displayName.trim() || undefined : undefined, phone: typeof input.phone === "string" ? input.phone.trim() || undefined : undefined }
+      ? { email: input.email.trim().toLowerCase(), password: input.password, fullName: input.fullName.trim(), businessName: input.businessName.trim(), industry: typeof input.industry === "string" ? input.industry.trim() : undefined, ageConfirmed: true }
+      : { email: input.email.trim().toLowerCase(), password: input.password, fullName: input.fullName.trim(), displayName: typeof input.displayName === "string" ? input.displayName.trim() || undefined : undefined, phone: typeof input.phone === "string" ? input.phone.trim() || undefined : undefined, ageConfirmed: true }
     : { email: input.email.trim().toLowerCase(), password: input.password };
   try {
     const { response, payload } = await callApi(env, authPath(realm, action), { method: "POST", body });
@@ -168,7 +178,7 @@ async function authenticate(request, env, origin, action) {
       return json({ error: throttled ? "Too many attempts. Please wait and try again." : registration ? "We could not create that account. Try signing in if you already registered." : "Email or password is incorrect." }, throttled ? 429 : registration ? 400 : 401, origin);
     }
     if (registration) {
-      await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source: "website_registration", platform: "web" }, accessToken: payload.accessToken })));
+      await Promise.all(LEGAL_TYPES.map((type) => callApi(env, `${legalBase(realm)}/accept`, { method: "POST", body: { type, source: "website_registration", platform: "web", ageConfirmed: true }, accessToken: payload.accessToken })));
     } else {
       const legal = await settleLegalAcceptance(env, realm, payload.accessToken, input.acceptedLegal, "website_login");
       if (legal !== "accepted") return refuseSession(env, realm, payload.refreshToken, legal, origin);
@@ -186,12 +196,14 @@ async function googleAuthenticate(request, env, origin) {
   if (!["client", "business"].includes(realm) || typeof input?.idToken !== "string" || input.idToken.length < 20 || input.idToken.length > 16_384 || typeof input?.turnstileToken !== "string") {
     return json({ error: "Google sign-in could not be verified." }, 400, origin);
   }
+  const ageRefusal = requireAgeConfirmed(input, origin);
+  if (ageRefusal) return ageRefusal;
   let human = false;
   const googleAction = input.flow === "register" ? "chakusa_register" : "chakusa_login";
   try { human = await verifyTurnstile(input.turnstileToken, googleAction, request, env); } catch { human = false; }
   if (!human) return json({ error: "Security check failed. Please try again." }, 403, origin);
   try {
-    const { response, payload } = await callApi(env, authPath(realm, "google"), { method: "POST", body: { idToken: input.idToken } });
+    const { response, payload } = await callApi(env, authPath(realm, "google"), { method: "POST", body: { idToken: input.idToken, ageConfirmed: true } });
     if (!response.ok || typeof payload.refreshToken !== "string" || typeof payload.accessToken !== "string") {
       const message = response.status === 409 ? "An account with this email already exists. Sign in with your password, then connect Google from account settings." : "Google sign-in was not completed.";
       return json({ error: message }, response.status === 429 ? 429 : response.status === 409 ? 409 : 401, origin);

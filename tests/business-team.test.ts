@@ -580,7 +580,7 @@ describe("Business Phase 1.1: new-user team invitation registration", () => {
   }
 
   async function register(payload: Record<string, unknown>) {
-    return app.inject({ method: "POST", url: "/auth/register", payload });
+    return app.inject({ method: "POST", url: "/auth/register", payload: { ageConfirmed: true, ...payload } });
   }
 
   // -------------------------------------------------------------------
@@ -1087,7 +1087,7 @@ describe("Business Phase 1.2: seat usage summary and invite delivery outcome", (
     const invited = await invite(app, owner, "phase12-regression-register-23@example.com", "STAFF");
     const response = await app.inject({
       method: "POST", url: "/auth/register",
-      payload: { email: "phase12-regression-register-23@example.com", password: "password123", fullName: "Still Works", invitationToken: invited.json().token },
+      payload: { ageConfirmed: true, email: "phase12-regression-register-23@example.com", password: "password123", fullName: "Still Works", invitationToken: invited.json().token },
     });
     expect(response.statusCode).toBe(201);
     expect(response.json().role).toBe("STAFF");

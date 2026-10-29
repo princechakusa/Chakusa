@@ -190,7 +190,7 @@ export async function registerAccount(
   const response = await app.inject({
     method: "POST",
     url: "/auth/register",
-    payload: {
+    payload: { ageConfirmed: true,
       email,
       password: overrides.password ?? "password123",
       fullName: overrides.fullName ?? "Test User",

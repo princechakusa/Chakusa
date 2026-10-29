@@ -7,6 +7,7 @@
 // fold on desktop. On mobile the two stack, copy first.
 import Button from "../foundation/Button.astro";
 import StoryIcon from "./StoryIcon.astro";
+import TrialDays from "../pricing/TrialDays.astro";
 import HeroLoopDemo from "./HeroLoopDemo.astro";
 import { heroCopy, heroTrust } from "../../data/homepageStory";
 // Every trade listed here has a live /industries page.
@@ -31,7 +32,7 @@ const trades = ["barbers", "hair salons", "cleaners", "mechanics", "photographer
       </div>
       <ul class="hero2__trust">
         {heroTrust.map((item) => <li><StoryIcon name={item.icon} class="hero2__trust-icon" />{item.label}</li>)}
-        <li><StoryIcon name="event_available" class="hero2__trust-icon" />14-day free trial</li>
+        <li><StoryIcon name="event_available" class="hero2__trust-icon" /><span><TrialDays />-day free trial</span></li>
       </ul>
     </div>
     <div class="hero2__demo">

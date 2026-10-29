@@ -57,28 +57,28 @@ export function LocationPicker({ value, onChange, onLookupChange, mapHeight = 22
     }
   };
 
-  useEffect(() => {
+  // Searches only when the person asks (Search key or button): Nominatim's
+  // usage policy forbids search-as-you-type on its public API.
+  const search = async () => {
     const text = query.trim();
-    if (text.length < 3) { setResults([]); return; }
-    const handle = setTimeout(async () => {
-      setBusy('searching'); setError(null);
-      try {
-        const found = await searchPlaces(text);
-        setResults(found);
-        if (!found.length) setError(`No places found for “${text}”.`);
-      } catch (caught) {
-        setError(caught instanceof GeocodingError ? caught.message : 'Search failed.');
-      } finally {
-        setBusy(null);
-      }
-    }, 600);
-    return () => clearTimeout(handle);
-  }, [query]);
+    if (text.length < 3) { setResults([]); setError(text ? 'Type at least 3 letters to search.' : null); return; }
+    if (busy) return;
+    setBusy('searching'); setError(null);
+    try {
+      const found = await searchPlaces(text);
+      setResults(found);
+      if (!found.length) setError(`No places found for “${text}”.`);
+    } catch (caught) {
+      setError(caught instanceof GeocodingError ? caught.message : 'Search failed.');
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const center = value ?? DEFAULT_CENTER;
   return (
     <View style={styles.wrap}>
-      <Pressable testID="location-use-device" accessibilityRole="button" onPress={() => void useDevice()} disabled={busy === 'locating'} style={({ pressed }) => [styles.deviceButton, pressed && styles.pressed]}>
+      <Pressable testID="location-use-device" accessibilityRole="button" accessibilityLabel="Use my current location" onPress={() => void useDevice()} disabled={busy === 'locating'} style={({ pressed }) => [styles.deviceButton, pressed && styles.pressed]}>
         {busy === 'locating' ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="locate" size={18} color={colors.primary} />}
         <Text style={styles.deviceText}>{busy === 'locating' ? 'Finding you…' : 'Use my current location'}</Text>
       </Pressable>
@@ -90,11 +90,17 @@ export function LocationPicker({ value, onChange, onLookupChange, mapHeight = 22
           placeholder="Search a street, area or town"
           placeholderTextColor={colors.textSecondary}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(text) => { setQuery(text); if (results.length) setResults([]); }}
+          onSubmitEditing={() => void search()}
+          returnKeyType="search"
           style={styles.searchInput}
           autoCorrect={false}
         />
-        {busy === 'searching' ? <ActivityIndicator size="small" color={colors.textSecondary} /> : null}
+        {busy === 'searching' ? <ActivityIndicator size="small" color={colors.textSecondary} /> : (
+          <Pressable accessibilityRole="button" accessibilityLabel="Search" disabled={Boolean(busy)} hitSlop={8} onPress={() => void search()} style={styles.searchButton}>
+            <Text style={styles.searchButtonText}>Search</Text>
+          </Pressable>
+        )}
       </View>
       {results.length ? (
         <View style={styles.results}>
@@ -138,6 +144,8 @@ const styles = StyleSheet.create({
   deviceText: { ...typography.bodyStrong, color: colors.primary },
   pressed: { opacity: 0.75 },
   searchRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  searchButton: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.primarySoft },
+  searchButtonText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   searchInput: { flex: 1, minHeight: 44, ...typography.body, color: colors.text },
   results: { borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' },
   result: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },

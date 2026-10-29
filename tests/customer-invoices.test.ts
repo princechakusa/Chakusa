@@ -16,7 +16,7 @@ async function businessAccount(app: FastifyInstance) {
 
 async function registerCustomer(app: FastifyInstance) {
   const email = `c-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email, password: "password123", fullName: "Casey Customer" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email, password: "password123", fullName: "Casey Customer" } });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.body}`);
   const body = res.json();
   return { email, token: body.accessToken as string, profileId: body.profile.id as string };

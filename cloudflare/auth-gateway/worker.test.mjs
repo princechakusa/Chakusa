@@ -130,8 +130,8 @@ function signIn(path, body) {
     body: JSON.stringify(body),
   }), env);
 }
-const googleBody = (extra = {}) => ({ realm: "client", idToken: "x".repeat(40), flow: "login", turnstileToken: "chakusa_login", ...extra });
-const passwordBody = (extra = {}) => ({ realm: "client", email: "a@b.co", password: "pw", turnstileToken: "chakusa_login", ...extra });
+const googleBody = (extra = {}) => ({ realm: "client", idToken: "x".repeat(40), flow: "login", turnstileToken: "chakusa_login", ageConfirmed: true, ...extra });
+const passwordBody = (extra = {}) => ({ realm: "client", email: "a@b.co", password: "pw", turnstileToken: "chakusa_login", ageConfirmed: true, ...extra });
 
 test("Google sign-in without acceptance is refused and revoked while documents are pending", async () => {
   const net = stubNetwork({
@@ -503,4 +503,36 @@ test("error hints pass only strictly-shaped codes and plans", () => {
   assert.deepEqual(internals.upstreamErrorHints({ error: { code: "FEATURE_NOT_AVAILABLE", message: "x", details: { feature: "INVOICING", requiredPlan: "BUSINESS", secret: "s" } } }), { code: "FEATURE_NOT_AVAILABLE", requiredPlan: "BUSINESS", feature: "INVOICING" });
   assert.deepEqual(internals.upstreamErrorHints({ error: { code: "<script>", details: { requiredPlan: "ENTERPRISE" } } }), {});
   assert.deepEqual(internals.upstreamErrorHints(null), {});
+});
+
+test("sign-in and sign-up without the 18+ tick are refused before any call to the API", async () => {
+  const net = stubNetwork({});
+  try {
+    for (const [path, body] of [
+      ["/v1/login", passwordBody({ ageConfirmed: undefined })],
+      ["/v1/google", googleBody({ ageConfirmed: false })],
+      ["/v1/register", passwordBody({ ageConfirmed: undefined, password: "a-long-password-1", fullName: "A B", acceptedLegal: true, turnstileToken: "chakusa_register" })],
+    ]) {
+      const response = await signIn(path, body);
+      assert.equal(response.status, 400, path);
+      assert.equal((await response.json()).code, "AGE_CONFIRMATION_REQUIRED", path);
+      assert.equal(response.headers.get("set-cookie"), null, path);
+    }
+    assert.equal(net.calls.length, 0, "nothing may reach the API without the tick");
+  } finally { net.restore(); }
+});
+
+test("the 18+ confirmation is forwarded with Google sign-in and each legal acceptance", async () => {
+  let accepted = 0;
+  const net = stubNetwork({
+    "POST /customer/auth/google": () => [200, session],
+    "POST /customer/legal/accept": () => { accepted += 1; return [201, { id: "e" }]; },
+    "GET /customer/legal/status": () => [200, { pending: accepted === 3 ? [] : [{ type: "TERMS_OF_SERVICE" }] }],
+  });
+  try {
+    const response = await signIn("/v1/google", googleBody({ acceptedLegal: true }));
+    assert.equal(response.status, 200);
+    assert.equal(net.calls.find((call) => call.key === "POST /customer/auth/google").body.ageConfirmed, true);
+    assert.ok(net.calls.filter((call) => call.key === "POST /customer/legal/accept").every((call) => call.body.ageConfirmed === true));
+  } finally { net.restore(); }
 });

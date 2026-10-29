@@ -19,8 +19,13 @@ export const registerSchema = z
     businessName: z.string().trim().min(1).optional(),
     industry: z.string().trim().optional(),
     invitationToken: z.string().trim().min(1).optional(),
+    // The person's "I am 18 or older" tick. Required: no account is created without it.
+    ageConfirmed: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.ageConfirmed !== true) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["ageConfirmed"], message: "You must be 18 or older to create a Chakusa account" });
+    }
     if (!data.invitationToken && !data.businessName) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["businessName"], message: "Business name is required" });
     }
@@ -52,8 +57,11 @@ export const deleteAccountSchema = z.union([
 // authenticateGoogleIdentity/authenticateAppleIdentity. /google/link and
 // /apple/link reuse these same schemas but never read the field.
 const invitationToken = z.string().trim().min(1).optional();
+// Only read when the sign-in creates a brand-new account (see auth.service.ts's
+// assertAgeConfirmedForNewAccount); existing accounts sign in without it.
+const ageConfirmed = z.boolean().optional();
 
-export const googleAuthSchema = z.object({ idToken: z.string().min(1).max(16_384), invitationToken });
+export const googleAuthSchema = z.object({ idToken: z.string().min(1).max(16_384), invitationToken, ageConfirmed });
 
 export const appleAuthSchema = z.object({
   challengeId: z.string().uuid(),
@@ -64,4 +72,5 @@ export const appleAuthSchema = z.object({
   givenName: z.string().trim().max(100).nullable().optional(),
   familyName: z.string().trim().max(100).nullable().optional(),
   invitationToken,
+  ageConfirmed,
 });

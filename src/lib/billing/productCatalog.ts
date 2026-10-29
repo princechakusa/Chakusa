@@ -13,7 +13,7 @@ import { requireGoogleBillingConfig } from "./googlePlayClient.js";
  * needed zero changes, because none of them contain a hardcoded plan
  * literal; they all resolve through resolveApplePlan/resolveGooglePlan.
  */
-export type ChakusaBillablePlan = "PRO" | "BUSINESS";
+export type ChakusaBillablePlan = "STARTER" | "PRO" | "BUSINESS";
 
 interface CatalogEntry {
   productId: string;
@@ -34,6 +34,7 @@ interface CatalogEntry {
 function appleCatalog(): CatalogEntry[] {
   const apple = requireAppleBillingConfig();
   const entries: CatalogEntry[] = [{ productId: apple.proMonthlyProductId, plan: "PRO" }];
+  if (apple.starterMonthlyProductId) entries.push({ productId: apple.starterMonthlyProductId, plan: "STARTER" });
   if (apple.businessMonthlyProductId) entries.push({ productId: apple.businessMonthlyProductId, plan: "BUSINESS" });
   return entries;
 }
@@ -41,16 +42,24 @@ function appleCatalog(): CatalogEntry[] {
 function googleCatalog(): CatalogEntry[] {
   const google = requireGoogleBillingConfig();
   const entries: CatalogEntry[] = [{ productId: google.proMonthlyProductId, plan: "PRO" }];
+  if (google.starterMonthlyProductId) entries.push({ productId: google.starterMonthlyProductId, plan: "STARTER" });
   if (google.businessMonthlyProductId) entries.push({ productId: google.businessMonthlyProductId, plan: "BUSINESS" });
   return entries;
 }
 
+// A product ID configured for two plans (e.g. Starter accidentally set to the
+// Pro ID) resolves to nothing: a $3 purchase must never unlock Pro.
+function resolveUnambiguous(entries: CatalogEntry[], productId: string): ChakusaBillablePlan | null {
+  const plans = new Set(entries.filter((entry) => entry.productId === productId).map((entry) => entry.plan));
+  return plans.size === 1 ? [...plans][0]! : null;
+}
+
 /** Returns the canonical Chakusa plan for an Apple product ID, or null if it isn't in the approved catalog — callers must fail closed on null, never default to any plan. */
 export function resolveApplePlan(productId: string): ChakusaBillablePlan | null {
-  return appleCatalog().find((entry) => entry.productId === productId)?.plan ?? null;
+  return resolveUnambiguous(appleCatalog(), productId);
 }
 
 /** Returns the canonical Chakusa plan for a Google product ID, or null if it isn't in the approved catalog — callers must fail closed on null, never default to any plan. */
 export function resolveGooglePlan(productId: string): ChakusaBillablePlan | null {
-  return googleCatalog().find((entry) => entry.productId === productId)?.plan ?? null;
+  return resolveUnambiguous(googleCatalog(), productId);
 }

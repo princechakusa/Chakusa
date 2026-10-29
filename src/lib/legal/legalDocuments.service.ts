@@ -9,6 +9,9 @@ import { ApiError } from "../errors.js";
 
 export const LEGAL_DOCUMENT_TYPES = ["PRIVACY_POLICY", "TERMS_OF_SERVICE", "COOKIE_POLICY", "AI_DISCLOSURE"] as const satisfies readonly LegalDocumentType[];
 
+/** Everyone using Chakusa, business or customer, must be at least this old; confirmed when accepting the Terms of Service. */
+export const MINIMUM_AGE = 18;
+
 export interface CreateLegalDraftInput {
   type: LegalDocumentType;
   title: string;
@@ -115,10 +118,19 @@ export interface RecordAcceptanceInput {
   sessionId?: string;
   /** Cookie-category choices (analytics/functional/marketing booleans), only meaningful for type === "COOKIE_POLICY". */
   cookiePreferences?: { analytics: boolean; functional: boolean; marketing: boolean };
+  /** The person's explicit "I am MINIMUM_AGE or older" confirmation. Required to accept the Terms of Service. */
+  ageConfirmed?: boolean;
 }
 
 /** Insert-only. Never update an existing row, a re-acceptance is always a new row. */
 export async function recordAcceptance(input: RecordAcceptanceInput) {
+  // The age confirmation is part of agreeing to the Terms, so it is stored on
+  // the same immutable acceptance row. Older app versions never send it and
+  // are told to update rather than being let through silently.
+  const termsAgeConfirmed = input.type === "TERMS_OF_SERVICE" && input.ageConfirmed === true;
+  if (input.type === "TERMS_OF_SERVICE" && !termsAgeConfirmed) {
+    throw ApiError.badRequest(`Please confirm you are ${MINIMUM_AGE} or older to accept the Terms. If you don't see that option, update the app.`);
+  }
   const current = await getCurrentPublishedVersion(input.type);
   if (!current) throw ApiError.conflict(`No published ${input.type} exists to accept`);
   return prisma.legalAcceptanceEvent.create({
@@ -133,7 +145,7 @@ export async function recordAcceptance(input: RecordAcceptanceInput) {
       device: input.device,
       ipAddress: input.ipAddress,
       sessionId: input.sessionId,
-      metadata: input.cookiePreferences ? { cookiePreferences: input.cookiePreferences } : undefined,
+      metadata: input.cookiePreferences ? { cookiePreferences: input.cookiePreferences } : termsAgeConfirmed ? { ageConfirmed: true, minimumAge: MINIMUM_AGE } : undefined,
     },
   });
 }

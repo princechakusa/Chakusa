@@ -43,7 +43,9 @@ export function Icon({
   style?: StyleProp<TextStyle>;
 }) {
   const key = ICON_ALIAS[name] ?? (name.replace(/_/g, '-') as keyof typeof MaterialIcons.glyphMap);
-  return <MaterialIcons name={key} size={size} color={color} style={style} />;
+  // Decorative: the glyph is a private-use character, so it must never leak into a
+  // button's accessible name (screen readers would read it out).
+  return <MaterialIcons name={key} size={size} color={color} style={style} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />;
 }
 
 export function M3Screen({

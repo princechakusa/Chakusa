@@ -205,7 +205,11 @@ export interface AttentionPageDto { items: AttentionItemDto[]; total: number; pa
 
 export interface ApiErrorBody { error: { code: 'VALIDATION_ERROR' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | string; message: string; details?: unknown }; }
 
-export type SubscriptionPlan = 'FREE' | 'PRO' | 'BUSINESS';
+export type SubscriptionPlan = 'FREE' | 'STARTER' | 'PRO' | 'BUSINESS';
+/** GET /plans: what each plan includes, from the API's enforcing entitlement tables. */
+export interface PlanLimitsDto { leadsPerMonth: number | null; reviewRequestsPerMonth: number | null; customers: number | null; openReminders: number | null; customTemplatesPerType: number | null; staffSeats: number | null }
+export interface PlanDescriptionDto { plan: SubscriptionPlan; rank: number; limits: PlanLimitsDto; features: Array<{ key: string; label: string }>; referenceMonthlyPrice: number; trialDays: number }
+export interface PlansDto { currency: string; plans: PlanDescriptionDto[] }
 export type SubscriptionStatusValue = 'ACTIVE' | 'TRIALING' | 'GRACE_PERIOD' | 'EXPIRED' | 'CANCELED';
 export interface MonthlyUsageDto { current: number; limit: number | null; period: 'month'; resetsAt: string; }
 export interface StandingUsageDto { current: number; limit: number | null; period: null; resetsAt: null; }

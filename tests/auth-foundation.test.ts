@@ -187,7 +187,7 @@ describe("authentication foundation", () => {
     await registerAccount(app, { email: "Case@Example.com" });
     const response = await app.inject({
       method: "POST", url: "/auth/register",
-      payload: { email: " case@example.COM ", password: "password123", fullName: "Duplicate", businessName: "Duplicate" },
+      payload: { ageConfirmed: true, email: " case@example.COM ", password: "password123", fullName: "Duplicate", businessName: "Duplicate" },
     });
     expect(response.statusCode).toBe(409);
   });
@@ -237,7 +237,7 @@ describe("authentication foundation", () => {
     for (let index = 0; index < 21; index += 1) {
       responses.push(await isolatedApp.inject({
         method: "POST", url: "/auth/register",
-        payload: {
+        payload: { ageConfirmed: true,
           email: `rate-register-${index}@example.com`,
           password: "password123",
           fullName: "Rate Test",

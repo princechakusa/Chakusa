@@ -10,7 +10,7 @@ const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
 async function registerCustomer(app: FastifyInstance, over: Partial<{ email: string; password: string; fullName: string }> = {}) {
   const email = over.email ?? `cust-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
-  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email, password: over.password ?? "password123", fullName: over.fullName ?? "Casey Customer" } });
+  const res = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email, password: over.password ?? "password123", fullName: over.fullName ?? "Casey Customer" } });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.body}`);
   const body = res.json();
   return { email, password: over.password ?? "password123", token: body.accessToken as string, refreshToken: body.refreshToken as string, profileId: body.profile.id as string, userId: body.user.id as string };

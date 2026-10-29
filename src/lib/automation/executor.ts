@@ -1,5 +1,5 @@
 import { prisma } from "../prisma.js";
-import { isEntitled } from "../entitlements.js";
+import { isSubscriptionEntitled, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../entitlements.js";
 import { supportsLeadCreatedAutomation } from "../leadSources.js";
 import { parsePhoneNumber } from "../phone.js";
 import { renderCustomerRetentionMessage, renderLeadFollowUpMessage, renderLeadStaleFollowUpMessage, renderReviewRequestFollowUpMessage } from "../messageRendering.js";
@@ -294,9 +294,9 @@ export async function executeAutomationRun(run: AutomationRun, provider?: Messag
 
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: run.businessId },
-      select: { plan: true, status: true },
+      select: SUBSCRIPTION_ENTITLEMENT_SELECT,
     });
-    if (!subscription || !isEntitled(subscription.plan, subscription.status, "AUTOMATION")) {
+    if (!subscription || !isSubscriptionEntitled(subscription, "AUTOMATION")) {
       return cancelRun(run.id, "Business is no longer entitled to automation");
     }
     if (!(await messagingBudgetAvailable(run.businessId)).available) return cancelRun(run.id, "Monthly messaging safety limit reached");

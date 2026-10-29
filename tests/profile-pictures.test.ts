@@ -30,7 +30,7 @@ describe("profile pictures", () => {
 
     const profile = (await app.inject({ method: "GET", url: `/public/business/${slug}` })).json();
     expect(profile.photoUrl).toMatch(new RegExp(`^/public/business/${slug}/photo\\?v=`));
-    const customer = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: "pic-cust@example.com", password: "password123", fullName: "Pic Customer" } });
+    const customer = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: "pic-cust@example.com", password: "password123", fullName: "Pic Customer" } });
     const cards = (await app.inject({ method: "GET", url: "/customer/marketplace", headers: auth(customer.json().accessToken) })).json().items as Array<{ name: string; photoUrl: string | null }>;
     expect(cards.find((card) => card.name === "Photo Salon")?.photoUrl).toBe(profile.photoUrl);
 
@@ -49,7 +49,7 @@ describe("profile pictures", () => {
   });
 
   it("lets a customer set, keep and remove a profile picture, and rejects unsafe values", async () => {
-    const reg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: "avatar@example.com", password: "password123", fullName: "Ava Tar" } });
+    const reg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: "avatar@example.com", password: "password123", fullName: "Ava Tar" } });
     const token = reg.json().accessToken as string;
     const patch = (avatarUrl: unknown) => app.inject({ method: "PATCH", url: "/customer/profile", headers: auth(token), payload: { avatarUrl } });
 

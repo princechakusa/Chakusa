@@ -1,107 +1,173 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { PrimaryButton, SecondaryButton } from '../components/ui';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { PlansDto } from '../apiTypes';
 import { Chip, Icon, M3Header, M3Screen } from '../experience/businessKit';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { BILLING_ENABLED, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
-import { canPurchasePlan, isEntitledStatus, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
-import { capabilityStatusCopy, FUTURE_CAPABILITIES, isCapabilityUnlocked } from '../domain/futureCapabilities';
-import { trialProgressCopy } from '../domain/trialExperience';
+import { BILLING_PLANS, BillingPlan, effectivePlan, planAction, planName, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
+import { planButtonLabel, planHighlights, PLAN_TAGLINES, referencePrice, trialLabel } from '../domain/planCatalog';
 import { legalDestination } from '../domain/trustSettings';
 import { openExternalDestination } from '../services/externalDestinations';
+import { subscriptionApi } from '../services/endpoints';
 import { useBilling } from '../state/BillingContext';
 import { useAuth } from '../state/AuthContext';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { RootStackParamList } from '../types';
-import { formatMoney } from '../utils/format';
 
-const benefits = [
-  ...(Platform.OS === 'android' ? ['Automatic missed-call follow-up'] : []),
-  'Automatic follow-up for leads that go quiet',
-  'Automatic win-back messages for dormant customers',
-  'Chakusa outbound SMS',
-  'Unlimited normal customer, lead, review, and reminder limits',
-  'Unlimited custom templates',
-  'Advanced analytics and extended history',
-];
+const RECOMMENDED: BillingPlan = 'PRO';
 
+/** Subscription & billing: your plan on top, every plan below with its live store price. */
 export function ProScreen() {
-  // Read per render: these links are admin-controlled runtime config.
-  const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { plan, status, subscription } = usePlanExperience(); const billing = useBilling(); const { role, business } = useAuth();
-  const entitled = isEntitledStatus(status); const maySubscribe = role === 'OWNER' && (canPurchasePlan(plan, status, 'PRO') || canPurchasePlan(plan, status, 'BUSINESS'));
-  const selectedName = billing.selectedPlan === 'BUSINESS' ? 'Business' : 'Pro';
-  const statusLabel = subscription ? subscriptionStatusLabel(subscription) : null; const period = subscription ? subscriptionPeriodCopy(subscription) : null;
-  const trialProgress = subscription ? trialProgressCopy(subscription) : null;
-  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} onAvatarPress={() => navigation.navigate('Main', { screen: 'Settings' })} hasNotifications={false} />}>
+  const { plan, status, subscription } = usePlanExperience();
+  const billing = useBilling();
+  const { role } = useAuth();
+  const [plansResponse, setPlansResponse] = useState<PlansDto | null>(null);
+  const [catalogError, setCatalogError] = useState(false);
+  const loadCatalog = useCallback(async () => {
+    setCatalogError(false);
+    try { setPlansResponse(await subscriptionApi.plans()); } catch { setCatalogError(true); }
+  }, []);
+  useEffect(() => { void loadCatalog(); }, [loadCatalog]);
+
+  const catalog = plansResponse?.plans ?? null;
+  const current = effectivePlan(plan, status);
+  const owner = role === 'OWNER';
+  const canBuyInApp = BILLING_ENABLED && billing.supported;
+  const statusLabel = subscription && current !== 'FREE' ? subscriptionStatusLabel(subscription) : null;
+  const period = subscription && current !== 'FREE' ? subscriptionPeriodCopy(subscription) : null;
+  const privacy = legalDestination(PRIVACY_POLICY_URL); const terms = legalDestination(TERMS_OF_USE_URL);
+
+  const onPlanPress = (target: BillingPlan) => {
+    const action = planAction(plan, status, target);
+    if (action === 'downgrade') void billing.manage();
+    else if (action === 'subscribe' || action === 'upgrade') void billing.subscribe(target);
+  };
+
+  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />}>
     <View style={styles.titleBlock}>
-      <View style={styles.titleRow}>
-        <Text style={styles.pageTitle}>Subscription & Billing</Text>
-        {entitled && statusLabel ? <Chip label={statusLabel} tone="secondary" /> : null}
-      </View>
-      <Text style={styles.pageSubtitle}>The recorded revenue, completed work, and follow-up Chakusa is creating for your business.</Text>
+      <Text style={styles.pageTitle}>Subscription</Text>
+      <Text style={styles.pageSubtitle}>Your plan, and what each plan includes.</Text>
     </View>
-    <View style={styles.card}>{benefits.map(item => <View key={item} style={styles.feature}><Icon name="check_circle" size={20} color={m3.primary} /><Text style={styles.featureText}>{item}</Text></View>)}</View>
-    {trialProgress ? <View style={styles.purchase}><Text style={styles.cardTitle}>{trialProgress.title}</Text><Text style={styles.body}>{trialProgress.message}</Text><Text style={styles.body}>Trial access and its end date come directly from your app store subscription.</Text></View> : null}
-    {subscription?.value ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Value created this month</Text><Text style={styles.body}>Recorded outcomes from Chakusa activity - not projections.</Text><Text style={styles.featureText}>{formatMoney(subscription.value.recoveredRevenueThisMonth, business?.currency ?? 'USD')} recovered</Text><Text style={styles.featureText}>{subscription.value.completedAppointmentsThisMonth} appointments completed</Text><Text style={styles.featureText}>{subscription.value.customerMessagesSentThisMonth} customer messages sent</Text><Text style={styles.featureText}>{subscription.value.reviewsReceivedThisMonth} reviews received</Text><Text style={styles.featureText}>{formatMoney(subscription.value.scheduledAppointmentValue, business?.currency ?? 'USD')} upcoming booked value</Text></View> : null}
-    <View style={styles.card}><Text style={styles.cardTitle}>Chakusa Business</Text><Text style={styles.body}>Run Chakusa with your team.</Text>{['Everything in Pro','Up to 10 team members','Team invitations','Admin and Staff roles','Team access controls'].map(item => <View key={item} style={styles.feature}><Icon name="group" size={20} color={m3.primary} /><Text style={styles.featureText}>{item}</Text></View>)}{role === 'OWNER' && canPurchasePlan(plan, status, 'BUSINESS') ? <PrimaryButton fullWidth disabled={billing.purchasing || billing.restoring} label={billing.selectedPlan === 'BUSINESS' ? 'Business selected' : 'Choose Business'} onPress={() => billing.selectPlan('BUSINESS')} /> : null}<SecondaryButton fullWidth label="View Team" onPress={() => navigation.navigate('Team')} /></View>
-    {subscription && plan === 'BUSINESS' ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Chakusa Business · {statusLabel}</Text>{period ? <Text style={styles.body}>{period}</Text> : null}{status === 'GRACE_PERIOD' ? <Text style={styles.body}>Your Business access remains active while the store resolves payment.</Text> : null}{role === 'OWNER' && subscription.provider ? <SecondaryButton fullWidth label="Manage Subscription" onPress={() => void billing.manage()} /> : null}</View> : null}
-    {subscription && plan === 'PRO' ? <View style={[styles.card, styles.statusCard]}><Text style={styles.cardTitle}>Chakusa Pro · {statusLabel}</Text>{period ? <Text style={styles.body}>{period}</Text> : null}{status === 'GRACE_PERIOD' ? <Text style={styles.body}>Your Pro access is still active while the store attempts to resolve your payment.</Text> : null}{subscription.cancelAtPeriodEnd && status === 'ACTIVE' ? <Text style={styles.body}>Your subscription will not renew. Pro access remains active through the date above.</Text> : null}{subscription.provider ? <SecondaryButton fullWidth label="Manage Subscription" onPress={() => void billing.manage()} /> : null}</View> : null}
-    {maySubscribe ? <View style={styles.purchase}><Text style={styles.cardTitle}>{plan === 'PRO' && entitled ? 'Upgrade to Chakusa Business' : `Subscribe to Chakusa ${selectedName}`}</Text>
-      {canPurchasePlan(plan, status, 'PRO') && canPurchasePlan(plan, status, 'BUSINESS') ? <View style={styles.planChoices}><SecondaryButton disabled={billing.purchasing || billing.restoring} label={billing.selectedPlan === 'PRO' ? 'Pro selected' : 'Choose Pro'} onPress={() => billing.selectPlan('PRO')} /><SecondaryButton disabled={billing.purchasing || billing.restoring} label={billing.selectedPlan === 'BUSINESS' ? 'Business selected' : 'Choose Business'} onPress={() => billing.selectPlan('BUSINESS')} /></View> : null}
-      {!BILLING_ENABLED ? <Text style={styles.body}>Purchasing is not available in this build yet.</Text> : !billing.supported ? <Text style={styles.body}>Subscriptions are available in the Chakusa mobile app.</Text> : !billing.configured ? <><Text style={styles.body}>The monthly {selectedName} product is not configured for this build.</Text><Text style={styles.dev}>Add the platform’s public {selectedName} monthly product ID and create a new development build.</Text></> : billing.productLoading && !billing.product ? <Text accessibilityLiveRegion="polite" style={styles.body}>Loading the store price…</Text> : billing.product ? <><View accessible accessibilityLabel={`Chakusa ${selectedName}, monthly, ${billing.product.displayPrice}`} style={styles.price}><Text style={styles.priceValue}>{billing.product.displayPrice}</Text><Text style={styles.pricePeriod}>per month</Text></View><Text style={styles.body}>Plan: Chakusa {selectedName}</Text><Text style={styles.body}>Billing period: Monthly</Text><Text style={styles.body}>Billed monthly. Auto-renews until canceled.</Text>{billing.product.introductoryOffer ? <Text style={styles.offer}>Store offer: {billing.product.introductoryOffer}</Text> : null}<PrimaryButton fullWidth disabled={billing.purchasing || billing.restoring} label={billing.purchasing ? 'Waiting for store…' : plan === 'PRO' && billing.selectedPlan === 'BUSINESS' ? 'Upgrade' : 'Subscribe'} onPress={() => void billing.subscribe()} /></> : <><Text style={styles.body}>The store product could not be loaded. No checkout price is available.</Text><PrimaryButton fullWidth disabled={billing.productLoading} label={billing.productLoading ? 'Loading…' : 'Retry store'} onPress={() => void billing.loadProduct()} /></>}
-      <SecondaryButton fullWidth disabled={!billing.supported || billing.restoring || billing.purchasing} label={billing.restoring ? 'Restoring…' : 'Restore Purchases'} onPress={() => void billing.restore()} />
-      {billing.error?.includes('could not confirm') ? <SecondaryButton fullWidth disabled={billing.purchasing} label="Try verification again" onPress={() => void billing.retryVerification()} /> : null}
-      {billing.message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{billing.message}</Text> : null}{billing.error ? <Text accessibilityRole="alert" style={styles.error}>{billing.error}</Text> : null}
-      <View style={styles.legal}><Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text><Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text></View>
-    </View> : null}
-    <View style={styles.card}><Text style={styles.cardTitle}>Automation</Text><Text style={styles.body}>Set up automatic lead follow-up and customer win-back SMS once Pro is active{Platform.OS === 'android' ? ', including missed-call recovery' : ''}.</Text><SecondaryButton fullWidth label="View automation" onPress={() => navigation.navigate('Automation')} /></View>
-    {subscription ? <View style={styles.card}>
-      <Text style={styles.cardTitle}>Included in Chakusa</Text>
-      <Text style={styles.body}>Tools that are ready to use today. Tap one to open it.</Text>
-      {FUTURE_CAPABILITIES.map((capability) => {
-        const unlocked = isCapabilityUnlocked(subscription.features, capability.key);
-        return <Pressable key={capability.key} accessibilityRole="button" accessibilityLabel={`${capability.label}. ${capabilityStatusCopy(subscription.features, capability.key)}`} onPress={() => navigation.navigate(capability.route)} style={({ pressed }) => [styles.feature, pressed && styles.featurePressed]}>
-          <Icon name={unlocked ? "check_circle" : "lock"} size={20} color={unlocked ? m3.primary : m3.onSurfaceVariant} />
-          <View style={styles.featureCopy}>
-            <Text style={styles.featureText}>{capability.label}</Text>
-            <Text style={styles.featureDetail}>{capability.description}</Text>
-            <Text style={styles.featureStatus}>{capabilityStatusCopy(subscription.features, capability.key)}</Text>
+
+    <View style={styles.hero} accessible accessibilityLabel={`Your plan: ${planName(current)}${statusLabel ? `, ${statusLabel}` : ''}${period ? `, ${period}` : ''}`}>
+      <Text style={styles.heroEyebrow}>YOUR PLAN</Text>
+      <View style={styles.heroRow}>
+        <Text style={styles.heroPlan}>{planName(current)}</Text>
+        {statusLabel ? <Chip label={statusLabel} tone={status === 'GRACE_PERIOD' ? 'error' : 'secondary'} /> : null}
+      </View>
+      <Text style={styles.heroBody}>{current === 'FREE' ? 'You are on the free plan. Pick a plan below to unlock more.' : period ?? 'Billed monthly through your app store.'}</Text>
+      {status === 'GRACE_PERIOD' ? <Text style={styles.heroWarn}>Your store could not take the last payment. You keep access while it retries; update your payment method in the store.</Text> : null}
+      {subscription?.cancelAtPeriodEnd && current !== 'FREE' ? <Text style={styles.heroWarn}>This plan will not renew. You keep it until the date above.</Text> : null}
+      {owner && subscription?.provider ? <Pressable accessibilityRole="button" onPress={() => void billing.manage()} style={styles.heroLink}><Text style={styles.heroLinkText}>Manage or cancel in {billing.platform === 'ios' ? 'App Store' : 'Google Play'}</Text><Icon name="open_in_new" size={16} color={m3.onPrimary} /></Pressable> : null}
+    </View>
+
+    {!owner ? <Text style={styles.note}>Only the business owner can change the plan.</Text> : null}
+
+    <Text style={styles.sectionTitle}>{current === 'FREE' ? 'Choose your plan' : 'All plans'}</Text>
+
+    {catalogError ? <Pressable accessibilityRole="button" onPress={() => void loadCatalog()} style={styles.retry}><Text style={styles.retryText}>Plans could not be loaded. Tap to try again.</Text></Pressable> : null}
+    {!catalog && !catalogError ? <ActivityIndicator color={m3.primary} style={{ marginVertical: m3Space.lg }} /> : null}
+
+    {catalog ? BILLING_PLANS.map((target) => {
+      const description = catalog.find((item) => item.plan === target);
+      if (!description) return null;
+      const product = billing.products[target];
+      const action = planAction(plan, status, target);
+      const isCurrent = action === 'current';
+      const busy = billing.purchasingPlan === target;
+      const fallbackPrice = plansResponse ? referencePrice(description.referenceMonthlyPrice, plansResponse.currency) : null;
+      const trial = current === 'FREE' ? trialLabel(product?.introductoryOffer, description.trialDays) : null;
+      const unavailable = canBuyInApp && !billing.configuredPlans.includes(target);
+      const disabled = !owner || isCurrent || busy || Boolean(billing.purchasingPlan) || billing.restoring || (action !== 'downgrade' && (!canBuyInApp || !product));
+      return <View key={target} style={[styles.planCard, isCurrent && styles.planCardCurrent, target === RECOMMENDED && !isCurrent && styles.planCardRecommended]}>
+        <View style={styles.planHead}>
+          <View style={styles.planNameRow}>
+            <Text style={styles.planName}>{planName(target)}</Text>
+            {isCurrent ? <Chip label="Current" tone="secondary" /> : target === RECOMMENDED ? <Chip label="Most popular" tone="primary" /> : null}
           </View>
-          <Icon name="chevron_right" size={20} color={m3.onSurfaceVariant} />
-        </Pressable>;
-      })}
-    </View> : null}
-    <Text style={styles.footnote}>The localized price and introductory offer shown by your App Store or Google Play account are the purchase authority.</Text>
+          <Text style={styles.planTagline}>{PLAN_TAGLINES[target]}</Text>
+        </View>
+        <View style={styles.priceRow}>
+          {product ? <><Text style={styles.price}>{product.displayPrice}</Text><Text style={styles.pricePeriod}>/ month</Text></>
+            : canBuyInApp && billing.productLoading ? <Text style={styles.priceMuted}>Loading store price…</Text>
+            : fallbackPrice ? <><Text style={styles.price}>{fallbackPrice}</Text><Text style={styles.pricePeriod}>/ month</Text></>
+            : <Text style={styles.priceMuted}>{unavailable ? 'Coming soon to this store' : canBuyInApp ? 'Store price unavailable' : 'Available in the Chakusa app'}</Text>}
+        </View>
+        {!product && fallbackPrice ? <Text style={styles.small}>{unavailable ? 'Coming soon to this store.' : canBuyInApp ? 'Your store shows the final price in your currency.' : 'Subscribe in the Chakusa app for iPhone or Android.'}</Text> : null}
+        {trial ? <View style={styles.trialPill}><Icon name="celebration" size={14} color={m3.onSecondaryContainer} /><Text style={styles.trialText}>{trial}</Text></View> : null}
+        <View style={styles.highlights}>
+          {planHighlights(description).map((line) => <View key={line} style={styles.highlight}><Icon name="check" size={18} color={m3.primary} /><Text style={styles.highlightText}>{line}</Text></View>)}
+        </View>
+        {owner ? <Pressable accessibilityRole="button" accessibilityState={{ disabled, busy }} disabled={disabled} onPress={() => onPlanPress(target)} style={({ pressed }) => [styles.cta, (isCurrent || action === 'downgrade') ? styles.ctaQuiet : styles.ctaStrong, disabled && !isCurrent && styles.ctaDisabled, pressed && styles.pressed]}>
+          {busy ? <ActivityIndicator color={m3.onPrimary} /> : <Text style={[styles.ctaText, (isCurrent || action === 'downgrade') && styles.ctaTextQuiet]}>{planButtonLabel(action, planName(target), current === 'FREE' ? description.trialDays : 0)}</Text>}
+        </Pressable> : null}
+        {action === 'downgrade' && owner ? <Text style={styles.small}>Changes apply at your next renewal, in your store's subscription settings.</Text> : null}
+      </View>;
+    }) : null}
+
+    {billing.message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{billing.message}</Text> : null}
+    {billing.error ? <Text accessibilityRole="alert" style={styles.error}>{billing.error}</Text> : null}
+    {billing.error?.includes('could not confirm') ? <Pressable accessibilityRole="button" onPress={() => void billing.retryVerification()} style={styles.textButton}><Text style={styles.textButtonLabel}>Try confirming again</Text></Pressable> : null}
+    {canBuyInApp && !billing.productLoading && billing.configuredPlans.some((p) => !billing.products[p]) ? <Pressable accessibilityRole="button" onPress={() => void billing.loadProducts()} style={styles.textButton}><Text style={styles.textButtonLabel}>Reload store prices</Text></Pressable> : null}
+
+    {owner && canBuyInApp ? <Pressable accessibilityRole="button" disabled={billing.restoring || Boolean(billing.purchasingPlan)} onPress={() => void billing.restore()} style={styles.textButton}><Text style={styles.textButtonLabel}>{billing.restoring ? 'Restoring…' : 'Restore purchases'}</Text></Pressable> : null}
+
+    <Text style={styles.footnote}>Prices are shown and charged by {billing.platform === 'ios' ? 'the App Store' : billing.platform === 'android' ? 'Google Play' : 'your app store'} in your local currency. Plans renew monthly until you cancel.</Text>
+    <View style={styles.legal}>
+      <Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text>
+      <Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text>
+    </View>
   </M3Screen>;
 }
+
 const styles = StyleSheet.create({
   titleBlock: { gap: 2 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   pageTitle: { ...m3Type.headlineMd, color: m3.onSurface },
   pageSubtitle: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
-  card: { backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.lg, padding: m3Space.md, gap: m3Space.sm },
-  statusCard: { backgroundColor: "rgba(134,242,228,0.25)" },
-  purchase: { backgroundColor: m3.surfaceContainerLowest, borderWidth: 1, borderColor: m3.primary, borderRadius: m3Radius.lg, padding: m3Space.md, gap: m3Space.sm },
-  planChoices: { gap: m3Space.xs },
-  cardTitle: { ...m3Type.titleMd, color: m3.onSurface },
-  feature: { flexDirection: "row", alignItems: "flex-start", gap: m3Space.xs },
-  featurePressed: { opacity: 0.6 },
-  featureText: { ...m3Type.bodyMd, color: m3.onSurface, flex: 1 },
-  featureCopy: { flex: 1, gap: 2 },
-  featureDetail: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
-  featureStatus: { ...m3Type.bodySm, color: m3.onSurfaceVariant, fontStyle: "italic" },
-  body: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
-  price: { alignItems: "center", paddingVertical: m3Space.sm },
-  priceValue: { ...m3Type.displayMobile, fontSize: 34, lineHeight: 40, color: m3.onSurface },
+  hero: { backgroundColor: m3.primary, borderRadius: m3Radius.xl, padding: m3Space.lg, gap: m3Space.xs },
+  heroEyebrow: { ...m3Type.labelSm, color: m3.onPrimary, opacity: 0.8, letterSpacing: 1.2 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: m3Space.sm, flexWrap: 'wrap' },
+  heroPlan: { ...m3Type.displayMobile, color: m3.onPrimary },
+  heroBody: { ...m3Type.bodyMd, color: m3.onPrimary, opacity: 0.92 },
+  heroWarn: { ...m3Type.bodySm, color: m3.onPrimary, fontFamily: m3Type.labelLg.fontFamily },
+  heroLink: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, marginTop: m3Space.xs },
+  heroLinkText: { ...m3Type.labelLg, color: m3.onPrimary, textDecorationLine: 'underline' },
+  note: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  sectionTitle: { ...m3Type.titleMd, color: m3.onSurface, marginTop: m3Space.sm },
+  retry: { padding: m3Space.md, borderRadius: m3Radius.lg, backgroundColor: m3.surfaceContainerLowest },
+  retryText: { ...m3Type.bodyMd, color: m3.primary },
+  planCard: { backgroundColor: m3.surfaceContainerLowest, borderRadius: m3Radius.xl, padding: m3Space.lg, gap: m3Space.sm, borderWidth: 1, borderColor: m3.outlineVariant },
+  planCardRecommended: { borderColor: m3.primary, borderWidth: 2 },
+  planCardCurrent: { borderColor: m3.tertiary, borderWidth: 2 },
+  planHead: { gap: 2 },
+  planNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: m3Space.sm },
+  planName: { ...m3Type.headlineMd, color: m3.onSurface },
+  planTagline: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, minHeight: 40 },
+  price: { ...m3Type.displayMobile, color: m3.onSurface },
   pricePeriod: { ...m3Type.bodyMd, color: m3.onSurfaceVariant },
-  offer: { ...m3Type.labelLg, color: m3.onSurface },
-  dev: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
-  legal: { flexDirection: "row", flexWrap: "wrap", gap: m3Space.md },
-  link: { ...m3Type.labelMd, color: m3.primary, minHeight: 44, textAlignVertical: "center" },
+  priceMuted: { ...m3Type.bodyMd, color: m3.onSurfaceVariant },
+  trialPill: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: m3.secondaryContainer, borderRadius: m3Radius.full, paddingHorizontal: m3Space.sm, paddingVertical: 4 },
+  trialText: { ...m3Type.labelMd, color: m3.onSecondaryContainer },
+  highlights: { gap: 6 },
+  highlight: { flexDirection: 'row', alignItems: 'flex-start', gap: m3Space.xs },
+  highlightText: { ...m3Type.bodyMd, color: m3.onSurface, flex: 1 },
+  cta: { minHeight: 50, borderRadius: m3Radius.full, alignItems: 'center', justifyContent: 'center', marginTop: m3Space.xs, paddingHorizontal: m3Space.md },
+  ctaStrong: { backgroundColor: m3.primary },
+  ctaQuiet: { backgroundColor: m3.surfaceContainer },
+  ctaDisabled: { opacity: 0.45 },
+  ctaText: { ...m3Type.labelLg, color: m3.onPrimary },
+  ctaTextQuiet: { color: m3.onSurface },
+  pressed: { opacity: 0.8 },
+  small: { ...m3Type.bodySm, color: m3.onSurfaceVariant },
   message: { ...m3Type.bodyMd, color: m3.onSurface },
   error: { ...m3Type.bodyMd, color: m3.error },
-  footnote: { ...m3Type.bodySm, color: m3.onSurfaceVariant, textAlign: "center" },
+  textButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  textButtonLabel: { ...m3Type.labelLg, color: m3.primary },
+  footnote: { ...m3Type.bodySm, color: m3.onSurfaceVariant, textAlign: 'center' },
+  legal: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: m3Space.lg },
+  link: { ...m3Type.labelMd, color: m3.primary, minHeight: 44, textAlignVertical: 'center' },
 });

@@ -8,8 +8,10 @@ import { subscriptionApi } from '../services/endpoints';
 import { colors, radius, spacing, typography } from '../theme';
 import { formatDate } from '../utils/format';
 import { useAuth } from './AuthContext';
+import { OUTBOUND_MESSAGING_AVAILABLE } from '../config';
 
-export type ServerPlan = 'FREE' | 'PRO' | 'BUSINESS';
+import type { ServerPlan } from '../domain/billing';
+export type { ServerPlan };
 type Details = { resource?: string; feature?: string; limit?: number; current?: number; plan?: string; requiredPlan?: string; periodResetsAt?: string };
 type Notice = { title: string; body: string; reset?: string };
 
@@ -128,7 +130,8 @@ export function PlanExperienceProvider({ children }: PropsWithChildren) {
     serverPlan: subscription?.plan ?? null,
     plan: subscription?.plan ?? null,
     status: subscription?.status ?? null,
-    features: subscription?.features ?? null,
+    // Sending also needs a configured sender on the API; without one, screens prepare messages instead.
+    features: subscription?.features ? { ...subscription.features, outboundMessaging: subscription.features.outboundMessaging && OUTBOUND_MESSAGING_AVAILABLE } : null,
     usage: subscription?.usage ?? null,
     subscription,
     loading,

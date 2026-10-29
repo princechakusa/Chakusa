@@ -59,6 +59,8 @@ export interface BusinessCoachingInput {
   summary: DashboardSummary;
   insights: BusinessInsights;
   audiences: AudienceSummary[];
+  /** The business's ISO currency; amounts in the copy are written in it. Defaults to USD. */
+  currency?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,8 +80,14 @@ const MIN_CONVERSION_GAP_FOR_SERVICE_INSIGHT = 0.25;
 /** dormant customer count at or above this is worth flagging "high" rather than "medium" — same style of threshold as CRITICAL_FOLLOW_UP_BACKLOG above. */
 const HIGH_DORMANT_CUSTOMER_COUNT = 5;
 
-function money(value: number): string {
-  return `$${value.toFixed(2)}`;
+/** "$1,614", "$7.50", "€80" - in the business's currency, as the app shows it. */
+function money(input: BusinessCoachingInput, value: number): string {
+  const currency = input.currency ?? "USD";
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: Number.isInteger(value) ? 0 : 2, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
 }
 function pct(value: number): string {
   return `${Math.round(value * 100)}%`;
@@ -147,9 +155,9 @@ function outstandingRevenueInsight(input: BusinessCoachingInput): CoachingInsigh
   return {
     key: "outstanding_revenue",
     title: "Revenue is sitting uncollected",
-    context: `${money(outstanding)} from won jobs has not been marked as paid.`,
+    context: `${money(input, outstanding)} from won jobs has not been marked as paid.`,
     whyItMatters: "This is money already earned on completed work — it just hasn't been collected or recorded yet.",
-    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Outstanding payments`, `${money(outstanding)} outstanding`, `${pct(outstandingShare)} of recovered revenue is still outstanding`],
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Outstanding payments`, `${money(input, outstanding)} outstanding`, `${pct(outstandingShare)} of recovered revenue is still outstanding`],
     recommendedAction: "View customers with outstanding payments",
     actionLink: { kind: "audience", audienceKey: segment.key },
     expectedOutcome: "Recording payments as they come in keeps your recovered-revenue numbers accurate and surfaces who still owes you.",
@@ -192,7 +200,7 @@ function repeatCustomerRateInsight(input: BusinessCoachingInput): CoachingInsigh
     whyItMatters: "A returning customer costs nothing to re-acquire and is already proven to pay you — growing repeat business is usually cheaper than finding new leads.",
     evidence: [
       `${pct(repeatCustomerRate)} repeat customer rate across ${customersWithWonLead} paying customer${customersWithWonLead === 1 ? "" : "s"}`,
-      averageLifetimeValue != null ? `Average customer value: ${money(averageLifetimeValue)}` : "No lifetime value data yet",
+      averageLifetimeValue != null ? `Average customer value: ${money(input, averageLifetimeValue)}` : "No lifetime value data yet",
     ],
     recommendedAction: "Set a comeback reminder for a recent customer",
     actionLink: { kind: "comeback" },
@@ -259,7 +267,7 @@ function needsReviewsAudienceInsight(input: BusinessCoachingInput): CoachingInsi
     title: "Customers are still waiting to complete reviews",
     context: `${segment.totalCustomers} customer${segment.totalCustomers === 1 ? " has" : "s have"} an active review request without a completed review.`,
     whyItMatters: "These requests are already in progress, so this audience shows exactly where review follow-up may still be useful.",
-    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Needs reviews`, `${money(segment.revenue)} customer value in this audience`],
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in Needs reviews`, `${money(input, segment.revenue)} customer value in this audience`],
     recommendedAction: "View customers needing reviews",
     actionLink: { kind: "audience", audienceKey: segment.key },
     expectedOutcome: "Focusing on this existing audience keeps review follow-up directed at customers with an unfinished request.",
@@ -275,7 +283,7 @@ function relationshipAudienceInsight(input: BusinessCoachingInput, key: "vip" | 
     title: `${segment.label} deserve focused attention`,
     context: `${segment.totalCustomers} customer${segment.totalCustomers === 1 ? " is" : "s are"} currently in your ${segment.label.toLowerCase()} audience.`,
     whyItMatters: "This audience is identified from your recorded customer and revenue history, ready for you to review as a group.",
-    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in ${segment.label}`, `${money(segment.revenue)} total value`, `Average value: ${money(segment.averageValue)}`],
+    evidence: [`${segment.totalCustomers} customer${segment.totalCustomers === 1 ? "" : "s"} in ${segment.label}`, `${money(input, segment.revenue)} total value`, `Average value: ${money(input, segment.averageValue)}`],
     recommendedAction: `View ${segment.label.toLowerCase()}`,
     actionLink: { kind: "audience", audienceKey: segment.key },
     expectedOutcome: "Reviewing the segment helps you decide which known customer relationship needs attention next.",

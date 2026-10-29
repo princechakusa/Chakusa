@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { BusinessRole, Plan, SubscriptionStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../lib/errors.js";
-import { isEntitled } from "../lib/entitlements.js";
+import { isEntitled, resolveSubscription, SUBSCRIPTION_ENTITLEMENT_SELECT } from "../lib/entitlements.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -65,7 +65,7 @@ export default fp(async function tenantPlugin(fastify: FastifyInstance) {
     // service that needs plan/entitlement information downstream.
     const subscription = await prisma.subscription.findUnique({
       where: { businessId: membership.businessId },
-      select: { plan: true, status: true },
+      select: SUBSCRIPTION_ENTITLEMENT_SELECT,
     });
     // Every business gets a Subscription row at creation time (registration
     // and POST /business) and the add_subscriptions migration backfilled
@@ -73,8 +73,9 @@ export default fp(async function tenantPlugin(fastify: FastifyInstance) {
     // but defaulting to FREE/ACTIVE here (rather than throwing) is the
     // least-privilege fallback if it somehow happens: FREE grants no Pro
     // feature regardless of status, so this can never over-grant.
-    const plan = subscription?.plan ?? "FREE";
-    const status = subscription?.status ?? "ACTIVE";
+    // resolveSubscription turns a lapsed subscription into FREE, so every
+    // limit and feature check downstream sees what is actually paid for.
+    const { plan, status } = resolveSubscription(subscription);
     request.plan = plan;
     request.status = status;
 

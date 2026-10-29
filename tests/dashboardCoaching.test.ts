@@ -74,7 +74,7 @@ describe("GET /dashboard/coaching", () => {
     const insight = response.json().insights.find((i: { key: string }) => i.key === "outstanding_revenue");
 
     expect(insight).toBeDefined();
-    expect(insight.evidence).toContain("$400.00 outstanding");
+    expect(insight.evidence).toContain("$400 outstanding");
     expect(insight.actionLink).toEqual({ kind: "audience", audienceKey: "outstanding_payments" });
   });
 

@@ -14,6 +14,7 @@ export interface AppleBillingConfig {
   proMonthlyProductId: string;
   /** Readiness-only — see config.ts's APPLE_BUSINESS_MONTHLY_PRODUCT_ID doc comment. null until Business billing actually ships. */
   businessMonthlyProductId: string | null;
+  starterMonthlyProductId: string | null;
 }
 
 export function requireAppleBillingConfig(): AppleBillingConfig {
@@ -29,6 +30,7 @@ export function requireAppleBillingConfig(): AppleBillingConfig {
     environment: APPLE_STORE_ENVIRONMENT,
     proMonthlyProductId: APPLE_PRO_MONTHLY_PRODUCT_ID,
     businessMonthlyProductId: APPLE_BUSINESS_MONTHLY_PRODUCT_ID || null,
+    starterMonthlyProductId: config.APPLE_STARTER_MONTHLY_PRODUCT_ID || null,
   };
 }
 

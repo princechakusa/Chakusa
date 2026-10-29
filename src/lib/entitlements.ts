@@ -83,8 +83,24 @@ const PRO_FEATURES = new Set<Feature>(["AUTOMATION", "OUTBOUND_MESSAGING", "ADVA
 // it today.
 const FUTURE_BUSINESS_FEATURES: readonly Feature[] = ["AI_RECEPTIONIST", "QUOTES_ESTIMATES", "INVOICING", "FINANCIAL_MANAGEMENT", "MARKETPLACE_DISCOVERY", "ACCOUNTING_INTEGRATIONS", "INVENTORY"];
 
+/**
+ * Every plan from lowest to highest. The single source of truth for "is this
+ * an upgrade or a downgrade" and "which plan is next": nothing else may list
+ * the plans in order.
+ */
+export const PLAN_ORDER: readonly Plan[] = ["FREE", "STARTER", "PRO", "BUSINESS"];
+export const planRank = (plan: Plan) => PLAN_ORDER.indexOf(plan);
+/** The next plan up, used to tell someone at a limit what to upgrade to. */
+export const nextPlan = (plan: Plan): Plan => PLAN_ORDER[Math.min(planRank(plan) + 1, PLAN_ORDER.length - 1)]!;
+
+// Starter is the entry paid tier: Free's tools with roomier limits and the
+// full activity history, but none of the features that send messages or act
+// on the business's behalf (those cost real money per use and stay on Pro).
+const STARTER_FEATURES = new Set<Feature>(["EXTENDED_HISTORY"]);
+
 const PLAN_FEATURES: Record<Plan, ReadonlySet<Feature>> = {
   FREE: new Set(),
+  STARTER: STARTER_FEATURES,
   PRO: PRO_FEATURES,
   BUSINESS: new Set<Feature>([...PRO_FEATURES, "TEAM_MANAGEMENT", ...FUTURE_BUSINESS_FEATURES]),
 };
@@ -111,6 +127,49 @@ const STATUS_SENSITIVE_FEATURES: ReadonlySet<Feature> = new Set(["AUTOMATION", "
  * never retain Pro entitlements regardless of what `plan` still reads.
  */
 const ENTITLED_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["ACTIVE", "TRIALING", "GRACE_PERIOD"]);
+
+/** The Subscription columns resolveSubscription needs; select exactly these wherever a plan gates anything. */
+export const SUBSCRIPTION_ENTITLEMENT_SELECT = { plan: true, status: true, provider: true, currentPeriodEnd: true } as const;
+
+// A store-managed period that ended this long ago without a renewal, expiry
+// or grace notification is treated as lapsed. The tolerance absorbs late
+// store notifications; grace periods get the longest store grace window
+// (Google allows up to 30 days) on top.
+const STALE_PERIOD_TOLERANCE_MS = 3 * 24 * 60 * 60 * 1000;
+const STALE_GRACE_TOLERANCE_MS = 31 * 24 * 60 * 60 * 1000;
+
+export interface SubscriptionEntitlementRow {
+  plan: Plan;
+  status: SubscriptionStatus;
+  provider?: string | null;
+  currentPeriodEnd?: Date | null;
+}
+
+/**
+ * The plan and status that actually entitle this business right now. `plan`
+ * on the row is what was last bought and is never rewritten on expiry, so it
+ * is NOT a safe gate on its own: a lapsed (EXPIRED/CANCELED) subscription,
+ * or a store period that ended with no renewal on record, resolves to FREE.
+ * Every limit and feature check must start from this, never from the raw
+ * row, or a cancelled trial would keep its paid limits forever. A missing
+ * row resolves to FREE/ACTIVE (least privilege).
+ */
+export function resolveSubscription(row: SubscriptionEntitlementRow | null | undefined, now: Date = new Date()): { plan: Plan; status: SubscriptionStatus } {
+  if (!row) return { plan: "FREE", status: "ACTIVE" };
+  if (!ENTITLED_STATUSES.has(row.status)) return { plan: "FREE", status: row.status };
+  if (row.provider && row.currentPeriodEnd) {
+    const tolerance = row.status === "GRACE_PERIOD" ? STALE_GRACE_TOLERANCE_MS : STALE_PERIOD_TOLERANCE_MS;
+    if (now.getTime() > row.currentPeriodEnd.getTime() + tolerance) return { plan: "FREE", status: "EXPIRED" };
+  }
+  return { plan: row.plan, status: row.status };
+}
+
+/** isEntitled for a raw Subscription row, through resolveSubscription. A missing row is never entitled. */
+export function isSubscriptionEntitled(row: SubscriptionEntitlementRow | null | undefined, feature: Feature, now: Date = new Date()): boolean {
+  if (!row) return false;
+  const { plan, status } = resolveSubscription(row, now);
+  return isEntitled(plan, status, feature);
+}
 
 /**
  * Single authoritative entitlement check — every other function in this
@@ -222,6 +281,14 @@ const PLAN_LIMITS: Record<Exclude<Plan, "BUSINESS">, PlanLimits> = {
     customTemplatesPerType: 1,
     staffSeats: 1,
   },
+  STARTER: {
+    leadsPerMonth: 150,
+    reviewRequestsPerMonth: 150,
+    customers: 1000,
+    openReminders: 150,
+    customTemplatesPerType: 3,
+    staffSeats: 1,
+  },
   PRO: {
     ...PRO_CORE_LIMITS,
     staffSeats: 1,
@@ -248,6 +315,21 @@ export function getPlanLimits(plan: Plan): PlanLimits {
   return PLAN_LIMITS[plan];
 }
 
+/**
+ * Public description of every plan, built from the same tables that enforce
+ * them, so the apps and website never keep their own copy of what a plan
+ * includes. Prices are not here: the stores (apps) and app configuration
+ * (website) own those.
+ */
+export function describePlans() {
+  return PLAN_ORDER.map((plan) => ({
+    plan,
+    rank: planRank(plan),
+    limits: getPlanLimits(plan),
+    features: [...PLAN_FEATURES[plan]].filter((feature) => !FUTURE_BUSINESS_FEATURES.includes(feature)).map((feature) => ({ key: feature, label: FEATURE_LABELS[feature] })),
+  }));
+}
+
 export interface LimitCheck {
   plan: Plan;
   resource: LimitedResource;
@@ -261,7 +343,7 @@ export interface LimitCheck {
 /** Throws LIMIT_REACHED (403) when `current` has already reached `limit`. */
 export function assertUnderLimit({ plan, resource, limit, current, periodResetsAt }: LimitCheck): void {
   if (limit === null || current < limit) return;
-  throw ApiError.limitReached(resource, RESOURCE_LABELS[resource], { limit, current, plan, periodResetsAt });
+  throw ApiError.limitReached(resource, RESOURCE_LABELS[resource], { limit, current, plan, requiredPlan: nextPlan(plan), periodResetsAt });
 }
 
 // ---------------------------------------------------------------------------

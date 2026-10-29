@@ -226,11 +226,11 @@ describe("Stripe Connect invoice payments (Program 3, Invoicing I8)", () => {
     const contact = await prisma.customer.create({ data: { businessId: account.businessId, name: "Casey" } });
     await prisma.invoice.update({ where: { id: invoice.id }, data: { customerId: contact.id } });
 
-    const ownerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `own-${Date.now()}@example.com`, password: "password123", fullName: "Casey" } });
+    const ownerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `own-${Date.now()}@example.com`, password: "password123", fullName: "Casey" } });
     const owner = ownerReg.json();
     await prisma.customerBusinessLink.create({ data: { customerProfileId: owner.profile.id, businessId: account.businessId, businessCustomerId: contact.id } });
 
-    const strangerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `str-${Date.now()}@example.com`, password: "password123", fullName: "Stranger" } });
+    const strangerReg = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `str-${Date.now()}@example.com`, password: "password123", fullName: "Stranger" } });
     const stranger = strangerReg.json();
 
     const strangerPay = await app.inject({ method: "POST", url: `/customer/invoices/${invoice.id}/pay`, headers: { authorization: `Bearer ${stranger.accessToken}` }, payload: {} });

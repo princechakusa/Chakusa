@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useConfirmSheet } from '../../components/ConfirmSheet';
+import { useSignOutSheet } from '../../components/ConfirmSheet';
 import { Screen } from '../../components/ui';
 import { legalDocumentLabel } from '../../domain/legalAcceptance';
+import { AGE_CONFIRMATION_MESSAGE } from '../../domain/authenticationFlow';
+import { AgeConfirmation } from '../../experience/AuthParts';
 import { ApiError } from '../../services/api';
 import { authColors, authRadius, authShadow, authSpace, authType } from '../../experience/authTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
@@ -36,17 +38,22 @@ export function CustomerLegalGateScreen({
   onViewDocument,
 }: { onViewDocument: (type: import('../../apiTypes').LegalDocumentType) => void }) {
   const auth = useCustomerAuth();
-  const { confirm, sheet } = useConfirmSheet();
+  const { chooseSignOut, sheet } = useSignOutSheet();
   const signOut = async () => {
-    if (await confirm({ title: 'Sign out?', confirmLabel: 'Yes, sign out', cancelLabel: 'No', destructive: true, icon: 'log-out-outline' })) await auth.logout();
+    const choice = await chooseSignOut();
+    if (choice === 'all') await auth.logoutAll().catch(() => undefined);
+    else if (choice === 'device') await auth.logout();
   };
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const termsPending = auth.pendingLegalDocuments.some((doc) => doc.type === 'TERMS_OF_SERVICE');
   const [busyType, setBusyType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const accept = async (type: import('../../apiTypes').LegalDocumentType) => {
+    if (type === 'TERMS_OF_SERVICE' && !ageConfirmed) { setError(AGE_CONFIRMATION_MESSAGE); return; }
     setBusyType(type);
     setError(null);
-    try { await auth.acceptLegalDocument(type); }
+    try { await auth.acceptLegalDocument(type, type === 'TERMS_OF_SERVICE' ? ageConfirmed : undefined); }
     catch (caught) { setError(caught instanceof ApiError ? caught.message : 'Could not record your acceptance.'); }
     finally { setBusyType(null); }
   };
@@ -68,6 +75,7 @@ export function CustomerLegalGateScreen({
           </View>
         </View>
       ))}
+      {termsPending ? <AgeConfirmation checked={ageConfirmed} disabled={busyType != null} onChange={(next) => { setAgeConfirmed(next); setError(null); }} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <SecondaryBtn fullWidth label="Sign out" onPress={() => void signOut()} />
       {sheet}

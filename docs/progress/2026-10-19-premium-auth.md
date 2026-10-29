@@ -27,7 +27,7 @@ None.
 ## Tests
 - Mobile: `tsc --noEmit` exit 0; full suite **584/584** passed (new validator and runtime-config tests included).
 - Backend: `tsc -p tsconfig.test.json` exit 0. New `tests/app-config.test.ts` case (reset offered only with switch + mail) **not run** — Docker's engine returned 500, so the local `chakusa_test` Postgres was unavailable.
-- Device (Android, 720×1610, Expo Go, production API): customer and business pages render; tab switching; empty-submit validation; wrong password returns the server's "Invalid email or password"; Forgot password shows the support message; Personal ↔ Business switch; welcome screen unchanged. Evidence: `evidence/2026-10-19-welcome/business-auth-signin-form-android.png`.
+- Device (Android, 720×1610, Expo Go, production API): customer and business pages render; tab switching; empty-submit validation; wrong password returns the server's "Invalid email or password"; Forgot password shows the support message; Personal ↔ Business switch; welcome screen unchanged. (Screenshots were removed from the repository on 2026-10-29.)
 
 ## Unresolved
 - Real successful sign-in/sign-up with a designated test account not run (no test credentials; avoided creating production accounts).

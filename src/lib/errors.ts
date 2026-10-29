@@ -12,6 +12,7 @@ export type ApiErrorCode =
   | "AUTH_TOKEN_INVALID"
   | "AUTH_SESSION_EXPIRED"
   | "AUTH_ACCOUNT_DISABLED"
+  | "AGE_CONFIRMATION_REQUIRED"
   | "AUTH_REFRESH_REUSED"
   | "AUTH_RESET_TOKEN_INVALID"
   | "AUTH_RESET_TOKEN_EXPIRED"
@@ -34,6 +35,9 @@ export type ApiErrorCode =
   | "PLAN_REQUIRED"
   | "FEATURE_NOT_AVAILABLE"
   | "PROVIDER_SEND_FAILED";
+
+/** Customer-facing plan name ("STARTER" -> "Starter"). */
+export const planLabel = (plan: string) => plan.charAt(0) + plan.slice(1).toLowerCase();
 
 export class ApiError extends Error {
   statusCode: number;
@@ -89,20 +93,20 @@ export class ApiError extends Error {
   static limitReached(
     resource: string,
     label: string,
-    details: { limit: number; current: number; plan: string; periodResetsAt?: Date },
+    details: { limit: number; current: number; plan: string; requiredPlan?: string; periodResetsAt?: Date },
   ) {
-    return new ApiError(403, "LIMIT_REACHED", `Free plan limit reached for ${label}`, {
+    return new ApiError(403, "LIMIT_REACHED", `${planLabel(details.plan)} plan limit reached for ${label}`, {
       resource,
       limit: details.limit,
       current: details.current,
       plan: details.plan,
-      requiredPlan: "PRO",
+      requiredPlan: details.requiredPlan ?? "PRO",
       ...(details.periodResetsAt ? { periodResetsAt: details.periodResetsAt.toISOString() } : {}),
     });
   }
 
-  static featureNotAvailable(feature: string, label: string, plan: string, requiredPlan: "PRO" | "BUSINESS" = "PRO") {
-    return new ApiError(403, "FEATURE_NOT_AVAILABLE", `${label} is available on the ${requiredPlan === "BUSINESS" ? "Business" : "Pro"} plan`, {
+  static featureNotAvailable(feature: string, label: string, plan: string, requiredPlan: "STARTER" | "PRO" | "BUSINESS" = "PRO") {
+    return new ApiError(403, "FEATURE_NOT_AVAILABLE", `${label} is available on the ${planLabel(requiredPlan)} plan`, {
       feature,
       plan,
       requiredPlan,

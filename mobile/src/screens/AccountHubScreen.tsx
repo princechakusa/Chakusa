@@ -1,3 +1,4 @@
+import { planSummary } from '../domain/billing';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ReactNode, useState } from 'react';
@@ -9,7 +10,7 @@ import { useRuntimeConfig } from '../services/runtimeConfig';
 import { businessApi } from '../services/endpoints';
 import { useAuth } from '../state/AuthContext';
 import { useExperience } from '../experience/experienceContext';
-import { useConfirmSheet } from '../components/ConfirmSheet';
+import { useConfirmSheet, useSignOutSheet } from '../components/ConfirmSheet';
 import { usePlanExperience } from '../state/PlanExperienceContext';
 import { m3, m3Radius, m3Space, m3Shadow, m3Type } from '../experience/businessTheme';
 import { Icon, M3Card, M3Header, M3Screen } from '../experience/businessKit';
@@ -39,6 +40,7 @@ export function AccountHubScreen() {
   const { company } = useRuntimeConfig();
   const { switching, switchExperience } = useExperience();
   const { confirm, sheet } = useConfirmSheet();
+  const { chooseSignOut, sheet: signOutSheet } = useSignOutSheet();
   const confirmSwitch = async () => {
     if (await confirm({ title: 'Switch to customer?', message: 'You will leave your business tools and go to the customer side, where you find and book services. You can switch back any time.', confirmLabel: 'Yes, switch', cancelLabel: 'No, stay here', icon: 'swap-horizontal-outline' })) await switchExperience('customer');
   };
@@ -48,7 +50,7 @@ export function AccountHubScreen() {
   const canManageBusiness = role === 'OWNER' || role === 'ADMIN';
   const businessName = business?.name || 'Your business';
   const initials = businessName.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-  const planLabel = plan === 'BUSINESS' ? 'Business' : plan === 'PRO' ? (status === 'TRIALING' ? 'Pro trial' : 'Pro') : 'Free';
+  const planLabel = planSummary(plan, status);
 
   const runSessionAction = async (kind: 'logout' | 'all') => {
     if (sessionAction) return;
@@ -62,16 +64,10 @@ export function AccountHubScreen() {
       setSessionAction(null);
     }
   };
-  const confirmLogout = () =>
-    Alert.alert('Sign out of this device?', 'Your other signed-in devices will stay connected.', [
-      { text: 'No, stay signed in', style: 'cancel' },
-      { text: 'Yes, sign out', style: 'destructive', onPress: () => void runSessionAction('logout') },
-    ]);
-  const confirmLogoutAll = () =>
-    Alert.alert('Sign out of all devices?', 'Every Chakusa session, including this device, will need to sign in again.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out everywhere', style: 'destructive', onPress: () => void runSessionAction('all') },
-    ]);
+  const confirmLogout = async () => {
+    const choice = await chooseSignOut();
+    if (choice) await runSessionAction(choice === 'all' ? 'all' : 'logout');
+  };
 
   const header = (
     <M3Header
@@ -161,22 +157,22 @@ export function AccountHubScreen() {
 
       <MenuSection title="Privacy and control">
         <MenuRow icon="shield" tone="tertiary" title="Data & legal" detail="Data ownership, export, terms, privacy and cookies" onPress={() => navigation.navigate('DataGovernance')} />
-        <MenuRow icon="logout" tone="primary" title={sessionAction === 'all' ? 'Signing out everywhere…' : 'Sign out of all devices'} detail="Revoke every active Chakusa session" disabled={Boolean(sessionAction)} onPress={confirmLogoutAll} />
         <MenuRow icon="delete" tone="primary" title="Delete account" detail="Permanently remove your Chakusa account" destructive onPress={() => navigation.navigate('DeleteAccount')} last />
       </MenuSection>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Sign out of this device"
+        accessibilityLabel="Sign out"
         disabled={Boolean(sessionAction)}
-        onPress={confirmLogout}
+        onPress={() => void confirmLogout()}
         style={({ pressed }) => [styles.logout, pressed && styles.pressed, sessionAction && styles.disabled]}
       >
         <Icon name="logout" size={20} color={m3.error} />
-        <Text style={styles.logoutText}>{sessionAction === 'logout' ? 'Signing out…' : 'Sign out'}</Text>
+        <Text style={styles.logoutText}>{sessionAction ? 'Signing out…' : 'Sign out'}</Text>
       </Pressable>
       <Text style={styles.copyright}>{copyrightLine(company)}</Text>
       {sheet}
+      {signOutSheet}
     </M3Screen>
   );
 }

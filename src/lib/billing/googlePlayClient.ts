@@ -11,6 +11,7 @@ export interface GoogleBillingConfig {
   proMonthlyProductId: string;
   /** Readiness-only — see config.ts's GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID doc comment. null until Business billing actually ships. */
   businessMonthlyProductId: string | null;
+  starterMonthlyProductId: string | null;
 }
 
 export function requireGoogleBillingConfig(): GoogleBillingConfig {
@@ -24,6 +25,7 @@ export function requireGoogleBillingConfig(): GoogleBillingConfig {
     serviceAccountPrivateKey: Buffer.from(GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64, "base64").toString("utf8"),
     proMonthlyProductId: GOOGLE_PRO_MONTHLY_PRODUCT_ID,
     businessMonthlyProductId: GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID || null,
+    starterMonthlyProductId: config.GOOGLE_STARTER_MONTHLY_PRODUCT_ID || null,
   };
 }
 

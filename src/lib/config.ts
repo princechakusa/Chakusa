@@ -213,6 +213,9 @@ export const envSchema = z.object({
   // product ID, not a startup error. See the Business Phase 1 report's
   // "Apple Business product mapping" section.
   APPLE_BUSINESS_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Starter tier ($3 entry plan) product. Optional like Business: unset means
+  // the catalog never resolves STARTER for Apple (fail closed).
+  APPLE_STARTER_MONTHLY_PRODUCT_ID: optionalSecret,
   // Despite the name, this governs BOTH Apple and Google billing (kept as
   // one shared setting deliberately — a single Chakusa deployment targets
   // one store environment at a time for both providers, not one each).
@@ -252,6 +255,8 @@ export const envSchema = z.object({
   // Business tier's Google product — same readiness-only, optional-even-
   // when-enabled reasoning as APPLE_BUSINESS_MONTHLY_PRODUCT_ID above.
   GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID: optionalSecret,
+  // Starter tier product; same optional, fail-closed reasoning as Apple's.
+  GOOGLE_STARTER_MONTHLY_PRODUCT_ID: optionalSecret,
   // Real-time Developer Notifications arrive as an authenticated Cloud
   // Pub/Sub push request — Pub/Sub signs each request with a Google-issued
   // OIDC token (Authorization: Bearer <token>) when the push subscription

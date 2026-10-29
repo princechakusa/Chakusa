@@ -4,6 +4,8 @@
 // Progressive enhancement: the static HTML is the fallback, and the year
 // range is computed in the browser even when the API is unreachable.
 
+import { formatPlanPrice } from "../data/pricingDefaults";
+
 const API_URL = (import.meta.env.PUBLIC_API_URL as string | undefined) ?? "https://chakusa-api.onrender.com";
 const CACHE_KEY = "chakusa.siteConfig.v1";
 const CACHE_MS = 10 * 60 * 1000;
@@ -12,6 +14,7 @@ interface SiteConfig {
   company?: { legalName?: string | null; registrationNumber?: string | null; address?: string | null; copyrightHolder?: string; copyrightStartYear?: number; websiteUrl?: string };
   social?: { whatsappNumber?: string | null; instagramUrl?: string | null; facebookUrl?: string | null; tiktokUrl?: string | null; linkedinUrl?: string | null };
   app?: { notice?: string | null; maintenance?: boolean };
+  pricing?: { currency?: string; monthly?: Record<string, number>; trialDays?: Record<string, number> };
 }
 
 const ICONS: Record<string, string> = {
@@ -37,9 +40,31 @@ function renderCopyright(cfg: SiteConfig | null) {
   });
 }
 
+/** Plan prices and trial lengths, set in the admin console. Everything else on the page is just words. */
+function renderPricing(cfg: SiteConfig) {
+  const pricing = cfg.pricing;
+  if (!pricing) return;
+  const currency = typeof pricing.currency === "string" && /^[A-Z]{3}$/.test(pricing.currency) ? pricing.currency : "USD";
+  document.querySelectorAll<HTMLElement>("[data-cfg-price]").forEach((el) => {
+    const amount = pricing.monthly?.[el.dataset.cfgPrice ?? ""];
+    if (typeof amount === "number" && Number.isFinite(amount)) el.textContent = formatPlanPrice(amount, currency);
+  });
+  const days = (plan: string | undefined) => { const value = pricing.trialDays?.[plan ?? ""]; return typeof value === "number" && Number.isFinite(value) ? value : null; };
+  document.querySelectorAll<HTMLElement>("[data-cfg-trial-days]").forEach((el) => {
+    const value = days(el.dataset.cfgTrialDays);
+    if (value !== null) el.textContent = String(value);
+  });
+  // A plan with no trial hides its trial badge instead of saying "0-day".
+  document.querySelectorAll<HTMLElement>("[data-cfg-trial-block]").forEach((el) => {
+    const value = days(el.dataset.cfgTrialBlock);
+    if (value !== null) el.hidden = value === 0;
+  });
+}
+
 function render(cfg: SiteConfig | null) {
   renderCopyright(cfg);
   if (!cfg) return;
+  renderPricing(cfg);
   const c = cfg.company ?? {};
   const details = [c.legalName, c.registrationNumber ? `Reg. no. ${c.registrationNumber}` : null, c.address].filter(Boolean).join(" · ");
   document.querySelectorAll<HTMLElement>("[data-cfg-company]").forEach((el) => { el.textContent = details; el.hidden = !details; });

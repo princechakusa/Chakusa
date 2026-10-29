@@ -1,6 +1,6 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { AVONDALE, HARARE_CENTRE, PASSWORD, backToTabs, button, expectMapRendered, goBack, linger, makeTestPhoto, openWelcome, trackErrors, unnamedButtons, uniqueEmail, visibleText } from './helpers';
+import { AVONDALE, HARARE_CENTRE, PASSWORD, backToTabs, button, confirmAge, expectMapRendered, goBack, linger, makeTestPhoto, openWelcome, trackErrors, unnamedButtons, uniqueEmail, visibleText } from './helpers';
 
 // The whole product, driven like a person would: one business account and
 // one customer account, created fresh, then every main surface of each.
@@ -28,7 +28,7 @@ async function acceptBusinessLegal(page: Page) {
   const tab = page.getByRole('tab', { name: 'Dashboard tab' });
   for (let i = 0; i < 6 && !(await tab.isVisible().catch(() => false)); i++) {
     const agree = button(page, 'I have read and agree');
-    if (await agree.isVisible().catch(() => false)) { await linger(page, 600); await agree.click(); }
+    if (await agree.isVisible().catch(() => false)) { await linger(page, 600); await confirmAge(page); await agree.click(); }
     await page.waitForTimeout(700);
   }
   await expect(tab).toBeVisible();
@@ -37,8 +37,9 @@ async function acceptBusinessLegal(page: Page) {
 async function signInBusiness(page: Page) {
   await openWelcome(page);
   await page.getByTestId('choose-business').click();
-  await page.getByPlaceholder('Email address').fill(business.email);
-  await page.getByPlaceholder('Password').fill(PASSWORD);
+  await page.getByPlaceholder('you@example.com').fill(business.email);
+  await page.getByPlaceholder('Your password').fill(PASSWORD);
+  await confirmAge(page);
   await page.getByTestId('auth-submit').click();
   await acceptBusinessLegal(page);
 }
@@ -46,10 +47,19 @@ async function signInBusiness(page: Page) {
 async function signInCustomer(page: Page) {
   await openWelcome(page);
   await page.getByTestId('choose-customer').click();
-  await page.getByPlaceholder('Email address').fill(customer.email);
-  await page.getByPlaceholder('Password').fill(PASSWORD);
+  await page.getByPlaceholder('you@example.com').fill(customer.email);
+  await page.getByPlaceholder('Your password').fill(PASSWORD);
+  await confirmAge(page);
   await page.getByTestId('auth-submit').click();
   await expect(page.getByRole('tab', { name: 'Home tab' })).toBeVisible();
+}
+
+/** "Near me" opens the location picker: use the device location, then search there. */
+async function searchNearMe(page: Page) {
+  await page.getByTestId('near-me').click();
+  await page.getByTestId('location-use-device').filter({ visible: true }).first().click();
+  await linger(page, 1500);
+  await button(page, 'Search here').click();
 }
 
 async function openMoreItem(page: Page, label: string) {
@@ -63,12 +73,13 @@ test.describe('Business and customer, end to end', () => {
     await openWelcome(page);
     await linger(page, 2500);
     await page.getByTestId('choose-business').click();
-    await page.getByText('Create one').click();
-    await page.getByPlaceholder('Your name').fill(business.owner);
-    await page.getByPlaceholder('Business name').fill(business.name);
-    await page.getByPlaceholder('Email address').fill(business.email);
-    await page.getByPlaceholder('Create a password').fill(PASSWORD);
+    await page.getByText('Create an account', { exact: true }).click();
+    await page.getByPlaceholder('Jane Doe').fill(business.owner);
+    await page.getByPlaceholder('Your business').fill(business.name);
+    await page.getByPlaceholder('you@example.com').fill(business.email);
+    await page.getByPlaceholder('At least 8 characters').fill(PASSWORD);
     await linger(page);
+    await confirmAge(page);
     await page.getByTestId('auth-submit').click();
 
     const cont = () => button(page, 'Continue').click();
@@ -179,7 +190,11 @@ test.describe('Business and customer, end to end', () => {
     await linger(page);
     await button(page, 'Create lead').click();
     await expect(visibleText(page, lead.name)).toBeVisible();
+    // Without a configured SMS/WhatsApp sender the lead offers to prepare the message instead.
+    await expect(button(page, 'Prepare message')).toBeVisible();
     await linger(page);
+    // The new lead opens on top of the form; wait for its Back rather than racing the transition.
+    await button(page, 'Back').click();
     await backToTabs(page);
 
     await page.getByRole('tab', { name: 'Dashboard tab' }).click();
@@ -247,18 +262,21 @@ test.describe('Business and customer, end to end', () => {
     const { errors } = trackErrors(page);
     await openWelcome(page);
     await page.getByTestId('choose-business').click();
-    await page.getByPlaceholder('Email address').fill(business.email);
-    await page.getByPlaceholder('Password').fill('not-the-password');
+    await page.getByPlaceholder('you@example.com').fill(business.email);
+    await page.getByPlaceholder('Your password').fill('not-the-password');
+    await confirmAge(page);
     await page.getByTestId('auth-submit').click();
     await expect(page.getByTestId('auth-error')).toBeVisible();
     await linger(page, 1500);
-    await page.getByPlaceholder('Password').fill(PASSWORD);
+    await page.getByPlaceholder('Your password').fill(PASSWORD);
+    await confirmAge(page);
     await page.getByTestId('auth-submit').click();
     await acceptBusinessLegal(page);
     await page.getByRole('tab', { name: 'More tab' }).click();
-    // The confirmation is a real browser dialog on web (native alert on phones).
-    page.once('dialog', (dialog) => { expect(dialog.message()).toContain('Sign out of this device?'); void dialog.accept(); });
-    await button(page, /^Sign out of this device/).click();
+    // Sign out asks where: this device, all devices, or stay signed in.
+    await button(page, 'Sign out').click();
+    await expect(button(page, 'Sign out of all devices')).toBeVisible();
+    await button(page, 'Sign out of this device').click();
     await expect(page.getByTestId('auth-submit').or(page.getByTestId('choose-business'))).toBeVisible();
     await linger(page);
     await signInBusiness(page);
@@ -271,13 +289,15 @@ test.describe('Business and customer, end to end', () => {
     await openWelcome(page);
     await linger(page, 2000);
     await page.getByTestId('choose-customer').click();
-    await page.getByText('Create an account').click();
-    await page.getByPlaceholder('Full name').fill(customer.name);
-    await page.getByPlaceholder('Email address').fill(customer.email);
-    await page.getByPlaceholder('Create a password').fill(PASSWORD);
+    await page.getByText('Create an account', { exact: true }).click();
+    await page.getByPlaceholder('Jane Doe').fill(customer.name);
+    await page.getByPlaceholder('you@example.com').fill(customer.email);
+    await page.getByPlaceholder('At least 8 characters').fill(PASSWORD);
     await linger(page);
+    await confirmAge(page);
     await page.getByTestId('auth-submit').click();
     await expect(page.getByText('Review & accept')).toBeVisible();
+    await confirmAge(page);
     for (let i = 0; i < 3; i++) {
       await linger(page, 500);
       await button(page, 'Accept').click();
@@ -296,7 +316,7 @@ test.describe('Business and customer, end to end', () => {
     await signInCustomer(page);
     await page.getByRole('tab', { name: 'Explore tab' }).click();
     await recordA11y(page, 'Customer Explore');
-    await page.getByTestId('near-me').click();
+    await searchNearMe(page);
     await expect(page.getByTestId('near-me-label')).toContainText('Harare', { timeout: 20_000 });
     const card = button(page, new RegExp(business.name));
     await expect(card).toBeVisible();
@@ -318,6 +338,8 @@ test.describe('Business and customer, end to end', () => {
     // Search near a named place instead of GPS (Nominatim search).
     await button(page, 'Change location').click();
     await page.getByLabel('Search for a place').fill('Avondale Harare');
+    // Searches only on request (Nominatim forbids search-as-you-type).
+    await button(page, 'Search').click();
     const result = page.getByRole('button', { name: /Avondale/ }).filter({ visible: true }).first();
     await expect(result).toBeVisible({ timeout: 20_000 });
     await linger(page);
@@ -335,7 +357,7 @@ test.describe('Business and customer, end to end', () => {
     await context.setGeolocation(HARARE_CENTRE);
     await signInCustomer(page);
     await page.getByRole('tab', { name: 'Explore tab' }).click();
-    await page.getByTestId('near-me').click();
+    await searchNearMe(page);
     await button(page, new RegExp(business.name)).click();
     await expect(page.getByRole('link', { name: 'Get directions' }).filter({ visible: true })).toBeVisible();
     await expectMapRendered(page, page.getByTestId('business-map').filter({ visible: true }).locator('iframe'));
@@ -344,12 +366,16 @@ test.describe('Business and customer, end to end', () => {
 
     await button(page, 'Book an appointment').click();
     await button(page, 'Haircut. 60 min').click();
+    // Date and time are dropdowns: open each, then pick from its sheet.
+    await page.getByRole('button', { name: 'Choose a date', exact: true, disabled: false }).filter({ visible: true }).first().click();
     const dates = page.getByRole('button', { name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d+$/ }).filter({ visible: true });
-    await expect(dates.first()).toBeVisible();
-    const dateLabel = (await dates.nth(1).getAttribute('aria-label')) ?? (await dates.nth(1).innerText());
+    await expect(dates.first()).toBeVisible({ timeout: 20_000 });
+    // Two days out: nearer bookings fall inside the cancellation-notice window, where rescheduling is (rightly) closed.
+    const dateLabel = (await dates.nth(2).getAttribute('aria-label')) ?? (await dates.nth(2).innerText());
     const [, weekday = '', day = ''] = /^(\w{3}), \w{3} (\d+)$/.exec(dateLabel.trim()) ?? [];
     Object.assign(booked, { weekday, day });
-    await dates.nth(1).click();
+    await dates.nth(2).click();
+    await page.getByRole('button', { name: 'Choose a time', exact: true, disabled: false }).filter({ visible: true }).first().click();
     const times = page.getByRole('button', { name: /\d{1,2}:\d{2}/ }).filter({ visible: true });
     await expect(times.first()).toBeVisible({ timeout: 20_000 });
     await recordA11y(page, 'Booking flow');
@@ -402,8 +428,8 @@ test.describe('Business and customer, end to end', () => {
     expect(failures).toEqual([]);
 
     await page.getByRole('tab', { name: 'Account tab' }).click();
-    page.once('dialog', (dialog) => void dialog.accept());
     await button(page, 'Sign out').click();
+    await button(page, 'Sign out of this device').click();
     await expect(page.getByTestId('auth-submit').or(page.getByTestId('choose-customer'))).toBeVisible();
     await signInCustomer(page);
     expectClean();
@@ -434,12 +460,16 @@ test.describe('Business and customer, end to end', () => {
     await button(page, /Reschedule/).click();
     await expect(visibleText(page, 'Pick a new time')).toBeVisible();
     // Take a time on a later day than the current booking so the change is unmistakable.
-    const dayLabels = page.getByText(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [A-Z][a-z]{2} \d+$/).filter({ visible: true });
-    await expect(dayLabels.first()).toBeVisible();
-    const dayCount = await dayLabels.count();
-    const target = dayLabels.nth(Math.min(2, dayCount - 1));
-    const [, weekday = '', day = ''] = /^(\w{3})\w*, \w{3} (\d+)$/.exec((await target.innerText()).trim()) ?? [];
-    await target.locator('xpath=..').getByRole('button').first().click();
+    await page.getByRole('button', { name: 'Choose a date', exact: true, disabled: false }).filter({ visible: true }).first().click();
+    const dayOptions = page.getByRole('button', { name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d+$/ }).filter({ visible: true });
+    await expect(dayOptions.first()).toBeVisible({ timeout: 20_000 });
+    const dayCount = await dayOptions.count();
+    const target = dayOptions.nth(Math.min(3, dayCount - 1));
+    const targetLabel = (await target.getAttribute('aria-label')) ?? (await target.innerText());
+    const [, weekday = '', day = ''] = /^(\w{3}), \w{3} (\d+)$/.exec(targetLabel.trim()) ?? [];
+    await target.click();
+    await page.getByRole('button', { name: 'Choose a time', exact: true, disabled: false }).filter({ visible: true }).first().click();
+    await page.getByRole('button', { name: /\d{1,2}:\d{2}/ }).filter({ visible: true }).first().click();
     await expect(visibleText(page, 'Pick a new time')).toBeHidden();
     const after = await page.getByText('When', { exact: true }).filter({ visible: true }).locator('xpath=..').innerText();
     expect(after, 'the booking time changed').not.toBe(before);
@@ -498,12 +528,14 @@ test.describe('Business and customer, end to end', () => {
     await context.setGeolocation(HARARE_CENTRE);
     await signInCustomer(page);
     await page.getByRole('tab', { name: 'Explore tab' }).click();
-    await page.getByTestId('near-me').click();
+    await searchNearMe(page);
     await button(page, new RegExp(business.name)).click();
     await button(page, 'Book an appointment').click();
     await button(page, 'Haircut. 60 min').click();
+    await page.getByRole('button', { name: 'Choose a date', exact: true, disabled: false }).filter({ visible: true }).first().click();
     const dates = page.getByRole('button', { name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d+$/ }).filter({ visible: true });
     await dates.nth(3).click();
+    await page.getByRole('button', { name: 'Choose a time', exact: true, disabled: false }).filter({ visible: true }).first().click();
     await page.getByRole('button', { name: /\d{1,2}:\d{2}/ }).filter({ visible: true }).first().click();
     await page.getByRole('button', { name: /^(Confirm|Book|Request)/ }).filter({ visible: true }).last().click();
     await expect(visibleText(page, 'SCHEDULED')).toBeVisible({ timeout: 20_000 });
@@ -523,7 +555,7 @@ test.describe('Business and customer, end to end', () => {
     const bizErrors = trackErrors(biz);
     await signInBusiness(biz);
     await openMoreItem(biz, 'Services');
-    await button(biz, 'Add service').click();
+    await button(biz, /^Add service$/i).click();
     await biz.getByLabel('Service name', { exact: true }).fill(`Beard trim ${stamp}`);
     await biz.getByLabel('Duration (min)', { exact: true }).fill('30');
     // Not exact-only: the leftover "More" menu (React web keeps inactive
@@ -532,7 +564,8 @@ test.describe('Business and customer, end to end', () => {
     await linger(biz);
     await button(biz, 'Save service').click();
     await expect(biz.getByText(`Beard trim ${stamp}`).filter({ visible: true }).first()).toBeVisible();
-    await expect(biz.getByText('30 min · $15').filter({ visible: true }).first()).toBeVisible();
+    await expect(biz.getByText('30 mins', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    await expect(biz.getByText('$15', { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await linger(biz, 1200);
     bizErrors.expectClean();
     await bizContext.close();
@@ -542,7 +575,7 @@ test.describe('Business and customer, end to end', () => {
     const custErrors = trackErrors(cust);
     await signInCustomer(cust);
     await cust.getByRole('tab', { name: 'Explore tab' }).click();
-    await cust.getByTestId('near-me').click();
+    await searchNearMe(cust);
     await button(cust, new RegExp(business.name)).click();
     await expect(button(cust, new RegExp(`Beard trim ${stamp}`))).toBeVisible();
     await linger(cust, 1500);
@@ -609,7 +642,7 @@ test.describe('Business and customer, end to end', () => {
     await signInCustomer(cust);
     const onCard = photoLoads();
     await cust.getByRole('tab', { name: 'Explore tab' }).click();
-    await cust.getByTestId('near-me').click();
+    await searchNearMe(cust);
     const card = button(cust, new RegExp(business.name));
     await expect(card.getByLabel(`${business.name} photo`)).toBeVisible();
     expect((await onCard).headers()['content-type']).toMatch(/^image\//);

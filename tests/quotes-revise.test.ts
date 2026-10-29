@@ -235,7 +235,7 @@ describe("Business quote revise, SENT -> SENT (Program 3, Loop 3F.3)", () => {
     const account = await businessAccount(app);
     const { quoteId, revisionId } = await sendQuote(app, account.token);
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/revise`, payload: reviseBody({ expectedCurrentRevisionId: revisionId }) })).statusCode).toBe(401);
-    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
+    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/revise`, headers: authHeader(cust.json().accessToken), payload: reviseBody({ expectedCurrentRevisionId: revisionId }) })).statusCode).toBe(401);
   });
 

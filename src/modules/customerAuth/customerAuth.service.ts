@@ -8,6 +8,7 @@ import { ensureCustomerProfile, findMatchingBusinessCustomers, linkCustomerToBus
 import { createEmailVerification } from "../../lib/customer/emailVerification.js";
 import {
   authenticateAppleIdentity,
+  assertAgeConfirmedForNewAccount,
   authenticateGoogleIdentity,
   createSession,
   rotateRefreshToken,
@@ -36,8 +37,10 @@ export async function registerCustomer(input: {
   fullName: string;
   displayName?: string | null;
   phone?: string | null;
+  ageConfirmed?: boolean;
   attrs?: SessionAttrs;
 }) {
+  assertAgeConfirmedForNewAccount(input.ageConfirmed);
   const normalizedEmail = normalizeEmail(input.email);
   const passwordHash = await hashPassword(input.password);
 
@@ -46,8 +49,8 @@ export async function registerCustomer(input: {
     if (existing?.customerProfile) throw ApiError.conflict("A customer account with this email already exists");
 
     const user = existing
-      ? await tx.user.update({ where: { id: existing.id }, data: existing.passwordHash ? {} : { passwordHash } })
-      : await tx.user.create({ data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName } });
+      ? await tx.user.update({ where: { id: existing.id }, data: { ...(existing.passwordHash ? {} : { passwordHash }), ...(existing.ageConfirmedAt ? {} : { ageConfirmedAt: new Date() }) } })
+      : await tx.user.create({ data: { email: normalizedEmail, normalizedEmail, passwordHash, fullName: input.fullName, ageConfirmedAt: new Date() } });
 
     const profile = await ensureCustomerProfile(
       user.id,
@@ -84,8 +87,8 @@ export async function loginCustomer(input: { email: string; password: string; at
 }
 
 /** Reuses auth.service's Google resolution, then swaps to a CUSTOMER session. */
-export async function customerGoogleSignIn(identity: VerifiedGoogleIdentity, attrs?: SessionAttrs) {
-  const resolved = await authenticateGoogleIdentity(identity);
+export async function customerGoogleSignIn(identity: VerifiedGoogleIdentity, attrs?: SessionAttrs, ageConfirmed?: boolean) {
+  const resolved = await authenticateGoogleIdentity(identity, { ageConfirmed });
   await prisma.authSession.update({ where: { id: resolved.session.id }, data: { revokedAt: new Date(), revokeReason: "reissued_customer_scope" } });
   const profile = await ensureCustomerProfile(resolved.user.id, { displayName: resolved.user.fullName });
   const { session, refreshToken } = await createSession(resolved.user.id, prisma, undefined, { scope: "CUSTOMER", ...attrs });
@@ -99,8 +102,9 @@ export async function customerAppleSignIn(
   proof: Parameters<typeof authenticateAppleIdentity>[2],
   nameInput: Parameters<typeof authenticateAppleIdentity>[3],
   attrs?: SessionAttrs,
+  ageConfirmed?: boolean,
 ) {
-  const resolved = await authenticateAppleIdentity(identity, appleRefreshToken, proof, nameInput);
+  const resolved = await authenticateAppleIdentity(identity, appleRefreshToken, proof, nameInput, { ageConfirmed });
   await prisma.authSession.update({ where: { id: resolved.session.id }, data: { revokedAt: new Date(), revokeReason: "reissued_customer_scope" } });
   const profile = await ensureCustomerProfile(resolved.user.id, { displayName: resolved.user.fullName });
   const { session, refreshToken } = await createSession(resolved.user.id, prisma, undefined, { scope: "CUSTOMER", ...attrs });

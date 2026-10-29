@@ -143,7 +143,7 @@ describe("Quote delivery boundary (Program 3, Loop 3G)", () => {
     const { quoteId } = await draftAndSend(app, a.token);
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/resend`, headers: authHeader(b.token) })).statusCode).toBe(404);
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/resend` })).statusCode).toBe(401);
-    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
+    const cust = await app.inject({ method: "POST", url: "/customer/auth/register", payload: { ageConfirmed: true, email: `c${Date.now()}@x.com`, password: "password123", fullName: "C" } });
     expect((await app.inject({ method: "POST", url: `/quotes/${quoteId}/resend`, headers: authHeader(cust.json().accessToken) })).statusCode).toBe(401);
   });
 

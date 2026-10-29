@@ -116,3 +116,10 @@ export async function makeTestPhoto(browser: Browser, path: string, color: strin
   await page.close();
   return path;
 }
+
+/** Ticks "I confirm I am 18 or older" if it is shown and not ticked yet (sign-in, sign-up and the updated-Terms screens). */
+export async function confirmAge(page: Page) {
+  const box = page.getByTestId('age-confirmation').locator('visible=true').first();
+  if (!(await box.isVisible().catch(() => false))) return;
+  if ((await box.getAttribute('aria-checked')) !== 'true') await box.click();
+}

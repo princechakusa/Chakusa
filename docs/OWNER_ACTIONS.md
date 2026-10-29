@@ -705,7 +705,14 @@ any other number would see failed messages.
 4. Before a US launch, ask a lawyer whether any state app-store age law (e.g. Texas, Utah,
    Louisiana) needs the stores' age-signal APIs on top of the 18+ confirmation.
 
-## OA-23 — Map tiles for production traffic (2026-10-29) — DECISION
+## OA-23 — Map tiles for production traffic (2026-10-29) — DECIDED
+
+**Owner decision (2026-10-29):** stay on the public OpenStreetMap tile server for launch while
+usage is small (the app already shows the required attribution and identifies itself). When usage
+grows, move the maps to **Google Maps**. That is a rebuild of the map screens onto Google's map
+component (not a one-line tile URL change), and needs a Google Cloud project with billing and
+restricted API keys. Trigger to switch: slow or grey map tiles, or any notice from OSM. The original
+note follows.
 
 The apps draw maps with Leaflet on the public OpenStreetMap tile server (`tile.openstreetmap.org`)
 with the required "© OpenStreetMap contributors" attribution. That server's usage policy allows

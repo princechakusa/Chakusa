@@ -7,9 +7,11 @@ customer, and walks both through the whole product.
 
 ## What is covered
 
-- `01-welcome-and-motion.spec.ts`: the first screen and its motion. It checks
-  that the entrance really animates, the tagline rotates, cards spring under a
-  press, and reduce-motion users get a static screen.
+- `01-welcome-and-motion.spec.ts`: the first screen. It checks the copy, that
+  both choices are buttons with real accessible names, that a card gives press
+  feedback, that reduce-motion users get the final layout at once, that the app
+  still opens when the brand fonts fail, and that each card opens its own
+  sign-in (with back and the experience switch).
 - `02-business-and-customer-journey.spec.ts`: in order:
   - **Business:** sign-up, the 8-step setup, and legal acceptance. Every main
     tab. Pinning the business location with device GPS and a dropped map pin

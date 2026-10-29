@@ -267,7 +267,7 @@ export function ServiceCatalogScreen() {
                         <Icon name="edit" size={15} color={m3.onSurface} />
                         <Text style={styles.editBtnText}>Edit Details</Text>
                       </Pressable>
-                      <Pressable accessibilityRole="button" onPress={() => archive(service)} style={styles.archiveBtn}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Archive ${service.name}`} onPress={() => archive(service)} style={styles.archiveBtn}>
                         <Icon name="archive" size={16} color={m3.onSurfaceVariant} />
                       </Pressable>
                     </View>

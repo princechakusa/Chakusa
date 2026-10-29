@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../components/icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { CustomerMembershipDto, LoyaltyRewardDto, RewardRedemptionDto, WalletDto } from '../../apiTypes';

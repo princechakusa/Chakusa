@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/icons';
 import { useState } from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Alert, Platform, StyleSheet, Text, TextInput, View } from 'react-native';

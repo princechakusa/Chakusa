@@ -598,7 +598,7 @@ test.describe('Business and customer, end to end', () => {
     await expect(visibleText(page, /Staff training/)).toBeVisible();
     await linger(page, 1200);
     page.once('dialog', (dialog) => void dialog.accept());
-    await button(page, 'Remove').click();
+    await button(page, 'Remove blocked time: Staff training').click();
     await expect(page.getByText(/Staff training/).filter({ visible: true })).toHaveCount(0);
     expectClean();
   });

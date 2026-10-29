@@ -1,4 +1,4 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '../components/icons';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { m3, m3Space } from '../experience/businessTheme';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';

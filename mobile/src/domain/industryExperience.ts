@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/icons';
 
 type IndustryIcon = ComponentProps<typeof Ionicons>['name'];
 export interface IndustryExperience { id: string; label: string; category: string; icon: IndustryIcon; services: string[]; dashboardLabel: string; emptyLeadCopy: string; }

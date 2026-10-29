@@ -99,7 +99,7 @@ export function AvailabilitySettingsScreen() {
                     </Text>
                     <Text style={styles.blockMeta}>{member}</Text>
                   </View>
-                  <Pressable accessibilityRole="button" onPress={() => remove(block)} style={styles.removeBtn}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove blocked time: ${block.reason ?? 'Unavailable'}`} onPress={() => remove(block)} style={styles.removeBtn}>
                     <Icon name="delete_outline" size={18} color={m3.error} />
                   </Pressable>
                 </M3Card>

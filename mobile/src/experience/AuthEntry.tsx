@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/icons';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BrandMark } from '../components/BrandMark';
 import { authType } from './authTheme';

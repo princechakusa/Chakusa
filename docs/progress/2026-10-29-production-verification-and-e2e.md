@@ -40,6 +40,13 @@ No backend, authorization or data change.
 - Old local processes from an earlier session are still running: the test API on port 4000 and `e2e:serve` on 8081, both against the shared `chakusa_test` DB. Stopping them was refused by the agent's permission policy. **Stop them before the next full backend test run** (see handoff "Local environment notes"), otherwise `business-team.test.ts` flakes.
 - The e2e container `chakusa-e2e-run-pg` and the e2e API (4100) and web server (8091) were left running for reuse. Remove them with `docker rm -f chakusa-e2e-run-pg` when done.
 
+## 4. Production hardening checks (handoff §3 item 4), from outside
+
+- **Rate limits:** `GET /plans` and `GET /app-config` send `x-ratelimit-limit: 120` in production (120/min per route, as in code).
+- **CORS:** both public routes return `Access-Control-Allow-Origin: *` with no `allow-credentials`. This is deliberate (`appConfig.routes.ts`): the data is public and identical for everyone, and browsers send no cookies. An authenticated route (`/auth/me`) gives a foreign origin no `Access-Control-Allow-Origin`, so the credentialed allowlist is in force.
+- **Not checkable without reading Render's environment page** (which shows secrets): whether Sentry is on and the exact `CORS_ALLOWED_ORIGINS` / `ADMIN_CONSOLE_ORIGIN` values. The owner confirms these in Render → chakusa-api → Environment.
+- **Render plan:** still the free instance ("spins down with inactivity", seen on the dashboard). An always-on plan for launch is an owner cost decision (handoff §3 item 4).
+
 ## Next
 
-Handoff §3 item 4: production hardening checks (rate limits on new public routes, CORS/admin origin on Render, Sentry, Render plan).
+Handoff §3 item 5 (map tiles, OA-23) waits on the owner's provider choice; item 6 (builds) waits on the owner's go.

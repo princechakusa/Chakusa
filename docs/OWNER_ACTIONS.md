@@ -627,8 +627,7 @@ test number. To go live the owner must:
   the free-trial offer when Google lists it.
 
 **Still the owner's:**
-1. **Apple → Pro and Business → Introductory Offers:** remove the old "Free for the first 2 weeks"
-   offers (the app gives a trial on Starter only). The agent's permission policy blocked deletions.
+1. ~~Apple: remove the old 2-week trials on Pro and Business~~ **Done by the owner 2026-10-29.**
 2. **Apple Business → Agreements:** accept the updated Paid Applications Schedule (Account Holder),
    or Apple will not let the subscriptions be submitted.
 3. **Apple:** add a display name, description and review screenshot to Starter (needed for review).
@@ -642,6 +641,17 @@ test number. To go live the owner must:
    financial data, manage orders and subscriptions), set those variables, then
    `GOOGLE_BILLING_ENABLED=true`. The server refuses to start in production if any are missing while
    it is true.
+   **Progress 2026-10-29 (agent):** service account `chakusa-play-billing@chakusa-507914.iam.gserviceaccount.com`
+   created in Google Cloud project `chakusa-507914`; JSON key downloaded to the owner's Downloads
+   (`chakusa-507914-37792fcd1b86.json`, plus `chakusa-play-billing-PRIVATE_KEY_BASE64.txt` holding the
+   value for Render); Google Play Android Developer API enabled; invited in Play Console with
+   Chakusa-only access (view financial data, manage orders and subscriptions), status Active.
+   **Owner still:** in Render set `GOOGLE_PLAY_PACKAGE_NAME=com.chakusa.mobile`,
+   `GOOGLE_BILLING_SERVICE_ACCOUNT_EMAIL=<the email above>` and paste the .txt contents into
+   `GOOGLE_BILLING_SERVICE_ACCOUNT_PRIVATE_KEY_BASE64` (agents must not enter credentials). Then move
+   both key files out of Downloads to `C:\Users\Dev Prince\.chakusa\` or delete them. Real-time
+   Developer Notifications (Pub/Sub topic + push subscription → `GOOGLE_RTDN_*`) are still to set up
+   before `GOOGLE_BILLING_ENABLED=true`.
 
 The original steps follow.
 

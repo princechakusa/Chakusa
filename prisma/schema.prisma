@@ -3819,6 +3819,8 @@ model CustomerBusinessLink {
   relationship       String    @default("CUSTOMER")
   favourite          Boolean   @default(false)
   blockedByBusiness  Boolean   @default(false) @map("blocked_by_business")
+  // The customer blocked this business: it can no longer message them in the app.
+  blockedByCustomer  Boolean   @default(false) @map("blocked_by_customer")
   firstInteractionAt DateTime? @map("first_interaction_at")
   lastInteractionAt  DateTime? @map("last_interaction_at")
   createdAt          DateTime  @default(now()) @map("created_at")

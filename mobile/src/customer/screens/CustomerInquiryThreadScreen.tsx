@@ -1,10 +1,10 @@
 import { Ionicons } from '../../components/icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { InquiryBusinessDto, InquiryMessageDto } from '../../apiTypes';
+import type { InquiryBusinessDto, InquiryMessageDto, InquiryReportReason } from '../../apiTypes';
 import { ProfilePhoto } from '../../components/ProfilePhoto';
 import { ChatComposer, ChatLayout, ChatThread, type ChatMessage } from '../../components/chat/ChatKit';
 import { customerChatPalette } from '../chatPalette';
@@ -21,6 +21,12 @@ type Props = NativeStackScreenProps<CustomerRootStackParamList, 'CustomerInquiry
 
 const POLL_MS = 8000;
 const SUGGESTIONS = ['What are your prices?', 'Are you available this week?', 'Do you take walk-ins?'];
+const REPORT_REASONS: { label: string; reason: InquiryReportReason }[] = [
+  { label: 'Spam', reason: 'spam' },
+  { label: 'Abusive or inappropriate', reason: 'inappropriate' },
+  { label: 'Scam or fraud', reason: 'scam' },
+  { label: 'Something else', reason: 'other' },
+];
 
 export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
@@ -31,6 +37,7 @@ export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const sendingRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -39,6 +46,7 @@ export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
       const thread = await inquiriesApi.get(threadId);
       setMessages(thread.messages);
       if (thread.business) setBusiness(thread.business);
+      setBlocked(Boolean(thread.blocked));
       setError(null);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not load this conversation.');
@@ -70,6 +78,28 @@ export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
     }
   };
 
+  // Apple 1.2 / Play UGC: every conversation can be reported or blocked.
+  const submitReport = async (reason: InquiryReportReason) => {
+    if (!threadId) return;
+    try { await inquiriesApi.report(threadId, reason); Alert.alert('Report sent', 'Thank you. Our team reviews every report.'); }
+    catch (caught) { Alert.alert('Could not send the report', caught instanceof ApiError ? caught.message : 'Try again in a moment.'); }
+  };
+  const changeBlock = async (next: boolean) => {
+    if (!threadId) return;
+    try { await inquiriesApi.block(threadId, next); setBlocked(next); }
+    catch (caught) { Alert.alert('Something went wrong', caught instanceof ApiError ? caught.message : 'Try again in a moment.'); }
+  };
+  const openMenu = () => {
+    if (!threadId) return;
+    Alert.alert(business?.name ?? 'Conversation', undefined, [
+      { text: 'Report this conversation', onPress: () => Alert.alert('Why are you reporting this?', undefined, [...REPORT_REASONS.map((item) => ({ text: item.label, onPress: () => void submitReport(item.reason) })), { text: 'Cancel', style: 'cancel' as const }]) },
+      blocked
+        ? { text: 'Unblock this business', onPress: () => void changeBlock(false) }
+        : { text: 'Block this business', style: 'destructive' as const, onPress: () => Alert.alert('Block this business?', 'They will no longer be able to message you in the app, and you will not be able to message them until you unblock.', [{ text: 'Cancel', style: 'cancel' as const }, { text: 'Block', style: 'destructive' as const, onPress: () => void changeBlock(true) }]) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   const chat: ChatMessage[] = messages.map((m) => ({ id: m.id, text: m.body, mine: !m.fromBusiness, at: m.createdAt }));
 
   const header = (
@@ -84,6 +114,11 @@ export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
           <Text style={styles.headerHint}>Replies arrive here and as a notification</Text>
         </View>
       </Pressable>
+      {threadId ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Report or block" onPress={openMenu} hitSlop={10} style={styles.headerBtn}>
+          <Ionicons name="ellipsis-horizontal" size={22} color={premium.ink} />
+        </Pressable>
+      ) : null}
     </View>
   );
 
@@ -112,7 +147,13 @@ export function CustomerInquiryThreadScreen({ navigation, route }: Props) {
           }
         />
       )}
-      <ChatComposer value={draft} onChangeText={setDraft} onSend={() => void send()} sending={sending} disabled={!threadId && !route.params.slug} placeholder="Write a message" palette={customerChatPalette} />
+      {blocked ? (
+        <View style={styles.blockedBar}>
+          <Text style={styles.blockedText}>You blocked this business.</Text>
+          <Pressable accessibilityRole="button" onPress={() => void changeBlock(false)}><Text style={styles.blockedAction}>Unblock</Text></Pressable>
+        </View>
+      ) : null}
+      <ChatComposer value={draft} onChangeText={setDraft} onSend={() => void send()} sending={sending} disabled={blocked || (!threadId && !route.params.slug)} placeholder="Write a message" palette={customerChatPalette} />
     </ChatLayout>
   );
 }
@@ -125,6 +166,9 @@ const styles = StyleSheet.create({
   headerName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: premium.ink },
   headerHint: { fontFamily: 'Inter_400Regular', fontSize: 11.5, color: premium.inkFaint },
   spinner: { flex: 1 },
+  blockedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 10, backgroundColor: premium.sage },
+  blockedText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: premium.inkSoft },
+  blockedAction: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.deep },
   intro: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 24 },
   introIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: premium.sage, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   introTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, color: premium.ink, textAlign: 'center' },

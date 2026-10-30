@@ -30,6 +30,8 @@ export interface RecoveryEngineInput {
   pushGranted: boolean;
   /** Lets iPhone owners be told why detection is unavailable instead of silently showing nothing. */
   platform?: 'ios' | 'android' | 'web';
+  /** The business's Chakusa call line, if one is assigned. iPhone owners forward unanswered calls to it. */
+  callLineNumber?: string | null;
 }
 
 /**
@@ -52,7 +54,9 @@ export function recoveryEngineStatus(input: RecoveryEngineInput): RecoveryEngine
     items.push({
       key: 'detection',
       label: 'Missed-call detection',
-      value: 'iPhone doesn�t let apps see missed calls. Forward calls you don�t answer to your Chakusa call line and they will appear here as leads.',
+      value: input.callLineNumber
+        ? `iPhone doesn’t let apps see missed calls. Forward calls you don’t answer to ${input.callLineNumber} and they will appear here as leads. On your phone dial **61*${input.callLineNumber}# (no answer), **67*${input.callLineNumber}# (busy) and **62*${input.callLineNumber}# (unreachable). Cancel with ##004#.`
+        : 'iPhone doesn’t let apps see missed calls. Ask Chakusa support for your call line: forward calls you don’t answer to it and they will appear here as leads.',
       status: 'unsupported',
     });
   }

@@ -47,8 +47,9 @@ function serializeMessage(message: { id: string; body: string; direction: string
 export async function sendCustomerInquiry(customerProfileId: string, slug: string, body: string, pushProvider?: PushProvider) {
   const text = cleanBody(body);
   const business = await visibleBusinessBySlug(slug);
-  const link = await prisma.customerBusinessLink.findUnique({ where: { customerProfileId_businessId: { customerProfileId, businessId: business.id } }, select: { blockedByBusiness: true } });
+  const link = await prisma.customerBusinessLink.findUnique({ where: { customerProfileId_businessId: { customerProfileId, businessId: business.id } }, select: { blockedByBusiness: true, blockedByCustomer: true } });
   if (link?.blockedByBusiness) throw ApiError.forbidden("This business isn't accepting messages from you");
+  if (link?.blockedByCustomer) throw ApiError.forbidden("You've blocked this business. Unblock it to send a message");
 
   const since = new Date(Date.now() - 60 * 60 * 1000);
   const recent = await prisma.message.count({
@@ -120,9 +121,11 @@ export async function getCustomerInquiry(customerProfileId: string, threadId: st
     prisma.message.findMany({ where: { conversationId: thread.id, provider: IN_APP_PROVIDER, deletedAt: null }, orderBy: { createdAt: "asc" }, take: 500, select: { id: true, body: true, direction: true, createdAt: true, readAt: true } }),
   ]);
   await prisma.message.updateMany({ where: { conversationId: thread.id, provider: IN_APP_PROVIDER, direction: "OUTBOUND", readAt: null }, data: { readAt: new Date() } });
+  const link = await prisma.customerBusinessLink.findUnique({ where: { customerProfileId_businessId: { customerProfileId, businessId: thread.businessId } }, select: { blockedByCustomer: true } });
   return {
     id: thread.id,
     business: business ? { name: business.name, slug: business.publicSlug, photoUrl: businessPhotoPath(business) } : null,
+    blocked: link?.blockedByCustomer ?? false,
     messages: messages.map(serializeMessage),
   };
 }
@@ -142,6 +145,8 @@ export async function sendBusinessInquiryReply(businessId: string, conversationI
   if (!conversation) throw ApiError.notFound("Conversation not found");
   if (conversation.contextType !== INQUIRY_CONTEXT || !conversation.contextId) throw ApiError.badRequest("This conversation isn't with a Chakusa app customer");
   const customerProfileId = conversation.contextId;
+  const link = await prisma.customerBusinessLink.findUnique({ where: { customerProfileId_businessId: { customerProfileId, businessId } }, select: { blockedByCustomer: true } });
+  if (link?.blockedByCustomer) throw ApiError.forbidden("This customer has blocked messages from your business");
 
   const now = new Date();
   const message = await prisma.$transaction(async (tx) => {
@@ -166,4 +171,24 @@ export async function sendBusinessInquiryReply(businessId: string, conversationI
     console.error("[inquiries] customer notification failed", err);
   }
   return serializeMessage(message);
+}
+
+/** Blocks or unblocks the business on this thread. A blocked business cannot message the customer in the app. */
+export async function setInquiryBlocked(customerProfileId: string, threadId: string, blocked: boolean) {
+  const thread = await ownedThread(customerProfileId, threadId);
+  await prisma.customerBusinessLink.upsert({
+    where: { customerProfileId_businessId: { customerProfileId, businessId: thread.businessId } },
+    create: { customerProfileId, businessId: thread.businessId, relationship: "CUSTOMER", blockedByCustomer: blocked },
+    update: { blockedByCustomer: blocked },
+  });
+  return { blocked };
+}
+
+/** Reports the business behind a thread to the moderation queue (same queue as a profile report). */
+export async function reportInquiry(customerProfileId: string, threadId: string, reason: string, detail?: string) {
+  const thread = await ownedThread(customerProfileId, threadId);
+  const report = await prisma.businessReport.create({
+    data: { customerProfileId, businessId: thread.businessId, reason, detail: [`Message thread ${thread.id}`, detail].filter(Boolean).join(": ").slice(0, 2000) },
+  });
+  return { id: report.id, status: report.status };
 }

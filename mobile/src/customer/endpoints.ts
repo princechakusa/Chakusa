@@ -25,6 +25,7 @@ import type {
   CustomerInvoiceListResponse, CustomerInvoiceDetailDto, CustomerInvoicePayResult,
   GoogleNearbyDto, NearbyPlacesDto, InquiryMessageDto, InquiryThreadDto, InquiryThreadSummaryDto,
   MarketplaceReportReason,
+  InquiryReportReason,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 import { marketplaceRoute } from './guestBrowsing';
@@ -114,6 +115,8 @@ export const inquiriesApi = {
   start: (slug: string, body: string) => customerHttp.post<{ threadId: string; message: InquiryMessageDto }>('/customer/inquiries', { slug, body }),
   get: (id: string) => customerHttp.get<InquiryThreadDto>(`/customer/inquiries/${id}`),
   send: (id: string, body: string) => customerHttp.post<{ threadId: string; message: InquiryMessageDto }>(`/customer/inquiries/${id}/messages`, { body }),
+  report: (id: string, reason: InquiryReportReason, detail?: string) => customerHttp.post<{ id: string; status: string }>(`/customer/inquiries/${id}/report`, { reason, detail }),
+  block: (id: string, blocked: boolean) => customerHttp.put<{ blocked: boolean }>(`/customer/inquiries/${id}/block`, { blocked }),
 };
 
 export const bookingApi = {

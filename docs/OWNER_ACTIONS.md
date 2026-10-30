@@ -820,7 +820,7 @@ npx wrangler deploy
 
 Check: Cloudflare → Workers → chakusa-worker-tick → Logs shows a run every 5 minutes.
 
-## OA-24 — iPhone missed calls: call-forwarding line (2026-10-30) — OPEN
+## OA-26 — iPhone missed calls: call-forwarding line (2026-10-30) — OPEN
 
 iOS gives apps no access to calls, so the iPhone app cannot detect missed calls. The
 engineering path is built: each business can be given a Chakusa **call line**
@@ -831,7 +831,7 @@ answers with a short spoken greeting. Unknown lines hang up; withheld caller IDs
 lead. The iPhone app now says why detection is unavailable and what to do.
 
 Owner steps before it works:
-1. **Number � DONE 2026-10-30.** The US toll-free +1 844 604 1271 was domestic-only and the carrier refused to forward to it, so it was released (Twilio allows re-buying it for 10 days). A Twilio trial account holds one number, so that was needed before buying the US local call line **+1 662 623 1646** ($1.15/month). Forwarding from a UAE e&/du line to a normal US number still needs a real-call test.
+1. **Number — DONE 2026-10-30.** The US toll-free +1 844 604 1271 was domestic-only and the carrier refused to forward to it, so it was released (Twilio allows re-buying it for 10 days). A Twilio trial account holds one number, so that was needed before buying the US local call line **+1 662 623 1646** ($1.15/month). Forwarding from a UAE e&/du line to a normal US number still needs a real-call test.
 2. **Upgrade Twilio from trial** (balance $10.03): trial accounts play a "trial account"
    announcement to every caller.
 3. Point the number's Voice webhook (HTTP POST) at
@@ -845,3 +845,11 @@ Owner steps before it works:
 Store copy: claim missed-call detection for Android only until this is live.
 
 **2026-10-30 update (OA-10):** SMS stays off by decision. The toll-free number carrying the rejected verification was released, so there is nothing to resubmit; Twilio's own deadline for it was 2026-11-11 (not 11-09). US texting would need a new verified number and, for a local number, A2P 10DLC. WhatsApp via Meta is the follow-up channel.
+
+**2026-10-31 status (OA-26):** the call line works up to Twilio: calls from `+971521018367` reached
+`+16626231646` (business "Hello" has it assigned) but Twilio refused them with error 21264 because the
+account is a trial and only verified callers are accepted; UAE numbers cannot be verified on a trial.
+Upgrading Twilio (a starting balance plus a payment method, owner action) removes this and is required
+before store review, because reviewers' phones are not verified. The owner's carrier also refuses to
+forward to US numbers (only `+971...` destinations worked), so UAE owners need a UAE-reachable call line
+later. Reviewer notes are in `docs/APP_REVIEW_NOTES.md`.

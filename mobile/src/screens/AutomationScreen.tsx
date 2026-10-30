@@ -59,7 +59,7 @@ export function AutomationScreen({ navigation }: Props) {
   const whatsappRule = missedRules.find(item => item.channel === 'WHATSAPP') ?? null;
   const smsRule = missedRules.find(item => item.channel === 'SMS') ?? null;
   const rule = whatsappRule ?? smsRule;
-  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: missedRules.some(item => item.enabled), pushGranted, platform: Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web' ? Platform.OS : undefined });
+  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: missedRules.some(item => item.enabled), pushGranted, platform: Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web' ? Platform.OS : undefined, callLineNumber: business?.callLineE164 });
 
   const loadRules = useCallback(async () => {
     if (rulesInFlight.current) return rulesInFlight.current;

@@ -62,4 +62,9 @@ describe('recoveryEngineStatus on iPhone', () => {
     expect(result.items.find(item => item.key === 'detection')).toMatchObject({ status: 'unsupported' });
     expect(result.overall).toBe('active');
   });
+
+  it('shows the call line number and dial codes once one is assigned', () => {
+    const result = recoveryEngineStatus({ callDetection: 'unsupported', hasContactsPermission: false, automationAvailability: 'available', automationEnabled: true, pushGranted: true, platform: 'ios', callLineNumber: '+16626231646' });
+    expect(result.items.find(item => item.key === 'detection')?.value).toContain('**61*+16626231646#');
+  });
 });

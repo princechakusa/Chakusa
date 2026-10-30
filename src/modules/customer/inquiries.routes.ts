@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { getCustomerInquiry, listCustomerInquiries, replyToCustomerInquiry, sendCustomerInquiry } from "../../lib/marketplace/inquiries.js";
+import { getCustomerInquiry, listCustomerInquiries, replyToCustomerInquiry, reportInquiry, sendCustomerInquiry, setInquiryBlocked } from "../../lib/marketplace/inquiries.js";
 
 // "Ask the business" - customer side. authenticateCustomer only; every
 // handler is scoped to request.customer.profileId.
@@ -26,5 +26,18 @@ export default async function customerInquiryRoutes(fastify: FastifyInstance) {
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
     const { body } = z.object({ body: z.string().max(4000) }).parse(request.body);
     reply.status(201).send(await replyToCustomerInquiry(request.customer!.profileId, id, body));
+  });
+
+  // Apple 1.2 / Play UGC: the customer can report a conversation and block the business.
+  fastify.post("/:id/report", sendLimit, async (request, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const input = z.object({ reason: z.enum(["spam", "inappropriate", "scam", "other"]), detail: z.string().trim().max(1000).optional() }).parse(request.body);
+    reply.status(201).send(await reportInquiry(request.customer!.profileId, id, input.reason, input.detail));
+  });
+
+  fastify.put("/:id/block", async (request) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const { blocked } = z.object({ blocked: z.boolean() }).parse(request.body);
+    return setInquiryBlocked(request.customer!.profileId, id, blocked);
   });
 }

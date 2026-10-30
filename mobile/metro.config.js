@@ -18,4 +18,8 @@ const generated = ['e2e-results', 'e2e-report', 'dist-[^\\\\/]*'].map(
 const existing = config.resolver.blockList;
 config.resolver.blockList = [...(Array.isArray(existing) ? existing : existing ? [existing] : []), ...generated];
 
+if (process.env.EXPO_PUBLIC_BUILD_TARGET === 'public-links') {
+  config.transformer.assetPlugins = [...(config.transformer.assetPlugins ?? []), require.resolve('./scripts/metro-public-links-asset-plugin.js')];
+}
+
 module.exports = config;

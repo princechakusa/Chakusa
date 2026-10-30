@@ -831,10 +831,7 @@ answers with a short spoken greeting. Unknown lines hang up; withheld caller IDs
 lead. The iPhone app now says why detection is unavailable and what to do.
 
 Owner steps before it works:
-1. **Number.** The only Twilio number is US toll-free +1 844 604 1271, which Twilio marks
-   domestic-only (US/Canada), so it cannot be called from the UAE. A UAE-reachable number is
-   needed (a Twilio search for UAE voice numbers returned nothing on 2026-10-30; confirm in
-   the console or choose another voice provider). This is a paid vendor decision.
+1. **Number — DONE 2026-10-30.** The US toll-free +1 844 604 1271 was domestic-only and the carrier refused to forward to it, so it was released (Twilio allows re-buying it for 10 days). A Twilio trial account holds one number, so that was needed before buying the US local call line **+1 662 623 1646** ($1.15/month). Forwarding from a UAE e&/du line to a normal US number still needs a real-call test.
 2. **Upgrade Twilio from trial** (balance $10.03): trial accounts play a "trial account"
    announcement to every caller.
 3. Point the number's Voice webhook (HTTP POST) at
@@ -846,3 +843,5 @@ Owner steps before it works:
 6. Deploy runs `prisma migrate deploy` for `20261030120000_business_call_line` (additive).
 
 Store copy: claim missed-call detection for Android only until this is live.
+
+**2026-10-30 update (OA-10):** SMS stays off by decision. The toll-free number carrying the rejected verification was released, so there is nothing to resubmit; Twilio's own deadline for it was 2026-11-11 (not 11-09). US texting would need a new verified number and, for a local number, A2P 10DLC. WhatsApp via Meta is the follow-up channel.

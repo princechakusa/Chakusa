@@ -683,6 +683,9 @@ test.describe('Business and customer, end to end', () => {
     await linger(page, 1500);
     await button(page, new RegExp(business.name)).click();
     await expect(visibleText(page, business.name)).toBeVisible();
+    // Guests can still reach the business directly: Call and WhatsApp need no account.
+    await expect(button(page, 'WhatsApp')).toBeVisible();
+    await expect(button(page, 'Call')).toBeVisible();
     page.once('dialog', (dialog) => { expect(dialog.message()).toMatch(/Sign in to continue/); void dialog.accept(); });
     await button(page, 'Book an appointment').click();
     await expect(page.getByTestId('auth-submit').filter({ visible: true })).toBeVisible();

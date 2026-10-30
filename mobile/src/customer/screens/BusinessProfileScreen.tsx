@@ -17,6 +17,8 @@ import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 import { premium, premiumSerif, premiumShadow, ratingText, reviewCountText } from '../premiumTheme';
 import { useGuestBrowsing } from '../guestBrowsing';
+import { openWhatsApp } from '../../services/messaging';
+import { publicProfileWhatsAppGreeting } from '../../domain/publicBusinessProfile';
 
 // Labels map onto the server's report reasons (POST /customer/marketplace/businesses/:slug/report).
 const BUSINESS_REPORT_REASONS: ReadonlyArray<{ label: string; reason: MarketplaceReportReason }> = [
@@ -213,6 +215,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
             <QuickAction icon="chatbubble-ellipses-outline" label="Message" onPress={ask} />
             {hasPin ? <QuickAction icon="navigate-outline" label="Directions" onPress={() => void Linking.openURL(directionsUrl(profile.address.latitude!, profile.address.longitude!))} /> : null}
             {profile.contact.phone ? <QuickAction icon="call-outline" label="Call" onPress={() => void Linking.openURL(`tel:${profile.contact.phone}`)} /> : null}
+            {profile.contact.phone ? <QuickAction icon="logo-whatsapp" label="WhatsApp" onPress={() => void openWhatsApp(profile.contact.phone!, publicProfileWhatsAppGreeting(profile.name))} /> : null}
             <QuickAction icon={following ? 'checkmark-circle' : 'add-circle-outline'} label={following ? 'Following' : 'Follow'} onPress={() => void toggleFollow()} />
           </View>
 
@@ -424,8 +427,8 @@ const styles = StyleSheet.create({
   googleLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: 999, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.card },
   googleLinkText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.deep },
   quickRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 6, paddingVertical: 6 },
-  quick: { alignItems: 'center', gap: 6, minWidth: 64 },
-  quickIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: premium.sage, alignItems: 'center', justifyContent: 'center' },
+  quick: { alignItems: 'center', gap: 6, minWidth: 56 },
+  quickIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: premium.sage, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontFamily: 'Inter_500Medium', fontSize: 12, color: premium.ink },
   section: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 19, letterSpacing: -0.4, color: premium.ink, marginTop: 16 },
   body: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 22, color: premium.inkSoft },

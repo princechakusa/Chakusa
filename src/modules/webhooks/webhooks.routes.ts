@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { recordDeliveryReceipt, recordInboundMessage } from "../../lib/messaging/messagingPlatform.js";
 import { handleInboundAIMessage } from "../../lib/ai/agent/customerAgent.js";
 import { captureUnexpectedError } from "../../lib/sentry.js";
+import { handleCallLineCall } from "../../lib/callLine.js";
 
 export interface WebhookRoutesOptions {
   /** Test-only injection point — see subscription.routes.ts's SubscriptionRoutesOptions for the identical pattern. Defaults to the real store clients; never live in tests. */
@@ -129,6 +130,17 @@ export default async function webhookRoutes(fastify: FastifyInstance, options: W
     if (!event) throw ApiError.badRequest("Invalid inbound event");
     await processInbound(event, messagingProvider, typeof (request.body as Record<string, unknown>)?.MessageSid === "string" ? String((request.body as Record<string, unknown>).MessageSid) : undefined);
     reply.type("text/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>");
+  });
+
+  // A call forwarded to a business's Chakusa call line = a missed call. The
+  // line is looked up by the dialled number, so a signed request can only ever
+  // create a lead for the business that owns that number.
+  fastify.post("/twilio/voice", { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const context = webhookContext(request);
+    if (!messagingProvider.verifyWebhookSignature(request.body, context.headers, context.url)) throw ApiError.auth(401, "AUTH_TOKEN_INVALID", "Invalid webhook signature");
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    if (typeof body.To !== "string" || typeof body.From !== "string" || typeof body.CallSid !== "string") throw ApiError.badRequest("Invalid call event");
+    reply.type("text/xml").send(await handleCallLineCall({ to: body.To, from: body.From, callSid: body.CallSid }));
   });
 
   // Meta WhatsApp Cloud API. GET answers Meta's one-time subscription check;

@@ -36,3 +36,31 @@ describe("messaging provider webhooks", () => {
     expect(await prisma.customerOptOut.findFirst({ where: { businessId: account.businessId, phone: "+15557654321" } })).toMatchObject({ channel: "SMS", source: "provider_webhook" });
   });
 });
+
+describe("call line voice webhook", () => {
+  let app: FastifyInstance;
+  beforeAll(async () => { app = await createTestApp({ messagingProvider: provider }); });
+  afterEach(resetDatabase);
+  afterAll(async () => { await app.close(); await prisma.$disconnect(); });
+
+  it("turns a call on a business's call line into one missed-call lead, idempotently", async () => {
+    const account = await registerAccount(app, { email: "call-line@example.com" });
+    await prisma.business.update({ where: { id: account.businessId }, data: { callLineE164: "+971500000001" } });
+    const payload = { To: "+971500000001", From: "+971555550123", CallSid: "CA-line-1" };
+    const first = await app.inject({ method: "POST", url: "/webhooks/twilio/voice", payload });
+    expect(first.statusCode).toBe(200);
+    expect(first.headers["content-type"]).toContain("text/xml");
+    expect(first.body).toContain("<Say>");
+    await app.inject({ method: "POST", url: "/webhooks/twilio/voice", payload });
+    expect(await prisma.lead.count({ where: { businessId: account.businessId, source: "missed_call" } })).toBe(1);
+  });
+
+  it("hangs up on an unknown line and ignores a withheld caller id", async () => {
+    const account = await registerAccount(app, { email: "call-line-2@example.com" });
+    await prisma.business.update({ where: { id: account.businessId }, data: { callLineE164: "+971500000002" } });
+    const unknown = await app.inject({ method: "POST", url: "/webhooks/twilio/voice", payload: { To: "+971500000099", From: "+971555550123", CallSid: "CA-x" } });
+    expect(unknown.body).toContain("<Hangup/>");
+    await app.inject({ method: "POST", url: "/webhooks/twilio/voice", payload: { To: "+971500000002", From: "anonymous", CallSid: "CA-y" } });
+    expect(await prisma.lead.count({ where: { businessId: account.businessId } })).toBe(0);
+  });
+});

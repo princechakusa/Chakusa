@@ -950,6 +950,10 @@ model Business {
   // for the future messaging/automation layer, which needs a dialable
   // address and has no use for a string it can't send to.
   phoneE164                         String?                @map("phone_e164")
+  // Chakusa-assigned voice number this business forwards unanswered calls to.
+  // A call arriving on it becomes a missed-call lead (iPhone has no OS-level
+  // missed-call access). Assigned by an admin once the number is provisioned.
+  callLineE164                      String?                @unique @map("call_line_e164")
   // ISO 3166-1 alpha-2 (e.g. "ZW", "ZA"), IANA timezone (e.g.
   // "Africa/Harare"), ISO 4217 (e.g. "USD", "ZWL"). All nullable: existing
   // businesses predate these fields, and this phase adds no onboarding flow

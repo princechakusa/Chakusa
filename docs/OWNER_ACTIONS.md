@@ -819,3 +819,30 @@ npx wrangler deploy
 ```
 
 Check: Cloudflare → Workers → chakusa-worker-tick → Logs shows a run every 5 minutes.
+
+## OA-24 — iPhone missed calls: call-forwarding line (2026-10-30) — OPEN
+
+iOS gives apps no access to calls, so the iPhone app cannot detect missed calls. The
+engineering path is built: each business can be given a Chakusa **call line**
+(`businesses.call_line_e164`). The owner's phone forwards calls it does not answer to that
+number; Twilio POSTs the call to `POST /webhooks/twilio/voice` (signature-verified), which
+creates a missed-call lead (idempotent on the CallSid, so the existing follow-up runs) and
+answers with a short spoken greeting. Unknown lines hang up; withheld caller IDs create no
+lead. The iPhone app now says why detection is unavailable and what to do.
+
+Owner steps before it works:
+1. **Number.** The only Twilio number is US toll-free +1 844 604 1271, which Twilio marks
+   domestic-only (US/Canada), so it cannot be called from the UAE. A UAE-reachable number is
+   needed (a Twilio search for UAE voice numbers returned nothing on 2026-10-30; confirm in
+   the console or choose another voice provider). This is a paid vendor decision.
+2. **Upgrade Twilio from trial** (balance $10.03): trial accounts play a "trial account"
+   announcement to every caller.
+3. Point the number's Voice webhook (HTTP POST) at
+   `https://chakusa-api.onrender.com/webhooks/twilio/voice`.
+4. Assign the number to a business: set `call_line_e164` (E.164, unique). No admin UI yet.
+5. On the iPhone, set conditional forwarding (no answer / busy / unreachable) to that number
+   with the carrier's dial codes (GSM: `**61*<number>#`, `**67*<number>#`, `**62*<number>#`).
+   Carrier support varies; test on a real UAE SIM.
+6. Deploy runs `prisma migrate deploy` for `20261030120000_business_call_line` (additive).
+
+Store copy: claim missed-call detection for Android only until this is live.

@@ -55,3 +55,11 @@ describe('recovery engine status', () => {
     expect(recoveryEngineStatus({ callDetection: 'unsupported', hasContactsPermission: false, automationAvailability: 'service-unavailable', automationEnabled: false, pushGranted: false }).overall).toBe('attention');
   });
 });
+
+describe('recoveryEngineStatus on iPhone', () => {
+  it('explains the platform limit without counting it as a fault', () => {
+    const result = recoveryEngineStatus({ callDetection: 'unsupported', hasContactsPermission: false, automationAvailability: 'available', automationEnabled: true, pushGranted: true, platform: 'ios' });
+    expect(result.items.find(item => item.key === 'detection')).toMatchObject({ status: 'unsupported' });
+    expect(result.overall).toBe('active');
+  });
+});

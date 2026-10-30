@@ -28,6 +28,8 @@ export interface RecoveryEngineInput {
   automationAvailability: AutomationAvailability;
   automationEnabled: boolean;
   pushGranted: boolean;
+  /** Lets iPhone owners be told why detection is unavailable instead of silently showing nothing. */
+  platform?: 'ios' | 'android' | 'web';
 }
 
 /**
@@ -43,6 +45,17 @@ export interface RecoveryEngineInput {
  */
 export function recoveryEngineStatus(input: RecoveryEngineInput): RecoveryEngineStatus {
   const items: EngineItem[] = [];
+
+  if (input.callDetection === 'unsupported' && input.platform === 'ios') {
+    // iOS gives apps no access to calls, so this is a platform limit, not a setting
+    // the owner can fix. Not graded (like 'locked'), so it never reads as a fault.
+    items.push({
+      key: 'detection',
+      label: 'Missed-call detection',
+      value: 'iPhone doesn’t let apps see missed calls. Forward calls you don’t answer to your Chakusa call line and they will appear here as leads.',
+      status: 'unsupported',
+    });
+  }
 
   if (input.callDetection !== 'unsupported') {
     const ready = input.callDetection === 'ready';

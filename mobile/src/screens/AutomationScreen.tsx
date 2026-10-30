@@ -2,7 +2,7 @@ import { Ionicons } from '../components/icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, AppState, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AutomationChannel, AutomationRuleDto, AutomationRunHistoryItemDto } from '../apiTypes';
 import { AppHeader, ErrorState, LoadingState, PrimaryButton, Screen, SecondaryButton, StatusBadge } from '../components/ui';
 import { LifecycleAutomationCards } from '../components/LifecycleAutomationCards';
@@ -59,7 +59,7 @@ export function AutomationScreen({ navigation }: Props) {
   const whatsappRule = missedRules.find(item => item.channel === 'WHATSAPP') ?? null;
   const smsRule = missedRules.find(item => item.channel === 'SMS') ?? null;
   const rule = whatsappRule ?? smsRule;
-  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: missedRules.some(item => item.enabled), pushGranted });
+  const engine = recoveryEngineStatus({ callDetection: callDetectionAvail, hasContactsPermission, automationAvailability: availability, automationEnabled: missedRules.some(item => item.enabled), pushGranted, platform: Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web' ? Platform.OS : undefined });
 
   const loadRules = useCallback(async () => {
     if (rulesInFlight.current) return rulesInFlight.current;

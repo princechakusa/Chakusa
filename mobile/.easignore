@@ -26,3 +26,10 @@ yarn-error.*
 modules/*/android/build/
 modules/*/android/.gradle/
 modules/*/android/.cxx/
+# Repo-level folders the app never imports (EAS archives the whole git repo).
+builds/
+website/
+admin/
+cloudflare/
+e2e-results/
+e2e-report/

@@ -1,0 +1,8 @@
+{
+  "name": "chakusa-worker-tick",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test worker.test.mjs"
+  }
+}

@@ -804,3 +804,18 @@ code is fixed; these answers live only in the consoles and must match the shippe
    flag on business profiles and reviews go to our moderation queue (admin console)".
 9. **Republish the website** so the updated privacy policy and AI disclosure are live before
    submission.
+
+## OA-25 — Deploy the free cron that keeps follow-ups running (2026-10-30) — OPEN
+
+Render's free API sleeps after ~15 idle minutes, so missed-call follow-ups, reminders and review requests
+scheduled for later can wait until someone opens the app. `cloudflare/worker-tick` is a free Cloudflare cron
+worker that calls `POST /internal/worker/tick` every 5 minutes (wakes the API, runs one cycle). Once:
+
+```powershell
+cd cloudflare/worker-tick
+Remove-Item Env:CLOUDFLARE_API_TOKEN -ErrorAction SilentlyContinue
+npx wrangler secret put WORKER_TRIGGER_SECRET   # paste the same value as Render's WORKER_TRIGGER_SECRET
+npx wrangler deploy
+```
+
+Check: Cloudflare → Workers → chakusa-worker-tick → Logs shows a run every 5 minutes.

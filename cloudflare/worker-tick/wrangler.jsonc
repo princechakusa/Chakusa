@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chakusa-worker-tick",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-06",
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true },
+  "vars": { "API_BASE_URL": "https://chakusa-api.onrender.com" }
+}

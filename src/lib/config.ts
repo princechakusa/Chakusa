@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { buildCorsAllowedOrigins } from "./corsOrigins.js";
 
 const optionalSecret = z.preprocess((value) => value === "" ? undefined : value, z.string().min(1).optional());
 
@@ -454,11 +455,4 @@ export const googleOAuthClientIds = config.GOOGLE_OAUTH_CLIENT_IDS
   .map((value) => value.trim())
   .filter(Boolean) ?? [];
 
-const configuredCorsOrigins = config.CORS_ALLOWED_ORIGINS
-  ?.split(",")
-  .map((value) => value.trim())
-  .filter(Boolean) ?? null;
-
-export const corsAllowedOrigins = configuredCorsOrigins || config.ADMIN_CONSOLE_ORIGIN
-  ? [...new Set([...(configuredCorsOrigins ?? []), ...(config.ADMIN_CONSOLE_ORIGIN ? [config.ADMIN_CONSOLE_ORIGIN] : [])])]
-  : null;
+export const corsAllowedOrigins = buildCorsAllowedOrigins(config);

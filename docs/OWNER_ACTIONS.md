@@ -765,3 +765,42 @@ changes. Already compliant and unchanged: directions open Google Maps with a pub
 uses Nominatim at most once a second, cached, with an identifying User-Agent, and since 2026-10-29
 only when the person presses Search (Nominatim forbids search-as-you-type); Google Places ratings
 (off unless `GOOGLE_PLACES_API_KEY` is set) are never stored and never drawn on the OSM map.
+
+## OA-24 — Store-console compliance declarations before submission (2026-10-30) — OPEN
+
+From the store compliance audit (`docs/progress/2026-10-30-store-compliance-audit.md`). The app
+code is fixed; these answers live only in the consoles and must match the shipped app.
+
+**Google Play Console**
+1. **App content → Data safety:** Location (precise) collected, app functionality, not shared
+   for ads; Personal info (name, email, phone); Messages (in-app messages, AI chats); Photos
+   (only picked photos); App activity; Crash logs (Sentry); Contacts: **not collected** (permission
+   only lets Android pass calls from saved contacts to call screening); phone numbers of missed
+   callers sent to the business's account (declare under Personal info → Phone number).
+   Data shared with service providers: Twilio/Meta (messages), OpenAI/Anthropic/Google (AI chats,
+   only after consent), Stripe, Sentry. Encrypted in transit: yes. Deletion: yes, with the
+   `https://chakusarecovery.com/delete-account` URL.
+2. **App content → Sensitive permissions:** if asked about `READ_PHONE_STATE`/`READ_CONTACTS`,
+   explain "Missed-call detection for business owners via the call screening role; caller number
+   and time only; contacts are never read". Upload a short video of turning it on in
+   Recovery engine (shows the disclosure first).
+3. **Foreground service:** none after the next build. After the next local AAB build, confirm
+   `grep LocationTaskService` on the merged release manifest finds nothing.
+4. **App content → Financial features:** "none" (the app does not offer loans, banking or
+   crypto; Stripe invoice payments are for services). **Ads:** no ads. **Target audience:** 18+.
+5. **Subscriptions:** each base plan's free-trial offer must match the trial shown in the app
+   (Admin → Settings `app.trial_days_*`).
+
+**App Store Connect**
+6. **App Privacy:** same data as above; Tracking: **No**. Precise Location linked to the user,
+   App Functionality. AI chats: declare as "Other User Content",
+   linked, App Functionality.
+7. **Subscriptions:** the Starter introductory offer (7-day free trial) must exist, since the app
+   says "7-day free trial, then … / month". Add the Privacy Policy URL and the Terms of Use
+   (standard Apple EULA or `https://chakusarecovery.com/terms`) in the app description or the
+   EULA field (Guideline 3.1.2).
+8. **Age rating:** new questionnaire; declare user-generated content (reviews, messaging) and AI
+   chat. **App Review notes:** demo business + customer logins (OA-21), and: "Reports from the
+   flag on business profiles and reviews go to our moderation queue (admin console)".
+9. **Republish the website** so the updated privacy policy and AI disclosure are live before
+   submission.

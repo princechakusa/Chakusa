@@ -16,6 +16,12 @@ export const OPTIONAL_HARDWARE = [
   'android.hardware.telephony',
   'android.hardware.microphone',
 ];
+// expo-location's library manifest always declares its background task
+// service with foregroundServiceType="location". Chakusa never tracks in the
+// background (app.json disables it and nothing uses expo-task-manager), so
+// the service is removed: otherwise Play Console asks for a location
+// foreground-service declaration for a capability the app does not have.
+export const REMOVED_SERVICES = ['expo.modules.location.services.LocationTaskService'];
 
 export default function withAndroidSecurity(config) {
   config = withAppBuildGradle(config, (config) => {
@@ -54,6 +60,10 @@ export default function withAndroidSecurity(config) {
       .filter((feature) => !OPTIONAL_HARDWARE.includes(feature.$?.['android:name']));
     for (const name of OPTIONAL_HARDWARE) features.push({ $: { 'android:name': name, 'android:required': 'false' } });
     manifest.manifest['uses-feature'] = features;
+    manifest.manifest.$['xmlns:tools'] = manifest.manifest.$['xmlns:tools'] ?? 'http://schemas.android.com/tools';
+    const services = (application.service ?? []).filter((service) => !REMOVED_SERVICES.includes(service.$?.['android:name']));
+    for (const name of REMOVED_SERVICES) services.push({ $: { 'android:name': name, 'tools:node': 'remove' } });
+    application.service = services;
     return config;
   });
   // Some Android 12+ manufacturers allow D2D transfer despite allowBackup=false.

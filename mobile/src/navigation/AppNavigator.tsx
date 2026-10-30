@@ -75,12 +75,12 @@ const Root = createNativeStackNavigator<RootStackParamList>(); const Tabs = crea
 // Material 3 business tab bar: 5 primary tabs matching the Stitch mockups.
 // Reviews stays registered for deep links but is reached from Dashboard /
 // More rather than the bar.
-const TAB_META: Partial<Record<keyof MainTabParamList, { label: string; icon: keyof typeof MaterialIcons.glyphMap }>> = {
+const TAB_META: Partial<Record<keyof MainTabParamList, { label: string; icon: keyof typeof MaterialIcons.glyphMap; ionicon?: keyof typeof Ionicons.glyphMap }>> = {
   Dashboard: { label: 'Dashboard', icon: 'space-dashboard' },
   Calendar: { label: 'Calendar', icon: 'calendar-today' },
   Leads: { label: 'Leads', icon: 'person-add' },
   Customers: { label: 'Clients', icon: 'contacts' },
-  Settings: { label: 'More', icon: 'more-horiz' },
+  Settings: { label: 'Account', icon: 'account-circle', ionicon: 'person-circle-outline' },
 };
 const TAB_ORDER: (keyof MainTabParamList)[] = ['Dashboard', 'Calendar', 'Leads', 'Customers', 'Settings'];
 export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
@@ -104,7 +104,7 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
             }}
             style={styles.tab}
           >
-            <MaterialIcons name={meta.icon} size={22} color={focused ? m3.primary : m3.onSurfaceVariant} />
+            {meta.ionicon ? <Ionicons name={meta.ionicon} size={24} color={focused ? m3.primary : m3.onSurfaceVariant} /> : <MaterialIcons name={meta.icon} size={22} color={focused ? m3.primary : m3.onSurfaceVariant} />}
             <Text numberOfLines={1} style={[styles.tabLabel, focused && styles.tabLabelActive]}>{meta.label}</Text>
             <View style={[styles.tabPill, focused && styles.tabPillActive]} />
           </Pressable>

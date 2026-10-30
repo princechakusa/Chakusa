@@ -51,7 +51,7 @@ export function DataGovernanceScreen() {
     <M3Screen
       header={
         <M3Header
-          businessName="More"
+          businessName="Account"
           onBack={() => navigation.goBack()}
           onNotificationsPress={() => navigation.navigate('AttentionCenter')}
           hasNotifications={false}

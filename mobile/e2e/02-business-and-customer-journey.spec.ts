@@ -63,7 +63,7 @@ async function searchNearMe(page: Page) {
 }
 
 async function openMoreItem(page: Page, label: string) {
-  await page.getByRole('tab', { name: 'More tab' }).click();
+  await page.getByRole('tab', { name: 'Account tab' }).click();
   await button(page, new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).click();
 }
 
@@ -115,7 +115,7 @@ test.describe('Business and customer, end to end', () => {
       ['Calendar', async () => { await expect(visibleText(page, month)).toBeVisible(); }],
       ['Leads', async () => { await expect(button(page, /Add Lead/)).toBeVisible(); }],
       ['Clients', async () => { await expect(button(page, 'Add client')).toBeVisible(); }],
-      ['More', async () => { await expect(button(page, /^Business profile/)).toBeVisible(); }],
+      ['Account', async () => { await expect(button(page, /^Business profile/)).toBeVisible(); }],
       ['Dashboard', async () => { await expect(visibleText(page, "Today's Schedule")).toBeVisible(); }],
     ];
     for (const [tab, check] of checks) {
@@ -252,7 +252,7 @@ test.describe('Business and customer, end to end', () => {
       const newErrors = errors.slice(errorsBefore).filter((error) => !/\b(402|403)\b/.test(error));
       if (newErrors.length) failures.push(`${destination}: ${newErrors.join('; ')}`);
       await goBack(page);
-      await expect(page.getByRole('tab', { name: 'More tab' })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Account tab' })).toBeVisible();
     }
     expect(failures, 'screens that raised errors').toEqual([]);
     console.log(`Pro-gated for a Free business: ${proGated.join(', ') || 'none'}`);
@@ -272,7 +272,7 @@ test.describe('Business and customer, end to end', () => {
     await confirmAge(page);
     await page.getByTestId('auth-submit').click();
     await acceptBusinessLegal(page);
-    await page.getByRole('tab', { name: 'More tab' }).click();
+    await page.getByRole('tab', { name: 'Account tab' }).click();
     // Sign out asks where: this device, all devices, or stay signed in.
     await button(page, 'Sign out').click();
     await expect(button(page, 'Sign out of all devices')).toBeVisible();

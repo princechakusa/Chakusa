@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PlanDescriptionDto } from '../apiTypes';
-import { planButtonLabel, planHighlights, referencePrice, trialLabel } from './planCatalog';
+import { planButtonLabel, planHighlights, referencePrice, renewalTerms, trialLabel } from './planCatalog';
 
 const starter: PlanDescriptionDto = { plan: 'STARTER', rank: 1, referenceMonthlyPrice: 3, trialDays: 7, limits: { leadsPerMonth: 150, reviewRequestsPerMonth: 150, customers: 1000, openReminders: 150, customTemplatesPerType: 3, staffSeats: 1 }, features: [{ key: 'EXTENDED_HISTORY', label: 'Extended activity history' }] };
 const business: PlanDescriptionDto = { plan: 'BUSINESS', rank: 3, referenceMonthlyPrice: 13, trialDays: 0, limits: { leadsPerMonth: null, reviewRequestsPerMonth: null, customers: null, openReminders: null, customTemplatesPerType: null, staffSeats: 10 }, features: [{ key: 'AUTOMATION', label: 'Automation' }, { key: 'UNLIMITED_TEMPLATES', label: 'Unlimited custom templates' }, { key: 'TEAM_MANAGEMENT', label: 'Team management' }] };
@@ -19,6 +19,20 @@ describe('plan presentation', () => {
     expect(trialLabel(null, 7)).toBe('7-day free trial');
     expect(trialLabel('$0.99', 0)).toBe('Intro offer: $0.99');
     expect(trialLabel(null, 0)).toBeNull();
+  });
+
+  it('names the price charged after the trial when it is known', () => {
+    expect(trialLabel(null, 7, '$3.00')).toBe('7-day free trial, then $3.00 / month');
+    expect(trialLabel('$0.99', 0, '$8.00')).toBe('Intro offer: $0.99, then $8.00 / month');
+  });
+
+  it('states renewal, cancellation and who charges', () => {
+    const ios = renewalTerms('ios');
+    expect(ios).toMatch(/Apple Account/);
+    expect(ios).toMatch(/renew automatically/);
+    expect(ios).toMatch(/24 hours before the end of the current period/);
+    expect(ios).toMatch(/cancel anytime in your App Store/);
+    expect(renewalTerms('android')).toMatch(/Google Play account/);
   });
 
   it('names each button after what it does', () => {

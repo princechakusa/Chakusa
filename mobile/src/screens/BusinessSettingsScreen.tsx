@@ -47,7 +47,7 @@ export function BusinessSettingsScreen() {
   const profileUrl = business?.publicSlug ? publicBusinessProfileUrl(business.publicSlug) : null;
   const copyProfileUrl = async () => { if (!profileUrl) return; await Clipboard.setStringAsync(profileUrl); Alert.alert('Copied', 'Your business page link was copied.'); };
   const shareProfileUrl = async () => { if (!profileUrl) return; try { await Share.share({ message: `Check out ${name || business?.name || 'my business'} on Chakusa: ${profileUrl}` }); } catch { /* user dismissed the share sheet */ } };
-  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate("AttentionCenter")} hasNotifications={false} />}>
+  return <M3Screen header={<M3Header businessName="Account" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate("AttentionCenter")} hasNotifications={false} />}>
     <View style={m3Head.block}><Text style={m3Head.eyebrow}>BUSINESS</Text><Text style={m3Head.title}>Business profile</Text><Text style={m3Head.subtitle}>Settings used across customer recovery, your public page and booking.</Text></View>
 
     <View style={logoStyles.card}>

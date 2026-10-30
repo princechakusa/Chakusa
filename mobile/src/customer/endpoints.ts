@@ -24,6 +24,7 @@ import type {
   ReferralOverviewDto, ReferralCodeDto,
   CustomerInvoiceListResponse, CustomerInvoiceDetailDto, CustomerInvoicePayResult,
   GoogleNearbyDto, NearbyPlacesDto, InquiryMessageDto, InquiryThreadDto, InquiryThreadSummaryDto,
+  MarketplaceReportReason,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
 
@@ -94,7 +95,7 @@ export const marketplaceApi = {
   business: (slug: string) => customerHttp.get<MarketplaceBusinessProfileDto>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}`),
   setFavourite: (slug: string, favourite: boolean) => customerHttp.post<CustomerBusinessLinkDto & { favouriteCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/favourite`, { favourite }),
   setFollow: (slug: string, follow: boolean) => customerHttp.post<{ following: boolean; followerCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/follow`, { follow }),
-  report: (slug: string, reason: string, detail?: string) => customerHttp.post<{ id: string; status: string }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/report`, { reason, detail }),
+  report: (slug: string, reason: MarketplaceReportReason, detail?: string) => customerHttp.post<{ id: string; status: string }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/report`, { reason, detail }),
   share: (slug: string) => customerHttp.get<MarketplaceShareDto>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/share`),
   recentlyViewed: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/recently-viewed'),
   favourites: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANDROID_MIN_SDK, OPTIONAL_HARDWARE } from '../../plugins/withAndroidSecurity.js';
+import { ANDROID_MIN_SDK, OPTIONAL_HARDWARE, REMOVED_SERVICES } from '../../plugins/withAndroidSecurity.js';
 
 // Play excludes every device that lacks a required feature or runs an older
 // Android than minSdk. Raising either silently drops thousands of devices
@@ -13,5 +13,9 @@ describe('Android device reach', () => {
     for (const feature of ['android.hardware.camera', 'android.hardware.location', 'android.hardware.location.gps', 'android.hardware.screen.portrait', 'android.hardware.telephony']) {
       expect(OPTIONAL_HARDWARE).toContain(feature);
     }
+  });
+
+  it('ships no background-location foreground service', () => {
+    expect(REMOVED_SERVICES).toContain('expo.modules.location.services.LocationTaskService');
   });
 });

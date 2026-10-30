@@ -71,7 +71,7 @@ export function AccountHubScreen() {
 
   const header = (
     <M3Header
-      businessName="More"
+      businessName="Account"
       onNotificationsPress={() => navigation.navigate('AttentionCenter')}
       onAvatarPress={() => navigation.navigate('AccountInformation')}
       hasNotifications={false}

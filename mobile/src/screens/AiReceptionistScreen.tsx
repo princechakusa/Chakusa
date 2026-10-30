@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { Icon, M3Card, M3Error, M3Header, M3Loading, M3Screen } from '../experience/businessKit';
 import { AiReceptionistViewDto, aiReceptionistApi } from '../services/endpoints';
+import { aiDataSharingDisclosure } from '../domain/aiDataSharing';
 import { ApiError } from '../services/api';
 import { RootStackParamList } from '../types';
 
@@ -50,6 +51,17 @@ export function AiReceptionistScreen() {
     } finally { setSaving(false); }
   };
 
+  // Turning it on sends customer messages to a third-party AI provider, so the
+  // owner confirms that every time (Guideline 5.1.2(i)). Turning it off never asks.
+  const setEnabled = (enabled: boolean) => {
+    if (!enabled) { void patch({ enabled }); return; }
+    const copy = aiDataSharingDisclosure('businessReceptionist');
+    Alert.alert(copy.title, copy.body, [
+      { text: copy.decline, style: 'cancel' },
+      { text: copy.accept, onPress: () => void patch({ enabled: true }) },
+    ]);
+  };
+
   const patchAutonomy = async (autonomy: 'DRAFT' | 'APPROVAL' | 'AUTONOMOUS') => {
     if (saving || !view || view.status.policyMode === autonomy) return;
     setSaving(true);
@@ -86,7 +98,7 @@ export function AiReceptionistScreen() {
       <M3Card style={styles.card}>
         <View style={styles.row}>
           <View style={styles.flex}><Text style={styles.rowTitle}>AI receptionist</Text><Text style={styles.note}>{status.effective ? 'Active — answering inbound messages' : settings.enabled ? 'On, but not currently active' : 'Off'}</Text></View>
-          <Switch value={settings.enabled} disabled={disabled} onValueChange={v => void patch({ enabled: v })} trackColor={{ false: m3.surfaceContainerHigh, true: m3.secondary }} />
+          <Switch value={settings.enabled} disabled={disabled} onValueChange={setEnabled} trackColor={{ false: m3.surfaceContainerHigh, true: m3.secondary }} />
         </View>
       </M3Card>
 

@@ -7,7 +7,7 @@ import { Chip, Icon, M3Header, M3Screen } from '../experience/businessKit';
 import { m3, m3Radius, m3Space, m3Type } from '../experience/businessTheme';
 import { BILLING_ENABLED, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../config';
 import { BILLING_PLANS, BillingPlan, effectivePlan, planAction, planName, subscriptionPeriodCopy, subscriptionStatusLabel } from '../domain/billing';
-import { planButtonLabel, planHighlights, PLAN_TAGLINES, referencePrice, trialLabel } from '../domain/planCatalog';
+import { planButtonLabel, planHighlights, PLAN_TAGLINES, referencePrice, renewalTerms, trialLabel } from '../domain/planCatalog';
 import { legalDestination } from '../domain/trustSettings';
 import { openExternalDestination } from '../services/externalDestinations';
 import { subscriptionApi } from '../services/endpoints';
@@ -46,7 +46,7 @@ export function ProScreen() {
     else if (action === 'subscribe' || action === 'upgrade') void billing.subscribe(target);
   };
 
-  return <M3Screen header={<M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />}>
+  return <M3Screen header={<M3Header businessName="Account" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />}>
     <View style={styles.titleBlock}>
       <Text style={styles.pageTitle}>Subscription</Text>
       <Text style={styles.pageSubtitle}>Your plan, and what each plan includes.</Text>
@@ -79,7 +79,7 @@ export function ProScreen() {
       const isCurrent = action === 'current';
       const busy = billing.purchasingPlan === target;
       const fallbackPrice = plansResponse ? referencePrice(description.referenceMonthlyPrice, plansResponse.currency) : null;
-      const trial = current === 'FREE' ? trialLabel(product?.introductoryOffer, description.trialDays) : null;
+      const trial = current === 'FREE' ? trialLabel(product?.introductoryOffer, description.trialDays, product?.displayPrice ?? fallbackPrice) : null;
       const unavailable = canBuyInApp && !billing.configuredPlans.includes(target);
       const disabled = !owner || isCurrent || busy || Boolean(billing.purchasingPlan) || billing.restoring || (action !== 'downgrade' && (!canBuyInApp || !product));
       return <View key={target} style={[styles.planCard, isCurrent && styles.planCardCurrent, target === RECOMMENDED && !isCurrent && styles.planCardRecommended]}>
@@ -115,7 +115,7 @@ export function ProScreen() {
 
     {owner && canBuyInApp ? <Pressable accessibilityRole="button" disabled={billing.restoring || Boolean(billing.purchasingPlan)} onPress={() => void billing.restore()} style={styles.textButton}><Text style={styles.textButtonLabel}>{billing.restoring ? 'Restoring…' : 'Restore purchases'}</Text></Pressable> : null}
 
-    <Text style={styles.footnote}>Prices are shown and charged by {billing.platform === 'ios' ? 'the App Store' : billing.platform === 'android' ? 'Google Play' : 'your app store'} in your local currency. Plans renew monthly until you cancel.</Text>
+    <Text style={styles.footnote}>{renewalTerms(billing.platform)}</Text>
     <View style={styles.legal}>
       <Text accessibilityRole="link" onPress={() => void openExternalDestination(terms, 'Terms of Use')} style={styles.link}>Terms of Use</Text>
       <Text accessibilityRole="link" onPress={() => void openExternalDestination(privacy, 'Privacy Policy')} style={styles.link}>Privacy Policy</Text>

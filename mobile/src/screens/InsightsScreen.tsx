@@ -58,7 +58,7 @@ export function InsightsScreen({ navigation }: Props) {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  const header = <M3Header businessName="More" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />;
+  const header = <M3Header businessName="Account" onBack={() => navigation.goBack()} onNotificationsPress={() => navigation.navigate('AttentionCenter')} hasNotifications={false} />;
   const trend = insights?.monthlyTrend ?? [];
   const headline = useMemo(() => (insights ? monthHeadline(insights) : null), [insights]);
   const money = (amount: number | null | undefined) => (amount == null ? '-' : formatMoney(amount, currency));

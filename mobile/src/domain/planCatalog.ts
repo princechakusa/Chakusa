@@ -29,10 +29,29 @@ export function planHighlights(plan: PlanDescriptionDto): string[] {
   return lines;
 }
 
-/** "7-day free trial" from the store's own offer when present, else the configured trial length. */
-export function trialLabel(storeOffer: string | null | undefined, configuredDays: number): string | null {
-  if (configuredDays > 0) return `${configuredDays}-day free trial`;
-  return storeOffer ? `Intro offer: ${storeOffer}` : null;
+/**
+ * "7-day free trial, then $3.00 / month": the configured trial length, else
+ * the store's own intro offer. Both stores require the price charged after a
+ * trial or intro offer to be shown next to it, so it is added when known.
+ */
+export function trialLabel(storeOffer: string | null | undefined, configuredDays: number, price?: string | null): string | null {
+  const then = price ? `, then ${price} / month` : '';
+  if (configuredDays > 0) return `${configuredDays}-day free trial${then}`;
+  return storeOffer ? `Intro offer: ${storeOffer}${then}` : null;
+}
+
+/**
+ * Auto-renewal terms shown on the subscription screen (App Store Review
+ * Guideline 3.1.2, Google Play Subscriptions policy): who charges, when it
+ * renews, how to cancel, and what happens to an unused free trial.
+ */
+export function renewalTerms(platform: string): string {
+  const store = platform === 'ios' ? 'App Store' : platform === 'android' ? 'Google Play' : 'app store';
+  const account = platform === 'ios' ? 'Apple Account' : platform === 'android' ? 'Google Play account' : 'store account';
+  return `Payment is charged to your ${account} when you confirm the purchase, or when a free trial ends. `
+    + 'Plans are monthly and renew automatically at the same price unless you cancel at least 24 hours before the end of the current period. '
+    + `You can manage or cancel anytime in your ${store} subscription settings; cancelling during a free trial means you are not charged. `
+    + `Prices are shown and charged by ${platform === 'ios' ? 'the App Store' : platform === 'android' ? 'Google Play' : 'your app store'} in your local currency.`;
 }
 
 export function planButtonLabel(action: PlanAction, planName: string, trialDays: number): string {

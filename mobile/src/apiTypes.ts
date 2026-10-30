@@ -294,6 +294,9 @@ export type AiDraftReviewDecision = 'approve' | 'edit' | 'reject' | 'escalate';
 
 // PROGRAM 2 LOOP 1: Customer Platform (mobile)
 export type CustomerProfileStatus = 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+/** Reasons POST /customer/marketplace/businesses/:slug/report accepts. */
+export type MarketplaceReportReason = 'spam' | 'inappropriate' | 'closed' | 'wrong_info' | 'scam' | 'other';
+
 export interface CustomerAuthUser {
   id: string;
   email: string;

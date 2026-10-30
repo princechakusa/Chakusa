@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { CustomerAIConversationDto, CustomerAIMessageDto } from '../../apiTypes';
 import { ChatComposer, ChatLayout, ChatThread, type ChatMessage } from '../../components/chat/ChatKit';
+import { aiDataSharingDisclosure } from '../../domain/aiDataSharing';
+import { hasAiConsent, recordAiConsent } from '../../services/aiConsent';
 import { ApiError } from '../../services/api';
 import { formatDateTime } from '../../utils/format';
 import { customerChatPalette } from '../chatPalette';
@@ -30,6 +32,7 @@ const PROMPTS: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
 
 type Mode = 'chat' | 'history';
 interface Pending { id: string; text: string; at: string; failed: boolean }
+const disclosure = aiDataSharingDisclosure('customerAssistant');
 
 function friendly(caught: unknown): string {
   if (caught instanceof ApiError && (caught.code === 'AI_UNAVAILABLE' || caught.status === 503)) return 'The assistant is unavailable right now. Please try again in a moment.';
@@ -56,6 +59,16 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
   // A conversation this screen just created is already in local state; reloading it
   // mid-send would race the reply and show messages twice.
   const createdHere = useRef<string | null>(null);
+  // Nothing reaches the AI provider until this person agrees (Guideline 5.1.2(i)).
+  const [consent, setConsent] = useState<'loading' | 'needed' | 'given'>('loading');
+  const userId = user?.id ?? null;
+  useEffect(() => {
+    let live = true;
+    if (!userId) { setConsent('needed'); return; }
+    void hasAiConsent('customerAssistant', userId).then((given) => { if (live) setConsent(given ? 'given' : 'needed'); });
+    return () => { live = false; };
+  }, [userId]);
+  const agree = () => { setConsent('given'); if (userId) void recordAiConsent('customerAssistant', userId); };
 
   const loadList = useCallback(async () => {
     try { setConversations((await customerAssistantApi.listConversations({ limit: 30 })).items); } catch { /* history is optional */ }
@@ -76,7 +89,7 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
 
   const ask = async (text: string) => {
     const content = text.trim();
-    if (!content || sendingRef.current) return;
+    if (!content || sendingRef.current || consent !== 'given') return;
     sendingRef.current = true; setSending(true); setError(null);
     setPending({ id: `pending-${Date.now()}`, text: content, at: new Date().toISOString(), failed: false });
     setDraft('');
@@ -152,6 +165,28 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
       ) : null}
     </View>
   );
+
+  if (consent !== 'given') {
+    return (
+      <ChatLayout palette={customerChatPalette} header={header}>
+        {consent === 'loading' ? <ActivityIndicator style={styles.flex} color={premium.deep} /> : (
+          <ScrollView contentContainerStyle={styles.welcome}>
+            <View style={styles.consent}>
+              <View style={styles.consentIcon}><Ionicons name="shield-checkmark-outline" size={22} color={premium.deep} /></View>
+              <Text accessibilityRole="header" style={styles.consentTitle}>{disclosure.title}</Text>
+              <Text style={styles.consentBody}>{disclosure.body}</Text>
+              <Pressable accessibilityRole="button" onPress={agree} style={({ pressed }) => [styles.consentAccept, pressed && styles.pressed]}>
+                <Text style={styles.consentAcceptText}>{disclosure.accept}</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => navigation.goBack()} style={({ pressed }) => [styles.consentDecline, pressed && styles.pressed]}>
+                <Text style={styles.consentDeclineText}>{disclosure.decline}</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        )}
+      </ChatLayout>
+    );
+  }
 
   if (mode === 'history') {
     return (
@@ -238,4 +273,12 @@ const styles = StyleSheet.create({
   historyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14.5, color: premium.ink },
   historyMeta: { fontFamily: 'Inter_400Regular', fontSize: 12, color: premium.inkFaint, marginTop: 2 },
   pressed: { opacity: 0.7 },
+  consent: { backgroundColor: premium.card, borderRadius: 24, borderWidth: 1, borderColor: premium.line, padding: 22, gap: 12 },
+  consentIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  consentTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 19, color: premium.ink },
+  consentBody: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21, color: premium.inkSoft },
+  consentAccept: { backgroundColor: premium.deep, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginTop: 6 },
+  consentAcceptText: { fontFamily: 'Inter_600SemiBold', fontSize: 15, color: premium.onDeep },
+  consentDecline: { paddingVertical: 10, alignItems: 'center' },
+  consentDeclineText: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: premium.inkSoft },
 });

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LeafletMap } from '../../components/map/LeafletMap';
 import { photoSource } from '../../components/ProfilePhoto';
-import type { MarketplaceBusinessProfileDto } from '../../apiTypes';
+import type { MarketplaceBusinessProfileDto, MarketplaceReportReason } from '../../apiTypes';
 import { directionsUrl } from '../../domain/places';
 import { formatPoints } from '../../domain/loyalty';
 import { ApiError } from '../../services/api';
@@ -17,7 +17,20 @@ import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 import { premium, premiumSerif, premiumShadow, ratingText, reviewCountText } from '../premiumTheme';
 
-const REPORT_REASONS = ['Spam or scam', 'Inappropriate content', 'Permanently closed', 'Other'] as const;
+// Labels map onto the server's report reasons (POST /customer/marketplace/businesses/:slug/report).
+const BUSINESS_REPORT_REASONS: ReadonlyArray<{ label: string; reason: MarketplaceReportReason }> = [
+  { label: 'Spam or scam', reason: 'scam' },
+  { label: 'Inappropriate content', reason: 'inappropriate' },
+  { label: 'Wrong information', reason: 'wrong_info' },
+  { label: 'Permanently closed', reason: 'closed' },
+  { label: 'Other', reason: 'other' },
+];
+const REVIEW_REPORT_REASONS: ReadonlyArray<{ label: string; reason: MarketplaceReportReason }> = [
+  { label: 'Offensive or abusive', reason: 'inappropriate' },
+  { label: 'Spam or fake', reason: 'spam' },
+  { label: 'Other', reason: 'other' },
+];
+type ReportTarget = { kind: 'business' } | { kind: 'review'; index: number };
 
 type Props = NativeStackScreenProps<CustomerRootStackParamList, 'BusinessProfile'>;
 
@@ -48,8 +61,10 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   const [favourite, setFavourite] = useState(false);
   const [following, setFollowing] = useState(false);
   const [pending, setPending] = useState(false);
-  const [reporting, setReporting] = useState(false);
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   const [reportSent, setReportSent] = useState(false);
+  const [reportedReviews, setReportedReviews] = useState<number[]>([]);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [viewer, setViewer] = useState<number | null>(null);
 
   const load = useCallback(async () => {
@@ -85,9 +100,15 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   const share = async () => {
     try { const info = await marketplaceApi.share(slug); await Share.share({ message: info.message, url: info.shareUrl }); } catch { /* best-effort */ }
   };
-  const submitReport = async (reason: string) => {
-    setReporting(false);
-    try { await marketplaceApi.report(slug, reason); setReportSent(true); } catch { /* best-effort */ }
+  const submitReport = async (target: ReportTarget, reason: MarketplaceReportReason) => {
+    setReporting(null); setReportError(null);
+    const review = target.kind === 'review' ? profile?.reviewsSummary.recent[target.index] : null;
+    const detail = review ? `Reported review (${review.rating}/5, ${review.createdAt}): ${review.comment ?? '(no comment)'}`.slice(0, 2000) : undefined;
+    try {
+      await marketplaceApi.report(slug, reason, detail);
+      if (target.kind === 'review') setReportedReviews((current) => [...current, target.index]);
+      else setReportSent(true);
+    } catch { setReportError('Couldn’t send your report. Check your connection and try again.'); }
   };
 
   const topBar = (
@@ -283,16 +304,22 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                 <View key={index} style={styles.review}>
                   <Stars value={review.rating} size={12} />
                   {review.comment ? <Text style={styles.reviewText}>“{review.comment}”</Text> : null}
-                  <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</Text>
+                  <View style={styles.reviewFoot}>
+                    <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Report this review" disabled={reportedReviews.includes(index)} hitSlop={8} onPress={() => setReporting({ kind: 'review', index })}>
+                      <Text style={styles.reviewReport}>{reportedReviews.includes(index) ? 'Reported' : 'Report'}</Text>
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </>
           ) : null}
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Report this business" disabled={reportSent} onPress={() => setReporting(true)} style={styles.reportRow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Report this business" disabled={reportSent} onPress={() => setReporting({ kind: 'business' })} style={styles.reportRow}>
             <Ionicons name="flag-outline" size={14} color={premium.inkFaint} />
             <Text style={styles.reportText}>{reportSent ? 'Report sent — thank you' : 'Report this business'}</Text>
           </Pressable>
+          {reportError ? <Text accessibilityRole="alert" style={styles.reportError}>{reportError}</Text> : null}
         </View>
       </ScrollView>
 
@@ -333,16 +360,16 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
         </View>
       </Modal>
 
-      <Modal visible={reporting} transparent animationType="fade" onRequestClose={() => setReporting(false)}>
-        <Pressable style={styles.reportOverlay} onPress={() => setReporting(false)}>
+      <Modal visible={reporting !== null} transparent animationType="fade" onRequestClose={() => setReporting(null)}>
+        <Pressable style={styles.reportOverlay} onPress={() => setReporting(null)}>
           <View style={[styles.reportSheet, { paddingBottom: 24 + insets.bottom }]}>
-            <Text style={styles.reportTitle}>Report {profile.name}</Text>
-            {REPORT_REASONS.map((reason) => (
-              <Pressable key={reason} accessibilityRole="button" onPress={() => void submitReport(reason)} style={({ pressed }) => [styles.reportOption, pressed && styles.pressed]}>
-                <Text style={styles.reportOptionText}>{reason}</Text>
+            <Text style={styles.reportTitle}>{reporting?.kind === 'review' ? 'Report this review' : `Report ${profile.name}`}</Text>
+            {(reporting?.kind === 'review' ? REVIEW_REPORT_REASONS : BUSINESS_REPORT_REASONS).map((option) => (
+              <Pressable key={option.label} accessibilityRole="button" onPress={() => reporting && void submitReport(reporting, option.reason)} style={({ pressed }) => [styles.reportOption, pressed && styles.pressed]}>
+                <Text style={styles.reportOptionText}>{option.label}</Text>
               </Pressable>
             ))}
-            <Pressable accessibilityRole="button" onPress={() => setReporting(false)} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setReporting(null)} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable>
           </View>
         </Pressable>
       </Modal>
@@ -421,6 +448,9 @@ const styles = StyleSheet.create({
   reviewText: { fontFamily: premiumSerif, fontStyle: 'italic', fontSize: 15, lineHeight: 22, color: premium.ink },
   reviewDate: { fontFamily: 'Inter_400Regular', fontSize: 11, color: premium.inkFaint },
   reportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 20 },
+  reportError: { fontFamily: 'Inter_400Regular', fontSize: 12, color: premium.danger, textAlign: 'center', marginTop: -12, marginBottom: 12 },
+  reviewFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  reviewReport: { fontFamily: 'Inter_400Regular', fontSize: 12, color: premium.inkFaint },
   reportText: { fontFamily: 'Inter_400Regular', fontSize: 12, color: premium.inkFaint },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, backgroundColor: premium.card, borderTopWidth: 1, borderTopColor: premium.line },
   askBtn: { width: 54, height: 54, borderRadius: 27, borderWidth: 1, borderColor: premium.line, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },

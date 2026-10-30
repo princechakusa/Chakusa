@@ -47,7 +47,7 @@ const tabIcons: Record<keyof CustomerTabParamList, { active: keyof typeof Ionico
   CustomerExplore: { active: 'compass', inactive: 'compass-outline' },
   CustomerBookings: { active: 'calendar', inactive: 'calendar-outline' },
   CustomerMessages: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
-  CustomerAccount: { active: 'person', inactive: 'person-outline' },
+  CustomerAccount: { active: 'person-circle-outline', inactive: 'person-circle-outline' },
 };
 const tabLabels: Record<keyof CustomerTabParamList, string> = {
   CustomerHome: 'Home', CustomerExplore: 'Explore', CustomerBookings: 'Bookings', CustomerMessages: 'Messages', CustomerAccount: 'Account',

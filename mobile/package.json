@@ -33,6 +33,7 @@
     "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
+    "expo-updates": "~57.0.26",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -69,7 +70,8 @@
     "e2e:watch": "node e2e/watch.mjs",
     "e2e:build": "node e2e/build-web.mjs",
     "e2e:serve": "node e2e/serve-web.mjs",
-    "ios:release": "node scripts/ios-release.mjs"
+    "ios:release": "node scripts/ios-release.mjs",
+    "ota:production": "node scripts/eas-env.mjs production -- npx eas update --channel production --auto --non-interactive"
   },
   "private": true,
   "overrides": {

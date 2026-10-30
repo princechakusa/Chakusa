@@ -27,7 +27,8 @@
         "EXPO_PUBLIC_GOOGLE_STARTER_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.starter.monthly",
         "EXPO_PUBLIC_GOOGLE_PRO_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.pro.monthly",
         "EXPO_PUBLIC_GOOGLE_BUSINESS_MONTHLY_PRODUCT_ID": "com.chakusa.mobile.business.monthly"
-      }
+      },
+      "channel": "development"
     },
     "production": {
       "env": {
@@ -51,7 +52,8 @@
         "EXPO_PUBLIC_SENTRY_ENABLED": "true",
         "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
-      }
+      },
+      "channel": "production"
     },
     "production-internal": {
       "distribution": "internal",
@@ -79,7 +81,8 @@
         "EXPO_PUBLIC_SENTRY_ENABLED": "true",
         "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "internal"
-      }
+      },
+      "channel": "production"
     },
     "customer": {
       "distribution": "internal",
@@ -102,7 +105,8 @@
         "EXPO_PUBLIC_SENTRY_ENABLED": "true",
         "EXPO_PUBLIC_SENTRY_DSN": "https://d91b2533d36375ac71d161493c61a0f7@o4511921002577920.ingest.de.sentry.io/4512294707069008",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "internal"
-      }
+      },
+      "channel": "customer"
     }
   },
   "submit": {

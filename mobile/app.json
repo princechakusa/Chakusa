@@ -3,6 +3,8 @@
     "name": "CHAKUSA",
     "slug": "chakusa",
     "version": "1.0.0",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": { "url": "https://u.expo.dev/3a425309-15fb-4407-8db4-9c380feae21b", "enabled": true, "checkAutomatically": "ON_LOAD", "fallbackToCacheTimeout": 0, "requestHeaders": { "expo-channel-name": "production" } },
     "orientation": "portrait",
     "scheme": "chakusa",
     "icon": "./assets/chakusa-app-icon.png",

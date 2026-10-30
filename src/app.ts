@@ -4,6 +4,8 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { config, corsAllowedOrigins } from "./lib/config.js";
+import { isCorsOriginAllowed } from "./lib/corsOrigins.js";
+import { publicWebOrigin } from "./lib/publicWebOrigin.js";
 import { serializeErrorForLog, serializeRequestForLog } from "./lib/requestLogging.js";
 import { prisma } from "./lib/prisma.js";
 import { attachFastifySentry, captureUnexpectedError } from "./lib/sentry.js";
@@ -196,7 +198,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // the API explicitly opts into credentialed CORS. The origin callback still
   // reflects only the configured allowlist in production, and admin routes
   // independently enforce ADMIN_CONSOLE_ORIGIN as an exact match.
-  await app.register(cors, { origin: corsAllowedOrigins ?? (config.NODE_ENV !== "production"), credentials: true });
+  await app.register(cors, {
+    origin: (origin, callback) => callback(null, isCorsOriginAllowed(origin, { allowed: corsAllowedOrigins, publicWebOrigin: publicWebOrigin(), production: config.NODE_ENV === "production" })),
+    credentials: true,
+  });
   const rateLimitEnabled = config.NODE_ENV !== "test" || options.enableRateLimit === true;
   if (rateLimitEnabled) {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });

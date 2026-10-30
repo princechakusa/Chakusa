@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCorsAllowedOrigins } from "../src/lib/corsOrigins.js";
+import { buildCorsAllowedOrigins, isCorsOriginAllowed } from "../src/lib/corsOrigins.js";
 
 describe("buildCorsAllowedOrigins", () => {
   it("always allows the public share-link web origin", () => {
@@ -11,5 +11,21 @@ describe("buildCorsAllowedOrigins", () => {
   it("returns null when nothing is configured and ignores invalid URLs", () => {
     expect(buildCorsAllowedOrigins({})).toBeNull();
     expect(buildCorsAllowedOrigins({ PUBLIC_REVIEW_BASE_URL: "not a url" })).toBeNull();
+  });
+});
+
+describe("isCorsOriginAllowed", () => {
+  const prod = { allowed: ["https://admin.example.com"], publicWebOrigin: "https://chakusarecovery.com", production: true };
+  it("allows the public web origin (admin Website setting) and the static list", () => {
+    expect(isCorsOriginAllowed("https://chakusarecovery.com", prod)).toBe(true);
+    expect(isCorsOriginAllowed("https://admin.example.com", prod)).toBe(true);
+  });
+  it("refuses any other origin in production", () => {
+    expect(isCorsOriginAllowed("https://evil.example", prod)).toBe(false);
+    expect(isCorsOriginAllowed("https://evil.example", { allowed: null, publicWebOrigin: undefined, production: true })).toBe(false);
+  });
+  it("allows requests without an Origin header, and any origin in development when nothing is configured", () => {
+    expect(isCorsOriginAllowed(undefined, prod)).toBe(true);
+    expect(isCorsOriginAllowed("http://localhost:8081", { allowed: null, publicWebOrigin: undefined, production: false })).toBe(true);
   });
 });

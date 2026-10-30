@@ -673,6 +673,22 @@ test.describe('Business and customer, end to end', () => {
     expectClean();
   });
 
+  test('a guest browses without an account, and booking asks them to sign in (Apple 5.1.1(v))', async ({ page }) => {
+    const { expectClean } = trackErrors(page);
+    await openWelcome(page);
+    await page.getByTestId('choose-customer').click();
+    await page.getByTestId('browse-as-guest').filter({ visible: true }).click();
+    await expect(visibleText(page, 'Browsing as a guest')).toBeVisible();
+    await page.getByLabel('Search businesses or services').filter({ visible: true }).fill(business.name);
+    await linger(page, 1500);
+    await button(page, new RegExp(business.name)).click();
+    await expect(visibleText(page, business.name)).toBeVisible();
+    page.once('dialog', (dialog) => { expect(dialog.message()).toMatch(/Sign in to continue/); void dialog.accept(); });
+    await button(page, 'Book an appointment').click();
+    await expect(page.getByTestId('auth-submit').filter({ visible: true })).toBeVisible();
+    expectClean();
+  });
+
   test.afterAll(() => {
     if (!a11yFindings.size) return;
     console.log('\nButtons without an accessible name:');

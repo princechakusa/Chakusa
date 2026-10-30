@@ -16,7 +16,7 @@ import errorHandlerPlugin from "./plugins/errorHandler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import customerAuthRoutes from "./modules/customerAuth/customerAuth.routes.js";
 import customerPlatformRoutes from "./modules/customer/customer.routes.js";
-import marketplaceRoutes from "./modules/marketplace/marketplace.routes.js";
+import marketplaceRoutes, { publicMarketplaceRoutes } from "./modules/marketplace/marketplace.routes.js";
 import customerBookingRoutes from "./modules/customer/booking.routes.js";
 import customerAIAssistantRoutes from "./modules/customer/aiAssistant.routes.js";
 import customerInquiryRoutes from "./modules/customer/inquiries.routes.js";
@@ -328,6 +328,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
   await app.register(customerPlatformRoutes, { prefix: "/customer" });
   await app.register(marketplaceRoutes, { prefix: "/customer/marketplace" });
+  await app.register(publicMarketplaceRoutes, { prefix: "/public/marketplace" });
   await app.register(customerBookingRoutes, { prefix: "/customer/bookings" });
   await app.register(customerAIAssistantRoutes, { prefix: "/customer/ai/assistant" });
   await app.register(customerInquiryRoutes, { prefix: "/customer/inquiries" });

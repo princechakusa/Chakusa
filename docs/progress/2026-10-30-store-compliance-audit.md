@@ -51,7 +51,7 @@
 
 ## Limits not fixed (product decisions)
 
-- **Customer marketplace needs sign-in to browse.** Apple 5.1.1(v) asks apps to allow non-account features without login. Chakusa has substantial account features, so this is a moderate risk, not a certain rejection. Guest browsing needs public discovery routes and a guest navigation stack. If Apple rejects under 5.1.1(v), this is the fix.
+- ~~Customer marketplace needs sign-in to browse.~~ **Fixed 2026-10-30 (Apple 5.1.1(v)).** The customer sign-in screen has "Browse without an account": guests get Explore (search, map, categories, nearby) and business profiles from the new unauthenticated `/public/marketplace` routes (same public listing data, records no searches or views, 120 requests/min per IP). Booking, messaging, favourites, follow, share, report, rewards/memberships and the AI assistant ask the guest to sign in. Tests: `tests/public-marketplace.test.ts` (4) plus the existing marketplace suites, and an e2e guest journey (27/27 e2e).
 - The web dashboard's AI receptionist toggle does not show the confirmation the app shows (not part of store review).
 - Admin transcript visibility is still unredacted (`docs/PRIVACY_ENGINEERING_FOLLOWUPS.md`).
 

@@ -13,6 +13,7 @@ import { authColors, authRadius, authSpace, authType } from '../../experience/au
 import { useExperience } from '../../experience/experienceContext';
 import { ApiError } from '../../services/api';
 import { useCustomerAuth } from '../CustomerAuthContext';
+import { useGuestBrowsing } from '../guestBrowsing';
 
 // PROGRAM 3: the customer sign-in / sign-up surface. One screen, premium
 // entry design (see experience/authTheme): Sign in / Create account tabs,
@@ -26,6 +27,7 @@ const MODES = [{ value: 'sign-in', label: 'Sign in' }, { value: 'sign-up', label
 
 export function CustomerAuthScreen() {
   const auth = useCustomerAuth();
+  const { startGuest } = useGuestBrowsing();
   const experience = useExperience();
 
   const [mode, setMode] = useState<Mode>('sign-in');
@@ -186,6 +188,10 @@ export function CustomerAuthScreen() {
                   <SocialButtons pending={pending === 'google' || pending === 'apple' ? pending : null} disabled={busy} onGoogle={() => void run('google', () => auth.signInWithGoogle(ageConfirmed))} onApple={() => void run('apple', () => auth.signInWithApple(ageConfirmed))} />
                 </>
               ) : null}
+
+              <Text testID="browse-as-guest" accessibilityRole="button" accessibilityHint="Look around businesses on Chakusa without signing in" onPress={() => { if (!busy) startGuest(); }} style={styles.switchRow}>
+                <Text style={styles.switchLink}>Browse without an account</Text>
+              </Text>
             </View>
           </Reveal>
 

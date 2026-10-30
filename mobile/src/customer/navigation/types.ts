@@ -13,6 +13,7 @@ export type CustomerTabParamList = {
 
 export type CustomerRootStackParamList = {
   CustomerAuth: undefined;
+  GuestExplore: undefined;
   CustomerLegalGate: undefined;
   CustomerTabs: NavigatorScreenParams<CustomerTabParamList> | undefined;
   BusinessProfile: { slug: string };

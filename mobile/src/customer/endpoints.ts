@@ -27,6 +27,7 @@ import type {
   MarketplaceReportReason,
 } from '../apiTypes';
 import { customerHttp } from './customerApi';
+import { marketplaceRoute } from './guestBrowsing';
 
 const query = (values: Record<string, string | number | boolean | undefined>) => {
   const params = new URLSearchParams();
@@ -78,21 +79,21 @@ export const customerApi = {
 
 export const marketplaceApi = {
   discover: (params: { mode?: MarketplaceDiscoveryMode; category?: string; q?: string; city?: string; verifiedOnly?: boolean; lat?: number; lng?: number; radiusKm?: number; limit?: number; cursor?: string } = {}) =>
-    customerHttp.get<MarketplacePageDto>(`/customer/marketplace${query({ ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
+    customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}${query({ ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`, marketplaceRoute().auth),
   nearby: (lat: number, lng: number, radiusKm = 15, limit?: number, filters: { category?: string; q?: string } = {}) =>
-    customerHttp.get<MarketplacePageDto>(`/customer/marketplace/nearby${query({ lat, lng, radiusKm, limit, category: filters.category, q: filters.q })}`),
-  featured: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/featured${query({ limit })}`),
-  recent: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/recent${query({ limit })}`),
-  popular: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/popular${query({ limit })}`),
-  verified: (limit?: number) => customerHttp.get<MarketplacePageDto>(`/customer/marketplace/verified${query({ limit })}`),
-  categories: () => customerHttp.get<MarketplaceCategoriesResponse>('/customer/marketplace/categories'),
+    customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/nearby${query({ lat, lng, radiusKm, limit, category: filters.category, q: filters.q })}`, marketplaceRoute().auth),
+  featured: (limit?: number) => customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/featured${query({ limit })}`, marketplaceRoute().auth),
+  recent: (limit?: number) => customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/recent${query({ limit })}`, marketplaceRoute().auth),
+  popular: (limit?: number) => customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/popular${query({ limit })}`, marketplaceRoute().auth),
+  verified: (limit?: number) => customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/verified${query({ limit })}`, marketplaceRoute().auth),
+  categories: () => customerHttp.get<MarketplaceCategoriesResponse>(`${marketplaceRoute().prefix}/categories`, marketplaceRoute().auth),
   categoryBusinesses: (slug: string, params: { q?: string; limit?: number; cursor?: string } = {}) =>
-    customerHttp.get<MarketplacePageDto>(`/customer/marketplace/categories/${encodeURIComponent(slug)}${query(params)}`),
+    customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/categories/${encodeURIComponent(slug)}${query(params)}`, marketplaceRoute().auth),
   search: (q: string, params: { category?: string; city?: string; verifiedOnly?: boolean; limit?: number; cursor?: string } = {}) =>
-    customerHttp.get<MarketplacePageDto>(`/customer/marketplace/search${query({ q, ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`),
-  suggestions: (q: string) => customerHttp.get<MarketplaceSuggestionsDto>(`/customer/marketplace/search/suggestions${query({ q })}`),
+    customerHttp.get<MarketplacePageDto>(`${marketplaceRoute().prefix}/search${query({ q, ...params, verifiedOnly: params.verifiedOnly ? 'true' : undefined })}`, marketplaceRoute().auth),
+  suggestions: (q: string) => customerHttp.get<MarketplaceSuggestionsDto>(`${marketplaceRoute().prefix}/search/suggestions${query({ q })}`, marketplaceRoute().auth),
   recentSearches: () => customerHttp.get<MarketplaceRecentSearchDto[]>('/customer/marketplace/search/recent'),
-  business: (slug: string) => customerHttp.get<MarketplaceBusinessProfileDto>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}`),
+  business: (slug: string) => customerHttp.get<MarketplaceBusinessProfileDto>(`${marketplaceRoute().prefix}/businesses/${encodeURIComponent(slug)}`, marketplaceRoute().auth),
   setFavourite: (slug: string, favourite: boolean) => customerHttp.post<CustomerBusinessLinkDto & { favouriteCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/favourite`, { favourite }),
   setFollow: (slug: string, follow: boolean) => customerHttp.post<{ following: boolean; followerCount: number }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/follow`, { follow }),
   report: (slug: string, reason: MarketplaceReportReason, detail?: string) => customerHttp.post<{ id: string; status: string }>(`/customer/marketplace/businesses/${encodeURIComponent(slug)}/report`, { reason, detail }),
@@ -100,11 +101,11 @@ export const marketplaceApi = {
   recentlyViewed: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/recently-viewed'),
   favourites: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/favourites'),
   following: () => customerHttp.get<MarketplaceCardDto[]>('/customer/marketplace/following'),
-  promotions: () => customerHttp.get<MarketplacePromotionDto[]>('/customer/marketplace/promotions'),
+  promotions: () => customerHttp.get<MarketplacePromotionDto[]>(`${marketplaceRoute().prefix}/promotions`, marketplaceRoute().auth),
   nearbyPlaces: (lat: number, lng: number, radiusKm = 5, q?: string) =>
-    customerHttp.get<NearbyPlacesDto>(`/customer/marketplace/nearby-places${query({ lat, lng, radiusKm, q })}`),
+    customerHttp.get<NearbyPlacesDto>(`${marketplaceRoute().prefix}/nearby-places${query({ lat, lng, radiusKm, q })}`, marketplaceRoute().auth),
   googleNearby: (lat: number, lng: number, radiusKm = 5, q?: string) =>
-    customerHttp.get<GoogleNearbyDto>(`/customer/marketplace/google-nearby${query({ lat, lng, radiusKm, q })}`),
+    customerHttp.get<GoogleNearbyDto>(`${marketplaceRoute().prefix}/google-nearby${query({ lat, lng, radiusKm, q })}`, marketplaceRoute().auth),
 };
 
 // Ask the business: one in-app thread per customer per business.

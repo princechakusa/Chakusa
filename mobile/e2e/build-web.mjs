@@ -16,5 +16,5 @@ const env = {
   EXPO_PUBLIC_SENTRY_ENABLED: 'false',
   EXPO_PUBLIC_AUTOMATION_ENABLED: 'true',
 };
-const result = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-e2e'], { stdio: 'inherit', env, shell: process.platform === 'win32' });
+const result = spawnSync('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist-e2e', '--clear'], { stdio: 'inherit', env, shell: process.platform === 'win32' });
 process.exit(result.status ?? 1);

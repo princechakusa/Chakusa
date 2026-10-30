@@ -1,4 +1,5 @@
 import { Ionicons } from '../../components/icons';
+import { useEffect } from 'react';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { ErrorState } from '../../components/ui';
 import { authColors, authSpace, authType } from '../../experience/authTheme';
 import { premium } from '../premiumTheme';
 import { useCustomerAuth } from '../CustomerAuthContext';
+import { useGuestBrowsing } from '../guestBrowsing';
 import { BookingDetailScreen } from '../screens/BookingDetailScreen';
 import { BookingFlowScreen } from '../screens/BookingFlowScreen';
 import { BusinessProfileScreen } from '../screens/BusinessProfileScreen';
@@ -102,6 +104,9 @@ const customerNavHandle = {
 
 export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) {
   const { status, restoreError, restore, legalAcceptanceRequired } = useCustomerAuth();
+  const { guest, endGuest } = useGuestBrowsing();
+  // Signing in always ends guest browsing, so account screens use the customer routes.
+  useEffect(() => { if (status === 'authenticated' && guest) endGuest(); }, [endGuest, guest, status]);
 
   // PROGRAM 2 LOOP 10: open a preserved deep-link / notification
   // destination only once the customer is authenticated AND past the legal
@@ -133,7 +138,12 @@ export function CustomerNavigator({ navReady = false }: { navReady?: boolean }) 
         contentStyle: { backgroundColor: premium.bg },
       }}
     >
-      {!authed ? (
+      {!authed && guest ? (
+        <>
+          <Stack.Screen name="GuestExplore" component={CustomerExploreScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BusinessProfile" component={BusinessProfileScreen} options={{ headerShown: false }} />
+        </>
+      ) : !authed ? (
         <Stack.Screen name="CustomerAuth" component={CustomerAuthScreen} options={{ headerShown: false }} />
       ) : legalAcceptanceRequired ? (
         <>

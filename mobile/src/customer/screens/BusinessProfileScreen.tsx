@@ -1,7 +1,7 @@
 import { Ionicons } from '../../components/icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LeafletMap } from '../../components/map/LeafletMap';
@@ -16,6 +16,7 @@ import { profileLoyaltyState } from '../domain/customerLoyalty';
 import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 import { premium, premiumSerif, premiumShadow, ratingText, reviewCountText } from '../premiumTheme';
+import { useGuestBrowsing } from '../guestBrowsing';
 
 // Labels map onto the server's report reasons (POST /customer/marketplace/businesses/:slug/report).
 const BUSINESS_REPORT_REASONS: ReadonlyArray<{ label: string; reason: MarketplaceReportReason }> = [
@@ -66,6 +67,13 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   const [reportedReviews, setReportedReviews] = useState<number[]>([]);
   const [reportError, setReportError] = useState<string | null>(null);
   const [viewer, setViewer] = useState<number | null>(null);
+  const { guest, endGuest } = useGuestBrowsing();
+  // Guests can look around; anything that needs an account asks them to sign in.
+  const requireAccount = (reason: string) => {
+    if (!guest) return false;
+    Alert.alert('Sign in to continue', `Sign in or create a free account to ${reason}.`, [{ text: 'Not now', style: 'cancel' }, { text: 'Sign in', onPress: endGuest }]);
+    return true;
+  };
 
   const load = useCallback(async () => {
     try {
@@ -84,20 +92,21 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   useEffect(() => { void load(); }, [load]);
 
   const toggleFavourite = async () => {
-    if (pending) return;
+    if (pending || requireAccount('save favourites')) return;
     setPending(true);
     const next = !favourite;
     setFavourite(next);
     try { await marketplaceApi.setFavourite(slug, next); } catch { setFavourite(!next); } finally { setPending(false); }
   };
   const toggleFollow = async () => {
-    if (pending) return;
+    if (pending || requireAccount('follow businesses')) return;
     setPending(true);
     const next = !following;
     setFollowing(next);
     try { await marketplaceApi.setFollow(slug, next); } catch { setFollowing(!next); } finally { setPending(false); }
   };
   const share = async () => {
+    if (requireAccount('share businesses')) return;
     try { const info = await marketplaceApi.share(slug); await Share.share({ message: info.message, url: info.shareUrl }); } catch { /* best-effort */ }
   };
   const submitReport = async (target: ReportTarget, reason: MarketplaceReportReason) => {
@@ -149,7 +158,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
   const hasPin = profile.address.latitude != null && profile.address.longitude != null;
   const loyalty = profileLoyaltyState(profile);
   const heroHeight = Math.round(width * 0.82);
-  const ask = () => navigation.navigate('CustomerInquiryThread', { slug, businessName: profile.name });
+  const ask = () => { if (!requireAccount('message this business')) navigation.navigate('CustomerInquiryThread', { slug, businessName: profile.name }); };
 
   return (
     <View style={styles.screen}>
@@ -224,7 +233,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                     accessibilityRole="button"
                     accessibilityLabel={`${service.name}. ${service.durationMinutes} minutes.${service.bookable ? ' Book this service.' : ''}`}
                     disabled={!service.bookable}
-                    onPress={() => navigation.navigate('BookingFlow', { slug, serviceId: service.id })}
+                    onPress={() => { if (!requireAccount('book an appointment')) navigation.navigate('BookingFlow', { slug, serviceId: service.id }); }}
                     style={({ pressed }) => [styles.serviceRow, index > 0 && styles.rowDivider, pressed && styles.pressed]}
                   >
                     <View style={styles.flex}>
@@ -273,8 +282,8 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                   : `${loyalty.hasProgram ? 'Earn points when you book here.' : 'Membership plans available.'}${loyalty.rewardCount ? ` ${loyalty.rewardCount} reward${loyalty.rewardCount === 1 ? '' : 's'} to unlock.` : ''}`}
               </Text>
               <View style={styles.loyaltyActions}>
-                {loyalty.hasProgram ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name })} style={styles.loyaltyBtn}><Text style={styles.loyaltyBtnText}>{loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}</Text></Pressable> : null}
-                {loyalty.hasMemberships ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name })} style={styles.loyaltyBtn}><Text style={styles.loyaltyBtnText}>Membership</Text></Pressable> : null}
+                {loyalty.hasProgram ? <Pressable accessibilityRole="button" onPress={() => { if (!requireAccount('join rewards')) navigation.navigate('CustomerLoyaltyBusiness', { businessId: profile.businessId, slug, businessName: profile.name }); }} style={styles.loyaltyBtn}><Text style={styles.loyaltyBtnText}>{loyalty.primaryAction === 'join' ? 'Join rewards' : 'View rewards'}</Text></Pressable> : null}
+                {loyalty.hasMemberships ? <Pressable accessibilityRole="button" onPress={() => { if (!requireAccount('see memberships')) navigation.navigate('CustomerMembershipPlans', { slug, businessName: profile.name }); }} style={styles.loyaltyBtn}><Text style={styles.loyaltyBtnText}>Membership</Text></Pressable> : null}
               </View>
             </View>
           ) : null}
@@ -306,7 +315,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
                   {review.comment ? <Text style={styles.reviewText}>“{review.comment}”</Text> : null}
                   <View style={styles.reviewFoot}>
                     <Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</Text>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Report this review" disabled={reportedReviews.includes(index)} hitSlop={8} onPress={() => setReporting({ kind: 'review', index })}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Report this review" disabled={reportedReviews.includes(index)} hitSlop={8} onPress={() => { if (!requireAccount('report a review')) setReporting({ kind: 'review', index }); }}>
                       <Text style={styles.reviewReport}>{reportedReviews.includes(index) ? 'Reported' : 'Report'}</Text>
                     </Pressable>
                   </View>
@@ -315,7 +324,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
             </>
           ) : null}
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Report this business" disabled={reportSent} onPress={() => setReporting({ kind: 'business' })} style={styles.reportRow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Report this business" disabled={reportSent} onPress={() => { if (!requireAccount('report this business')) setReporting({ kind: 'business' }); }} style={styles.reportRow}>
             <Ionicons name="flag-outline" size={14} color={premium.inkFaint} />
             <Text style={styles.reportText}>{reportSent ? 'Report sent — thank you' : 'Report this business'}</Text>
           </Pressable>
@@ -333,7 +342,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel={bookable.length ? 'Book an appointment' : 'No online booking'}
           disabled={!bookable.length}
-          onPress={() => navigation.navigate('BookingFlow', { slug })}
+          onPress={() => { if (!requireAccount('book an appointment')) navigation.navigate('BookingFlow', { slug }); }}
           style={({ pressed }) => [styles.bookBtn, !bookable.length && styles.disabled, pressed && styles.pressed]}
         >
           <Text style={styles.bookBtnText}>{bookable.length ? 'Book an appointment' : 'No online booking'}</Text>

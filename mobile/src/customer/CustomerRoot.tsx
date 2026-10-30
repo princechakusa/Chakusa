@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CustomerAuthProvider } from './CustomerAuthContext';
+import { GuestBrowsingProvider } from './guestBrowsing';
 import { CustomerNavigator } from './navigation/CustomerNavigator';
 import { customerLinking } from './navigation/customerLinking';
 import { navigationRef } from './navigation/customerNavigationRef';
@@ -22,10 +23,12 @@ export function CustomerRoot() {
   return (
     <SafeAreaProvider>
       <CustomerAuthProvider>
-        <NavigationContainer ref={navigationRef} linking={customerLinking} onReady={() => setNavReady(true)}>
-          <StatusBar style="dark" />
-          <CustomerNavigator navReady={navReady} />
-        </NavigationContainer>
+        <GuestBrowsingProvider>
+          <NavigationContainer ref={navigationRef} linking={customerLinking} onReady={() => setNavReady(true)}>
+            <StatusBar style="dark" />
+            <CustomerNavigator navReady={navReady} />
+          </NavigationContainer>
+        </GuestBrowsingProvider>
       </CustomerAuthProvider>
     </SafeAreaProvider>
   );

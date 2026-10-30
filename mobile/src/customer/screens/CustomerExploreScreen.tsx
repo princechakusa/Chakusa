@@ -17,6 +17,7 @@ import { marketplaceApi } from '../endpoints';
 import type { CustomerRootStackParamList } from '../navigation/types';
 import { premium, premiumSerif, premiumShadow, ratingText, reviewCountText } from '../premiumTheme';
 import { KeyboardModal } from '../../components/KeyboardModal';
+import { useGuestBrowsing } from '../guestBrowsing';
 
 type Nav = NativeStackNavigationProp<CustomerRootStackParamList>;
 
@@ -39,6 +40,7 @@ const DEFAULT_CENTER = { latitude: -17.8292, longitude: 31.0522 };
 
 export function CustomerExploreScreen() {
   const navigation = useNavigation<Nav>();
+  const { guest, endGuest } = useGuestBrowsing();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [term, setTerm] = useState('');
@@ -199,6 +201,15 @@ export function CustomerExploreScreen() {
     </Pressable>
   );
 
+  const guestBar = guest ? (
+    <View style={[styles.guestBar, premiumShadow]}>
+      <Text style={styles.guestText}>Browsing as a guest</Text>
+      <Pressable testID="guest-sign-in" accessibilityRole="button" accessibilityLabel="Sign in or create an account" onPress={endGuest} style={styles.guestButton}>
+        <Text style={styles.guestButtonText}>Sign in</Text>
+      </Pressable>
+    </View>
+  ) : null;
+
   return (
     <View style={styles.screen}>
       {showMap ? (
@@ -214,6 +225,7 @@ export function CustomerExploreScreen() {
             accessibilityLabel="Businesses on the map"
           />
           <View pointerEvents="box-none" style={[styles.overlayTop, { paddingTop: insets.top + 8 }]}>
+            {guestBar}
             {searchBar}
             {areaChip}
             {filters}
@@ -258,6 +270,7 @@ export function CustomerExploreScreen() {
         </>
       ) : (
         <ScrollView contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 8 }]} keyboardShouldPersistTaps="handled">
+          {guestBar}
           <Text style={styles.eyebrow}>EXPLORE</Text>
           <Text style={styles.title}>Discover <Text style={styles.titleSerif}>near you.</Text></Text>
           {searchBar}
@@ -442,6 +455,10 @@ function PlaceSheet({ place, onClose }: { place: NearbyPlaceDto | null; onClose:
 }
 
 const styles = StyleSheet.create({
+  guestBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: premium.card, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 10 },
+  guestText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: premium.inkSoft, flexShrink: 1 },
+  guestButton: { backgroundColor: premium.deep, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
+  guestButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: premium.onDeep },
   placeIcon: { width: 104, height: 118, borderRadius: 14, backgroundColor: premium.sageSoft, alignItems: 'center', justifyContent: 'center' },
   mapsPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: premium.line, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   mapsPillText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: premium.deep },

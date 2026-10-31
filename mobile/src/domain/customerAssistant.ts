@@ -177,3 +177,29 @@ export function mergePage<T extends { id: string }>(existing: T[], incoming: T[]
 export function hasMore(nextCursor: string | null): boolean {
   return nextCursor !== null && nextCursor !== undefined;
 }
+
+// --- In-chat booking form ------------------------------------------------
+
+export interface AssistantBookingFormRequest {
+  slug: string;
+  businessName: string | null;
+  serviceOfferingId: string | null;
+}
+
+/**
+ * The booking form the assistant asked the app to show (its `show_booking_form` tool).
+ * The tool only displays a form; the customer's own Confirm tap makes the booking.
+ */
+export function extractBookingForm(toolCalls: CustomerAIMessageDto['toolCalls']): AssistantBookingFormRequest | null {
+  for (const call of toolCalls ?? []) {
+    if (call.tool !== 'show_booking_form' || !call.ok) continue;
+    const output = call.output as { form?: unknown; slug?: unknown; businessName?: unknown; serviceOfferingId?: unknown } | null | undefined;
+    if (output?.form !== 'booking' || typeof output.slug !== 'string' || !output.slug) continue;
+    return {
+      slug: output.slug,
+      businessName: typeof output.businessName === 'string' ? output.businessName : null,
+      serviceOfferingId: typeof output.serviceOfferingId === 'string' ? output.serviceOfferingId : null,
+    };
+  }
+  return null;
+}

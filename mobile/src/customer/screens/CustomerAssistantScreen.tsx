@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CustomerAIConversationDto, CustomerAIMessageDto } from '../../apiTypes';
 import { ChatComposer, ChatLayout, ChatThread, type ChatMessage } from '../../components/chat/ChatKit';
 import { aiDataSharingDisclosure } from '../../domain/aiDataSharing';
+import { extractBookingForm } from '../../domain/customerAssistant';
+import { AssistantBookingCard } from '../components/AssistantBookingCard';
 import { hasAiConsent, recordAiConsent } from '../../services/aiConsent';
 import { ApiError } from '../../services/api';
 import { formatDateTime } from '../../utils/format';
@@ -124,12 +126,23 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
   const startNew = () => { setActiveId(null); setMessages([]); setPending(null); setError(null); setMode('chat'); };
 
   const chat: ChatMessage[] = useMemo(() => {
-    const shown = messages.filter((m) => m.role === 'user' || m.role === 'assistant').map((m): ChatMessage => ({
+    const visible = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+    // Only the newest assistant message offers its form; older ones would be stale.
+    const lastAssistantId = [...visible].reverse().find((m) => m.role === 'assistant')?.id;
+    const shown = visible.map((m): ChatMessage => ({
       id: m.id,
       text: m.content,
       mine: m.role === 'user',
       at: m.createdAt,
       footer: m.role === 'assistant' ? (
+        <View>
+          {m.id === lastAssistantId && extractBookingForm(m.toolCalls) ? (
+            <AssistantBookingCard
+              key={m.id}
+              request={extractBookingForm(m.toolCalls)!}
+              onOpenBooking={(bookingId) => navigation.navigate('BookingDetail', { bookingId })}
+            />
+          ) : null}
         <View style={styles.feedback}>
           <Pressable accessibilityRole="button" accessibilityLabel="Helpful" hitSlop={8} onPress={() => void rate(m.id, 1)}>
             <Ionicons name={ratings[m.id] === 1 ? 'thumbs-up' : 'thumbs-up-outline'} size={14} color={ratings[m.id] === 1 ? premium.deep : premium.inkFaint} />
@@ -138,10 +151,11 @@ export function CustomerAssistantScreen({ navigation, route }: Props) {
             <Ionicons name={ratings[m.id] === -1 ? 'thumbs-down' : 'thumbs-down-outline'} size={14} color={ratings[m.id] === -1 ? premium.danger : premium.inkFaint} />
           </Pressable>
         </View>
+        </View>
       ) : undefined,
     }));
     return pending ? [...shown, { id: pending.id, text: pending.text, mine: true, at: pending.at, failed: pending.failed }] : shown;
-  }, [messages, pending, ratings]);
+  }, [messages, pending, ratings, navigation]);
 
   const header = (
     <View style={[styles.header, { paddingTop: insets.top + 6 }]}>

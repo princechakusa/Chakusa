@@ -33,6 +33,7 @@ function scriptedProvider(): AIProvider {
       if (text.includes("book") && text.includes("haircut")) {
         return { output: "", toolRequests: [{ name: "create_booking", arguments: { slug: script.slug, serviceOfferingId: script.serviceOfferingId, startsAt: script.startsAt } }], usage };
       }
+      if (text.includes("form")) return { output: "", toolRequests: [{ name: "show_booking_form", arguments: { slug: script.slug } }], usage };
       if (text.includes("cancel")) return { output: "", toolRequests: [{ name: "cancel_booking", arguments: { bookingId: script.bookingId } }], usage };
       if (text.includes("next")) return { output: "", toolRequests: [{ name: "next_booking", arguments: {} }], usage };
       if (text.includes("favourite")) return { output: "", toolRequests: [{ name: "favourite_businesses", arguments: {} }], usage };
@@ -183,6 +184,19 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
       expect(toolLedger).not.toBeNull();
       const policy = await prisma.aIPolicyDecision.findFirst({ where: { runId: run.id, checkpoint: "CUSTOMER_RESPONSE" } });
       expect(policy).not.toBeNull();
+    });
+
+    it("show_booking_form hands the app a form to fill in and books nothing", async () => {
+      const biz = await bookableBusiness(app, "Form Barbers");
+      const customer = await registerCustomer(app);
+      await favourite(app, customer.token, biz.businessId);
+      script.slug = biz.slug;
+      const id = await newConversation(app, customer.token, biz.slug);
+      const turn = await say(app, customer.token, id, "show me the form to book");
+      const tool = turn.json().toolResults.find((t: { tool: string }) => t.tool === "show_booking_form");
+      expect(tool.ok).toBe(true);
+      expect(tool.output).toMatchObject({ form: "booking", slug: biz.slug, businessName: "Form Barbers" });
+      expect(await prisma.appointment.count({ where: { businessId: biz.businessId } })).toBe(0);
     });
 
     it("gives the model the earlier messages of the same chat, so a follow-up does not start over", async () => {

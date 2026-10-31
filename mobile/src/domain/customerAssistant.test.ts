@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CustomerAIConversationDto, CustomerAIMessageDto, CustomerAIRecommendationDto, CustomerAISettingsDto } from '../apiTypes';
 import {
+  extractBookingForm,
   applySettingsPatch,
   assistantStatusLabel,
   canNavigateAssistant,
@@ -153,5 +154,18 @@ describe('customer assistant domain (Program 2, Loop 4)', () => {
       expect(hasMore('cursor')).toBe(true);
       expect(hasMore(null)).toBe(false);
     });
+  });
+});
+
+describe('extractBookingForm', () => {
+  it('returns the form the assistant asked for', () => {
+    const form = extractBookingForm([{ tool: 'show_booking_form', ok: true, output: { form: 'booking', slug: 'barber', businessName: 'Barber', serviceOfferingId: null } }]);
+    expect(form).toEqual({ slug: 'barber', businessName: 'Barber', serviceOfferingId: null });
+  });
+  it('ignores failed, other and malformed tool calls', () => {
+    expect(extractBookingForm(null)).toBeNull();
+    expect(extractBookingForm([{ tool: 'show_booking_form', ok: false, error: 'x' }])).toBeNull();
+    expect(extractBookingForm([{ tool: 'create_booking', ok: true, output: { form: 'booking', slug: 'a' } }])).toBeNull();
+    expect(extractBookingForm([{ tool: 'show_booking_form', ok: true, output: { form: 'booking' } }])).toBeNull();
   });
 });

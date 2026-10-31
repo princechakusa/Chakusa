@@ -143,6 +143,21 @@ const tools: Record<string, CustomerAssistantTool> = {
     },
   },
 
+  show_booking_form: {
+    name: "show_booking_form",
+    description: "Show the customer a booking form in the chat (service, day and time pickers) for a business. Use this whenever the customer wants to book and you know which business. The customer fills it in and confirms it themselves; this tool never books anything.",
+    mutating: false,
+    schema: z.object({
+      slug: z.string().trim().min(1).max(200),
+      serviceOfferingId: z.string().uuid().optional(),
+    }),
+    async run(_ctx, args) {
+      const input = this.schema.parse(args) as { slug: string; serviceOfferingId?: string };
+      const services = await listBookableServices(input.slug);
+      return { output: { form: "booking", slug: input.slug, businessName: services.businessName, serviceOfferingId: input.serviceOfferingId ?? null } };
+    },
+  },
+
   create_booking: {
     name: "create_booking",
     description: "Book an appointment for the customer. Requires an explicit service and start time the customer has confirmed.",

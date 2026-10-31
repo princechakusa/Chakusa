@@ -14,6 +14,7 @@ import { agentToolDeclarations, isAgentTool } from "./agentTools.js";
 import { receptionistGate, resolveBusinessHoursForReceptionist } from "./receptionistSettings.js";
 
 const MAX_TOOL_ITERATIONS = 4;
+const RECENT_MESSAGES_FOR_MODEL = 12;
 
 export interface AgentTurnResult {
   runId: string;
@@ -74,6 +75,24 @@ export async function runCustomerAgentTurn(input: {
   });
   const resolved = await renderPublishedPrompt({ templateKey: "conversation.orchestrator", businessId: input.businessId, values: { message: input.prompt } });
 
+  // The model only sees the prompt, so the earlier messages of this thread must be included or
+  // every inbound message reads like the start of a new conversation.
+  const thread = run.conversationId
+    ? await prisma.message.findMany({
+        where: { businessId: input.businessId, conversationId: run.conversationId, NOT: { status: "draft", actorType: "AI" }, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_MESSAGES_FOR_MODEL + 1,
+        select: { direction: true, body: true },
+      })
+    : [];
+  // The newest inbound row is the message being answered now; it is sent as the prompt itself.
+  if (thread[0]?.direction === "INBOUND" && thread[0].body === input.prompt) thread.shift();
+  const transcript = thread
+    .slice(0, RECENT_MESSAGES_FOR_MODEL)
+    .reverse()
+    .map((m) => `${m.direction === "INBOUND" ? "Customer" : "Receptionist"}: ${m.body.slice(0, 800)}`)
+    .join("\n");
+
   const advance = (status: string) => prisma.aIConversationRun.update({ where: { id: run.id }, data: { status } });
   await advance("CONTEXT_READY");
   await advance("CLASSIFIED");
@@ -94,7 +113,10 @@ export async function runCustomerAgentTurn(input: {
     };
     // The published version's system prompt carries the receptionist's
     // instructions; routeAI takes a single prompt, so it leads.
-    const basePrompt = resolved.rendered.systemPrompt ? `${resolved.rendered.systemPrompt}\n\n${resolved.rendered.prompt}` : resolved.rendered.prompt;
+    const currentPrompt = resolved.rendered.systemPrompt ? `${resolved.rendered.systemPrompt}\n\n${resolved.rendered.prompt}` : resolved.rendered.prompt;
+    const basePrompt = transcript
+      ? `Conversation so far (oldest first; continue it, do not start over or repeat questions already answered):\n${transcript}\n\n${currentPrompt}`
+      : currentPrompt;
     const turnPrompt = toolResults.length
       ? `${basePrompt}\n\nTool results so far:\n${JSON.stringify(toolResults)}`
       : basePrompt;

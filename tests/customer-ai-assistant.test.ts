@@ -14,12 +14,14 @@ const SCRIPTED = "scripted-assistant";
 const openEveryDay = { version: 1, days: Object.fromEntries(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((d) => [d, { enabled: true, opensAt: "00:00", closesAt: "23:59" }])) };
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
+const seenPrompts: string[] = [];
 const script: { slug?: string; serviceOfferingId?: string; startsAt?: string; bookingId?: string } = {};
 
 function scriptedProvider(): AIProvider {
   return {
     id: SCRIPTED,
     async invoke({ prompt }) {
+      seenPrompts.push(prompt);
       const usage = { inputTokens: 12, outputTokens: 6 };
       if (prompt.includes("Tool results so far")) {
         if (prompt.includes('"tool":"create_booking"') && prompt.includes('"ok":true')) return { output: "You're booked in.", toolRequests: [], usage };
@@ -183,6 +185,19 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
       expect(policy).not.toBeNull();
     });
 
+    it("gives the model the earlier messages of the same chat, so a follow-up does not start over", async () => {
+      const biz = await bookableBusiness(app, "Memory Barbers");
+      const customer = await registerCustomer(app);
+      await favourite(app, customer.token, biz.businessId);
+      const id = await newConversation(app, customer.token, biz.slug);
+      await say(app, customer.token, id, "hello there, I want a trim on friday");
+      seenPrompts.length = 0;
+      await say(app, customer.token, id, "the morning please");
+      expect(seenPrompts[0]).toContain("Customer: hello there, I want a trim on friday");
+      expect(seenPrompts[0]).toContain("Assistant: How can I help with your bookings?");
+      expect(seenPrompts[0]).toContain("Customer message: the morning please");
+    });
+
     it("a tool only ever sees the calling customer's data (booking history)", async () => {
       const biz = await bookableBusiness(app, "Isolation Barbers");
       const alice = await registerCustomer(app, { fullName: "Alice" });
@@ -256,14 +271,14 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
   });
 
   describe("notifications", () => {
-    it("writes an ai_reply notification to the customer feed", async () => {
+    it("does not notify the customer for each assistant reply (the reply is already in the open chat)", async () => {
       const biz = await bookableBusiness(app, "Notify Barbers");
       const customer = await registerCustomer(app);
       await favourite(app, customer.token, biz.businessId);
       const id = await newConversation(app, customer.token, biz.slug);
       await say(app, customer.token, id, "hello");
       const feed = await app.inject({ method: "GET", url: "/customer/notifications", headers: auth(customer.token) }).then((r) => r.json());
-      expect(feed.some((n: { category: string }) => n.category === "ai_reply")).toBe(true);
+      expect(feed.some((n: { category: string }) => n.category === "ai_reply")).toBe(false);
     });
   });
 

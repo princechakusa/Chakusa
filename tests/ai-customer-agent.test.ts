@@ -20,12 +20,14 @@ let script: {
 } = { startsAt: "2027-03-01T10:00:00.000Z", endsAt: "2027-03-01T11:00:00.000Z" };
 
 let offeredTools: Array<{ name: string; description?: string; schema: object }> = [];
+const seenPrompts: string[] = [];
 
 function scriptedProvider(): AIProvider {
   return {
     id: SCRIPTED_PROVIDER,
     async invoke({ prompt, tools }) {
       offeredTools = tools;
+      seenPrompts.push(prompt);
       const text = prompt.toLowerCase();
       const secondTurn = prompt.includes("Tool results so far");
       const usage = { inputTokens: 20, outputTokens: 8 };
@@ -131,6 +133,19 @@ describe("AI Customer Agent — live conversation E2E (LOOP 4)", () => {
     // than assuming both clocks agree within the first dispatch tick.
     await expect.poll(() => processMessageDispatches(messagingProvider), { timeout: 2000, interval: 50 }).toBeGreaterThanOrEqual(1);
     expect((await prisma.message.findFirstOrThrow({ where: { id: reply!.id } })).status).toBe("sent");
+  });
+
+  it("gives the model the earlier messages of the thread, so a follow-up does not start over", async () => {
+    await setupBusiness(app);
+    await inbound(app, "What are your opening hours?");
+    seenPrompts.length = 0;
+    await inbound(app, "Do you have parking?");
+
+    expect(seenPrompts[0]).toContain("Customer: What are your opening hours?");
+    expect(seenPrompts[0]).toContain("Receptionist: We're open Monday to Friday");
+    // The message being answered is the prompt itself, not repeated in the history.
+    expect(seenPrompts[0]).not.toContain("Customer: Do you have parking?");
+    expect(seenPrompts[0]).toContain("Do you have parking?");
   });
 
   it("Booking flow: AI calls the Tool Broker, an appointment is created, customer is told", async () => {

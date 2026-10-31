@@ -1,6 +1,6 @@
 import { prisma } from "../../prisma.js";
 import { ApiError } from "../../errors.js";
-import { runCustomerAssistantTurn, notifyAssistantReply } from "./customerAssistant.js";
+import { runCustomerAssistantTurn } from "./customerAssistant.js";
 
 // PROGRAM 2 LOOP 4 — customer-visible AI conversation threads: titles,
 // search, pin, archive, delete, paginated history. Thread storage only;
@@ -113,7 +113,8 @@ export async function sendAssistantMessage(customerProfileId: string, conversati
     },
   });
 
-  await notifyAssistantReply(customerProfileId, turn.anchorBusinessId, conversationId, turn.replyText);
+  // No push or feed item per reply: the reply is returned to the open chat in this same request,
+  // so a notification would only repeat what the customer is already reading.
 
   return {
     userMessage: { id: userMessage.id, role: "user", content: userMessage.content, createdAt: userMessage.createdAt },

@@ -221,6 +221,8 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
       await say(app, customer.token, id, "hello there, I want a trim on friday");
       seenPrompts.length = 0;
       await say(app, customer.token, id, "the morning please");
+      // The action rules ride along with every turn, independent of the stored prompt template.
+      expect(seenPrompts[0]).toContain("HOW TO ACT");
       expect(seenPrompts[0]).toContain("Customer: hello there, I want a trim on friday");
       expect(seenPrompts[0]).toContain("Assistant: How can I help with your bookings?");
       expect(seenPrompts[0]).toContain("Customer message: the morning please");

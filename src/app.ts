@@ -248,7 +248,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Cheap, DB-free liveness — "the process is up and answering HTTP," not
   // "the app is fully functional." Deployment platforms (Render, etc.)
   // should probe this frequently; it must never do real work.
-  app.get("/health", async () => ({ status: "ok" }));
+  // `commit` is the short deployed commit (Render sets RENDER_GIT_COMMIT), so a release can be
+  // verified from outside without the hosting dashboard.
+  const deployedCommit = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
+  app.get("/health", async () => (deployedCommit ? { status: "ok", commit: deployedCommit } : { status: "ok" }));
 
   // Readiness — the same liveness guarantee PLUS "the database is
   // currently reachable," via the cheapest possible round-trip

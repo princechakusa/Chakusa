@@ -36,6 +36,13 @@ export interface PolicyRequest {
   customerId?: string;
   confidence?: number;
   channel?: string;
+  /**
+   * A read-only tool run by the customer's own assistant. The business's approval gates (draft/approval
+   * mode, hours, approval rules) govern what the business sends to its customers, not a customer looking
+   * things up for themselves, so they are skipped. Safety, tenant isolation, customer policies and DENY
+   * rules still apply.
+   */
+  customerReadOnlyTool?: boolean;
   purpose?: string;
   topics?: string[];
   promptText?: string;
@@ -249,7 +256,7 @@ export async function evaluatePolicy(req: PolicyRequest): Promise<PolicyResult> 
   }
 
   // 4. Business policies (outward checkpoints only)
-  if (isOutward) {
+  if (isOutward && !req.customerReadOnlyTool) {
     if (req.channel && !doc.business.allowedChannels.includes(req.channel)) {
       bump("DENY", "CHANNEL_NOT_ALLOWED", `Channel "${req.channel}" is not permitted by policy`, "business");
     }
@@ -301,14 +308,14 @@ export async function evaluatePolicy(req: PolicyRequest): Promise<PolicyResult> 
     }
     if (rule.effect === "DENY") {
       bump("DENY", "RULE_DENY", `Policy rule denies "${req.action}"`, "rule");
-    } else if (rule.effect === "REQUIRE_APPROVAL" || rule.effect === "ESCALATE") {
+    } else if ((rule.effect === "REQUIRE_APPROVAL" || rule.effect === "ESCALATE") && !req.customerReadOnlyTool) {
       bump(rule.effect, rule.effect === "ESCALATE" ? "RULE_ESCALATE" : "RULE_REQUIRE_APPROVAL", `Policy rule requires ${rule.effect === "ESCALATE" ? "escalation" : "approval"} for "${req.action}"`, "rule");
       requiredApprovalStrategy = rule.strategy;
     }
   }
 
   // 8. Mode gate — draft/approval modes never let an outward action through unattended
-  if (isOutward && effect !== "DENY") {
+  if (isOutward && effect !== "DENY" && !req.customerReadOnlyTool) {
     if (policy.mode === "DRAFT") {
       bump("REQUIRE_APPROVAL", "MODE_DRAFT", "Business is in Draft mode: AI proposes, a human sends", "mode");
     } else if (policy.mode === "APPROVAL") {

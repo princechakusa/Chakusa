@@ -53,6 +53,7 @@ export async function executeAITool(input: { businessId: string; runId: string; 
     conversationId: run.conversationId,
     customerId: run.customerId ?? undefined,
     correlationId: input.idempotencyKey,
+    customerReadOnlyTool: customerTool && getCustomerAssistantTool(input.name)?.mutating === false,
   });
   if (decision.effect === "DENY") {
     throw ApiError.forbidden(`Policy denied tool "${input.name}": ${decision.reasons.map((reason) => reason.message).join("; ")}`, { code: "POLICY_DENIED", decisionId: decision.decisionId });

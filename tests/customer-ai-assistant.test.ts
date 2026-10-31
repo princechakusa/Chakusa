@@ -200,6 +200,31 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
       expect(offeredTools.find((t) => t.name === "show_booking_form")?.schema).toMatchObject({ type: "object" });
     });
 
+    it("read-only lookups work under the default Draft policy; changing tools still need approval", async () => {
+      const biz = await bookableBusiness(app, "Draft Barbers");
+      // Real businesses start in Draft mode ("AI proposes, a human sends"); the suite defaults to Autonomous.
+      await savePolicyDraft({ businessId: biz.businessId, mode: "DRAFT", document: {} });
+      await activatePolicy({ businessId: biz.businessId });
+      const customer = await registerCustomer(app);
+      await favourite(app, customer.token, biz.businessId);
+      script.slug = biz.slug;
+      script.serviceOfferingId = biz.serviceId;
+      script.startsAt = futureSlot(9, 11);
+      const id = await newConversation(app, customer.token, biz.slug);
+
+      const search = await say(app, customer.token, id, "find a barber nearby");
+      const found = search.json().toolResults.find((t: { tool: string }) => t.tool === "search_businesses");
+      expect(found.ok).toBe(true);
+      const form = await say(app, customer.token, id, "show me the form to book");
+      expect(form.json().toolResults.find((t: { tool: string }) => t.tool === "show_booking_form").ok).toBe(true);
+
+      // A tool that changes something is still held for approval, so the AI cannot book on its own.
+      const book = await say(app, customer.token, id, "please book a haircut");
+      const booked = book.json().toolResults.find((t: { tool: string }) => t.tool === "create_booking");
+      expect(booked.ok).toBe(false);
+      expect(await prisma.appointment.count({ where: { businessId: biz.businessId } })).toBe(0);
+    });
+
     it("show_booking_form hands the app a form to fill in and books nothing", async () => {
       const biz = await bookableBusiness(app, "Form Barbers");
       const customer = await registerCustomer(app);

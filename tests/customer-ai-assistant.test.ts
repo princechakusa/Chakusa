@@ -15,13 +15,15 @@ const openEveryDay = { version: 1, days: Object.fromEntries(["monday", "tuesday"
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const seenPrompts: string[] = [];
+let offeredTools: Array<{ name: string; description?: string; schema: object }> = [];
 const script: { slug?: string; serviceOfferingId?: string; startsAt?: string; bookingId?: string } = {};
 
 function scriptedProvider(): AIProvider {
   return {
     id: SCRIPTED,
-    async invoke({ prompt }) {
+    async invoke({ prompt, tools }) {
       seenPrompts.push(prompt);
+      offeredTools = tools;
       const usage = { inputTokens: 12, outputTokens: 6 };
       if (prompt.includes("Tool results so far")) {
         if (prompt.includes('"tool":"create_booking"') && prompt.includes('"ok":true')) return { output: "You're booked in.", toolRequests: [], usage };
@@ -184,6 +186,18 @@ describe("Customer AI Assistant Platform (Program 2, Loop 4)", () => {
       expect(toolLedger).not.toBeNull();
       const policy = await prisma.aIPolicyDecision.findFirst({ where: { runId: run.id, checkpoint: "CUSTOMER_RESPONSE" } });
       expect(policy).not.toBeNull();
+    });
+
+    it("offers the model its tools as callable functions, not just as text in the context", async () => {
+      const biz = await bookableBusiness(app, "Tools Barbers");
+      const customer = await registerCustomer(app);
+      await favourite(app, customer.token, biz.businessId);
+      const id = await newConversation(app, customer.token, biz.slug);
+      offeredTools = [];
+      await say(app, customer.token, id, "hello");
+      const names = offeredTools.map((t) => t.name);
+      expect(names).toEqual(expect.arrayContaining(["search_businesses", "list_services", "check_availability", "show_booking_form"]));
+      expect(offeredTools.find((t) => t.name === "show_booking_form")?.schema).toMatchObject({ type: "object" });
     });
 
     it("show_booking_form hands the app a form to fill in and books nothing", async () => {
